@@ -1,17 +1,40 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
+import express from "express";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
-import supplementsRoutes from './modules/supplements/routes.js';
-import athletesRoutes from './modules/athletes/routes.js';
-
+// Load env variables
 dotenv.config();
+
+// Express app
 const app = express();
-app.use(cors());
-app.use(express.json());
-
-app.use('/api/supplements', supplementsRoutes);
-app.use('/api/athletes', athletesRoutes);
-
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// Fix __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Serve static frontend files
+app.use(express.static(path.join(__dirname, "..", "Frontend")));
+
+// Import your existing routes
+import supplementRoutes from "./modules/SSS/routes.js";
+import athleteRoutes from "./modules/AthleteProfileSystem/routes.js";
+
+// Register API routes
+app.use("/api/SSS", supplementRoutes);
+app.use("/api/APS", athleteRoutes);
+
+// Serve your index.html at root
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "..", "Frontend", "index.html"));
+});
+
+// Start server
+app.listen(PORT, () => {
+    console.log(`✅ Server running on http://localhost:${PORT}`);
+});
