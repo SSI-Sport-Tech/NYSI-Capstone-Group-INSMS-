@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import ocrRoutes from "./modules/OCR/routes.js";
 
 // Load env variables
 dotenv.config();
@@ -18,6 +19,9 @@ const __dirname = path.dirname(__filename);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve OCR images for dropdown and preview
+app.use("/ocr_images", express.static(path.join(__dirname, "..", "Frontend", "ocr_images")));
+
 // Serve static frontend files
 app.use(express.static(path.join(__dirname, "..", "Frontend")));
 
@@ -28,6 +32,7 @@ import athleteRoutes from "./modules/AthleteProfileSystem/routes.js";
 // Register API routes
 app.use("/api/SSS", supplementRoutes);
 app.use("/api/APS", athleteRoutes);
+app.use("/api/ocr", ocrRoutes);
 
 // Serve your index.html at root
 app.get("/", (req, res) => {

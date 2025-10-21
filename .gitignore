@@ -2,7 +2,8 @@
 node_modules/
 package.json
 ocr_service/venv/
-
+Backend/package-lock.json
+package-lock.json
 # Logs
 npm-debug.log*
 yarn-debug.log*
