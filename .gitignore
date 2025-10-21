@@ -1,6 +1,7 @@
 # Node modules (never commit dependencies)
 node_modules/
 package.json
+ocr_service/venv/
 
 # Logs
 npm-debug.log*
