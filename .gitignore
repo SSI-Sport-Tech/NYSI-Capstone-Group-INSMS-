@@ -1,0 +1,11 @@
+# Ignore all CSV and HTML files
+*.csv
+*.html
+
+# Ignore specific folders
+"applied nutrition images/"
+/output/
+temp/
+
+# (Optional) Keep certain files inside those folders
+!data/keep_this.csv
