@@ -51,8 +51,8 @@ print(essay)
 # With custom configuration
 essay = create_essay(
     topic="Artificial Intelligence and Ethics",
-    style="analytical",
-    tone="formal",
+    style="expository",
+    tone="analytical",
     min_paragraphs=6,
     max_paragraphs=9
 )

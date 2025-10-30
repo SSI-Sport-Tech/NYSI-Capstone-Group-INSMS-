@@ -82,6 +82,14 @@ def example_multiple_essays():
         print("\n")
 
 
+def run_all_examples():
+    """Run all example demonstrations"""
+    example_basic_usage()
+    example_custom_style()
+    example_advanced_configuration()
+    example_multiple_essays()
+
+
 if __name__ == "__main__":
     import sys
     
@@ -104,8 +112,7 @@ if __name__ == "__main__":
         "2": example_custom_style,
         "3": example_advanced_configuration,
         "4": example_multiple_essays,
-        "5": lambda: [example_basic_usage(), example_custom_style(), 
-                      example_advanced_configuration(), example_multiple_essays()]
+        "5": run_all_examples
     }
     
     if choice in examples:

@@ -39,7 +39,6 @@ class EssayConfig:
     tone: ToneType = ToneType.REFLECTIVE
     min_paragraphs: int = 5
     max_paragraphs: int = 8
-    target_word_count: int = 1000
     creativity_level: float = 0.8  # 0.0 to 1.0
     use_metaphors: bool = True
     use_transitions: bool = True
@@ -305,14 +304,26 @@ def create_essay(
     
     Returns:
         A complete, well-structured essay
+    
+    Raises:
+        ValueError: If invalid style or tone is provided
     """
-    config = EssayConfig(
-        topic=topic,
-        style=EssayStyle(style.lower()),
-        tone=ToneType(tone.lower()),
-        min_paragraphs=min_paragraphs,
-        max_paragraphs=max_paragraphs
-    )
+    try:
+        config = EssayConfig(
+            topic=topic,
+            style=EssayStyle(style.lower()),
+            tone=ToneType(tone.lower()),
+            min_paragraphs=min_paragraphs,
+            max_paragraphs=max_paragraphs
+        )
+    except ValueError as e:
+        valid_styles = [s.value for s in EssayStyle]
+        valid_tones = [t.value for t in ToneType]
+        raise ValueError(
+            f"Invalid configuration: {e}\n"
+            f"Valid styles: {', '.join(valid_styles)}\n"
+            f"Valid tones: {', '.join(valid_tones)}"
+        )
     
     writer = EssayWriter(config)
     return writer.generate_essay()

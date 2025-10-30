@@ -153,6 +153,18 @@ class TestCreateEssayFunction(unittest.TestCase):
         self.assertTrue(len(essay) > 500)
         self.assertIn("Artificial Intelligence", essay)
     
+    def test_create_essay_invalid_style(self):
+        """Test error handling for invalid style"""
+        with self.assertRaises(ValueError) as context:
+            create_essay("Test Topic", style="invalid_style")
+        self.assertIn("Invalid configuration", str(context.exception))
+    
+    def test_create_essay_invalid_tone(self):
+        """Test error handling for invalid tone"""
+        with self.assertRaises(ValueError) as context:
+            create_essay("Test Topic", tone="invalid_tone")
+        self.assertIn("Invalid configuration", str(context.exception))
+    
     def test_create_essay_with_style(self):
         """Test essay creation with custom style"""
         essay = create_essay(
