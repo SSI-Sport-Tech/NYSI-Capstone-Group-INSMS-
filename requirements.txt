@@ -1,3 +1,0 @@
-# Requirements for Creative Essay Writer System
-# Core Python (3.7+) - No external dependencies required for basic functionality
-# The system uses only Python standard library modules
