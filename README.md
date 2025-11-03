@@ -22,3 +22,7 @@
     - nodemon (optional, auto reloads server when updating script, dunnid manually shutdown and restart)
 ### Step 3: run "npx nodemon server.js" in your terminal (if you're using nodemon) or "node server.js" (if you're not)
 
+
+## Setting up .env file: 
+### Create a .env file on the same level as server.js and copy paste the telegram message sent previously.
+
