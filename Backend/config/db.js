@@ -1,19 +1,35 @@
-import pkg from 'pg';
-const { Pool } = pkg;
-import dotenv from 'dotenv';
+import pg from "pg";
+import dotenv from "dotenv";
 
+// Load environment variables from .env
 dotenv.config();
 
+const { Pool } = pg;
+
+// Create a connection pool using .env values
 const pool = new Pool({
-    user: process.env.DB_USER,
-    host: process.env.DB_HOST,
-    database: process.env.DB_NAME,
-    password: process.env.DB_PASSWORD,
-    port: process.env.DB_PORT,
+    host: process.env.PGHOST,
+    port: process.env.PGPORT,
+    database: process.env.PGDATABASE,
+    user: process.env.PGUSER,
+    password: process.env.PGPASSWORD,
+    ssl: process.env.PGSSLMODE === "require" ? { rejectUnauthorized: false } : false,
 });
 
-pool.on('connect', () => {
-    console.log('Connected to PostgreSQL database');
+// handle pool errors gracefully
+pool.on("error", (err) => {
+    console.error("❌ Unexpected PostgreSQL pool error:", err);
+    process.exit(-1);
 });
+
+// verify connection once on startup
+(async () => {
+    try {
+        const res = await pool.query("SELECT NOW()");
+        console.log("✅ Connected to PostgreSQL at:", res.rows[0].now);
+    } catch (err) {
+        console.error("❌ Database connection failed:", err.message);
+    }
+})();
 
 export default pool;

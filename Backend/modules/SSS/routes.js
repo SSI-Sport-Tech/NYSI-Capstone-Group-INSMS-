@@ -1,9 +1,10 @@
+// modules/SSS/routes.js
 import express from "express";
+import { getSearch } from "./controller.js";
+
 const router = express.Router();
 
-// Test route for frontend button
-router.get("/test", (req, res) => {
-    res.json({ message: "Supplement API is working!" });
-});
+// e.g. /api/SSS/search?q=whey&scope=ingredients
+router.get("/search", getSearch);
 
 export default router;

@@ -7,6 +7,9 @@ import ocrRoutes from "./modules/OCR/routes.js";
 // Load env variables
 dotenv.config();
 
+// Import database connection (this will test and log immediately)
+import pool from "./config/db.js";
+
 // Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
