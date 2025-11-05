@@ -7,6 +7,8 @@
             - python-multipart (allows FastAPI to handle File uploads (images))
             - paddleocr (the OCR engine)
             - paddlepaddle (Deep learning framework required by paddleocr)
+            - pg (connect to postgres database)
+            - dotenv (connect to postgres database)
 ### Step 3: activate the venv, then cd to the OCR_service folder. Try running on command prompt instead of powershell if facing errors.
 ### Step 4: run the command "uvicorn ocr_server:app --reload --port 8001"
 #### This doesnt have a frontend, just makes the python server containing the OCR and its environment to be accessible from Express.
