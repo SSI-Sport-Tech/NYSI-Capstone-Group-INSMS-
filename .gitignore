@@ -3,10 +3,7 @@ node_modules/
 Backend/node_modules/
 frontend/node_modules/
 
-# Lock files
-Backend/package-lock.json
-frontend/package-lock.json
-package-lock.json
+# Lock files - COMMIT THESE! (removes the ignore rules below)
 
 # Next.js
 frontend/.next/
