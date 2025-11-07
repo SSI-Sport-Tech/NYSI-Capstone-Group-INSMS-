@@ -48,7 +48,10 @@ app.get("/api/test", (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`✅ Backend API running on http://localhost:${PORT}`);
     console.log(`✅ CORS enabled for: ${process.env.FRONTEND_URL || "http://localhost:3000"}`);
 });
+
+// Increase timeout for long-running OCR requests (2 minutes)
+server.timeout = 120000;

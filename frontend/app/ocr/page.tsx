@@ -72,6 +72,7 @@ export default function OCRPage() {
         headers: {
           "Content-Type": "multipart/form-data",
         },
+        timeout: 120000, // 2 minutes timeout for OCR processing
       });
 
       if (ocrResponse.data.error) {
@@ -136,6 +137,7 @@ export default function OCRPage() {
             </label>
             <input
               type="file"
+              
               accept="image/*"
               onChange={handleFileUpload}
               className="w-full px-4 py-2 border text-gray-700 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"

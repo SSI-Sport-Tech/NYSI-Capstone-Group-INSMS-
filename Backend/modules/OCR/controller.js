@@ -9,6 +9,9 @@ export async function runOCR(req, res) {
 
         const ocrResponse = await axios.post("http://127.0.0.1:8001/ocr", form, {
             headers: form.getHeaders(),
+            timeout: 120000, // 2 minutes timeout for OCR processing
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity,
         });
 
         fs.unlinkSync(req.file.path); // cleanup
