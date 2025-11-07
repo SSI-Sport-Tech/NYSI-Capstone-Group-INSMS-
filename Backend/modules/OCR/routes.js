@@ -5,6 +5,6 @@ import multer from "multer";
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
-router.post("/", upload.single("file"), runOCR);
+router.post("/upload", upload.single("file"), runOCR);
 
 export default router;

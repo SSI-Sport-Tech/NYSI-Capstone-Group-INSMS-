@@ -1,7 +1,6 @@
 import express from "express";
+import cors from "cors";
 import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
 import ocrRoutes from "./modules/OCR/routes.js";
 
 // Load env variables
@@ -12,21 +11,17 @@ import pool from "./config/db.js";
 
 // Express app
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8000;
 
-// Fix __dirname for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// CORS - Allow requests from Next.js dev server
+app.use(cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    credentials: true
+}));
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Serve OCR images for dropdown and preview
-app.use("/ocr_images", express.static(path.join(__dirname, "..", "Frontend", "ocr_images")));
-
-// Serve static frontend files
-app.use(express.static(path.join(__dirname, "..", "Frontend")));
 
 // Import your existing routes
 import supplementRoutes from "./modules/SSS/routes.js";
@@ -37,12 +32,23 @@ app.use("/api/SSS", supplementRoutes);
 app.use("/api/APS", athleteRoutes);
 app.use("/api/ocr", ocrRoutes);
 
-// Serve your index.html at root
+// Health check endpoint
 app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "..", "Frontend", "index.html"));
+    res.json({ message: "NYSI Backend API is running", version: "2.0" });
+});
+
+// Test endpoint (no database required)
+app.get("/api/test", (req, res) => {
+    res.json({
+        success: true,
+        message: "Backend is working! ✅",
+        timestamp: new Date().toISOString(),
+        note: "This endpoint doesn't require database"
+    });
 });
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`✅ Server running on http://localhost:${PORT}`);
+    console.log(`✅ Backend API running on http://localhost:${PORT}`);
+    console.log(`✅ CORS enabled for: ${process.env.FRONTEND_URL || "http://localhost:3000"}`);
 });
