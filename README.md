@@ -89,7 +89,6 @@ NYSI-Capstone-Group-INSMS/
 ├── Backend/            # Express API server
 ├── OCR_service/        # FastAPI OCR service
 ├── venv/              # Python virtual environment
-└── CLAUDE.md          # Development guide
 ```
 
 ## Development
