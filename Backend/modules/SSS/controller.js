@@ -19,3 +19,51 @@ export async function getSearch(req, res) {
         res.status(500).json({ success: false, error: "Server error while searching" });
     }
 }
+
+// Use case: Show Supplement Library
+async function listSupplements(req, res) {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = 10;
+
+        const [supplements, totalCount] = await Promise.all([
+            services.getSupplementsByPage(page, pageSize),
+            services.getTotalSupplementCount()
+        ]);
+
+        const totalPages = Math.ceil(totalCount / pageSize);
+
+        res.json({
+            data: supplements.rows,
+            currentPage: page,
+            totalPages,
+            totalCount
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}
+
+// Use case: Show Inventory Library
+async function listBatches(req, res) {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = 10;
+
+        const [batches, totalCount] = await Promise.all([
+            services.getBatchesByPage(page, pageSize),
+            services.getTotalBatchCount()
+        ]);
+
+        const totalPages = Math.ceil(totalCount / pageSize);
+
+        res.json({
+            data: batches.rows,
+            currentPage: page,
+            totalPages,
+            totalCount
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}
