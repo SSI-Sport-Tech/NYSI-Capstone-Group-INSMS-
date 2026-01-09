@@ -1,35 +1,25 @@
-// Backend/modules/SSS/controller.js
-import { searchSupplements } from "./services.js";
+import * as services from './services.js';
 
-export async function getSearch(req, res) {
-    try {
-        const q = req.query.q;
-        const scope = (req.query.scope || "all").toLowerCase();
-        const limit = parseInt(req.query.limit) || 10;
-        const offset = parseInt(req.query.offset) || 0;
-
-        if (!q || !q.trim()) {
-            return res.status(400).json({ success: false, error: "Missing search query" });
-        }
-
-        const { rows, total } = await searchSupplements(q, scope, limit, offset);
-        return res.json({ success: true, results: rows, total });
-    } catch (err) {
-        console.error("Search error:", err);
-        res.status(500).json({ success: false, error: "Server error while searching" });
-    }
-}
-
-// Use case: Show Supplement Library
-async function listSupplements(req, res) {
+//Use Case: Show Supplement Library, Search Supplement
+export async function listSupplements(req, res) {
     try {
         const page = parseInt(req.query.page) || 1;
         const pageSize = 10;
+        const searchQuery = req.query.search || '';
 
-        const [supplements, totalCount] = await Promise.all([
-            services.getSupplementsByPage(page, pageSize),
-            services.getTotalSupplementCount()
-        ]);
+        let supplements, totalCount;
+
+        if (searchQuery.trim()) {
+            [supplements, totalCount] = await Promise.all([
+                services.searchSupplements(searchQuery, page, pageSize),
+                services.getSearchResultCount(searchQuery)
+            ]);
+        } else {
+            [supplements, totalCount] = await Promise.all([
+                services.getSupplementsByPage(page, pageSize),
+                services.getTotalSupplementCount()
+            ]);
+        }
 
         const totalPages = Math.ceil(totalCount / pageSize);
 
@@ -37,15 +27,16 @@ async function listSupplements(req, res) {
             data: supplements.rows,
             currentPage: page,
             totalPages,
-            totalCount
+            totalCount,
+            searchQuery: searchQuery.trim() || null
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 }
 
-// Use case: Show Inventory Library
-async function listBatches(req, res) {
+//Use Case: Show Inventory Library
+export async function listBatches(req, res) {
     try {
         const page = parseInt(req.query.page) || 1;
         const pageSize = 10;

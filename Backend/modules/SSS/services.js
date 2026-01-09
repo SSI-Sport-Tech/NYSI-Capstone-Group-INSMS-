@@ -1,63 +1,8 @@
-// Backend/modules/SSS/services.js
-import pool from "../../config/db.js";
+import pool from '../../config/db.js';
 
-/**
- * Search supplements by query and optional scope.
- * scope: "all" | "name" | "ingredients"
- * Note: in your DB the column is singular "ingredient" (TEXT).
- */
-export async function searchSupplements(query, scope = "all", limit = 10, offset = 0) {
-  if (!query || !query.trim()) return { rows: [], total: 0 };
-
-  const q = `%${query.trim()}%`;
-  limit = Math.min(Math.max(Number(limit) || 10, 1), 50);
-  offset = Math.max(Number(offset) || 0, 0);
-
-  // Build WHERE clause per scope
-  let where = "";
-  if (scope === "name") {
-    where = "name ILIKE $1";
-  } else if (scope === "ingredients") {
-    // column is singular "ingredient" in your schema
-    where = "ingredient ILIKE $1";
-  } else {
-    // default: search both name OR ingredient
-    where = "(name ILIKE $1 OR ingredient ILIKE $1)";
-  }
-
-  // Main list query — alias supplement_id as id for frontend convenience
-  const listSql = `
-    SELECT
-      supplement_id AS id,
-      name,
-      brand,
-      description,
-      ingredient,
-      website
-    FROM supplement_schema.supplement
-    WHERE ${where}
-    ORDER BY name
-    LIMIT $2 OFFSET $3;
-  `;
-
-  // Separate count for accurate pagination
-  const countSql = `
-    SELECT COUNT(*)::int AS count
-    FROM supplement_schema.supplement
-    WHERE ${where};
-  `;
-
-  const values = [q, limit, offset];
-  const [listRes, countRes] = await Promise.all([
-    pool.query(listSql, values),
-    pool.query(countSql, [q]),
-  ]);
-
-  return { rows: listRes.rows, total: countRes.rows[0].count };
-}
-
-// Use case: Showing Supplement Library
-async function getSupplementsByPage(pageNumber, pageSize = 10) {
+// Supplement functions
+// Use case: Show Supplement Library
+export async function getSupplementsByPage(pageNumber, pageSize = 10) {
   const offset = (pageNumber - 1) * pageSize;
 
   const query = `
@@ -68,21 +13,88 @@ async function getSupplementsByPage(pageNumber, pageSize = 10) {
       supplement_input_type,
       supplement_website
     FROM SSS.Supplement
+    ORDER BY id
     LIMIT $1 OFFSET $2
   `;
 
-  return await db.query(query, [pageSize, offset]);
+  return await pool.query(query, [pageSize, offset]);
+}
+// Use case: Search Supplement
+export async function searchSupplements(searchQuery, pageNumber, pageSize = 10) {
+  const offset = (pageNumber - 1) * pageSize;
+  const searchWords = searchQuery.trim().toLowerCase().split(/\s+/);
+
+  const whereConditions = searchWords.map((word, index) => {
+    const paramIndex = index + 1;
+    return `(
+      supplement_name ILIKE $${paramIndex} OR 
+      supplement_brand ILIKE $${paramIndex} OR 
+      supplement_ingredient::text ILIKE $${paramIndex} OR
+      supplement_status::text ILIKE $${paramIndex}
+    )`;
+  }).join(' AND ');
+
+  const searchParams = searchWords.map(word => `%${word}%`);
+
+  const query = `
+    SELECT 
+      id,
+      supplement_name,
+      supplement_brand,
+      supplement_input_type,
+      supplement_website,
+      CASE 
+        WHEN supplement_name ILIKE $1 THEN 1
+        WHEN supplement_brand ILIKE $1 THEN 2
+        WHEN supplement_ingredient::text ILIKE $1 THEN 3
+        WHEN supplement_status::text ILIKE $1 THEN 4
+        ELSE 5
+      END AS relevance_order
+    FROM SSS.Supplement
+    WHERE ${whereConditions}
+    ORDER BY relevance_order, id
+    LIMIT $${searchParams.length + 1} OFFSET $${searchParams.length + 2}
+  `;
+
+  return await pool.query(query, [...searchParams, pageSize, offset]);
 }
 
-// Use case: Showing Supplement Library
-async function getTotalSupplementCount() {
+// Use case: Show Supplement Library
+export async function getTotalSupplementCount() {
   const query = 'SELECT COUNT(*) FROM SSS.Supplement';
-  const result = await db.query(query);
+  const result = await pool.query(query);
   return parseInt(result.rows[0].count);
 }
 
-// Use case: Showing Inventory Library
-async function getBatchesByPage(pageNumber, pageSize = 10) {
+// Use case: Search Supplement
+export async function getSearchResultCount(searchQuery) {
+  const searchWords = searchQuery.trim().toLowerCase().split(/\s+/);
+
+  const whereConditions = searchWords.map((word, index) => {
+    const paramIndex = index + 1;
+    return `(
+      supplement_name ILIKE $${paramIndex} OR 
+      supplement_brand ILIKE $${paramIndex} OR 
+      supplement_ingredient::text ILIKE $${paramIndex} OR
+      supplement_status::text ILIKE $${paramIndex}
+    )`;
+  }).join(' AND ');
+
+  const searchParams = searchWords.map(word => `%${word}%`);
+
+  const query = `
+    SELECT COUNT(*) 
+    FROM SSS.Supplement
+    WHERE ${whereConditions}
+  `;
+
+  const result = await pool.query(query, searchParams);
+  return parseInt(result.rows[0].count);
+}
+
+// Batch functions
+// Use case: Show Inventory Library
+export async function getBatchesByPage(pageNumber, pageSize = 10) {
   const offset = (pageNumber - 1) * pageSize;
 
   const query = `
@@ -97,7 +109,7 @@ async function getBatchesByPage(pageNumber, pageSize = 10) {
       COALESCE(SUM(it.quantity), 0) AS booked,
       ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available
     FROM SSS.Inventory_Batch ib
-    INNER JOIN supplements s ON ib.supplement_id = s.id
+    INNER JOIN SSS.Supplement s ON ib.supplement_id = s.id
     LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.batch_id
     GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity, 
              ib.batch_expiration_date, ib.batch_price, 
@@ -106,12 +118,12 @@ async function getBatchesByPage(pageNumber, pageSize = 10) {
     LIMIT $1 OFFSET $2
   `;
 
-  return await db.query(query, [pageSize, offset]);
+  return await pool.query(query, [pageSize, offset]);
 }
 
-// Use case: Showing Inventory Library
-async function getTotalBatchCount() {
+// Use case: Show Inventory Library
+export async function getTotalBatchCount() {
   const query = 'SELECT COUNT(*) FROM SSS.Inventory_Batch';
-  const result = await db.query(query);
+  const result = await pool.query(query);
   return parseInt(result.rows[0].count);
 }
