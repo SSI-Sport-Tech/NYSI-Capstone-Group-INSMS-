@@ -1,6 +1,9 @@
 import PipelineListScrape
 import PipelineProductScrape
 import PipelineSearch
+import json
+from datetime import datetime
+from pathlib import Path
 
 openai_key = "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"
 
@@ -65,4 +68,20 @@ def scrapeAllWebsites(websites_list):
 
     return all_products
 
-scrapeAllWebsites(websites_to_scrape)
+def save_as_json(data, filename=None, folder="output"):
+    Path(folder).mkdir(exist_ok=True)
+
+    if filename is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"scraped_products_{timestamp}.json"
+
+    filepath = Path(folder) / filename
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+    print(f"Saved {len(data)} products to {filepath}")
+
+results = scrapeAllWebsites(websites_to_scrape)
+save_as_json(results)
+    
