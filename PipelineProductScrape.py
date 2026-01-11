@@ -128,6 +128,9 @@ def scrapeProduct(url):
     config=gpt4o
 )
     result_gpt4o = smart_scraper_graph_gpt4o.run()
+
+    for product in result_gpt4o:
+        product["URL"] = url
     return result_gpt4o
 
 # print(scrapeProduct("https://www.etixxsports.com/nl-be/products/natural-oat-bar?variant=52733530210650"))
