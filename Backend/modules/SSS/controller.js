@@ -3,7 +3,7 @@ import * as services from './services.js';
 //Use Case: Show Supplement Library, Search Supplement
 export async function listSupplements(req, res) {
     try {
-        const page = parseInt(req.query.page) || 1;
+        const page = Math.max(1, parseInt(req.query.page) || 1);
         const pageSize = 10;
         const searchQuery = req.query.search || '';
 
@@ -31,6 +31,7 @@ export async function listSupplements(req, res) {
             searchQuery: searchQuery.trim() || null
         });
     } catch (error) {
+        console.error('Error in listSupplements:', error);
         res.status(500).json({ error: error.message });
     }
 }
@@ -38,7 +39,7 @@ export async function listSupplements(req, res) {
 //Use Case: Show Inventory Library, Search Inventory
 export async function listBatches(req, res) {
     try {
-        const page = parseInt(req.query.page) || 1;
+        const page = Math.max(1, parseInt(req.query.page) || 1);
         const searchQuery = req.query.search || '';
         const pageSize = 10;
 

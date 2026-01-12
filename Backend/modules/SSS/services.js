@@ -1,36 +1,47 @@
 import pool from '../../config/db.js';
 
-// Supplement functions
+// ============================================================================
+// SUPPLEMENT FUNCTIONS
+// ============================================================================
+
 // Use case: Show Supplement Library
 export async function getSupplementsByPage(pageNumber, pageSize = 10) {
   const offset = (pageNumber - 1) * pageSize;
 
   const query = `
     SELECT 
-      id,
-      supplement_name,
-      supplement_brand,
-      supplement_input_type,
-      supplement_website
-    FROM SSS.Supplement
-    ORDER BY id
+      s.id,
+      s.supplement_name,
+      s.supplement_brand,
+      sdf.supplement_dose_form AS supplement_input_type,
+      s.supplement_website
+    FROM SSS.Supplement s
+    LEFT JOIN SSS.Supplement_Dose_Form_Lookup sdf 
+      ON s.supplement_dose_form_id = sdf.id
+    ORDER BY s.created_on DESC
     LIMIT $1 OFFSET $2
   `;
 
   return await pool.query(query, [pageSize, offset]);
 }
+
 // Use case: Search Supplement
 export async function searchSupplements(searchQuery, pageNumber, pageSize = 10) {
   const offset = (pageNumber - 1) * pageSize;
-  const searchWords = searchQuery.trim().toLowerCase().split(/\s+/);
+  const searchWords = searchQuery.trim().split(/\s+/).filter(word => word.length > 0);
 
-  const whereConditions = searchWords.map((word, index) => {
+  if (searchWords.length === 0) {
+    return await getSupplementsByPage(pageNumber, pageSize);
+  }
+
+  // Build WHERE conditions - each word must match in at least one field
+  const whereConditions = searchWords.map((_, index) => {
     const paramIndex = index + 1;
     return `(
-      supplement_name ILIKE $${paramIndex} OR 
-      supplement_brand ILIKE $${paramIndex} OR 
-      supplement_ingredient::text ILIKE $${paramIndex} OR
-      supplement_status::text ILIKE $${paramIndex}
+      s.supplement_name ILIKE $${paramIndex} OR 
+      s.supplement_brand ILIKE $${paramIndex} OR 
+      s.supplement_ingredient::text ILIKE $${paramIndex} OR
+      sdf.supplement_dose_form ILIKE $${paramIndex}
     )`;
   }).join(' AND ');
 
@@ -38,21 +49,23 @@ export async function searchSupplements(searchQuery, pageNumber, pageSize = 10) 
 
   const query = `
     SELECT 
-      id,
-      supplement_name,
-      supplement_brand,
-      supplement_input_type,
-      supplement_website,
+      s.id,
+      s.supplement_name,
+      s.supplement_brand,
+      sdf.supplement_dose_form AS supplement_input_type,
+      s.supplement_website,
       CASE 
-        WHEN supplement_name ILIKE $1 THEN 1
-        WHEN supplement_brand ILIKE $1 THEN 2
-        WHEN supplement_ingredient::text ILIKE $1 THEN 3
-        WHEN supplement_status::text ILIKE $1 THEN 4
+        WHEN ${searchWords.map((_, i) => `s.supplement_name ILIKE $${i + 1}`).join(' AND ')} THEN 1
+        WHEN ${searchWords.map((_, i) => `s.supplement_brand ILIKE $${i + 1}`).join(' AND ')} THEN 2
+        WHEN ${searchWords.map((_, i) => `s.supplement_ingredient::text ILIKE $${i + 1}`).join(' AND ')} THEN 3
+        WHEN ${searchWords.map((_, i) => `sdf.supplement_dose_form ILIKE $${i + 1}`).join(' AND ')} THEN 4
         ELSE 5
       END AS relevance_order
-    FROM SSS.Supplement
+    FROM SSS.Supplement s
+    LEFT JOIN SSS.Supplement_Dose_Form_Lookup sdf 
+      ON s.supplement_dose_form_id = sdf.id
     WHERE ${whereConditions}
-    ORDER BY relevance_order, id
+    ORDER BY relevance_order, s.created_on DESC
     LIMIT $${searchParams.length + 1} OFFSET $${searchParams.length + 2}
   `;
 
@@ -68,15 +81,19 @@ export async function getTotalSupplementCount() {
 
 // Use case: Search Supplement
 export async function getSearchResultCount(searchQuery) {
-  const searchWords = searchQuery.trim().toLowerCase().split(/\s+/);
+  const searchWords = searchQuery.trim().split(/\s+/).filter(word => word.length > 0);
 
-  const whereConditions = searchWords.map((word, index) => {
+  if (searchWords.length === 0) {
+    return await getTotalSupplementCount();
+  }
+
+  const whereConditions = searchWords.map((_, index) => {
     const paramIndex = index + 1;
     return `(
-      supplement_name ILIKE $${paramIndex} OR 
-      supplement_brand ILIKE $${paramIndex} OR 
-      supplement_ingredient::text ILIKE $${paramIndex} OR
-      supplement_status::text ILIKE $${paramIndex}
+      s.supplement_name ILIKE $${paramIndex} OR 
+      s.supplement_brand ILIKE $${paramIndex} OR 
+      s.supplement_ingredient::text ILIKE $${paramIndex} OR
+      sdf.supplement_dose_form ILIKE $${paramIndex}
     )`;
   }).join(' AND ');
 
@@ -84,7 +101,9 @@ export async function getSearchResultCount(searchQuery) {
 
   const query = `
     SELECT COUNT(*) 
-    FROM SSS.Supplement
+    FROM SSS.Supplement s
+    LEFT JOIN SSS.Supplement_Dose_Form_Lookup sdf 
+      ON s.supplement_dose_form_id = sdf.id
     WHERE ${whereConditions}
   `;
 
@@ -92,7 +111,10 @@ export async function getSearchResultCount(searchQuery) {
   return parseInt(result.rows[0].count);
 }
 
-// Batch functions
+// ============================================================================
+// BATCH/INVENTORY FUNCTIONS
+// ============================================================================
+
 // Use case: Show Inventory Library
 export async function getBatchesByPage(pageNumber, pageSize = 10) {
   const offset = (pageNumber - 1) * pageSize;
@@ -108,20 +130,15 @@ export async function getBatchesByPage(pageNumber, pageSize = 10) {
       s.supplement_brand,
       COALESCE(SUM(it.quantity), 0) AS booked,
       ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available,
-      CASE 
-        WHEN ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) = 0 
-          THEN 'Out of Stock'
-        WHEN ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) < (ib.batch_initial_quantity * 0.2) 
-          THEN 'Low Stock'
-        ELSE 'Available'
-      END AS batch_status
+      bssl.batch_stock_status AS batch_status
     FROM SSS.Inventory_Batch ib
     INNER JOIN SSS.Supplement s ON ib.supplement_id = s.id
-    LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.batch_id
+    LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.inventory_batch_id
+    LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl ON ib.batch_stock_status_id = bssl.id
     GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity, 
              ib.batch_expiration_date, ib.batch_price, 
-             s.supplement_name, s.supplement_brand
-    ORDER BY ib.id
+             s.supplement_name, s.supplement_brand, bssl.batch_stock_status
+    ORDER BY ib.created_on DESC
     LIMIT $1 OFFSET $2
   `;
 
@@ -135,37 +152,26 @@ export async function getTotalBatchCount() {
   return parseInt(result.rows[0].count);
 }
 
-
 // Use case: Search Inventory
 export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
   const offset = (pageNumber - 1) * pageSize;
-
-  // Split search query into individual words for AND logic
   const searchWords = searchQuery.trim().split(/\s+/).filter(word => word.length > 0);
 
   if (searchWords.length === 0) {
-    // If empty search, return regular batches
     return await getBatchesByPage(pageNumber, pageSize);
   }
 
-  // Build WHERE conditions for each search word (must match in at least one field)
+  // Build WHERE conditions for each search word
   const whereConditions = searchWords.map((_, index) => {
     const paramIndex = index + 1;
     return `(
       ib.batch_number ILIKE $${paramIndex} OR
       s.supplement_name ILIKE $${paramIndex} OR
       s.supplement_brand ILIKE $${paramIndex} OR
-      CASE 
-        WHEN ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) = 0 
-          THEN 'Out of Stock'
-        WHEN ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) < (ib.batch_initial_quantity * 0.2) 
-          THEN 'Low Stock'
-        ELSE 'Available'
-      END ILIKE $${paramIndex}
+      bssl.batch_stock_status ILIKE $${paramIndex}
     )`;
   }).join(' AND ');
 
-  // Parameters with wildcards for ILIKE
   const searchParams = searchWords.map(word => `%${word}%`);
 
   const query = `
@@ -180,19 +186,14 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
         s.supplement_brand,
         COALESCE(SUM(it.quantity), 0) AS booked,
         ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available,
-        CASE 
-          WHEN ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) = 0 
-            THEN 'Out of Stock'
-          WHEN ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) < (ib.batch_initial_quantity * 0.2) 
-            THEN 'Low Stock'
-          ELSE 'Available'
-        END AS batch_status
+        bssl.batch_stock_status AS batch_status
       FROM SSS.Inventory_Batch ib
       INNER JOIN SSS.Supplement s ON ib.supplement_id = s.id
-      LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.batch_id
+      LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.inventory_batch_id
+      LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl ON ib.batch_stock_status_id = bssl.id
       GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity, 
                ib.batch_expiration_date, ib.batch_price, 
-               s.supplement_name, s.supplement_brand
+               s.supplement_name, s.supplement_brand, bssl.batch_stock_status
     )
     SELECT 
       *,
@@ -213,7 +214,7 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
   return await pool.query(query, params);
 }
 
-// Use case: Search Inventory - Get total count
+// Use case: Search Inventory
 export async function getSearchBatchCount(searchQuery) {
   const searchWords = searchQuery.trim().split(/\s+/).filter(word => word.length > 0);
 
@@ -221,20 +222,13 @@ export async function getSearchBatchCount(searchQuery) {
     return await getTotalBatchCount();
   }
 
-  // Build WHERE conditions (same logic as searchBatches)
   const whereConditions = searchWords.map((_, index) => {
     const paramIndex = index + 1;
     return `(
       ib.batch_number ILIKE $${paramIndex} OR
       s.supplement_name ILIKE $${paramIndex} OR
       s.supplement_brand ILIKE $${paramIndex} OR
-      CASE 
-        WHEN ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) = 0 
-          THEN 'Out of Stock'
-        WHEN ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) < (ib.batch_initial_quantity * 0.2) 
-          THEN 'Low Stock'
-        ELSE 'Available'
-      END ILIKE $${paramIndex}
+      bssl.batch_stock_status ILIKE $${paramIndex}
     )`;
   }).join(' AND ');
 
@@ -244,11 +238,12 @@ export async function getSearchBatchCount(searchQuery) {
     SELECT COUNT(DISTINCT ib.id) as count
     FROM SSS.Inventory_Batch ib
     INNER JOIN SSS.Supplement s ON ib.supplement_id = s.id
-    LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.batch_id
-    GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity, s.supplement_name
+    LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.inventory_batch_id
+    LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl ON ib.batch_stock_status_id = bssl.id
+    GROUP BY ib.id, ib.batch_number, s.supplement_name, s.supplement_brand, bssl.batch_stock_status
     HAVING ${whereConditions}
   `;
 
   const result = await pool.query(query, searchParams);
-  return result.rows.length; // Count the number of rows returned
+  return result.rows.length;
 }
