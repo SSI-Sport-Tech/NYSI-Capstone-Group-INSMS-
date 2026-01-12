@@ -2,7 +2,7 @@
 
 ## 1. Development Context (Current Status)
 
-This script represents the **Initial Development Phase** (Proof of Concept). It is designed to validate the search logic before deploying infrastructure.
+This script (Test 6) represents the **Initial Development Phase** (Proof of Concept). It is designed to validate the search logic before deploying infrastructure.
 
 ### Key Architecture Decisions
 
