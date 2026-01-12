@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/supplements', controller.listSupplements);
 
 // Batch routes
-//Use Case: Show Inventory Library
+//Use Case: Show Inventory Library, Search Inventory
 router.get('/batches', controller.listBatches);
 
 export default router;

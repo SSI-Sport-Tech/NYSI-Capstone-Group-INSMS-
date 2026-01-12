@@ -35,16 +35,28 @@ export async function listSupplements(req, res) {
     }
 }
 
-//Use Case: Show Inventory Library
+//Use Case: Show Inventory Library, Search Inventory
 export async function listBatches(req, res) {
     try {
         const page = parseInt(req.query.page) || 1;
+        const searchQuery = req.query.search || '';
         const pageSize = 10;
 
-        const [batches, totalCount] = await Promise.all([
-            services.getBatchesByPage(page, pageSize),
-            services.getTotalBatchCount()
-        ]);
+        let batches, totalCount;
+
+        // If search query exists, use search functions
+        if (searchQuery.trim()) {
+            [batches, totalCount] = await Promise.all([
+                services.searchBatches(searchQuery, page, pageSize),
+                services.getSearchBatchCount(searchQuery)
+            ]);
+        } else {
+            // Otherwise, use regular list functions
+            [batches, totalCount] = await Promise.all([
+                services.getBatchesByPage(page, pageSize),
+                services.getTotalBatchCount()
+            ]);
+        }
 
         const totalPages = Math.ceil(totalCount / pageSize);
 
@@ -52,9 +64,11 @@ export async function listBatches(req, res) {
             data: batches.rows,
             currentPage: page,
             totalPages,
-            totalCount
+            totalCount,
+            searchQuery: searchQuery.trim() || null
         });
     } catch (error) {
+        console.error('Error in listBatches:', error);
         res.status(500).json({ error: error.message });
     }
 }

@@ -107,7 +107,14 @@ export async function getBatchesByPage(pageNumber, pageSize = 10) {
       s.supplement_name,
       s.supplement_brand,
       COALESCE(SUM(it.quantity), 0) AS booked,
-      ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available
+      ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available,
+      CASE 
+        WHEN ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) = 0 
+          THEN 'Out of Stock'
+        WHEN ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) < (ib.batch_initial_quantity * 0.2) 
+          THEN 'Low Stock'
+        ELSE 'Available'
+      END AS batch_status
     FROM SSS.Inventory_Batch ib
     INNER JOIN SSS.Supplement s ON ib.supplement_id = s.id
     LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.batch_id
@@ -126,4 +133,122 @@ export async function getTotalBatchCount() {
   const query = 'SELECT COUNT(*) FROM SSS.Inventory_Batch';
   const result = await pool.query(query);
   return parseInt(result.rows[0].count);
+}
+
+
+// Use case: Search Inventory
+export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
+  const offset = (pageNumber - 1) * pageSize;
+
+  // Split search query into individual words for AND logic
+  const searchWords = searchQuery.trim().split(/\s+/).filter(word => word.length > 0);
+
+  if (searchWords.length === 0) {
+    // If empty search, return regular batches
+    return await getBatchesByPage(pageNumber, pageSize);
+  }
+
+  // Build WHERE conditions for each search word (must match in at least one field)
+  const whereConditions = searchWords.map((_, index) => {
+    const paramIndex = index + 1;
+    return `(
+      ib.batch_number ILIKE $${paramIndex} OR
+      s.supplement_name ILIKE $${paramIndex} OR
+      s.supplement_brand ILIKE $${paramIndex} OR
+      CASE 
+        WHEN ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) = 0 
+          THEN 'Out of Stock'
+        WHEN ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) < (ib.batch_initial_quantity * 0.2) 
+          THEN 'Low Stock'
+        ELSE 'Available'
+      END ILIKE $${paramIndex}
+    )`;
+  }).join(' AND ');
+
+  // Parameters with wildcards for ILIKE
+  const searchParams = searchWords.map(word => `%${word}%`);
+
+  const query = `
+    WITH batch_data AS (
+      SELECT 
+        ib.id,
+        ib.batch_number,
+        ib.batch_initial_quantity,
+        ib.batch_expiration_date,
+        ib.batch_price,
+        s.supplement_name,
+        s.supplement_brand,
+        COALESCE(SUM(it.quantity), 0) AS booked,
+        ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available,
+        CASE 
+          WHEN ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) = 0 
+            THEN 'Out of Stock'
+          WHEN ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) < (ib.batch_initial_quantity * 0.2) 
+            THEN 'Low Stock'
+          ELSE 'Available'
+        END AS batch_status
+      FROM SSS.Inventory_Batch ib
+      INNER JOIN SSS.Supplement s ON ib.supplement_id = s.id
+      LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.batch_id
+      GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity, 
+               ib.batch_expiration_date, ib.batch_price, 
+               s.supplement_name, s.supplement_brand
+    )
+    SELECT 
+      *,
+      CASE
+        WHEN ${searchWords.map((_, i) => `batch_number ILIKE $${i + 1}`).join(' AND ')} THEN 1
+        WHEN ${searchWords.map((_, i) => `supplement_name ILIKE $${i + 1}`).join(' AND ')} THEN 2
+        WHEN ${searchWords.map((_, i) => `supplement_brand ILIKE $${i + 1}`).join(' AND ')} THEN 3
+        WHEN ${searchWords.map((_, i) => `batch_status ILIKE $${i + 1}`).join(' AND ')} THEN 4
+        ELSE 5
+      END AS relevance_order
+    FROM batch_data
+    WHERE ${whereConditions}
+    ORDER BY relevance_order, id
+    LIMIT $${searchWords.length + 1} OFFSET $${searchWords.length + 2}
+  `;
+
+  const params = [...searchParams, pageSize, offset];
+  return await pool.query(query, params);
+}
+
+// Use case: Search Inventory - Get total count
+export async function getSearchBatchCount(searchQuery) {
+  const searchWords = searchQuery.trim().split(/\s+/).filter(word => word.length > 0);
+
+  if (searchWords.length === 0) {
+    return await getTotalBatchCount();
+  }
+
+  // Build WHERE conditions (same logic as searchBatches)
+  const whereConditions = searchWords.map((_, index) => {
+    const paramIndex = index + 1;
+    return `(
+      ib.batch_number ILIKE $${paramIndex} OR
+      s.supplement_name ILIKE $${paramIndex} OR
+      s.supplement_brand ILIKE $${paramIndex} OR
+      CASE 
+        WHEN ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) = 0 
+          THEN 'Out of Stock'
+        WHEN ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) < (ib.batch_initial_quantity * 0.2) 
+          THEN 'Low Stock'
+        ELSE 'Available'
+      END ILIKE $${paramIndex}
+    )`;
+  }).join(' AND ');
+
+  const searchParams = searchWords.map(word => `%${word}%`);
+
+  const query = `
+    SELECT COUNT(DISTINCT ib.id) as count
+    FROM SSS.Inventory_Batch ib
+    INNER JOIN SSS.Supplement s ON ib.supplement_id = s.id
+    LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.batch_id
+    GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity, s.supplement_name
+    HAVING ${whereConditions}
+  `;
+
+  const result = await pool.query(query, searchParams);
+  return result.rows.length; // Count the number of rows returned
 }
