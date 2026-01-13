@@ -1,5 +1,3 @@
-import pool from '../../config/db.js';
-
 // ============================================================================
 // SUPPLEMENT FUNCTIONS
 // ============================================================================
@@ -13,7 +11,7 @@ export async function getSupplementsByPage(pageNumber, pageSize = 10) {
       s.id,
       s.supplement_name,
       s.supplement_brand,
-      sdf.supplement_dose_form AS supplement_input_type,
+      sdf.supplement_dose_form,
       s.supplement_website
     FROM SSS.Supplement s
     LEFT JOIN SSS.Supplement_Dose_Form_Lookup sdf 
@@ -52,7 +50,7 @@ export async function searchSupplements(searchQuery, pageNumber, pageSize = 10) 
       s.id,
       s.supplement_name,
       s.supplement_brand,
-      sdf.supplement_dose_form AS supplement_input_type,
+      sdf.supplement_dose_form,
       s.supplement_website,
       CASE 
         WHEN ${searchWords.map((_, i) => `s.supplement_name ILIKE $${i + 1}`).join(' AND ')} THEN 1
@@ -72,14 +70,14 @@ export async function searchSupplements(searchQuery, pageNumber, pageSize = 10) 
   return await pool.query(query, [...searchParams, pageSize, offset]);
 }
 
-// Use case: Show Supplement Library
+// Use case: Show Supplement Library (total count)
 export async function getTotalSupplementCount() {
   const query = 'SELECT COUNT(*) FROM SSS.Supplement';
   const result = await pool.query(query);
   return parseInt(result.rows[0].count);
 }
 
-// Use case: Search Supplement
+// Use case: Search Supplement (count results)
 export async function getSearchResultCount(searchQuery) {
   const searchWords = searchQuery.trim().split(/\s+/).filter(word => word.length > 0);
 
@@ -145,7 +143,7 @@ export async function getBatchesByPage(pageNumber, pageSize = 10) {
   return await pool.query(query, [pageSize, offset]);
 }
 
-// Use case: Show Inventory Library
+// Use case: Show Inventory Library (total count)
 export async function getTotalBatchCount() {
   const query = 'SELECT COUNT(*) FROM SSS.Inventory_Batch';
   const result = await pool.query(query);
@@ -214,7 +212,7 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
   return await pool.query(query, params);
 }
 
-// Use case: Search Inventory
+// Use case: Search Inventory (count results)
 export async function getSearchBatchCount(searchQuery) {
   const searchWords = searchQuery.trim().split(/\s+/).filter(word => word.length > 0);
 
@@ -246,4 +244,99 @@ export async function getSearchBatchCount(searchQuery) {
 
   const result = await pool.query(query, searchParams);
   return result.rows.length;
+}
+
+//Use Case: View Supplement Details - Supplement Information section
+export async function getSupplementById(supplementId) {
+  const query = `
+    SELECT 
+      s.id,
+      s.supplement_name,
+      s.supplement_brand,
+      s.supplement_description,
+      sdf.supplement_dose_form,
+      s.supplement_ingredient,
+      s.nutritional_info_per_100g,
+      s.nutritional_info_per_serving,
+      s.nutritional_info_per_serving_definition,
+      s.supplement_additional_information,
+      s.supplement_website,
+      s.supplement_warning_label,
+      s.supplement_certifications,
+      s.batch_testing_org
+    FROM SSS.Supplement s
+    LEFT JOIN SSS.Supplement_Dose_Form_Lookup sdf 
+      ON s.supplement_dose_form_id = sdf.id
+    WHERE s.id = $1
+  `;
+
+  const result = await pool.query(query, [supplementId]);
+  return result.rows.length > 0 ? result.rows[0] : null;
+}
+
+//Use Case: View Supplement Details - Stock Summary section
+export async function getSupplementStockSummary(supplementId) {
+  const query = `
+    SELECT 
+      COALESCE(SUM(ib.batch_initial_quantity), 0) AS total_stock,
+      COALESCE(SUM(tickets.booked), 0) AS total_booked
+    FROM SSS.Inventory_Batch ib
+    LEFT JOIN (
+      SELECT inventory_batch_id, SUM(quantity) as booked
+      FROM SSS.Inventory_Ticket
+      GROUP BY inventory_batch_id
+    ) tickets ON ib.id = tickets.inventory_batch_id
+    WHERE ib.supplement_id = $1
+  `;
+
+  const result = await pool.query(query, [supplementId]);
+  const row = result.rows[0];
+
+  const totalStock = parseInt(row.total_stock);
+  const totalBooked = parseInt(row.total_booked);
+
+  return {
+    totalStock,
+    totalBooked,
+    available: totalStock - totalBooked
+  };
+}
+
+//Use Case: View Supplement Details - Inventory Batches section
+export async function getBatchesBySupplementId(supplementId, pageNumber, pageSize = 10) {
+  const offset = (pageNumber - 1) * pageSize;
+
+  const query = `
+    SELECT 
+      ib.id,
+      ib.batch_number,
+      ib.batch_initial_quantity,
+      ib.batch_expiration_date,
+      ib.batch_price,
+      COALESCE(SUM(it.quantity), 0) AS booked,
+      ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available,
+      bssl.batch_stock_status AS batch_status
+    FROM SSS.Inventory_Batch ib
+    LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.inventory_batch_id
+    LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl ON ib.batch_stock_status_id = bssl.id
+    WHERE ib.supplement_id = $1
+    GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity, 
+             ib.batch_expiration_date, ib.batch_price, bssl.batch_stock_status
+    ORDER BY ib.batch_number DESC
+    LIMIT $2 OFFSET $3
+  `;
+
+  return await pool.query(query, [supplementId, pageSize, offset]);
+}
+
+//Use Case: View Supplement Details - Inventory Batches section (total count)
+export async function getBatchCountBySupplementId(supplementId) {
+  const query = `
+    SELECT COUNT(*) 
+    FROM SSS.Inventory_Batch 
+    WHERE supplement_id = $1
+  `;
+
+  const result = await pool.query(query, [supplementId]);
+  return parseInt(result.rows[0].count);
 }

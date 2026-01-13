@@ -73,3 +73,78 @@ export async function listBatches(req, res) {
         res.status(500).json({ error: error.message });
     }
 }
+
+//Use Case: View Supplement Details
+export async function getSupplementDetails(req, res) {
+    try {
+        const supplementId = req.params.id;
+        const batchPage = Math.max(1, parseInt(req.query.batchPage) || 1);
+        const batchPageSize = 10;
+
+        // Fetch all data in parallel for performance
+        const [supplement, stockSummary, batches, batchCount] = await Promise.all([
+            services.getSupplementById(supplementId),
+            services.getSupplementStockSummary(supplementId),
+            services.getBatchesBySupplementId(supplementId, batchPage, batchPageSize),
+            services.getBatchCountBySupplementId(supplementId)
+        ]);
+
+        // Check if supplement exists
+        if (!supplement) {
+            return res.status(404).json({
+                error: 'Supplement not found',
+                message: `No supplement found with ID: ${supplementId}`
+            });
+        }
+
+        // Calculate batch pagination
+        const totalBatchPages = Math.ceil(batchCount / batchPageSize);
+
+        // Return comprehensive response
+        res.json({
+            supplement: {
+                id: supplement.id,
+                supplement_name: supplement.supplement_name,
+                supplement_brand: supplement.supplement_brand,
+                supplement_description: supplement.supplement_description || null,
+                supplement_dose_form: supplement.supplement_dose_form || null,
+                supplement_ingredient: supplement.supplement_ingredient || [],
+                nutritional_info_per_100g: supplement.nutritional_info_per_100g || null,
+                nutritional_info_per_serving: supplement.nutritional_info_per_serving || null,
+                nutritional_info_per_serving_definition: supplement.nutritional_info_per_serving_definition || null,
+                supplement_additional_information: supplement.supplement_additional_information || null,
+                supplement_website: supplement.supplement_website || null,
+                supplement_warning_label: supplement.supplement_warning_label || null,
+                supplement_certifications: supplement.supplement_certifications || null,
+                batch_testing_org: supplement.batch_testing_org || null
+            },
+            stockSummary: {
+                totalStock: stockSummary.totalStock,
+                totalBooked: stockSummary.totalBooked,
+                available: stockSummary.available
+            },
+            batches: {
+                data: batches.rows.map(batch => ({
+                    id: batch.id,
+                    batch_number: batch.batch_number,
+                    batch_status: batch.batch_status || 'Unknown',
+                    batch_initial_quantity: batch.batch_initial_quantity,
+                    booked: parseInt(batch.booked),
+                    available: parseInt(batch.available),
+                    batch_expiration_date: batch.batch_expiration_date,
+                    batch_price: parseFloat(batch.batch_price) || null
+                })),
+                currentPage: batchPage,
+                totalPages: totalBatchPages,
+                totalCount: batchCount
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in getSupplementDetails:', error);
+        res.status(500).json({
+            error: 'Internal server error',
+            message: error.message
+        });
+    }
+}
