@@ -3,12 +3,18 @@ from scrapegraphai import graphs
 import json
 from pydantic import BaseModel
 from typing import Union, List, Dict, AnyStr
+from urllib.parse import urlparse, urlunparse
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 import time
+
+def normalize_url(url: str) -> str:
+    parsed = urlparse(url)
+    path = parsed.path.rstrip("/")  # remove trailing slash
+    return urlunparse(parsed._replace(path=path))
 
 def selenium_fetch(url, wait_time=5, scroll_pause=2):
     # Configure Selenium WebDriver
@@ -129,6 +135,7 @@ def scrape_all_pages(base_url,openai_key):
                 print(f"No products found on page {page}. Stopping.")
                 break
 
+            products = [normalize_url(u) for u in page_data.get("URLs", [])]
             all_products.extend(products)
             print(f"Found {len(products)} products on page {page}")
 
@@ -145,6 +152,5 @@ def scrape_all_pages(base_url,openai_key):
     return all_uniques
 
 
-# scrape_all_pages("https://appliednutrition.uk/collections/best-sellers")
-# scrape_all_pages("https://www.healthspanelite.co.uk/sports-nutrition/",1)
+# scrape_all_pages("https://www.healthspanelite.co.uk/sports-nutrition/",openai_key)
 
