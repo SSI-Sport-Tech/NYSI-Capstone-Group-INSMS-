@@ -4,7 +4,6 @@ from scrapegraphai.docloaders import ChromiumLoader
 import json
 
 
-openai_key = "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"
 load_dotenv()
 
 product_info_prompt = """
@@ -113,14 +112,16 @@ Carbohydrates (g), Glucose (g), Fructose (g), Galactose (g), Ribose (g), Sucrose
 
 """
 
-gpt4o = {
+
+
+def scrapeProduct(url, openai_key):
+    gpt4o = {
    "llm": {
       "api_key": openai_key,
       "model": "openai/gpt-4o",
    },
 }
-
-def scrapeProduct(url):
+    
     smart_scraper_graph_gpt4o = graphs.OmniScraperGraph(
     prompt=product_info_prompt,
     # also accepts a string with the already downloaded HTML code

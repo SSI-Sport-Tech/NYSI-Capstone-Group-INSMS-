@@ -2,7 +2,7 @@ import requests
 from scrapegraphai import graphs
 import json
 from pydantic import BaseModel
-from typing import Union, List, Dict
+from typing import Union, List, Dict, AnyStr
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -42,17 +42,6 @@ def selenium_fetch(url, wait_time=5, scroll_pause=2):
         driver.quit()
 
 
-
-openai_key = "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"
-
-gpt4o = {
-   "llm": {
-      "api_key": openai_key,
-      "model": "openai/gpt-4o",
-   },
-   "headless": False,
-}
-
 product_list_prompt = """
         List me all the product information links on this page to pass to python requests. 
         Each link must be a full absolute URL (including the https:// prefix and domain name), not a relative path.
@@ -91,7 +80,15 @@ class ProductListSchema(BaseModel):
     URLs: List[str]
     pages_no: int
 
-def scrape_all_pages(base_url):
+def scrape_all_pages(base_url,openai_key):
+    gpt4o = {
+   "llm": {
+      "api_key": openai_key,
+      "model": "openai/gpt-4o",
+   },
+   "headless": False,
+}
+    
     """Scrape all pages with pagination"""
     all_products = []
     max_pages = 1
@@ -148,6 +145,6 @@ def scrape_all_pages(base_url):
     return all_uniques
 
 
-scrape_all_pages("https://appliednutrition.uk/collections/best-sellers")
+# scrape_all_pages("https://appliednutrition.uk/collections/best-sellers")
 # scrape_all_pages("https://www.healthspanelite.co.uk/sports-nutrition/",1)
 
