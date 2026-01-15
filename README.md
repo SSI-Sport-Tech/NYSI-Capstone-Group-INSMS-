@@ -2,7 +2,7 @@
 
 ## 1. Development Context (Current Status)
 
-This script (Test 6) represents the **Initial Development Phase** (Proof of Concept). It is designed to validate the search logic before deploying infrastructure.
+This script (Test 6) represents the **Initial Development Phase**. It is designed to validate the search logic before deploying infrastructure.
 
 ### Key Architecture Decisions
 
@@ -27,7 +27,7 @@ The script includes a robust data generation module that creates a realistic tes
 
 ### Simplified Nutrition Model
 
-For this Proof of Concept, we focus on the three core macronutrients to prove the "Hybrid Search" logic works.
+For this current develop,emt stage, we focus on the three core macronutrients to prove the "Hybrid Search" logic works.
 
 * **Current Scope:** The script extracts and normalizes only **Protein**, **Carbohydrates**, and **Fat**.
 * **Future Expansion:** In production, this can be easily expanded to include micronutrients (like Vitamin C, Zinc, or Caffeine) by simply adding them to the extraction function.
