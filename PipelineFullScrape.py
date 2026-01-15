@@ -8,15 +8,15 @@ from pathlib import Path
 openai_key = "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"
 
 websites_to_scrape = [
-    {"url": "https://www.etixxsports.com/nl-be/collections/all", "pages": 3},
-    {"url": "https://appliednutrition.uk/collections/best-sellers", "pages": None},
-    {"url": "https://www.healthspanelite.co.uk/protein/", "pages": None},
-    {"url": "https://www.healthspanelite.co.uk/sports-nutrition/", "pages": None},
-    {"url": "https://www.healthspanelite.co.uk/vitamins-and-supplements/", "pages": None}
+    {"url": "https://www.etixxsports.com/nl-be/collections/all"},
+    {"url": "https://appliednutrition.uk/collections/best-sellers"},
+    {"url": "https://www.healthspanelite.co.uk/protein/"},
+    {"url": "https://www.healthspanelite.co.uk/sports-nutrition/"},
+    {"url": "https://www.healthspanelite.co.uk/vitamins-and-supplements/"}
 ]
 
 websites_to_scrape = [
-    {"url": "https://www.healthspanelite.co.uk/sports-nutrition/", "pages": 1}
+    {"url": "https://www.healthspanelite.co.uk/sports-nutrition/"}
 ]
 
 def scrapeAllWebsites(websites_list,openai_key):
@@ -48,7 +48,8 @@ def scrapeAllWebsites(websites_list,openai_key):
 
                         batchtesting = PipelineSearch.batchTestSearch(
                             query,
-                            openai_key
+                            openai_key,
+                            2
                         )
 
                         product["Batch_tested"] = batchtesting.get("Batch_tested")
