@@ -2,9 +2,39 @@ from dotenv import load_dotenv
 from scrapegraphai import graphs
 from scrapegraphai.docloaders import ChromiumLoader
 import json
-
+from typing import List, Optional, Dict, Union, Literal
+from enum import Enum
+from pydantic import BaseModel, Field, ConfigDict
 
 load_dotenv()
+
+
+class BaseProduct(BaseModel):
+    Name: str
+    Brand: str
+    Description: Optional[str] = None
+
+class NutritionalProduct(BaseProduct):
+    Minimum_Unit: Optional[str] = Field(..., alias="Minimum Unit")
+    Important_Information: Optional[str] = Field(None, alias="Important Information")
+    Serving_Size: Optional[str] = Field(None, alias="Serving Size")
+    Ingredients: Optional[List[str]] = None
+
+    Per_100g: Optional[Dict[str, float]] = Field(None, alias="Per 100g")
+    Per_Serving_Size: Optional[Dict[str, float]] = Field(None, alias="Per Serving Size")
+
+    Nutritional_Information_Image: Optional[str] = Field(
+        None, alias="Nutritional Information Image"
+    )
+
+class NonNutritionalProduct(BaseProduct):
+    Rejected: Literal["Not nutritional"]
+
+class ProductInfoResponse(BaseModel):
+    """
+    THIS is what you pass into with_structured_output().
+    """
+    items: List[Union[NutritionalProduct, NonNutritionalProduct]]
 
 product_info_prompt = """
 You are a data extraction model. Always output a valid JSON array. 
@@ -126,12 +156,17 @@ def scrapeProduct(url, openai_key):
     prompt=product_info_prompt,
     # also accepts a string with the already downloaded HTML code
     source=url,
-    config=gpt4o
+    config=gpt4o,
+    schema=ProductInfoResponse
 )
     result_gpt4o = smart_scraper_graph_gpt4o.run()
-
-    for product in result_gpt4o:
+    if isinstance(result_gpt4o, str):
+      result_gpt4o = json.loads(result_gpt4o)
+    for product in result_gpt4o["items"]:
+        if isinstance(product, str):
+          product = json.loads(product)
         product["URL"] = url
     return result_gpt4o
+openai_key = "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"
 
-# print(scrapeProduct("https://www.etixxsports.com/nl-be/products/natural-oat-bar?variant=52733530210650"))
+scrapeProduct("https://www.etixxsports.com/nl-be/products/natural-oat-bar?variant=52733530210650",openai_key)
