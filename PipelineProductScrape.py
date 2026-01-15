@@ -16,7 +16,8 @@ class BaseProduct(BaseModel):
 
 class NutritionalProduct(BaseProduct):
     Minimum_Unit: Optional[str] = Field(..., alias="Minimum Unit")
-    Important_Information: Optional[str] = Field(None, alias="Important Information")
+    Additional_Information: Optional[str] = Field(None, alias="Additional Information")
+    Warnings: Optional[str] = None
     Serving_Size: Optional[str] = Field(None, alias="Serving Size")
     Ingredients: Optional[List[str]] = None
 
@@ -43,9 +44,9 @@ Task: List me all the nutritional information for each flavour of the product in
 
 Requirements:
 1. Create a separate entry in the list for each flavour or variation, if there is only 1 variation, create a list with only 1 entry. Only include variations that have their nutritional information on the page, do not include variations that are on links to other pages.
-2. Include general information and usage instructions in the description field.
+2. Include general information and usage instructions in the description field in English.
 3. Include the brand of the supplement.
-4. Include any important information such as allergens or cautionary information.
+4. Include any important information such as allergens or cautionary information in English.
 5. Include the minimum dispensable unit for the supplement, using the exact field names as given below:
 [Tub, Sleeve, Tubes, Sachet, Bottle, Packet, Pack]
 6. Include `"Per 100g"` and `"Per Serving Size"` sub-objects.
@@ -65,8 +66,9 @@ Carbohydrates (g), Glucose (g), Fructose (g), Galactose (g), Ribose (g), Sucrose
     "Name": "Hydration Water (Lemon)",
     "Brand": "Company A",
     "Minimum Unit": "Tube",
-    "Description": "Dissolve 2 effervescent tablets in 500ml of water. Drink at least 500ml per hour of exercise. In warmer temperatures and during intensive exercise it is recommended to drink up to 750ml or 1L per hour. Effervescent tablet with sugar and sweetener for the preparation of an isotonic drink for athletes enriched with minerals. Does not contain gluten, lactose or soya - vegetarians √ -vegetarians √",
-    "Important Information": "Do not to exceed the daily recommended dose. Suitable for persons as of 13 years of age",
+    "Description": "Ideal isotonic thirst quencher in warm weather. With a neutral pH so that no stomach upset occurs. Effervescent tablet with sugar and sweetener for the preparation of an isotonic drink for athletes enriched with minerals.",
+    "Warnings": "Do not to exceed the daily recommended dose. Suitable for persons as of 13 years of age. Contains gluten - vegetarians √ -vegetarians √",
+    "Additional Information": "Dissolve 2 effervescent tablets in 500ml of water. Drink at least 500ml per hour of exercise. In warmer temperatures and during intensive exercise it is recommended to drink up to 750ml or 1L per hour.",
     "Serving Size": "2 tablets",
     "Ingredients": ["Dextrose","citric acid","sodium hydrogen carbonate","potassium hydrogen carbonate","calcium carbonate","maltodextrin","lime flavouring","magnesium carbonate","sodium chloride","sweetener: sucralose","L-ascorbic acid","colourant: riboflavin","thiamine hydrochloride"],
     "Per 100g": {
@@ -86,14 +88,16 @@ Carbohydrates (g), Glucose (g), Fructose (g), Galactose (g), Ribose (g), Sucrose
       "Proteins (g)": 0.1,
       "Vitamin C (mg)": 10,
       "Calcium (mg)": 1.5
-    }
+    },
+    "Nutritional Information Image": "NA"
   },
   {
     "Name": "Hydration Water (Blackcurrant)",
     "Brand": "Company A",
     "Minimum Unit": "Tube",
-    "Description": "Dissolve 2 effervescent tablets in 500ml of water. Drink at least 500ml per hour of exercise. In warmer temperatures and during intensive exercise it is recommended to drink up to 750ml or 1L per hour. Effervescent tablet with sugar and sweetener for the preparation of an isotonic drink for athletes enriched with minerals. Does not contain gluten, lactose or soya - vegetarians √ -vegetarians √",
-    "Important Information": "Do not to exceed the daily recommended dose. Suitable for persons as of 13 years of age",
+    "Description": "Ideal isotonic thirst quencher in warm weather. With a neutral pH so that no stomach upset occurs. Effervescent tablet with sugar and sweetener for the preparation of an isotonic drink for athletes enriched with minerals.",
+    "Warnings": "Do not to exceed the daily recommended dose. Suitable for persons as of 13 years of age. Contains gluten - vegetarians √ -vegetarians √",
+    "Additional Information": "Dissolve 2 effervescent tablets in 500ml of water. Drink at least 500ml per hour of exercise. In warmer temperatures and during intensive exercise it is recommended to drink up to 750ml or 1L per hour.",
     "Serving Size": "2 tablets",
     "Ingredients": ["Dextrose","acidifier: citric acid","sodium hydrogen carbonate","potassium hydrogen carbonate","calcium carbonate","maltodextrin","flavouring: blackcurrant","magnesium carbonate","sodium chloride","sweetener: sucralose","L-ascorbic acid","colouring agent: anthocyanins","thiamine hydrochloride"],
     "Per 100g": {
@@ -113,7 +117,8 @@ Carbohydrates (g), Glucose (g), Fructose (g), Galactose (g), Ribose (g), Sucrose
       "Proteins (g)": 0.1,
       "Vitamin C (mg)": 10,
       "Calcium (mg)": 1.5
-    }
+    },
+    "Nutritional Information Image": "NA"
   }
 ]
 13. Example output for supplement page with supplement information image:
@@ -122,8 +127,9 @@ Carbohydrates (g), Glucose (g), Fructose (g), Galactose (g), Ribose (g), Sucrose
     "Name": "Hydration Water (Lemon)",
     "Brand": "Company A",
     "Minimum Unit": "Tube",
-    "Description": "Dissolve 2 effervescent tablets in 500ml of water. Drink at least 500ml per hour of exercise. In warmer temperatures and during intensive exercise it is recommended to drink up to 750ml or 1L per hour. Effervescent tablet with sugar and sweetener for the preparation of an isotonic drink for athletes enriched with minerals. Does not contain gluten, lactose or soya - vegetarians √ -vegetarians √",
-    "Important Information": "Do not to exceed the daily recommended dose. Suitable for persons as of 13 years of age",
+    "Description": "Ideal isotonic thirst quencher in warm weather. With a neutral pH so that no stomach upset occurs. Effervescent tablet with sugar and sweetener for the preparation of an isotonic drink for athletes enriched with minerals.",
+    "Warnings": "Do not to exceed the daily recommended dose. Suitable for persons as of 13 years of age. Contains gluten - vegetarians √ -vegetarians √",
+    "Additional Information": "Dissolve 2 effervescent tablets in 500ml of water. Drink at least 500ml per hour of exercise. In warmer temperatures and during intensive exercise it is recommended to drink up to 750ml or 1L per hour.",
     "Serving Size": "2 tablets",
     "Ingredients": ["Dextrose","citric acid","sodium hydrogen carbonate","potassium hydrogen carbonate","calcium carbonate","maltodextrin","lime flavouring","magnesium carbonate","sodium chloride","sweetener: sucralose","L-ascorbic acid","colourant: riboflavin","thiamine hydrochloride"],
     "Nutritional Information Image": "https://cdn.shopify.com/s/files/1/0454/0871/4919/files/Isotonic_drink_-_Nutritionals_-_1000x1000_42163958-d2cb-4bf5-ad4e-6bd9d63221fa.jpg?v=1742482293"
@@ -167,6 +173,6 @@ def scrapeProduct(url, openai_key):
           product = json.loads(product)
         product["URL"] = url
     return result_gpt4o
-openai_key = "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"
+# openai_key = "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"
 
-scrapeProduct("https://www.etixxsports.com/nl-be/products/natural-oat-bar?variant=52733530210650",openai_key)
+# print(scrapeProduct("https://www.etixxsports.com/nl-be/products/natural-oat-bar?variant=52733530210650",openai_key))
