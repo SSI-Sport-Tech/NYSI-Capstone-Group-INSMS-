@@ -16,7 +16,7 @@ websites_to_scrape = [
 ]
 
 websites_to_scrape = [
-    {"url": "https://www.healthspanelite.co.uk/sports-nutrition/"}
+    {"url": "https://appliednutrition.uk/collections/protein-bars-snacks-drinks"}
 ]
 
 def scrapeAllWebsites(websites_list,openai_key):
@@ -32,6 +32,9 @@ def scrapeAllWebsites(websites_list,openai_key):
 
         print(f"Found {len(product_urls)} product URLs")
 
+        if "items" in product_urls:
+            product_urls = product_urls["items"]
+
         for product_url in product_urls:
             try:
                 products = PipelineProductScrape.scrapeProduct(product_url,openai_key)
@@ -40,7 +43,7 @@ def scrapeAllWebsites(websites_list,openai_key):
                     continue
 
                 if isinstance(products, dict):
-                    products = [products]
+                    products = products["items"]
 
                 for product in products:
                     try:
