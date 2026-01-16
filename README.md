@@ -1,49 +1,120 @@
-# Script Logic Breakdown
+# Vectorisation Similarity Search
 
-## 1. Development Context (Current Status)
+Latest testing phase: **Test 8**
 
-This script (Test 6) represents the **Initial Development Phase**. It is designed to validate the search logic before deploying infrastructure.
+This script operates on local mock data to validate the search logic before migration to a production PostgreSQL (`pgvector`) environment.
 
-### Key Architecture Decisions
+## Key Features
 
-* **Data Source:** Uses **Local Mock Data (CSV)** files for rapid testing, rather than a live production database.
-* **Vector Engine:** Vectorization and similarity calculations are performed in-memory using the **Sentence-Transformers** Python library.
-* **Database:** The script does **not yet** utilize **pgvector** or PostgreSQL. All math happens locally in the Python environment.
+* **Hybrid Search:** Combines **Semantic Text Similarity** (Ingredients) and **Mathematical Similarity** (Nutrition) into a single score.
+* **Smart Normalization:** Automatically handles different units (e.g., converting `mg`, `mcg`, and `IU` to standard grams).
+* **Scalable Schema:** Capable of mapping fuzzy OCR keys (e.g., "Vit D3") to a fixed internal schema of ~30 common nutrients.
+* **Self-Exclusion:** Automatically detects if the user scanned a product that already exists in the database (Score > 99%) and excludes it from the "Alternatives" list.
 
-## 2. Mock Data Generation
+---
+
+## Mock Data Generation
 
 The script includes a robust data generation module that creates a realistic testing environment for initial phase (before DB setup completely).
 
 ### Data Simulation Strategy
 
-* **30-Item Inventory:** We generate 30 distinct products covering diverse categories like Protein Powders, Vitamins, Pre-Workouts, and Energy Bars.
+* **50-Item Inventory:** We generate 50 distinct products covering diverse categories like Protein Powders, Vitamins, Pre-Workouts, and Energy Bars.
 * **Realistic Attributes:** Each item is populated with all the fields required by your schema, including:
 * `supplement_input_type` (Manual vs Webscraper)
 * `human_in_the_loop` flags
 * Audit timestamps (`created_on`, `last_modified_by`)
 * Detailed JSON blobs for `supplement_ingredient` and `nutritional_info_per_100g`.
 
+## Technical Architecture
+
+### 1. The Vectorization Strategy
+
+The core of this engine is the **Hybrid Vector**. Every product is represented by two distinct vectors that are concatenated (50/50 weight):
+
+| Component | Weight | Logic |
+| --- | --- | --- |
+| **A. Text Vector** | 50% | generated from the **Ingredient List** + **Rare Nutrients**. We use `sentence-transformers` to capture the semantic meaning (e.g., knowing that "Whey" is related to "Milk"). |
+| **B. Nutrition Vector** | 50% | generated from **30+ Standardized Nutrients** (Protein, Carbs, Fat, Vitamins). We use `MinMaxScaler` to normalize values between 0 and 1 so that large numbers (Sodium) don't overpower small numbers (Vitamin D). |
+
+### 2. Search Workflow (Use Cases)
+
+The script supports two primary inputs via a JSON payload:
+
+* **Use Case A (Manual Trigger):** User is viewing a product page (e.g., "Gold Standard Whey"). The app sends that product's JSON data to find similar items.
+* **Use Case B (OCR Scan):** User scans a physical label. The app sends the clean extracted text (Ingredients) and numbers (Nutrition Table) via agent.
+
+### 3. Why These Libraries?
+
+We specifically chose the following stack for the script:
+
+* **`sentence-transformers` (`all-MiniLM-L6-v2`):**
+* *Why?* It provides state-of-the-art semantic embedding speed and quality for local development. It is lightweight enough to run on a standard laptop/Colab instance without a GPU, making testing rapid.
 
 
-### Simplified Nutrition Model
+* **Cosine Similarity:**
+* *Why?* In high-dimensional vector space, the *direction* of the vector (context) is more important than the *magnitude* (length). Cosine similarity accurately measures how "conceptually aligned" two products are, regardless of their text length.
 
-For this current develop,emt stage, we focus on the three core macronutrients to prove the "Hybrid Search" logic works.
 
-* **Current Scope:** The script extracts and normalizes only **Protein**, **Carbohydrates**, and **Fat**.
-* **Future Expansion:** In production, this can be easily expanded to include micronutrients (like Vitamin C, Zinc, or Caffeine) by simply adding them to the extraction function.
 
-## 3. Technical Workflow
+---
 
-The script executes the following pipeline to process your mock data and perform searches:
+## How It Works (The Algorithm)
 
-**Step A: Feature Engineering (Data Prep)**
+1. **Input Parsing:** The script accepts a JSON payload containing `ingredients` (string or list) and `nutrition` (dictionary).
+2. **Fuzzy Mapping:** It runs the `map_key_to_schema` function to clean up messy input keys (e.g., converting "Vitamin-C (as ascorbic acid)"  `vitamin_c_mg`).
+3. **Unit Conversion:** It standardizes all values (IU  mcg, mg  g) to ensure mathematical consistency.
+4. **Vector Generation:** It generates the Hybrid Vector for the query.
+5. **Similarity Search:** It calculates the Cosine Distance between the Query Vector and every Product Vector in the database.
+6. **Filtering:**
+* **Self-Match Filter:** If Score > 99.0%, the item is flagged as "The Scanned Product" and removed from results.
+* **Relevance Threshold:** Items with Score < 60% are discarded as irrelevant.
 
-1. **Rich Text Creation:** It combines *Name*, *Brand*, *Description*, and *Ingredients* into a single text block for every product. This ensures the AI understands the full context of the product to achieve higher similarity scores.
-2. **Macro Normalization:** It scales Protein, Carbs, and Fat values to a 0-1 range so they can be mathematically compared.
-3. **Vectorization:** It converts the Rich Text into mathematical vectors using the AI model.
 
-**Step B: The "Smart" Search Logic**
-The script dynamically chooses how to search based on what the user provides:
 
-* **Scenario A (Text Only):** If the user provides only text (e.g., scanning the product's name using OCR or manually trigger the "Check alternative" button in supplement detail page), the system compares **only text vectors**. This prevents penalizing products for having calories/macros when the user didn't specify a preference.
-* **Scenario B (Hybrid):** If the user provides text *and* nutrition facts (e.g., scanning product's nutritional info/ingredients using OCR), the system compares a **50/50 mix** of the Text Vector and the Nutrition Vector to find the best all-around match.
+---
+
+## Installation & Usage
+
+1. **Install Dependencies:**
+```bash
+pip install pandas numpy scikit-learn sentence-transformers
+
+```
+ * _if there is windows error when running the `sentence-transformers` library, try use google colab to run instead_
+
+2. **Generate Mock Data:**
+Run the data generation script to create the 50-row CSV database.
+```bash
+python mock_data_gen.py
+
+```
+
+* _run the latest mock data generator code_
+
+3. **Run the Search:**
+```bash
+python search_v7_final.py
+
+```
+
+
+4. **Interactive Mode:**
+Paste a JSON query when prompted. Example:
+```json
+{
+    {"ingredients": ["Almonds", "Soluble Corn Fiber", "Cocoa Butter", "Stevia", "Erythritol", "Milk Protein Isolate", "Peanuts"],
+    "nutrition": {"energy_kcal": 332.3, "protein_g": 30.3, "fat_g": 13.5, "saturated_fat_g": 4.9, "carbohydrate_g": 34.2, "sugar_g": 2.2, "added_sugar_g": 0, "sodium_mg": 368.5, "cholesterol_mg": 5.0}
+}
+
+```
+
+
+
+---
+
+## Future Roadmap
+
+* **Migration to PostgreSQL (`pgvector`):** Moving the vector storage and similarity calculation to the database layer for production scalability.
+* **OCR Integration:** Connecting the Python script directly to the Tesseract/Google Vision API output.
+* **Micronutrient Expansion:** Adding rare herbal extracts (Ashwagandha, Caffeine types) to the fixed vector schema.
