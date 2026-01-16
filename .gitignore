@@ -9,3 +9,5 @@ temp/
 
 # (Optional) Keep certain files inside those folders
 !data/keep_this.csv
+
+env.txt
