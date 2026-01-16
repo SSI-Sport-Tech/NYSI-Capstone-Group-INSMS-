@@ -48,7 +48,7 @@ Requirements:
 3. Include the brand of the supplement.
 4. Include any important information such as allergens or cautionary information in English.
 5. Include the minimum dispensable unit for the supplement, using the exact field names as given below:
-[Tub, Sleeve, Tubes, Sachet, Bottle, Packet, Pack]
+[Tub, Sleeve, Tube, Sachet, Bottle, Bar, Pill]
 6. Include `"Per 100g"` and `"Per Serving Size"` sub-objects.
 7. Include all nutritional information on the website.
 8. Flatten all nutrients so that vitamins and minerals appear on the same level as macronutrients (no nested objects inside "Vitamins" or "Minerals").
@@ -132,6 +132,10 @@ Carbohydrates (g), Glucose (g), Fructose (g), Galactose (g), Ribose (g), Sucrose
     "Additional Information": "Dissolve 2 effervescent tablets in 500ml of water. Drink at least 500ml per hour of exercise. In warmer temperatures and during intensive exercise it is recommended to drink up to 750ml or 1L per hour.",
     "Serving Size": "2 tablets",
     "Ingredients": ["Dextrose","citric acid","sodium hydrogen carbonate","potassium hydrogen carbonate","calcium carbonate","maltodextrin","lime flavouring","magnesium carbonate","sodium chloride","sweetener: sucralose","L-ascorbic acid","colourant: riboflavin","thiamine hydrochloride"],
+    "Per 100g": {
+    },
+    "Per Serving Size": {
+    },
     "Nutritional Information Image": "https://cdn.shopify.com/s/files/1/0454/0871/4919/files/Isotonic_drink_-_Nutritionals_-_1000x1000_42163958-d2cb-4bf5-ad4e-6bd9d63221fa.jpg?v=1742482293"
   }
 ]
@@ -158,7 +162,7 @@ def scrapeProduct(url, openai_key):
    },
 }
     
-    smart_scraper_graph_gpt4o = graphs.OmniScraperGraph(
+    smart_scraper_graph_gpt4o = graphs.SmartScraperGraph(
     prompt=product_info_prompt,
     # also accepts a string with the already downloaded HTML code
     source=url,
