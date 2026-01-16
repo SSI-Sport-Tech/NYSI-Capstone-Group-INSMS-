@@ -16,7 +16,7 @@ websites_to_scrape = [
 ]
 
 websites_to_scrape = [
-    {"url": "https://appliednutrition.uk/collections/protein-bars-snacks-drinks"}
+    {"url":  "https://www.healthspanelite.co.uk/sports-nutrition/"}
 ]
 
 def scrapeAllWebsites(websites_list,openai_key):
@@ -37,32 +37,8 @@ def scrapeAllWebsites(websites_list,openai_key):
 
         for product_url in product_urls:
             try:
-                products = PipelineProductScrape.scrapeProduct(product_url,openai_key)
-
-                if not products:
-                    continue
-
-                if isinstance(products, dict):
-                    products = products["items"]
-
-                for product in products:
-                    try:
-                        query = f"{product.get('Name','')} {product.get('Brand','')}".strip()
-
-                        batchtesting = PipelineSearch.batchTestSearch(
-                            query,
-                            openai_key,
-                            2
-                        )
-
-                        product["Batch_tested"] = batchtesting.get("Batch_tested")
-                        product["batch_testing_org"] = batchtesting.get("Organisation")
-                        product["batch_testing_sources"] = batchtesting.get("sources")
-
-                        all_products.append(product)
-
-                    except Exception as e:
-                        print(f"Batch test failed for {query}: {e}")
+                products = productFullScrape(product_url,openai_key)
+                all_products.extend(products)
 
             except Exception as e:
                 print(f"Product scrape failed for {product_url}: {e}")
@@ -70,6 +46,38 @@ def scrapeAllWebsites(websites_list,openai_key):
         print(f"Total products scraped so far: {len(all_products)}")
 
     return all_products
+
+def productFullScrape(product_url,openai_key):
+    products = PipelineProductScrape.scrapeProduct(product_url,openai_key)
+    output = []
+
+    if not products:
+        return []
+
+    if isinstance(products, dict):
+        products = products["items"]
+
+    for product in products:
+        query = f"{product.get('Name','')} {product.get('Brand','')}".strip()
+        try:
+
+            batchtesting = PipelineSearch.batchTestSearch(
+                query,
+                openai_key,
+                2
+            )
+            product["Batch_tested"] = batchtesting.get("Batch_tested")
+            product["batch_testing_org"] = batchtesting.get("Organisation")
+            product["batch_testing_sources"] = batchtesting.get("sources")   
+
+        except Exception as e:
+            product["Batch_tested"] = None
+            product["batch_testing_org"] = None
+            product["batch_testing_sources"] = []
+            print(f"Batch test failed for {query}: {e}")
+        output.append(product)
+    print(output)
+    return output
 
 def save_as_json(data, filename=None, folder="output"):
     Path(folder).mkdir(exist_ok=True)
@@ -85,6 +93,6 @@ def save_as_json(data, filename=None, folder="output"):
 
     print(f"Saved {len(data)} products to {filepath}")
 
-results = scrapeAllWebsites(websites_to_scrape,openai_key)
-save_as_json(results)
+# results = scrapeAllWebsites(websites_to_scrape,openai_key)
+# save_as_json(results)
     

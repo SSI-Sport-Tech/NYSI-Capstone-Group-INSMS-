@@ -15,7 +15,10 @@ class BaseProduct(BaseModel):
     Description: Optional[str] = None
 
 class NutritionalProduct(BaseProduct):
-    Minimum_Unit: Optional[str] = Field(..., alias="Minimum Unit")
+    Minimum_Unit: Literal[
+        "Tub", "Sleeve", "Tube", "Sachet", "Bottle", 
+        "Bar", "Tablet", "Packet", "Box", "Bag", "Pack"
+    ] = Field(..., alias="Minimum Unit")
     Additional_Information: Optional[str] = Field(None, alias="Additional Information")
     Warnings: Optional[str] = None
     Serving_Size: Optional[str] = Field(None, alias="Serving Size")
@@ -48,7 +51,7 @@ Requirements:
 3. Include the brand of the supplement.
 4. Include any important information such as allergens or cautionary information in English.
 5. Include the minimum dispensable unit for the supplement, using the exact field names as given below:
-[Tub, Sleeve, Tube, Sachet, Bottle, Bar, Pill]
+[Tub, Sleeve, Tube, Sachet, Bottle, Bar, Tablet, Packet, Box, Bag, Pack]
 6. Include `"Per 100g"` and `"Per Serving Size"` sub-objects.
 7. Include all nutritional information on the website.
 8. Flatten all nutrients so that vitamins and minerals appear on the same level as macronutrients (no nested objects inside "Vitamins" or "Minerals").
