@@ -1,6 +1,6 @@
 # Vectorisation Similarity Search
 
-Latest testing phase: **Test 8**
+Latest testing phase: **Test 9**
 
 This script operates on local mock data to validate the search logic before migration to a production PostgreSQL (`pgvector`) environment.
 
@@ -34,7 +34,7 @@ The core of this engine is the **Hybrid Vector**. Every product is represented b
 
 | Component | Weight | Logic |
 | --- | --- | --- |
-| **A. Text Vector** | 50% | generated from the **Ingredient List** + **Rare Nutrients**. We use `sentence-transformers` to capture the semantic meaning (e.g., knowing that "Whey" is related to "Milk"). |
+| **A. Text Vector** | 50% | generated from the Ingredient List + Rare Nutrients. We use the Hugging Face model to capture the semantic meaning (e.g., knowing that "Whey" is related to "Milk"). |
 | **B. Nutrition Vector** | 50% | generated from **30+ Standardized Nutrients** (Protein, Carbs, Fat, Vitamins). We use `MinMaxScaler` to normalize values between 0 and 1 so that large numbers (Sodium) don't overpower small numbers (Vitamin D). |
 
 ### 2. Search Workflow (Use Cases)
@@ -44,19 +44,6 @@ The script supports two primary inputs via a JSON payload:
 * **Use Case A (Manual Trigger):** User is viewing a product page (e.g., "Gold Standard Whey"). The app sends that product's JSON data to find similar items.
 * **Use Case B (OCR Scan):** User scans a physical label. The app sends the clean extracted text (Ingredients) and numbers (Nutrition Table) via agent.
 
-### 3. Why These Libraries?
-
-We specifically chose the following stack for the script:
-
-* **`sentence-transformers` (`all-MiniLM-L6-v2`):**
-* *Why?* It provides state-of-the-art semantic embedding speed and quality for local development. It is lightweight enough to run on a standard laptop/Colab instance without a GPU, making testing rapid.
-
-
-* **Cosine Similarity:**
-* *Why?* In high-dimensional vector space, the *direction* of the vector (context) is more important than the *magnitude* (length). Cosine similarity accurately measures how "conceptually aligned" two products are, regardless of their text length.
-
-
-
 ---
 
 ## How It Works (The Algorithm)
@@ -64,12 +51,11 @@ We specifically chose the following stack for the script:
 1. **Input Parsing:** The script accepts a JSON payload containing `ingredients` (string or list) and `nutrition` (dictionary).
 2. **Fuzzy Mapping:** It runs the `map_key_to_schema` function to clean up messy input keys (e.g., converting "Vitamin-C (as ascorbic acid)"  `vitamin_c_mg`).
 3. **Unit Conversion:** It standardizes all values (IU  mcg, mg  g) to ensure mathematical consistency.
-4. **Vector Generation:** It generates the Hybrid Vector for the query.
+4. **Vector Generation:** It generates the Hybrid Vector for the query using the HF Embedder.
 5. **Similarity Search:** It calculates the Cosine Distance between the Query Vector and every Product Vector in the database.
 6. **Filtering:**
 * **Self-Match Filter:** If Score > 99.0%, the item is flagged as "The Scanned Product" and removed from results.
 * **Relevance Threshold:** Items with Score < 60% are discarded as irrelevant.
-
 
 
 ---
@@ -78,37 +64,28 @@ We specifically chose the following stack for the script:
 
 1. **Install Dependencies:**
 ```bash
-pip install pandas numpy scikit-learn sentence-transformers
+pip install pandas numpy scikit-learn transformers torch
 
 ```
- * _if there is windows error when running the `sentence-transformers` library, try use google colab to run instead_
+* _`torch` is required for the Hugging Face model execution._
 
 2. **Generate Mock Data:**
-Run the data generation script to create the 50-row CSV database.
-```bash
-python mock_data_gen.py
-
-```
-
-* _run the latest mock data generator code_
+Run the latest mock data generation script to create the 50-row CSV database (`supplements_full_schema_balanced_v3.csv`).
 
 3. **Run the Search:**
-```bash
-python search_v7_final.py
-
-```
+Run the latest test script (**Test 9**)
 
 
 4. **Interactive Mode:**
-Paste a JSON query when prompted. Example:
+Paste a JSON query when prompted.
+"[COPY AND PASTE _supplement_ingredient_ VALUE], "nutrition": [COPY AND PASTE _nutritional_info_per_100g_ or _nutritional_info_per_serving_ VALUE HERE]}
+
+Example:
 ```json
-{
-    {"ingredients": ["Almonds", "Soluble Corn Fiber", "Cocoa Butter", "Stevia", "Erythritol", "Milk Protein Isolate", "Peanuts"],
-    "nutrition": {"energy_kcal": 332.3, "protein_g": 30.3, "fat_g": 13.5, "saturated_fat_g": 4.9, "carbohydrate_g": 34.2, "sugar_g": 2.2, "added_sugar_g": 0, "sodium_mg": 368.5, "cholesterol_mg": 5.0}
-}
+{"ingredients": ["Almonds", "Soluble Corn Fiber", "Cocoa Butter", "Stevia", "Erythritol", "Milk Protein Isolate", "Peanuts"],
+    "nutrition": {"energy_kcal": 332.3, "protein_g": 30.3, "fat_g": 13.5, "saturated_fat_g": 4.9, "carbohydrate_g": 34.2, "sugar_g": 2.2, "added_sugar_g": 0, "sodium_mg": 368.5, "cholesterol_mg": 5.0}}
 
 ```
-
 
 
 ---
