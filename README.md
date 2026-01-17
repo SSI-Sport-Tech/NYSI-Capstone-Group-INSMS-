@@ -1,6 +1,6 @@
 # Vectorisation Similarity Search
 
-Latest testing phase: **Test 9**
+Latest testing phase: **Test 9** in `Vector_v2.ipynb` script.
 
 This script operates on local mock data to validate the search logic before migration to a production PostgreSQL (`pgvector`) environment.
 
