@@ -1,6 +1,6 @@
 # Vectorisation Similarity Search
 
-Latest testing phase: **Test 9** in `Vector_v2.ipynb` script.
+Latest testing phase: `vector_v2.py` script.
 
 This script operates on local mock data to validate the search logic before migration to a production PostgreSQL (`pgvector`) environment.
 
@@ -69,14 +69,12 @@ pip install pandas numpy scikit-learn transformers torch
 ```
 * _`torch` is required for the Hugging Face model execution._
 
-2. **Generate Mock Data:**
-Run the latest mock data generation script to create the 50-row CSV database (`supplements_full_schema_balanced_v3.csv`).
 
-3. **Run the Search:**
-Run the latest test script (**Test 9**)
+2. **Run the Search:**
+Run `vector_v2.py` script in your own source-code editor (e.g. VSCode)
 
 
-4. **Interactive Mode:**
+3. **Interactive Mode:**
 Paste a JSON query when prompted.
 "[COPY AND PASTE _supplement_ingredient_ VALUE], "nutrition": [COPY AND PASTE _nutritional_info_per_100g_ or _nutritional_info_per_serving_ VALUE HERE]}
 
