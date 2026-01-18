@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import ocrRoutes from "./modules/OCR/routes.js";
-import supplementRoutes from './modules/SSS/routes.js';
+
 
 // Load env variables
 dotenv.config();

@@ -40,7 +40,6 @@ export async function searchSupplements(searchQuery, pageNumber, pageSize = 10) 
     return await getSupplementsByPage(pageNumber, pageSize);
   }
 
-  // Build WHERE conditions - each word must match in at least one field
   const whereConditions = searchWords.map((_, index) => {
     const paramIndex = index + 1;
     return `(
@@ -157,7 +156,10 @@ export async function getSupplementById(supplementId) {
       s.supplement_website,
       s.supplement_warning_label,
       s.supplement_certifications,
-      s.batch_testing_org
+      s.batch_testing_org,
+      s.supplement_packaging_form_id,
+      s.supplement_status_id,
+      s.source_url
     FROM SSS.Supplement s
     LEFT JOIN SSS.Supplement_Packaging_Form_Lookup spf 
       ON s.supplement_packaging_form_id = spf.id
@@ -330,6 +332,89 @@ export async function checkDuplicateSupplement(name, brand, excludeId = null) {
   return result.rows.length > 0;
 }
 
+//Use Case: Edit Supplement (Partial Update)
+export async function updateSupplement(supplementId, updateData) {
+  // Build dynamic UPDATE query based on provided fields
+  const fields = [];
+  const values = [];
+  let paramCounter = 1;
+
+  // Map of field names to their values
+  const fieldMapping = {
+    supplement_name: updateData.supplement_name,
+    supplement_brand: updateData.supplement_brand,
+    supplement_packaging_form_id: updateData.supplement_packaging_form_id,
+    supplement_status_id: updateData.supplement_status_id,
+    batch_testing_org: updateData.batch_testing_org,
+    supplement_description: updateData.supplement_description,
+    supplement_ingredient: updateData.supplement_ingredient ?
+      JSON.stringify(updateData.supplement_ingredient) : undefined,
+    nutritional_info_per_100g: updateData.nutritional_info_per_100g ?
+      JSON.stringify(updateData.nutritional_info_per_100g) : undefined,
+    nutritional_info_per_serving: updateData.nutritional_info_per_serving ?
+      JSON.stringify(updateData.nutritional_info_per_serving) : undefined,
+    nutritional_info_per_serving_definition: updateData.nutritional_info_per_serving_definition,
+    supplement_warning_label: updateData.supplement_warning_label,
+    supplement_certifications: updateData.supplement_certifications,
+    supplement_additional_information: updateData.supplement_additional_information,
+    source_url: updateData.source_url
+  };
+
+  // Build SET clause dynamically
+  for (const [field, value] of Object.entries(fieldMapping)) {
+    if (value !== undefined) {
+      fields.push(`${field} = $${paramCounter}`);
+      values.push(value);
+      paramCounter++;
+    }
+  }
+
+  // If no fields to update, return null
+  if (fields.length === 0) {
+    return null;
+  }
+
+  // Add supplement ID as the last parameter
+  values.push(supplementId);
+
+  const query = `
+    UPDATE SSS.Supplement 
+    SET ${fields.join(', ')}
+    WHERE id = $${paramCounter}
+    RETURNING 
+      id,
+      supplement_name,
+      supplement_brand,
+      supplement_packaging_form_id,
+      supplement_status_id,
+      batch_testing_org,
+      supplement_description,
+      supplement_ingredient,
+      nutritional_info_per_100g,
+      nutritional_info_per_serving,
+      nutritional_info_per_serving_definition,
+      supplement_warning_label,
+      supplement_certifications,
+      supplement_additional_information,
+      source_url
+  `;
+
+  const result = await pool.query(query, values);
+  return result.rows.length > 0 ? result.rows[0] : null;
+}
+
+//Use Case: Delete Supplement (Hard Delete - Bulk)
+export async function deleteSupplements(supplementIds) {
+  const query = `
+    DELETE FROM SSS.Supplement 
+    WHERE id = ANY($1::uuid[])
+    RETURNING id
+  `;
+
+  const result = await pool.query(query, [supplementIds]);
+  return result.rows;
+}
+
 // ============================================================================
 // BATCH/INVENTORY FUNCTIONS
 // ============================================================================
@@ -387,7 +472,6 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
     return await getBatchesByPage(pageNumber, pageSize);
   }
 
-  // Build WHERE conditions for each search word
   const whereConditions = searchWords.map((_, index) => {
     const paramIndex = index + 1;
     return `(
