@@ -16,7 +16,7 @@ export async function getSupplementsByPage(pageNumber, pageSize = 10) {
       spf.supplement_packaging_form,
       ssl.supplement_status,
       s.batch_testing_org,
-      s.supplement_website
+      s.product_source_url
     FROM SSS.Supplement s
     LEFT JOIN SSS.Supplement_Packaging_Form_Lookup spf 
       ON s.supplement_packaging_form_id = spf.id
@@ -71,23 +71,23 @@ export async function searchSupplements(
       spf.supplement_packaging_form,
       ssl.supplement_status,
       s.batch_testing_org,
-      s.supplement_website,
+      s.product_source_url,
       CASE 
         WHEN ${searchWords
-          .map((_, i) => `s.supplement_name ILIKE $${i + 1}`)
-          .join(" AND ")} THEN 1
+      .map((_, i) => `s.supplement_name ILIKE $${i + 1}`)
+      .join(" AND ")} THEN 1
         WHEN ${searchWords
-          .map((_, i) => `s.supplement_brand ILIKE $${i + 1}`)
-          .join(" AND ")} THEN 2
+      .map((_, i) => `s.supplement_brand ILIKE $${i + 1}`)
+      .join(" AND ")} THEN 2
         WHEN ${searchWords
-          .map((_, i) => `s.supplement_ingredient::text ILIKE $${i + 1}`)
-          .join(" AND ")} THEN 3
+      .map((_, i) => `s.supplement_ingredient::text ILIKE $${i + 1}`)
+      .join(" AND ")} THEN 3
         WHEN ${searchWords
-          .map((_, i) => `spf.supplement_packaging_form ILIKE $${i + 1}`)
-          .join(" AND ")} THEN 4
+      .map((_, i) => `spf.supplement_packaging_form ILIKE $${i + 1}`)
+      .join(" AND ")} THEN 4
         WHEN ${searchWords
-          .map((_, i) => `ssl.supplement_status ILIKE $${i + 1}`)
-          .join(" AND ")} THEN 5
+      .map((_, i) => `ssl.supplement_status ILIKE $${i + 1}`)
+      .join(" AND ")} THEN 5
         ELSE 6
       END AS relevance_order
     FROM SSS.Supplement s
@@ -178,13 +178,12 @@ export async function getSupplementById(supplementId) {
       s.nutritional_info_per_serving,
       s.nutritional_info_per_serving_definition,
       s.supplement_additional_information,
-      s.supplement_website,
+      s.product_source_url,
       s.supplement_warning_label,
       s.supplement_certifications,
       s.batch_testing_org,
       s.supplement_packaging_form_id,
       s.supplement_status_id,
-      s.source_url
     FROM SSS.Supplement s
     LEFT JOIN SSS.Supplement_Packaging_Form_Lookup spf 
       ON s.supplement_packaging_form_id = spf.id
@@ -290,7 +289,7 @@ export async function createSupplement(supplementData) {
       supplement_warning_label,
       supplement_certifications,
       supplement_additional_information,
-      source_url,
+      product_source_url,
       supplement_input_type
     ) VALUES (
       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
@@ -325,7 +324,7 @@ export async function createSupplement(supplementData) {
     supplementData.supplement_warning_label, // $12
     supplementData.supplement_certifications, // $13
     supplementData.supplement_additional_information, // $14
-    supplementData.source_url, // $15
+    supplementData.product_source_url, // $15
     supplementData.supplement_input_type || "Manual", // $16
   ];
 
@@ -388,7 +387,7 @@ export async function updateSupplement(supplementId, updateData) {
     supplement_warning_label: updateData.supplement_warning_label,
     supplement_certifications: updateData.supplement_certifications,
     supplement_additional_information: updateData.supplement_additional_information,
-    source_url: updateData.source_url
+    product_source_url: updateData.product_source_url
   };
 
   // Build SET clause dynamically
@@ -427,7 +426,7 @@ export async function updateSupplement(supplementId, updateData) {
       supplement_warning_label,
       supplement_certifications,
       supplement_additional_information,
-      source_url
+      product_source_url
   `;
 
   const result = await pool.query(query, values);
@@ -547,17 +546,17 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
       *,
       CASE
         WHEN ${searchWords
-          .map((_, i) => `batch_number ILIKE $${i + 1}`)
-          .join(" AND ")} THEN 1
+      .map((_, i) => `batch_number ILIKE $${i + 1}`)
+      .join(" AND ")} THEN 1
         WHEN ${searchWords
-          .map((_, i) => `supplement_name ILIKE $${i + 1}`)
-          .join(" AND ")} THEN 2
+      .map((_, i) => `supplement_name ILIKE $${i + 1}`)
+      .join(" AND ")} THEN 2
         WHEN ${searchWords
-          .map((_, i) => `supplement_brand ILIKE $${i + 1}`)
-          .join(" AND ")} THEN 3
+      .map((_, i) => `supplement_brand ILIKE $${i + 1}`)
+      .join(" AND ")} THEN 3
         WHEN ${searchWords
-          .map((_, i) => `batch_status ILIKE $${i + 1}`)
-          .join(" AND ")} THEN 4
+      .map((_, i) => `batch_status ILIKE $${i + 1}`)
+      .join(" AND ")} THEN 4
         ELSE 5
       END AS relevance_order
     FROM batch_data

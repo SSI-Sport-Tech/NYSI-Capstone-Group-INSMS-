@@ -1,244 +1,599 @@
 import swaggerJsdoc from "swagger-jsdoc";
 
 const swaggerOptions = {
-  definition: {
-    openapi: "3.0.0",
-    info: {
-      title: "NYSI Backend API",
-      version: "2.0.0",
-      description:
-        "New York Sports Institute - Supplement Management System API",
-      contact: {
-        name: "NYSI Development Team",
-        email: "dev@nysi.com",
-      },
-      license: {
-        name: "MIT",
-        url: "https://opensource.org/licenses/MIT",
-      },
+    definition: {
+        openapi: "3.0.0",
+        info: {
+            title: "NYSI Backend API",
+            version: "2.0.0",
+            description:
+                "New York Sports Institute - Supplement Management System API. Comprehensive API for managing supplements, inventory batches, and athlete profiles.",
+            contact: {
+                name: "NYSI Development Team",
+                email: "dev@nysi.com",
+            },
+            license: {
+                name: "MIT",
+                url: "https://opensource.org/licenses/MIT",
+            },
+        },
+        servers: [
+            {
+                url: "http://localhost:8000",
+                description: "Development server",
+            },
+            {
+                url: "https://your-production-url.com",
+                description: "Production server",
+            },
+        ],
+        tags: [
+            {
+                name: "Health",
+                description: "Health check and system status endpoints",
+            },
+            {
+                name: "Supplements",
+                description: "Supplement library management - CRUD operations",
+            },
+            {
+                name: "Inventory",
+                description: "Batch inventory management and stock tracking",
+            },
+            {
+                name: "Athletes",
+                description: "Athlete profile management (Planned)",
+            },
+            {
+                name: "OCR",
+                description: "OCR and text extraction services",
+            },
+        ],
+        components: {
+            schemas: {
+                // ==================== SUPPLEMENT SCHEMAS ====================
+
+                // Full Supplement Schema (for detailed view)
+                SupplementDetail: {
+                    type: "object",
+                    properties: {
+                        id: {
+                            type: "string",
+                            format: "uuid",
+                            description: "Unique supplement identifier",
+                            example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                        },
+                        supplement_name: {
+                            type: "string",
+                            description: "Name of the supplement",
+                            example: "Vitamin D3 2000 IU",
+                        },
+                        supplement_brand: {
+                            type: "string",
+                            description: "Brand/manufacturer name",
+                            example: "Nature Made",
+                        },
+                        supplement_packaging_form_id: {
+                            type: "string",
+                            format: "uuid",
+                            description: "Reference to packaging form lookup table",
+                        },
+                        supplement_packaging_form: {
+                            type: "string",
+                            description: "Physical packaging form",
+                            example: "BOTTLE",
+                        },
+                        supplement_status_id: {
+                            type: "string",
+                            format: "uuid",
+                            description: "Reference to status lookup table",
+                        },
+                        supplement_status: {
+                            type: "string",
+                            description: "Testing status of supplement",
+                            enum: ["BATCH TESTED", "NOT BATCH TESTED", "DISCONTINUED"],
+                            example: "BATCH TESTED",
+                        },
+                        batch_testing_org: {
+                            type: "string",
+                            nullable: true,
+                            description: "Testing organization (e.g., NSF, USP) or 'NIL' if not tested",
+                            example: "NSF Certified for Sport",
+                        },
+                        supplement_description: {
+                            type: "string",
+                            nullable: true,
+                            description: "Detailed product description",
+                        },
+                        supplement_ingredient: {
+                            type: "array",
+                            items: { type: "string" },
+                            description: "List of ingredients",
+                            example: ["Vitamin D3", "Gelatin", "Soybean Oil"],
+                        },
+                        nutritional_info_per_100g: {
+                            type: "object",
+                            nullable: true,
+                            description: "Nutritional information per 100g",
+                        },
+                        nutritional_info_per_serving: {
+                            type: "object",
+                            nullable: true,
+                            description: "Nutritional information per serving",
+                        },
+                        nutritional_info_per_serving_definition: {
+                            type: "string",
+                            nullable: true,
+                            description: "Definition of serving size",
+                            example: "1 softgel (0.5g)",
+                        },
+                        supplement_warning_label: {
+                            type: "string",
+                            nullable: true,
+                            description: "Safety warnings and contraindications",
+                        },
+                        supplement_certifications: {
+                            type: "string",
+                            nullable: true,
+                            description: "Quality certifications",
+                            example: "NSF Certified for Sport, GMP Certified",
+                        },
+                        supplement_additional_information: {
+                            type: "string",
+                            nullable: true,
+                            description: "Additional product notes",
+                        },
+                        source_url: {
+                            type: "string",
+                            format: "uri",
+                            nullable: true,
+                            description: "Original product URL from manufacturer/retailer",
+                            example: "https://naturemade.com/products/vitamin-d3",
+                        },
+                        approved_by: {
+                            type: "string",
+                            format: "uuid",
+                            description: "User ID who created/approved the supplement",
+                        },
+                    },
+                    required: [
+                        "id",
+                        "supplement_name",
+                        "supplement_packaging_form_id",
+                        "supplement_status_id",
+                        "approved_by",
+                    ],
+                },
+
+                // Simplified Supplement Schema (for list views)
+                Supplement: {
+                    type: "object",
+                    properties: {
+                        id: {
+                            type: "string",
+                            format: "uuid",
+                            description: "Unique supplement identifier",
+                        },
+                        supplement_name: {
+                            type: "string",
+                            description: "Name of the supplement",
+                        },
+                        supplement_brand: {
+                            type: "string",
+                            description: "Brand name",
+                        },
+                        supplement_packaging_form: {
+                            type: "string",
+                            description: "Packaging form (BOTTLE, TABLET, etc.)",
+                        },
+                        supplement_status: {
+                            type: "string",
+                            description: "Testing status",
+                        },
+                        batch_testing_org: {
+                            type: "string",
+                            nullable: true,
+                            description: "Testing organization or 'NIL'",
+                        },
+                        source_url: {
+                            type: "string",
+                            format: "uri",
+                            nullable: true,
+                            description: "Product URL",
+                        },
+                    },
+                },
+
+                // Create Supplement Request Body
+                CreateSupplementRequest: {
+                    type: "object",
+                    properties: {
+                        supplement_name: {
+                            type: "string",
+                            minLength: 1,
+                            maxLength: 255,
+                            description: "Name of the supplement",
+                            example: "Vitamin D3 2000 IU",
+                        },
+                        supplement_brand: {
+                            type: "string",
+                            maxLength: 255,
+                            nullable: true,
+                            description: "Brand/manufacturer name",
+                            example: "Nature Made",
+                        },
+                        supplement_packaging_form_id: {
+                            type: "string",
+                            format: "uuid",
+                            description: "Packaging form UUID from lookup table",
+                        },
+                        supplement_status_id: {
+                            type: "string",
+                            format: "uuid",
+                            description: "Status UUID from lookup table",
+                        },
+                        batch_testing_org: {
+                            type: "string",
+                            maxLength: 255,
+                            nullable: true,
+                            description: "Testing organization (required if status is BATCH TESTED)",
+                        },
+                        supplement_description: {
+                            type: "string",
+                            nullable: true,
+                            description: "Product description",
+                        },
+                        supplement_ingredient: {
+                            type: "array",
+                            items: { type: "string" },
+                            nullable: true,
+                            description: "List of ingredients",
+                        },
+                        nutritional_info_per_100g: {
+                            type: "object",
+                            nullable: true,
+                            description: "Nutritional data per 100g",
+                        },
+                        nutritional_info_per_serving: {
+                            type: "object",
+                            nullable: true,
+                            description: "Nutritional data per serving",
+                        },
+                        nutritional_info_per_serving_definition: {
+                            type: "string",
+                            nullable: true,
+                            description: "Serving size definition",
+                        },
+                        supplement_warning_label: {
+                            type: "string",
+                            nullable: true,
+                            description: "Safety warnings",
+                        },
+                        supplement_certifications: {
+                            type: "string",
+                            nullable: true,
+                            description: "Certifications",
+                        },
+                        supplement_additional_information: {
+                            type: "string",
+                            nullable: true,
+                            description: "Additional notes",
+                        },
+                        source_url: {
+                            type: "string",
+                            format: "uri",
+                            nullable: true,
+                            description: "Product website URL",
+                        },
+                    },
+                    required: [
+                        "supplement_name",
+                        "supplement_packaging_form_id",
+                        "supplement_status_id",
+                    ],
+                },
+
+                // Update Supplement Request Body (all fields optional)
+                UpdateSupplementRequest: {
+                    type: "object",
+                    properties: {
+                        supplement_name: { type: "string" },
+                        supplement_brand: { type: "string", nullable: true },
+                        supplement_packaging_form_id: { type: "string", format: "uuid" },
+                        supplement_status_id: { type: "string", format: "uuid" },
+                        batch_testing_org: { type: "string", nullable: true },
+                        supplement_description: { type: "string", nullable: true },
+                        supplement_ingredient: {
+                            type: "array",
+                            items: { type: "string" },
+                            nullable: true,
+                        },
+                        nutritional_info_per_100g: { type: "object", nullable: true },
+                        nutritional_info_per_serving: { type: "object", nullable: true },
+                        nutritional_info_per_serving_definition: {
+                            type: "string",
+                            nullable: true,
+                        },
+                        supplement_warning_label: { type: "string", nullable: true },
+                        supplement_certifications: { type: "string", nullable: true },
+                        supplement_additional_information: { type: "string", nullable: true },
+                        source_url: { type: "string", format: "uri", nullable: true },
+                    },
+                },
+
+                // ==================== BATCH/INVENTORY SCHEMAS ====================
+
+                Batch: {
+                    type: "object",
+                    properties: {
+                        id: {
+                            type: "string",
+                            format: "uuid",
+                            description: "Unique batch identifier",
+                        },
+                        batch_number: {
+                            type: "string",
+                            description: "Batch identification number",
+                            example: "BATCH-001",
+                        },
+                        batch_initial_quantity: {
+                            type: "integer",
+                            description: "Initial quantity in the batch",
+                            example: 100,
+                        },
+                        batch_expiration_date: {
+                            type: "string",
+                            format: "date",
+                            description: "Expiration date",
+                            example: "2026-12-31",
+                        },
+                        batch_price: {
+                            type: "number",
+                            format: "decimal",
+                            description: "Price per unit",
+                            example: 29.99,
+                        },
+                        supplement_name: {
+                            type: "string",
+                            description: "Associated supplement name",
+                        },
+                        supplement_brand: {
+                            type: "string",
+                            description: "Associated supplement brand",
+                        },
+                        booked: {
+                            type: "integer",
+                            description: "Quantity currently booked via tickets",
+                            example: 35,
+                        },
+                        available: {
+                            type: "integer",
+                            description: "Available quantity (initial - booked)",
+                            example: 65,
+                        },
+                        batch_status: {
+                            type: "string",
+                            description: "Current status from lookup table",
+                            example: "Approved",
+                        },
+                    },
+                },
+
+                // ==================== PAGINATION SCHEMAS ====================
+
+                PaginatedSupplementsResponse: {
+                    type: "object",
+                    properties: {
+                        data: {
+                            type: "array",
+                            items: { $ref: "#/components/schemas/Supplement" },
+                        },
+                        currentPage: {
+                            type: "integer",
+                            description: "Current page number",
+                            example: 1,
+                        },
+                        totalPages: {
+                            type: "integer",
+                            description: "Total number of pages",
+                            example: 15,
+                        },
+                        totalCount: {
+                            type: "integer",
+                            description: "Total number of items",
+                            example: 147,
+                        },
+                        searchQuery: {
+                            type: "string",
+                            nullable: true,
+                            description: "Search query used (if any)",
+                            example: "vitamin",
+                        },
+                    },
+                    required: ["data", "currentPage", "totalPages", "totalCount"],
+                },
+
+                PaginatedBatchesResponse: {
+                    type: "object",
+                    properties: {
+                        data: {
+                            type: "array",
+                            items: { $ref: "#/components/schemas/Batch" },
+                        },
+                        currentPage: {
+                            type: "integer",
+                            description: "Current page number",
+                        },
+                        totalPages: {
+                            type: "integer",
+                            description: "Total number of pages",
+                        },
+                        totalCount: {
+                            type: "integer",
+                            description: "Total number of items",
+                        },
+                        searchQuery: {
+                            type: "string",
+                            nullable: true,
+                            description: "Search query used (if any)",
+                        },
+                    },
+                },
+
+                // ==================== ERROR SCHEMAS ====================
+
+                Error: {
+                    type: "object",
+                    properties: {
+                        error: {
+                            type: "string",
+                            description: "Error message",
+                            example: "Resource not found",
+                        },
+                    },
+                    required: ["error"],
+                },
+
+                ValidationError: {
+                    type: "object",
+                    properties: {
+                        error: {
+                            type: "string",
+                            description: "Validation error message",
+                            example: "Validation failed",
+                        },
+                        details: {
+                            type: "array",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    field: { type: "string" },
+                                    message: { type: "string" },
+                                },
+                            },
+                            description: "Detailed validation errors",
+                        },
+                    },
+                },
+            },
+
+            // ==================== REUSABLE PARAMETERS ====================
+
+            parameters: {
+                PageParam: {
+                    name: "page",
+                    in: "query",
+                    description: "Page number for pagination",
+                    required: false,
+                    schema: {
+                        type: "integer",
+                        minimum: 1,
+                        default: 1,
+                    },
+                    example: 1,
+                },
+                LimitParam: {
+                    name: "limit",
+                    in: "query",
+                    description: "Number of items per page (not implemented yet, fixed at 10)",
+                    required: false,
+                    schema: {
+                        type: "integer",
+                        minimum: 1,
+                        maximum: 100,
+                        default: 10,
+                    },
+                },
+                SearchParam: {
+                    name: "search",
+                    in: "query",
+                    description:
+                        "Search query string. Searches across name, brand, ingredients, packaging form, and status.",
+                    required: false,
+                    schema: {
+                        type: "string",
+                        minLength: 1,
+                        maxLength: 100,
+                    },
+                    example: "vitamin",
+                },
+                SupplementIdParam: {
+                    name: "id",
+                    in: "path",
+                    description: "Supplement UUID",
+                    required: true,
+                    schema: {
+                        type: "string",
+                        format: "uuid",
+                    },
+                    example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                },
+            },
+
+            // ==================== REUSABLE RESPONSES ====================
+
+            responses: {
+                NotFound: {
+                    description: "Resource not found",
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/Error" },
+                            example: {
+                                error: "Supplement not found",
+                            },
+                        },
+                    },
+                },
+                BadRequest: {
+                    description: "Bad request - Invalid input",
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/ValidationError" },
+                            example: {
+                                error: "Validation failed",
+                                details: [
+                                    {
+                                        field: "supplement_name",
+                                        message: "Supplement name is required",
+                                    },
+                                ],
+                            },
+                        },
+                    },
+                },
+                InternalServerError: {
+                    description: "Internal server error",
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/Error" },
+                            example: {
+                                error: "An unexpected error occurred",
+                            },
+                        },
+                    },
+                },
+                Conflict: {
+                    description: "Conflict - Resource already exists",
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/Error" },
+                            example: {
+                                error:
+                                    "Supplement with this name and brand already exists",
+                            },
+                        },
+                    },
+                },
+            },
+        },
     },
-    servers: [
-      {
-        url: "http://localhost:8000",
-        description: "Development server",
-      },
-      {
-        url: "https://your-production-url.com",
-        description: "Production server",
-      },
+    // Paths to files containing OpenAPI annotations
+    apis: [
+        "./modules/SSS/routes.js",
+        "./modules/AthleteProfileSystem/routes.js",
+        "./modules/OCR/routes.js",
+        "./server.js",
     ],
-    components: {
-      schemas: {
-        // Supplement Schema
-        Supplement: {
-          type: "object",
-          properties: {
-            id: {
-              type: "string",
-              format: "uuid",
-              description: "Unique supplement ID",
-            },
-            supplement_name: {
-              type: "string",
-              description: "Name of the supplement",
-            },
-            supplement_brand: {
-              type: "string",
-              description: "Brand name",
-            },
-            supplement_packaging_form: {
-              type: "string",
-              description: "Form of packaging (capsule, tablet, powder, etc.)",
-            },
-            supplement_status: {
-              type: "string",
-              description: "Status of the supplement",
-            },
-            batch_testing_org: {
-              type: "string",
-              nullable: true,
-              description: "Testing organization",
-            },
-            supplement_website: {
-              type: "string",
-              format: "uri",
-              nullable: true,
-              description: "Official website URL",
-            },
-          },
-        },
-
-        // Batch Schema
-        Batch: {
-          type: "object",
-          properties: {
-            id: {
-              type: "string",
-              format: "uuid",
-              description: "Unique batch ID",
-            },
-            batch_number: {
-              type: "string",
-              description: "Batch identification number",
-            },
-            batch_initial_quantity: {
-              type: "integer",
-              description: "Initial quantity in the batch",
-            },
-            batch_expiration_date: {
-              type: "string",
-              format: "date",
-              description: "Expiration date",
-            },
-            batch_price: {
-              type: "number",
-              format: "decimal",
-              description: "Price per unit",
-            },
-            supplement_name: {
-              type: "string",
-              description: "Associated supplement name",
-            },
-            supplement_brand: {
-              type: "string",
-              description: "Associated supplement brand",
-            },
-            booked: {
-              type: "integer",
-              description: "Quantity currently booked",
-            },
-            available: {
-              type: "integer",
-              description: "Available quantity",
-            },
-            batch_status: {
-              type: "string",
-              description: "Current status of the batch",
-            },
-          },
-        },
-
-        // Pagination Response
-        PaginatedResponse: {
-          type: "object",
-          properties: {
-            data: {
-              type: "array",
-              items: {
-                oneOf: [
-                  { $ref: "#/components/schemas/Supplement" },
-                  { $ref: "#/components/schemas/Batch" },
-                ],
-              },
-            },
-            currentPage: {
-              type: "integer",
-              description: "Current page number",
-            },
-            totalPages: {
-              type: "integer",
-              description: "Total number of pages",
-            },
-            totalCount: {
-              type: "integer",
-              description: "Total number of items",
-            },
-            searchQuery: {
-              type: "string",
-              nullable: true,
-              description: "Search query used (if any)",
-            },
-          },
-        },
-
-        // Error Response
-        Error: {
-          type: "object",
-          properties: {
-            error: {
-              type: "string",
-              description: "Error message",
-            },
-            code: {
-              type: "integer",
-              description: "Error code",
-            },
-          },
-        },
-      },
-
-      parameters: {
-        PageParam: {
-          name: "page",
-          in: "query",
-          description: "Page number for pagination",
-          required: false,
-          schema: {
-            type: "integer",
-            minimum: 1,
-            default: 1,
-          },
-        },
-        LimitParam: {
-          name: "limit",
-          in: "query",
-          description: "Number of items per page",
-          required: false,
-          schema: {
-            type: "integer",
-            minimum: 1,
-            maximum: 100,
-            default: 10,
-          },
-        },
-        SearchParam: {
-          name: "search",
-          in: "query",
-          description: "Search query string",
-          required: false,
-          schema: {
-            type: "string",
-            minLength: 1,
-            maxLength: 100,
-          },
-        },
-      },
-
-      responses: {
-        NotFound: {
-          description: "Resource not found",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/Error",
-              },
-            },
-          },
-        },
-        BadRequest: {
-          description: "Bad request",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/Error",
-              },
-            },
-          },
-        },
-        InternalServerError: {
-          description: "Internal server error",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/Error",
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-  apis: ["./modules/*/routes.js", "./server.js"], // Paths to files containing OpenAPI definitions
 };
 
 const specs = swaggerJsdoc(swaggerOptions);
