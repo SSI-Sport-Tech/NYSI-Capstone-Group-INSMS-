@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import ocrRoutes from "./modules/OCR/routes.js";
 
+
 // Load env variables
 dotenv.config();
 
