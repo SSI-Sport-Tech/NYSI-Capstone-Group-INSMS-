@@ -1,4 +1,4 @@
-import pool from '../../config/db.js';
+import pool from "../../config/db.js";
 
 // ============================================================================
 // SUPPLEMENT FUNCTIONS
@@ -32,27 +32,36 @@ export async function getSupplementsByPage(pageNumber, pageSize = 10) {
 }
 
 // Use case: Search Supplement
-export async function searchSupplements(searchQuery, pageNumber, pageSize = 10) {
+export async function searchSupplements(
+  searchQuery,
+  pageNumber,
+  pageSize = 10
+) {
   const offset = (pageNumber - 1) * pageSize;
-  const searchWords = searchQuery.trim().split(/\s+/).filter(word => word.length > 0);
+  const searchWords = searchQuery
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word.length > 0);
 
   if (searchWords.length === 0) {
     return await getSupplementsByPage(pageNumber, pageSize);
   }
 
   // Build WHERE conditions - each word must match in at least one field
-  const whereConditions = searchWords.map((_, index) => {
-    const paramIndex = index + 1;
-    return `(
+  const whereConditions = searchWords
+    .map((_, index) => {
+      const paramIndex = index + 1;
+      return `(
       s.supplement_name ILIKE $${paramIndex} OR 
       s.supplement_brand ILIKE $${paramIndex} OR 
       s.supplement_ingredient::text ILIKE $${paramIndex} OR
       spf.supplement_packaging_form ILIKE $${paramIndex} OR
       ssl.supplement_status ILIKE $${paramIndex}
     )`;
-  }).join(' AND ');
+    })
+    .join(" AND ");
 
-  const searchParams = searchWords.map(word => `%${word}%`);
+  const searchParams = searchWords.map((word) => `%${word}%`);
 
   const query = `
     SELECT 
@@ -64,11 +73,21 @@ export async function searchSupplements(searchQuery, pageNumber, pageSize = 10) 
       s.batch_testing_org,
       s.supplement_website,
       CASE 
-        WHEN ${searchWords.map((_, i) => `s.supplement_name ILIKE $${i + 1}`).join(' AND ')} THEN 1
-        WHEN ${searchWords.map((_, i) => `s.supplement_brand ILIKE $${i + 1}`).join(' AND ')} THEN 2
-        WHEN ${searchWords.map((_, i) => `s.supplement_ingredient::text ILIKE $${i + 1}`).join(' AND ')} THEN 3
-        WHEN ${searchWords.map((_, i) => `spf.supplement_packaging_form ILIKE $${i + 1}`).join(' AND ')} THEN 4
-        WHEN ${searchWords.map((_, i) => `ssl.supplement_status ILIKE $${i + 1}`).join(' AND ')} THEN 5
+        WHEN ${searchWords
+          .map((_, i) => `s.supplement_name ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 1
+        WHEN ${searchWords
+          .map((_, i) => `s.supplement_brand ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 2
+        WHEN ${searchWords
+          .map((_, i) => `s.supplement_ingredient::text ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 3
+        WHEN ${searchWords
+          .map((_, i) => `spf.supplement_packaging_form ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 4
+        WHEN ${searchWords
+          .map((_, i) => `ssl.supplement_status ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 5
         ELSE 6
       END AS relevance_order
     FROM SSS.Supplement s
@@ -104,24 +123,29 @@ export async function getTotalSupplementCount() {
 
 // Use case: Search Supplement (count results)
 export async function getSearchResultCount(searchQuery) {
-  const searchWords = searchQuery.trim().split(/\s+/).filter(word => word.length > 0);
+  const searchWords = searchQuery
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word.length > 0);
 
   if (searchWords.length === 0) {
     return await getTotalSupplementCount();
   }
 
-  const whereConditions = searchWords.map((_, index) => {
-    const paramIndex = index + 1;
-    return `(
+  const whereConditions = searchWords
+    .map((_, index) => {
+      const paramIndex = index + 1;
+      return `(
       s.supplement_name ILIKE $${paramIndex} OR 
       s.supplement_brand ILIKE $${paramIndex} OR 
       s.supplement_ingredient::text ILIKE $${paramIndex} OR
       spf.supplement_packaging_form ILIKE $${paramIndex} OR
       ssl.supplement_status ILIKE $${paramIndex}
     )`;
-  }).join(' AND ');
+    })
+    .join(" AND ");
 
-  const searchParams = searchWords.map(word => `%${word}%`);
+  const searchParams = searchWords.map((word) => `%${word}%`);
 
   const query = `
     SELECT COUNT(*) 
@@ -194,12 +218,16 @@ export async function getSupplementStockSummary(supplementId) {
   return {
     totalStock,
     totalBooked,
-    available: totalStock - totalBooked
+    available: totalStock - totalBooked,
   };
 }
 
 //Use Case: View Supplement Details - Inventory Batches section
-export async function getBatchesBySupplementId(supplementId, pageNumber, pageSize = 10) {
+export async function getBatchesBySupplementId(
+  supplementId,
+  pageNumber,
+  pageSize = 10
+) {
   const offset = (pageNumber - 1) * pageSize;
 
   const query = `
@@ -276,24 +304,26 @@ export async function createSupplement(supplementData) {
   `;
 
   const values = [
-    supplementData.supplement_name,                                    // $1
-    supplementData.supplement_brand,                                   // $2
-    supplementData.supplement_packaging_form_id,                       // $3
-    supplementData.supplement_status_id,                               // $4
-    supplementData.approved_by,                                        // $5
-    supplementData.batch_testing_org,                                  // $6
-    supplementData.supplement_description,                             // $7
-    JSON.stringify(supplementData.supplement_ingredient || []),        // $8 - Convert to JSONB
-    supplementData.nutritional_info_per_100g ?
-      JSON.stringify(supplementData.nutritional_info_per_100g) : null, // $9 - Convert to JSONB
-    supplementData.nutritional_info_per_serving ?
-      JSON.stringify(supplementData.nutritional_info_per_serving) : null, // $10 - Convert to JSONB
-    supplementData.nutritional_info_per_serving_definition,            // $11
-    supplementData.supplement_warning_label,                           // $12
-    supplementData.supplement_certifications,                          // $13
-    supplementData.supplement_additional_information,                  // $14
-    supplementData.source_url,                                         // $15
-    supplementData.supplement_input_type || 'Manual'                   // $16
+    supplementData.supplement_name, // $1
+    supplementData.supplement_brand, // $2
+    supplementData.supplement_packaging_form_id, // $3
+    supplementData.supplement_status_id, // $4
+    supplementData.approved_by, // $5
+    supplementData.batch_testing_org, // $6
+    supplementData.supplement_description, // $7
+    JSON.stringify(supplementData.supplement_ingredient || []), // $8 - Convert to JSONB
+    supplementData.nutritional_info_per_100g
+      ? JSON.stringify(supplementData.nutritional_info_per_100g)
+      : null, // $9 - Convert to JSONB
+    supplementData.nutritional_info_per_serving
+      ? JSON.stringify(supplementData.nutritional_info_per_serving)
+      : null, // $10 - Convert to JSONB
+    supplementData.nutritional_info_per_serving_definition, // $11
+    supplementData.supplement_warning_label, // $12
+    supplementData.supplement_certifications, // $13
+    supplementData.supplement_additional_information, // $14
+    supplementData.source_url, // $15
+    supplementData.supplement_input_type || "Manual", // $16
   ];
 
   const result = await pool.query(query, values);
@@ -381,24 +411,29 @@ export async function getTotalBatchCount() {
 // Use case: Search Inventory
 export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
   const offset = (pageNumber - 1) * pageSize;
-  const searchWords = searchQuery.trim().split(/\s+/).filter(word => word.length > 0);
+  const searchWords = searchQuery
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word.length > 0);
 
   if (searchWords.length === 0) {
     return await getBatchesByPage(pageNumber, pageSize);
   }
 
-  // Build WHERE conditions for each search word
-  const whereConditions = searchWords.map((_, index) => {
-    const paramIndex = index + 1;
-    return `(
-      ib.batch_number ILIKE $${paramIndex} OR
-      s.supplement_name ILIKE $${paramIndex} OR
-      s.supplement_brand ILIKE $${paramIndex} OR
-      bssl.batch_stock_status ILIKE $${paramIndex}
+  // Build WHERE conditions for each search word - using CTE column names
+  const whereConditions = searchWords
+    .map((_, index) => {
+      const paramIndex = index + 1;
+      return `(
+      batch_number ILIKE $${paramIndex} OR
+      supplement_name ILIKE $${paramIndex} OR
+      supplement_brand ILIKE $${paramIndex} OR
+      batch_status ILIKE $${paramIndex}
     )`;
-  }).join(' AND ');
+    })
+    .join(" AND ");
 
-  const searchParams = searchWords.map(word => `%${word}%`);
+  const searchParams = searchWords.map((word) => `%${word}%`);
 
   const query = `
     WITH batch_data AS (
@@ -425,10 +460,18 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
     SELECT 
       *,
       CASE
-        WHEN ${searchWords.map((_, i) => `batch_number ILIKE $${i + 1}`).join(' AND ')} THEN 1
-        WHEN ${searchWords.map((_, i) => `supplement_name ILIKE $${i + 1}`).join(' AND ')} THEN 2
-        WHEN ${searchWords.map((_, i) => `supplement_brand ILIKE $${i + 1}`).join(' AND ')} THEN 3
-        WHEN ${searchWords.map((_, i) => `batch_status ILIKE $${i + 1}`).join(' AND ')} THEN 4
+        WHEN ${searchWords
+          .map((_, i) => `batch_number ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 1
+        WHEN ${searchWords
+          .map((_, i) => `supplement_name ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 2
+        WHEN ${searchWords
+          .map((_, i) => `supplement_brand ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 3
+        WHEN ${searchWords
+          .map((_, i) => `batch_status ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 4
         ELSE 5
       END AS relevance_order
     FROM batch_data
@@ -443,23 +486,28 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
 
 // Use case: Search Inventory (count results)
 export async function getSearchBatchCount(searchQuery) {
-  const searchWords = searchQuery.trim().split(/\s+/).filter(word => word.length > 0);
+  const searchWords = searchQuery
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word.length > 0);
 
   if (searchWords.length === 0) {
     return await getTotalBatchCount();
   }
 
-  const whereConditions = searchWords.map((_, index) => {
-    const paramIndex = index + 1;
-    return `(
+  const whereConditions = searchWords
+    .map((_, index) => {
+      const paramIndex = index + 1;
+      return `(
       ib.batch_number ILIKE $${paramIndex} OR
       s.supplement_name ILIKE $${paramIndex} OR
       s.supplement_brand ILIKE $${paramIndex} OR
       bssl.batch_stock_status ILIKE $${paramIndex}
     )`;
-  }).join(' AND ');
+    })
+    .join(" AND ");
 
-  const searchParams = searchWords.map(word => `%${word}%`);
+  const searchParams = searchWords.map((word) => `%${word}%`);
 
   const query = `
     SELECT COUNT(DISTINCT ib.id) as count
