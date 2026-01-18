@@ -38,31 +38,31 @@ const router = express.Router();
  *                 summary: Full library (no search)
  *                 value:
  *                   data:
- *                     - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
- *                       supplement_name: "Vitamin D3 2000 IU"
- *                       supplement_brand: "Nature Made"
+ *                     - id: "8483aa30-ff76-42e4-b8ba-3e03aae6de4e"
+ *                       supplement_name: "Vitamin D3 1000 IU"
+ *                       supplement_brand: "KHOO Foods"
  *                       supplement_packaging_form: "BOTTLE"
  *                       supplement_status: "BATCH TESTED"
- *                       batch_testing_org: "NSF Certified for Sport"
- *                       product_source_url: "https://naturemade.com/vitamin-d3"
+ *                       batch_testing_org: "TrustMeBro"
+ *                       product_source_url: "https://www.nowfoods.com/products/vitamin-d3-1000-iu"
  *                   currentPage: 1
- *                   totalPages: 15
- *                   totalCount: 147
+ *                   totalPages: 1
+ *                   totalCount: 1
  *                   searchQuery: null
  *               withSearch:
  *                 summary: Search results for "vitamin"
  *                 value:
  *                   data:
- *                     - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
- *                       supplement_name: "Vitamin D3 2000 IU"
- *                       supplement_brand: "Nature Made"
+ *                     - id: "8483aa30-ff76-42e4-b8ba-3e03aae6de4e"
+ *                       supplement_name: "Vitamin D3 1000 IU"
+ *                       supplement_brand: "KHOO Foods"
  *                       supplement_packaging_form: "BOTTLE"
  *                       supplement_status: "BATCH TESTED"
- *                       batch_testing_org: "NSF Certified for Sport"
- *                       product_source_url: "https://naturemade.com/vitamin-d3"
+ *                       batch_testing_org: "TrustMeBro"
+ *                       product_source_url: "https://www.nowfoods.com/products/vitamin-d3-1000-iu"
  *                   currentPage: 1
- *                   totalPages: 3
- *                   totalCount: 27
+ *                   totalPages: 1
+ *                   totalCount: 1
  *                   searchQuery: "vitamin"
  *       400:
  *         $ref: '#/components/responses/BadRequest'
@@ -137,34 +137,32 @@ router.get('/supplements', controller.listSupplements);
  *                       type: integer
  *             example:
  *               supplement:
- *                 id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
- *                 supplement_name: "Vitamin D3 2000 IU"
- *                 supplement_brand: "Nature Made"
+ *                 id: "8483aa30-ff76-42e4-b8ba-3e03aae6de4e"
+ *                 supplement_name: "Vitamin D3 1000 IU"
+ *                 supplement_brand: "KHOO Foods"
  *                 supplement_packaging_form: "BOTTLE"
- *                 supplement_packaging_form_id: "p1p2p3p4-p5p6-7890-pqrs-tu1234567890"
+ *                 supplement_packaging_form_id: "607b0fac-9720-4f54-9592-1e19d8e5776a"
  *                 supplement_status: "BATCH TESTED"
  *                 supplement_status_id: "9f3c014d-79e3-4454-b78b-3bde2e22889d"
- *                 batch_testing_org: "NSF Certified for Sport"
- *                 product_source_url: "https://naturemade.com/vitamin-d3"
- *                 supplement_description: "High-quality vitamin D supplement"
- *                 supplement_ingredient: ["Vitamin D3", "Gelatin", "Soybean Oil"]
+ *                 batch_testing_org: "TrustMeBro"
+ *                 product_source_url: "https://www.nowfoods.com/products/vitamin-d3-1000-iu"
+ *                 supplement_description: "Vitamin D3 supports bone health and immune function."
+ *                 supplement_ingredient: ["Vitamin D3 (Cholecalciferol)"]
+ *                 nutritional_info_per_100g: {"fat_g": 0, "protein_g": 0, "energy_kcal": 0, "carbohydrate_g": 0}
+ *                 nutritional_info_per_serving: {"vitamin_d_iu": 1000, "vitamin_d_mcg": 25}
+ *                 nutritional_info_per_serving_definition: "Per 1 softgel serving"
+ *                 supplement_warning_label: "Not suitable for children under 12."
+ *                 supplement_certifications: "GMP Certified; Non-GMO"
+ *                 supplement_additional_information: "Store in a cool, dry place."
  *               stockSummary:
- *                 totalStock: 500
- *                 totalBooked: 150
- *                 available: 350
+ *                 totalStock: 0
+ *                 totalBooked: 0
+ *                 available: 0
  *               batches:
- *                 data:
- *                   - id: "b1b2b3b4-b5b6-7890-bcde-fg1234567890"
- *                     batch_number: "BATCH-001"
- *                     batch_status: "Approved"
- *                     batch_initial_quantity: 100
- *                     booked: 35
- *                     available: 65
- *                     batch_expiration_date: "2026-12-31"
- *                     batch_price: 29.99
+ *                 data: []
  *                 currentPage: 1
- *                 totalPages: 5
- *                 totalCount: 50
+ *                 totalPages: 0
+ *                 totalCount: 0
  *       400:
  *         description: Invalid supplement ID format
  *         content:
@@ -228,14 +226,14 @@ router.get('/supplements/:id', controller.getSupplementDetails);
  *             $ref: '#/components/schemas/CreateSupplementRequest'
  *           examples:
  *             minimal:
- *               summary: Minimal required fields
+ *               summary: Minimal required fields (BATCH TESTED in BOTTLE)
  *               value:
  *                 supplement_name: "Vitamin D3 2000 IU"
  *                 supplement_packaging_form_id: "607b0fac-9720-4f54-9592-1e19d8e5776a"
  *                 supplement_status_id: "9f3c014d-79e3-4454-b78b-3bde2e22889d"
  *                 batch_testing_org: "NSF Certified for Sport"
  *             complete:
- *               summary: Complete supplement with all fields
+ *               summary: Complete supplement with all fields (Omega-3 Fish Oil)
  *               value:
  *                 supplement_name: "Omega-3 Fish Oil 1000mg"
  *                 supplement_brand: "Nordic Naturals"
@@ -259,7 +257,7 @@ router.get('/supplements/:id', controller.getSupplementDetails);
  *                 supplement_additional_information: "Third-party tested for purity and freshness"
  *                 product_source_url: "https://www.nordicnaturals.com/products/omega-3"
  *             notBatchTested:
- *               summary: Not batch tested supplement
+ *               summary: Not batch tested supplement (TABLET)
  *               value:
  *                 supplement_name: "Vitamin C 1000mg"
  *                 supplement_brand: "Generic Brand"
@@ -273,6 +271,22 @@ router.get('/supplements/:id', controller.getSupplementDetails);
  *                 supplement_packaging_form_id: "607b0fac-9720-4f54-9592-1e19d8e5776a"
  *                 supplement_status_id: "28a9cdcc-19ef-4961-8479-9cc7abbc2065"
  *                 batch_testing_org: "Previously NSF Certified"
+ *             proteinPowder:
+ *               summary: Protein Powder in TUB
+ *               value:
+ *                 supplement_name: "Whey Protein Isolate"
+ *                 supplement_brand: "Optimum Nutrition"
+ *                 supplement_packaging_form_id: "6f7ae3f3-b451-4696-b4ca-8217e948f7a8"
+ *                 supplement_status_id: "9f3c014d-79e3-4454-b78b-3bde2e22889d"
+ *                 batch_testing_org: "Informed Sport"
+ *                 supplement_description: "Premium whey protein isolate"
+ *             proteinBar:
+ *               summary: Protein Bar
+ *               value:
+ *                 supplement_name: "Quest Protein Bar Chocolate Chip"
+ *                 supplement_brand: "Quest Nutrition"
+ *                 supplement_packaging_form_id: "382749cb-383b-4949-b46c-c815ca2ebc73"
+ *                 supplement_status_id: "9b6fb269-6dc0-4843-ad42-9aeeae8d5d7d"
  *     responses:
  *       201:
  *         description: Supplement created successfully
@@ -309,12 +323,12 @@ router.get('/supplements/:id', controller.getSupplementDetails);
  *             example:
  *               message: "Supplement created successfully"
  *               data:
- *                 id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+ *                 id: "new-uuid-generated"
  *                 supplement_name: "Vitamin D3 2000 IU"
- *                 supplement_brand: "Nature Made"
+ *                 supplement_brand: null
  *                 supplement_packaging_form_id: "607b0fac-9720-4f54-9592-1e19d8e5776a"
  *                 supplement_status_id: "9f3c014d-79e3-4454-b78b-3bde2e22889d"
- *                 approved_by: "SYSTEM_USER_PLACEHOLDER"
+ *                 approved_by: "e9e9f927-40f4-4f0a-bdca-a5503b5974da"
  *                 batch_testing_org: "NSF Certified for Sport"
  *                 supplement_input_type: "Manual"
  *       400:
@@ -351,6 +365,7 @@ router.get('/supplements/:id', controller.getSupplementDetails);
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.post('/supplements', controller.createSupplement);
+
 /**
  * @swagger
  * /api/SSS/supplements/{id}:
@@ -413,8 +428,12 @@ router.post('/supplements', controller.createSupplement);
  *             changeToDiscontinued:
  *               summary: Change status to DISCONTINUED
  *               value:
- *                 supplement_status_id: "28a9cdcc-d0e6-4801-8a05-b74bdd86d03c"
+ *                 supplement_status_id: "28a9cdcc-19ef-4961-8479-9cc7abbc2065"
  *                 batch_testing_org: "Previously NSF Certified"
+ *             changePackaging:
+ *               summary: Change packaging form to TABLET
+ *               value:
+ *                 supplement_packaging_form_id: "c39d8a4c-3e50-4f70-accd-fcbd1a6f12d0"
  *     responses:
  *       200:
  *         description: Supplement updated successfully
@@ -488,17 +507,17 @@ router.patch('/supplements/:id', controller.updateSupplement);
  *               - ids
  *           examples:
  *             singleDelete:
- *               summary: Delete single supplement
+ *               summary: Delete single supplement (use real ID from your database)
  *               value:
  *                 ids:
- *                   - "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+ *                   - "8483aa30-ff76-42e4-b8ba-3e03aae6de4e"
  *             bulkDelete:
- *               summary: Delete multiple supplements
+ *               summary: Delete multiple supplements (replace with real IDs)
  *               value:
  *                 ids:
- *                   - "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
- *                   - "b2c3d4e5-f6a7-8901-bcde-fg2345678901"
- *                   - "c3d4e5f6-a7b8-9012-cdef-gh3456789012"
+ *                   - "uuid-1-here"
+ *                   - "uuid-2-here"
+ *                   - "uuid-3-here"
  *     responses:
  *       200:
  *         description: Supplements deleted successfully
@@ -509,7 +528,7 @@ router.patch('/supplements/:id', controller.updateSupplement);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Successfully deleted 3 supplement(s)"
+ *                   example: "Successfully deleted 1 supplement(s)"
  *                 deletedCount:
  *                   type: integer
  *                   description: Number of supplements deleted
@@ -520,12 +539,10 @@ router.patch('/supplements/:id', controller.updateSupplement);
  *                     format: uuid
  *                   description: UUIDs of deleted supplements
  *             example:
- *               message: "Successfully deleted 3 supplement(s)"
- *               deletedCount: 3
+ *               message: "Successfully deleted 1 supplement(s)"
+ *               deletedCount: 1
  *               deletedIds:
- *                 - "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
- *                 - "b2c3d4e5-f6a7-8901-bcde-fg2345678901"
- *                 - "c3d4e5f6-a7b8-9012-cdef-gh3456789012"
+ *                 - "8483aa30-ff76-42e4-b8ba-3e03aae6de4e"
  *       400:
  *         description: Validation failed
  *         content:
@@ -603,39 +620,19 @@ router.delete('/supplements', controller.deleteSupplements);
  *               withoutSearch:
  *                 summary: Full inventory (no search)
  *                 value:
- *                   data:
- *                     - id: "b1b2b3b4-b5b6-7890-bcde-fg1234567890"
- *                       batch_number: "BATCH-001"
- *                       batch_initial_quantity: 100
- *                       batch_expiration_date: "2026-12-31"
- *                       batch_price: 29.99
- *                       supplement_name: "Vitamin D3 2000 IU"
- *                       supplement_brand: "Nature Made"
- *                       booked: 35
- *                       available: 65
- *                       batch_status: "Approved"
+ *                   data: []
  *                   currentPage: 1
- *                   totalPages: 15
- *                   totalCount: 147
+ *                   totalPages: 0
+ *                   totalCount: 0
  *                   searchQuery: null
  *               withSearch:
- *                 summary: Search results for "vitamin approved"
+ *                 summary: Search results for "vitamin"
  *                 value:
- *                   data:
- *                     - id: "b1b2b3b4-b5b6-7890-bcde-fg1234567890"
- *                       batch_number: "BATCH-001"
- *                       batch_initial_quantity: 100
- *                       batch_expiration_date: "2026-12-31"
- *                       batch_price: 29.99
- *                       supplement_name: "Vitamin D3 2000 IU"
- *                       supplement_brand: "Nature Made"
- *                       booked: 35
- *                       available: 65
- *                       batch_status: "Approved"
+ *                   data: []
  *                   currentPage: 1
- *                   totalPages: 2
- *                   totalCount: 18
- *                   searchQuery: "vitamin approved"
+ *                   totalPages: 0
+ *                   totalCount: 0
+ *                   searchQuery: "vitamin"
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       500:

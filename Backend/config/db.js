@@ -21,7 +21,7 @@ const pool = new Pool({
 
 // handle pool errors gracefully
 pool.on("error", (err) => {
-    console.error("❌ Unexpected PostgreSQL pool error:", err);
+    console.error("Unexpected PostgreSQL pool error:", err);
     process.exit(-1);
 });
 
@@ -29,12 +29,12 @@ pool.on("error", (err) => {
 (async () => {
     try {
         const res = await pool.query("SELECT NOW()");
-        console.log("✅ Connected to PostgreSQL at:", res.rows[0].now);
+        console.log("Connected to PostgreSQL at:", res.rows[0].now);
     } catch (err) {
-        console.error("❌ Database connection failed:", err.message);
-        console.log("⚠️  App will continue but database features won't work");
-        console.log("💡 Check your AWS RDS Security Group settings");
-        console.log("💡 Your IP: Add 202.94.70.53/32 to inbound rules");
+        console.error("Database connection failed:", err.message);
+        console.log("App will continue but database features won't work");
+        console.log("Check your AWS RDS Security Group settings");
+        console.log("Your IP: Add 202.94.70.53/32 to inbound rules");
     }
 })();
 

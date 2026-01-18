@@ -240,7 +240,8 @@ export async function createSupplement(req, res) {
 
         // STEP 4: Set approved_by automatically
         console.log('Step 4: Setting approved_by...');
-        validatedData.approved_by = req.user?.id || null;
+        const SYSTEM_USER_ID = 'e9e9f927-40f4-4f0a-bdca-a5503b5974da'; // HARDCODED SYSTEM USER ID
+        validatedData.approved_by = req.user?.id || SYSTEM_USER_ID;
         console.log(`approved_by: ${validatedData.approved_by}`);
 
         // STEP 5: Check for duplicate supplement (name + brand)
@@ -257,7 +258,7 @@ export async function createSupplement(req, res) {
                 message: 'A supplement with this name and brand already exists in the library'
             });
         }
-        console.log('✅ No duplicate found');
+        console.log('No duplicate found');
 
         // STEP 6: Insert supplement into database
         console.log('Step 6: Inserting into database...');
