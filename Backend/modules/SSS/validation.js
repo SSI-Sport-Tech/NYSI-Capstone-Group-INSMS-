@@ -156,6 +156,16 @@ export const updateSupplementSchema = createSupplementSchema
     .strict();
 
 // ============================================================================
+// BULK DELETE SCHEMA
+// ============================================================================
+
+export const bulkDeleteSchema = z.object({
+    ids: z.array(
+        z.string().uuid('Each ID must be a valid UUID')
+    )
+        .min(1, 'At least one ID is required')
+});
+// ============================================================================
 // BATCH/INVENTORY SCHEMAS
 // ============================================================================
 
