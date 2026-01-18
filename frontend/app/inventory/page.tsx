@@ -41,20 +41,20 @@ export default function InventoryPage() {
       id: "inventory",
       label: "Current Inventory View",
       icon: "globe",
-      href: "/inventory"
+      href: "/inventory",
     },
     {
       id: "scraper",
-      label: "Web Scraper View", 
+      label: "Web Scraper View",
       icon: "search",
-      href: "/web-scraper"
+      href: "/web-scraper",
     },
     {
       id: "library",
       label: "Supplement Library",
       icon: "library",
-      href: "/library"
-    }
+      href: "/library",
+    },
   ];
 
   // Load all batches on component mount
@@ -82,7 +82,9 @@ export default function InventoryPage() {
         setTotal(0);
       }
     } catch (err) {
-      setError("Failed to load batches. Please check your database connection.");
+      setError(
+        "Failed to load batches. Please check your database connection."
+      );
       console.error(err);
       setResults([]);
       setTotal(0);
