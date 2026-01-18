@@ -1,4 +1,13 @@
 import * as services from './services.js';
+import {
+    createSupplementSchema,
+    getSupplementStatusById,
+    validateBatchTestingOrg,
+    paginationSchema,
+    uuidParamSchema
+} from './validation.js';
+import { z } from 'zod';
+import pool from '../../config/db.js';
 
 //Use Case: Show Supplement Library, Search Supplement
 export async function listSupplements(req, res) {
@@ -107,7 +116,8 @@ export async function getSupplementDetails(req, res) {
                 supplement_name: supplement.supplement_name,
                 supplement_brand: supplement.supplement_brand,
                 supplement_description: supplement.supplement_description || null,
-                supplement_dose_form: supplement.supplement_dose_form || null,
+                supplement_packaging_form: supplement.supplement_packaging_form || null,  // UPDATED
+                supplement_status: supplement.supplement_status || null,  // NEW FIELD
                 supplement_ingredient: supplement.supplement_ingredient || [],
                 nutritional_info_per_100g: supplement.nutritional_info_per_100g || null,
                 nutritional_info_per_serving: supplement.nutritional_info_per_serving || null,
@@ -145,6 +155,98 @@ export async function getSupplementDetails(req, res) {
         res.status(500).json({
             error: 'Internal server error',
             message: error.message
+        });
+    }
+}
+
+//Use case: Add New Supplement
+export async function createSupplement(req, res) {
+    try {
+        console.log('📝 Creating new supplement...');
+        console.log('Request body:', req.body);
+
+        // STEP 1: Validate the request body against schema
+        console.log('Step 1: Validating schema...');
+        const validatedData = createSupplementSchema.parse(req.body);
+        console.log('✅ Schema validation passed');
+
+        // STEP 2: Get the supplement status to apply business logic
+        console.log('Step 2: Getting supplement status...');
+        const status = await getSupplementStatusById(pool, validatedData.supplement_status_id);
+        console.log(`✅ Status: ${status.supplement_status}`);
+
+        // STEP 3: Validate and set batch_testing_org based on status
+        console.log('Step 3: Validating batch_testing_org...');
+        try {
+            validatedData.batch_testing_org = validateBatchTestingOrg(
+                status.supplement_status,
+                validatedData.batch_testing_org
+            );
+            console.log(`✅ batch_testing_org: ${validatedData.batch_testing_org}`);
+        } catch (error) {
+            console.log('❌ batch_testing_org validation failed:', error.message);
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: [{
+                    field: 'batch_testing_org',
+                    message: error.message
+                }]
+            });
+        }
+
+        // STEP 4: Set approved_by automatically
+        console.log('Step 4: Setting approved_by...');
+        // TODO: Replace with actual authenticated user ID from your auth system
+        // For now, using a placeholder
+        validatedData.approved_by = req.user?.id || 'SYSTEM_USER_PLACEHOLDER';
+        console.log(`✅ approved_by: ${validatedData.approved_by}`);
+
+        // STEP 5: Check for duplicate supplement (name + brand)
+        console.log('Step 5: Checking for duplicates...');
+        const existing = await services.checkDuplicateSupplement(
+            validatedData.supplement_name,
+            validatedData.supplement_brand
+        );
+
+        if (existing) {
+            console.log('❌ Duplicate found');
+            return res.status(409).json({
+                error: 'Duplicate supplement',
+                message: 'A supplement with this name and brand already exists in the library'
+            });
+        }
+        console.log('✅ No duplicate found');
+
+        // STEP 6: Insert supplement into database
+        console.log('Step 6: Inserting into database...');
+        const newSupplement = await services.createSupplement(validatedData);
+        console.log('✅ Supplement created with ID:', newSupplement.id);
+
+        // STEP 7: Return success response
+        res.status(201).json({
+            message: 'Supplement created successfully',
+            data: newSupplement
+        });
+
+    } catch (error) {
+        console.error('❌ Error creating supplement:', error);
+
+        // Handle Zod validation errors
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.errors.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message,
+                    received: err.received
+                }))
+            });
+        }
+
+        // Handle database errors
+        res.status(500).json({
+            error: 'Failed to create supplement',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
         });
     }
 }
