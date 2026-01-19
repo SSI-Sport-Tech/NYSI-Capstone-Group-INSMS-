@@ -183,7 +183,7 @@ export async function getSupplementById(supplementId) {
       s.supplement_certifications,
       s.batch_testing_org,
       s.supplement_packaging_form_id,
-      s.supplement_status_id,
+      s.supplement_status_id
     FROM SSS.Supplement s
     LEFT JOIN SSS.Supplement_Packaging_Form_Lookup spf 
       ON s.supplement_packaging_form_id = spf.id
