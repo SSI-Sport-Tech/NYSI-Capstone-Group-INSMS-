@@ -305,26 +305,35 @@ export async function createSupplement(supplementData) {
       supplement_input_type
   `;
 
+  // Ensure URLs are in array format
+  const urlArray = supplementData.product_source_url
+    ? (Array.isArray(supplementData.product_source_url)
+      ? supplementData.product_source_url
+      : [supplementData.product_source_url])
+    : null;
+
   const values = [
     supplementData.supplement_name, // $1
-    supplementData.supplement_brand, // $2
+    supplementData.supplement_brand || null, // $2
     supplementData.supplement_packaging_form_id, // $3
     supplementData.supplement_status_id, // $4
     supplementData.approved_by, // $5
-    supplementData.batch_testing_org, // $6
-    supplementData.supplement_description, // $7
-    JSON.stringify(supplementData.supplement_ingredient || []), // $8 - Convert to JSONB
+    supplementData.batch_testing_org || null, // $6
+    supplementData.supplement_description || null, // $7
+    supplementData.supplement_ingredient && supplementData.supplement_ingredient.length > 0
+      ? JSON.stringify(supplementData.supplement_ingredient)
+      : '[]', // $8 - ✅ JSONB: stringify array
     supplementData.nutritional_info_per_100g
       ? JSON.stringify(supplementData.nutritional_info_per_100g)
-      : null, // $9 - Convert to JSONB
+      : null, // $9 - ✅ JSONB: stringify object
     supplementData.nutritional_info_per_serving
       ? JSON.stringify(supplementData.nutritional_info_per_serving)
-      : null, // $10 - Convert to JSONB
-    supplementData.nutritional_info_per_serving_definition, // $11
-    supplementData.supplement_warning_label, // $12
-    supplementData.supplement_certifications, // $13
-    supplementData.supplement_additional_information, // $14
-    supplementData.product_source_url, // $15
+      : null, // $10 - ✅ JSONB: stringify object
+    supplementData.nutritional_info_per_serving_definition || null, // $11
+    supplementData.supplement_warning_label || null, // $12
+    supplementData.supplement_certifications || null, // $13
+    supplementData.supplement_additional_information || null, // $14
+    urlArray, // $15 - TEXT[]: pg handles array conversion
     supplementData.supplement_input_type || "Manual", // $16
   ];
 
@@ -377,17 +386,24 @@ export async function updateSupplement(supplementId, updateData) {
     supplement_status_id: updateData.supplement_status_id,
     batch_testing_org: updateData.batch_testing_org,
     supplement_description: updateData.supplement_description,
-    supplement_ingredient: updateData.supplement_ingredient ?
-      JSON.stringify(updateData.supplement_ingredient) : undefined,
-    nutritional_info_per_100g: updateData.nutritional_info_per_100g ?
-      JSON.stringify(updateData.nutritional_info_per_100g) : undefined,
-    nutritional_info_per_serving: updateData.nutritional_info_per_serving ?
-      JSON.stringify(updateData.nutritional_info_per_serving) : undefined,
+    supplement_ingredient: updateData.supplement_ingredient
+      ? JSON.stringify(updateData.supplement_ingredient)  // ✅ Stringify for JSONB
+      : undefined,
+    nutritional_info_per_100g: updateData.nutritional_info_per_100g
+      ? JSON.stringify(updateData.nutritional_info_per_100g)  // ✅ Stringify for JSONB
+      : undefined,
+    nutritional_info_per_serving: updateData.nutritional_info_per_serving
+      ? JSON.stringify(updateData.nutritional_info_per_serving)  // ✅ Stringify for JSONB
+      : undefined,
     nutritional_info_per_serving_definition: updateData.nutritional_info_per_serving_definition,
     supplement_warning_label: updateData.supplement_warning_label,
     supplement_certifications: updateData.supplement_certifications,
     supplement_additional_information: updateData.supplement_additional_information,
     product_source_url: updateData.product_source_url
+      ? (Array.isArray(updateData.product_source_url)
+        ? updateData.product_source_url
+        : [updateData.product_source_url])
+      : undefined  // TEXT[]: pg handles array conversion
   };
 
   // Build SET clause dynamically

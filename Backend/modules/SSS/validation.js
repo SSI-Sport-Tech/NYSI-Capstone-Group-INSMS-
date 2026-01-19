@@ -23,22 +23,26 @@ const uuidSchema = z.string().uuid('Must be a valid UUID');
 
 // JSONB validators
 const jsonbArraySchema = z.array(z.string().min(1, 'Array items cannot be empty'));
-const jsonbObjectSchema = z.record(z.unknown()); // For nutritional info objects
 
-// URL validator (allows empty string or valid URL)
-const urlSchema = z.string()
-    .url('Invalid URL format')
-    .or(z.literal(''))
-    .optional()
-    .nullable()
-    .transform(val => val || null);
-
-// Text field validator (trims and converts empty to null)
+// ✅ ADD THIS - Text field validator (trims and converts empty to null)
 const optionalTextSchema = z.string()
     .trim()
     .optional()
     .nullable()
     .transform(val => val || null);
+
+// URL validator - accepts string OR array, converts to array for database
+const urlSchema = z.preprocess(
+    (val) => {
+        if (!val) return null;
+        if (typeof val === 'string') return [val]; // Single string → array
+        if (Array.isArray(val)) return val; // Array → array
+        return null;
+    },
+    z.array(z.string().url('Each URL must be valid'))
+        .optional()
+        .nullable()
+);
 
 // ============================================================================
 // SUPPLEMENT SCHEMAS
@@ -56,10 +60,10 @@ export const createSupplementSchema = z.object({
         .max(255, 'Supplement name must be less than 255 characters')
         .trim(),
 
-    supplement_packaging_form_id: uuidSchema  // ← RENAMED from supplement_dose_form_id
+    supplement_packaging_form_id: uuidSchema
         .describe('Reference to Supplement_Packaging_Form_Lookup table'),
 
-    supplement_status_id: uuidSchema  // ← NEW REQUIRED FIELD
+    supplement_status_id: uuidSchema
         .describe('Reference to Supplement_Status_Lookup: Batch Tested / Not Batch Tested / Discontinued'),
 
     // ---- CONDITIONAL REQUIRED FIELD ----
@@ -99,12 +103,12 @@ export const createSupplementSchema = z.object({
         .default([])
         .describe('Array of ingredient names, e.g., ["Vitamin D3", "Calcium"]'),
 
-    nutritional_info_per_100g: jsonbObjectSchema
+    nutritional_info_per_100g: z.record(z.string(), z.any())
         .optional()
         .nullable()
         .describe('Nutritional breakdown per 100g'),
 
-    nutritional_info_per_serving: jsonbObjectSchema
+    nutritional_info_per_serving: z.record(z.string(), z.any())
         .optional()
         .nullable()
         .describe('Nutritional breakdown per serving'),
@@ -122,7 +126,7 @@ export const createSupplementSchema = z.object({
 
     id: z.never().optional(),
     supplement_staging_id: z.never().optional(),
-    approved_by: z.never().optional(), // Set by backend to current user
+    approved_by: z.never().optional(),
     vector_100g_ingredient: z.never().optional(),
     vector_perserving_ingredient: z.never().optional(),
     scraper_version: z.never().optional(),
@@ -132,7 +136,7 @@ export const createSupplementSchema = z.object({
     created_by: z.never().optional(),
     last_modified_on: z.never().optional(),
     last_modified_by: z.never().optional(),
-}).strict(); // Reject any extra fields not in schema
+}).strict();
 
 /**
  * Schema for updating a supplement (PUT/PATCH /api/SSS/supplements/:id)
@@ -141,8 +145,8 @@ export const createSupplementSchema = z.object({
 export const updateSupplementSchema = createSupplementSchema
     .partial()
     .omit({
-        supplement_input_type: true, // Cannot change input type
-        approved_by: true, // Cannot change approver
+        supplement_input_type: true,
+        approved_by: true,
         id: true,
         supplement_staging_id: true,
         vector_100g_ingredient: true,
@@ -165,6 +169,7 @@ export const bulkDeleteSchema = z.object({
     )
         .min(1, 'At least one ID is required')
 });
+
 // ============================================================================
 // BATCH/INVENTORY SCHEMAS
 // ============================================================================

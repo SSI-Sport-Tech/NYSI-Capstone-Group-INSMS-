@@ -232,6 +232,7 @@ router.get('/supplements/:id', controller.getSupplementDetails);
  *                 supplement_packaging_form_id: "607b0fac-9720-4f54-9592-1e19d8e5776a"
  *                 supplement_status_id: "9f3c014d-79e3-4454-b78b-3bde2e22889d"
  *                 batch_testing_org: "NSF Certified for Sport"
+ *                 product_source_url: ["https://example.com/vitamin-d3"]
  *             complete:
  *               summary: Complete supplement with all fields (Omega-3 Fish Oil)
  *               value:
@@ -255,7 +256,7 @@ router.get('/supplements/:id', controller.getSupplementDetails);
  *                 supplement_warning_label: "Consult physician if pregnant. Keep refrigerated."
  *                 supplement_certifications: "NSF Certified for Sport, Friend of the Sea"
  *                 supplement_additional_information: "Third-party tested for purity and freshness"
- *                 product_source_url: "https://www.nordicnaturals.com/products/omega-3"
+ *                 product_source_url: ["https://www.nordicnaturals.com/products/omega-3"]
  *             notBatchTested:
  *               summary: Not batch tested supplement (TABLET)
  *               value:
