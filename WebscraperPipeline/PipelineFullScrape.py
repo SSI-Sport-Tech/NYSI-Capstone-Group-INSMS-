@@ -19,33 +19,44 @@ websites_to_scrape = [
     {"url":  "https://www.healthspanelite.co.uk/sports-nutrition/"}
 ]
 
-def scrapeAllWebsites(websites_list,openai_key):
+def scrapeAllWebsites(websites_list, openai_key):
     all_products = []
 
     for website in websites_list:
-        print(f"Scraping website: {website['url']}")
-
-        product_urls = PipelineListScrape.scrape_all_pages(
-            website["url"],
-           openai_key
-        )
-
-        print(f"Found {len(product_urls)} product URLs")
-
-        if "items" in product_urls:
-            product_urls = product_urls["items"]
-
-        for product_url in product_urls:
-            try:
-                products = productFullScrape(product_url,openai_key)
-                all_products.extend(products)
-
-            except Exception as e:
-                print(f"Product scrape failed for {product_url}: {e}")
+        products = listFullScrape(website["url"], openai_key)
+        all_products.extend(products)
 
         print(f"Total products scraped so far: {len(all_products)}")
 
     return all_products
+
+def listFullScrape(list_url, openai_key):
+    print(f"Scraping website: {list_url}")
+
+    all_products = []
+
+    product_urls = PipelineListScrape.scrape_all_pages(
+        list_url,
+        openai_key
+    )
+
+    if isinstance(product_urls, dict) and "items" in product_urls:
+        product_urls = product_urls["items"]
+
+    print(f"Found {len(product_urls)} product URLs")
+
+    for product_url in product_urls:
+        try:
+            products = productFullScrape(product_url, openai_key)
+
+            if products:
+                all_products.extend(products)
+
+        except Exception as e:
+            print(f"Product scrape failed for {product_url}: {e}")
+
+    return all_products
+
 
 def productFullScrape(product_url,openai_key):
     products = PipelineProductScrape.scrapeProduct(product_url,openai_key)
