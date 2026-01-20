@@ -143,12 +143,18 @@ const swaggerOptions = {
                             nullable: true,
                             description: "Additional product notes",
                         },
-                        source_url: {
-                            type: "string",
-                            format: "uri",
+                        product_source_url: { // ✅ CHANGED: was source_url
+                            type: "array", // ✅ CHANGED: was string
+                            items: {
+                                type: "string",
+                                format: "uri"
+                            },
                             nullable: true,
-                            description: "Original product URL from manufacturer/retailer",
-                            example: "https://naturemade.com/products/vitamin-d3",
+                            description: "Array of URLs where product information can be found (product page, nutrition facts, reviews, etc.)",
+                            example: [
+                                "https://naturemade.com/products/vitamin-d3",
+                                "https://naturemade.com/products/vitamin-d3/nutrition-facts"
+                            ],
                         },
                         approved_by: {
                             type: "string",
@@ -195,11 +201,15 @@ const swaggerOptions = {
                             nullable: true,
                             description: "Testing organization or 'NIL'",
                         },
-                        source_url: {
-                            type: "string",
-                            format: "uri",
+                        product_source_url: { // ✅ CHANGED: was source_url
+                            type: "array", // ✅ CHANGED: was string
+                            items: {
+                                type: "string",
+                                format: "uri"
+                            },
                             nullable: true,
-                            description: "Product URL",
+                            description: "Product information URLs",
+                            example: ["https://example.com/product"],
                         },
                     },
                 },
@@ -279,11 +289,25 @@ const swaggerOptions = {
                             nullable: true,
                             description: "Additional notes",
                         },
-                        source_url: {
-                            type: "string",
-                            format: "uri",
+                        product_source_url: { // ✅ CHANGED: was source_url
+                            oneOf: [ // ✅ NEW: Accepts string OR array
+                                {
+                                    type: "string",
+                                    format: "uri",
+                                    description: "Single URL (will be converted to array)"
+                                },
+                                {
+                                    type: "array",
+                                    items: {
+                                        type: "string",
+                                        format: "uri"
+                                    },
+                                    description: "Array of URLs"
+                                }
+                            ],
                             nullable: true,
-                            description: "Product website URL",
+                            description: "Product website URL(s). Can provide a single URL string or an array of URLs. Single URLs are automatically converted to an array.",
+                            example: ["https://example.com/product", "https://example.com/nutrition"],
                         },
                     },
                     required: [
@@ -317,7 +341,23 @@ const swaggerOptions = {
                         supplement_warning_label: { type: "string", nullable: true },
                         supplement_certifications: { type: "string", nullable: true },
                         supplement_additional_information: { type: "string", nullable: true },
-                        source_url: { type: "string", format: "uri", nullable: true },
+                        product_source_url: { // ✅ CHANGED: was source_url
+                            oneOf: [ // ✅ NEW: Accepts string OR array
+                                {
+                                    type: "string",
+                                    format: "uri"
+                                },
+                                {
+                                    type: "array",
+                                    items: {
+                                        type: "string",
+                                        format: "uri"
+                                    }
+                                }
+                            ],
+                            nullable: true,
+                            description: "Product URL(s) - string or array",
+                        },
                     },
                 },
 

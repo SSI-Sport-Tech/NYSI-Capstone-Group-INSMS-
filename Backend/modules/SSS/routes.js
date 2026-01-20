@@ -232,6 +232,7 @@ router.get('/supplements/:id', controller.getSupplementDetails);
  *                 supplement_packaging_form_id: "607b0fac-9720-4f54-9592-1e19d8e5776a"
  *                 supplement_status_id: "9f3c014d-79e3-4454-b78b-3bde2e22889d"
  *                 batch_testing_org: "NSF Certified for Sport"
+ *                 product_source_url: ["https://example.com/vitamin-d3"]
  *             complete:
  *               summary: Complete supplement with all fields (Omega-3 Fish Oil)
  *               value:
@@ -255,7 +256,7 @@ router.get('/supplements/:id', controller.getSupplementDetails);
  *                 supplement_warning_label: "Consult physician if pregnant. Keep refrigerated."
  *                 supplement_certifications: "NSF Certified for Sport, Friend of the Sea"
  *                 supplement_additional_information: "Third-party tested for purity and freshness"
- *                 product_source_url: "https://www.nordicnaturals.com/products/omega-3"
+ *                 product_source_url: ["https://www.nordicnaturals.com/products/omega-3"]
  *             notBatchTested:
  *               summary: Not batch tested supplement (TABLET)
  *               value:
@@ -473,6 +474,8 @@ router.post('/supplements', controller.createSupplement);
  */
 router.patch('/supplements/:id', controller.updateSupplement);
 
+
+
 /**
  * @swagger
  * /api/SSS/supplements:
@@ -639,5 +642,406 @@ router.delete('/supplements', controller.deleteSupplements);
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.get('/batches', controller.listBatches);
+
+
+/**
+ * @swagger
+ * /api/SSS/batches:
+ *   post:
+ *     summary: Create New Batch
+ *     description: |
+ *       Add a new inventory batch to the database.
+ *       
+ *       **Business Logic:**
+ *       - `supplement_id`, `batch_number`, and `batch_initial_quantity` are required
+ *       - `batch_stock_status_id` is auto-set to "available" by backend
+ *       - `batch_number` must be unique per supplement (409 if duplicate)
+ *       - `batch_price` can be zero but not negative
+ *       - No validation on dates (trust user input)
+ *       
+ *       **Use Case:** UC-SSS-012 (Create Batch)
+ *     tags: [Inventory]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               supplement_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Reference to Supplement table
+ *               batch_number:
+ *                 type: string
+ *                 minLength: 1
+ *                 maxLength: 100
+ *                 description: Unique batch/lot number
+ *                 example: "BATCH-001"
+ *               batch_initial_quantity:
+ *                 type: integer
+ *                 minimum: 1
+ *                 description: Initial quantity in batch
+ *                 example: 100
+ *               batch_price:
+ *                 type: number
+ *                 format: decimal
+ *                 minimum: 0
+ *                 description: Price per unit (can be 0, not negative)
+ *                 example: 29.99
+ *               batch_expiration_date:
+ *                 type: string
+ *                 format: date
+ *                 description: Expiration date (no validation)
+ *                 example: "2026-12-31"
+ *               batch_manufacture_date:
+ *                 type: string
+ *                 format: date
+ *                 description: Manufacturing date (no validation)
+ *                 example: "2026-01-15"
+ *             required:
+ *               - supplement_id
+ *               - batch_number
+ *               - batch_initial_quantity
+ *           examples:
+ *             minimal:
+ *               summary: Minimal required fields
+ *               value:
+ *                 supplement_id: "8483aa30-ff76-42e4-b8ba-3e03aae6de4e"
+ *                 batch_number: "BATCH-001"
+ *                 batch_initial_quantity: 100
+ *             complete:
+ *               summary: Complete batch with all optional fields
+ *               value:
+ *                 supplement_id: "8483aa30-ff76-42e4-b8ba-3e03aae6de4e"
+ *                 batch_number: "BATCH-015"
+ *                 batch_initial_quantity: 200
+ *                 batch_price: 24.99
+ *                 batch_expiration_date: "2027-06-30"
+ *                 batch_manufacture_date: "2026-01-15"
+ *             zeroPrice:
+ *               summary: Batch with zero price (free sample)
+ *               value:
+ *                 supplement_id: "8483aa30-ff76-42e4-b8ba-3e03aae6de4e"
+ *                 batch_number: "SAMPLE-001"
+ *                 batch_initial_quantity: 50
+ *                 batch_price: 0
+ *     responses:
+ *       201:
+ *         description: Batch created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Batch created successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     supplement_id:
+ *                       type: string
+ *                       format: uuid
+ *                     batch_number:
+ *                       type: string
+ *                     batch_initial_quantity:
+ *                       type: integer
+ *                     batch_price:
+ *                       type: number
+ *                     batch_expiration_date:
+ *                       type: string
+ *                       format: date
+ *                     batch_manufacture_date:
+ *                       type: string
+ *                       format: date
+ *                     batch_stock_status_id:
+ *                       type: string
+ *                       format: uuid
+ *                     batch_stock_status:
+ *                       type: string
+ *                       example: "available"
+ *       400:
+ *         description: Validation failed or invalid supplement_id
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
+ *             examples:
+ *               missingRequired:
+ *                 summary: Missing required fields
+ *                 value:
+ *                   error: "Validation failed"
+ *                   details:
+ *                     - field: "batch_number"
+ *                       message: "Batch number is required"
+ *               invalidSupplement:
+ *                 summary: Invalid supplement_id
+ *                 value:
+ *                   error: "Invalid supplement_id"
+ *                   message: "No supplement found with ID: ..."
+ *               negativePrice:
+ *                 summary: Negative price not allowed
+ *                 value:
+ *                   error: "Validation failed"
+ *                   details:
+ *                     - field: "batch_price"
+ *                       message: "Price cannot be negative"
+ *       409:
+ *         description: Duplicate batch number for this supplement
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *             example:
+ *               error: "Duplicate batch number"
+ *               message: 'A batch with number "BATCH-001" already exists for this supplement'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.post('/batches', controller.createBatch);
+
+/**
+ * @swagger
+ * /api/SSS/batches/{id}:
+ *   patch:
+ *     summary: Update Batch (Partial)
+ *     description: |
+ *       Update one or more fields of an existing batch.
+ *       
+ *       **Partial Update:**
+ *       - Only provide fields you want to change
+ *       - All fields are optional (at least one required)
+ *       - Unmodified fields remain unchanged
+ *       - Cannot update `batch_stock_status_id` via this endpoint
+ *       
+ *       **Editable Fields:**
+ *       1. supplement_id
+ *       2. batch_number
+ *       3. batch_initial_quantity (no validation - trusts user)
+ *       4. batch_price
+ *       5. batch_expiration_date
+ *       6. batch_manufacture_date
+ *       
+ *       **Use Case:** UC-SSS-013 (Edit Batch)
+ *     tags: [Inventory]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         description: Batch UUID
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               supplement_id:
+ *                 type: string
+ *                 format: uuid
+ *               batch_number:
+ *                 type: string
+ *               batch_initial_quantity:
+ *                 type: integer
+ *               batch_price:
+ *                 type: number
+ *               batch_expiration_date:
+ *                 type: string
+ *                 format: date
+ *               batch_manufacture_date:
+ *                 type: string
+ *                 format: date
+ *           examples:
+ *             updateQuantity:
+ *               summary: Update only quantity
+ *               value:
+ *                 batch_initial_quantity: 150
+ *             updatePrice:
+ *               summary: Update only price
+ *               value:
+ *                 batch_price: 34.99
+ *             updateMultiple:
+ *               summary: Update multiple fields
+ *               value:
+ *                 batch_number: "BATCH-001-REVISED"
+ *                 batch_price: 27.99
+ *                 batch_expiration_date: "2027-12-31"
+ *             updateSupplement:
+ *               summary: Move batch to different supplement
+ *               value:
+ *                 supplement_id: "new-supplement-uuid-here"
+ *     responses:
+ *       200:
+ *         description: Batch updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Batch updated successfully"
+ *                 data:
+ *                   type: object
+ *       400:
+ *         description: Validation failed or no fields to update
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
+ *       404:
+ *         description: Batch not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *             example:
+ *               error: "Batch not found"
+ *               message: "No batch found with ID: ..."
+ *       409:
+ *         description: Duplicate batch number for this supplement
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.patch('/batches/:id', controller.updateBatch);
+
+/**
+ * @swagger
+ * /api/SSS/batches:
+ *   delete:
+ *     summary: Delete Batches (Bulk)
+ *     description: |
+ *       Permanently delete one or more batches from the database (hard delete).
+ *       
+ *       **Important Notes:**
+ *       - This is a PERMANENT deletion (not soft delete)
+ *       - Supports bulk deletion (array of UUIDs)
+ *       - **Prevents deletion if batch has existing tickets** (409 Conflict)
+ *       - Returns list of batches that couldn't be deleted due to tickets
+ *       
+ *       **Use Case:** UC-SSS-014 (Delete Batch)
+ *     tags: [Inventory]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 minItems: 1
+ *                 description: Array of batch UUIDs to delete
+ *             required:
+ *               - ids
+ *           examples:
+ *             singleDelete:
+ *               summary: Delete single batch
+ *               value:
+ *                 ids:
+ *                   - "batch-uuid-here"
+ *             bulkDelete:
+ *               summary: Delete multiple batches
+ *               value:
+ *                 ids:
+ *                   - "batch-uuid-1"
+ *                   - "batch-uuid-2"
+ *                   - "batch-uuid-3"
+ *     responses:
+ *       200:
+ *         description: Batches deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Successfully deleted 2 batch(es)"
+ *                 deletedCount:
+ *                   type: integer
+ *                   description: Number of batches deleted
+ *                 deletedIds:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                     format: uuid
+ *                   description: UUIDs of deleted batches
+ *       400:
+ *         description: Validation failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
+ *             examples:
+ *               emptyArray:
+ *                 summary: Empty IDs array
+ *                 value:
+ *                   error: "Validation failed"
+ *                   details:
+ *                     - field: "ids"
+ *                       message: "Array must contain at least 1 element(s)"
+ *       409:
+ *         description: Cannot delete batches with existing tickets
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *                 batchesWithTickets:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       batch_number:
+ *                         type: string
+ *             example:
+ *               error: "Cannot delete batches with existing tickets"
+ *               message: "One or more batches have inventory tickets assigned. Please remove tickets first."
+ *               batchesWithTickets:
+ *                 - id: "batch-uuid-1"
+ *                   batch_number: "BATCH-001"
+ *                 - id: "batch-uuid-2"
+ *                   batch_number: "BATCH-005"
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.delete('/batches', controller.deleteBatches);
 
 export default router;
