@@ -82,6 +82,13 @@ def map_extracted_product_to_staging(
     source_url: URL of the specific product page
     scraper_version: string identifying scraper version
     """
+    sources = list(product.get("batch_testing_sources") or [])
+    url = product.get("URL")
+
+    if url and url not in sources:
+        sources.insert(0, url)
+
+    
     
     return {
         # Lookup IDs
@@ -119,7 +126,7 @@ def map_extracted_product_to_staging(
 
         # Source info
         "webscraper_catalog_url_id": catalog_lookup.get(webscraper_catalog_url),
-        "product_source_url": product.get("batch_testing_sources").insert(0, product.get("URL")),
+        "product_source_url": sources,
         "scraper_version": scraper_version,
 
         # Vectors (placeholders, generate separately)
@@ -132,7 +139,6 @@ INSERT INTO sss.supplement_staging (
     supplement_packaging_form_id,
     supplement_status_id,
     supplement_input_type,
-    approved_by,
     supplement_name,
     supplement_brand,
     supplement_description,
@@ -152,7 +158,6 @@ VALUES (
     %(supplement_packaging_form_id)s,
     %(supplement_status_id)s,
     %(supplement_input_type)s,
-    %(approved_by)s,
     %(supplement_name)s,
     %(supplement_brand)s,
     %(supplement_description)s,
@@ -199,6 +204,6 @@ def validate_mapped_product(p: dict):
         "supplement_brand",
     ]
 
-    missing = [k for k in required if not p.get(k)]
+    missing = [k for k in required if p.get(k) is None]
     if missing:
         raise ValueError(f"Missing required fields: {missing}")
