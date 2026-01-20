@@ -622,3 +622,187 @@ export async function getSearchBatchCount(searchQuery) {
   const result = await pool.query(query, searchParams);
   return parseInt(result.rows[0].count);
 }
+
+/**
+ * Use Case: View Batch Details (Helper for Update/Delete)
+ * Get batch by ID with full details
+ */
+export async function getBatchById(batchId) {
+  const query = `
+        SELECT 
+            ib.id,
+            ib.supplement_id,
+            ib.batch_number,
+            ib.batch_initial_quantity,
+            ib.batch_price,
+            ib.batch_expiration_date,
+            ib.batch_manufacture_date,
+            ib.batch_stock_status_id,
+            bssl.batch_stock_status,
+            s.supplement_name,
+            s.supplement_brand
+        FROM SSS.Inventory_Batch ib
+        LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl 
+            ON ib.batch_stock_status_id = bssl.id
+        LEFT JOIN SSS.Supplement s
+            ON ib.supplement_id = s.id
+        WHERE ib.id = $1
+    `;
+
+  const result = await pool.query(query, [batchId]);
+  return result.rows.length > 0 ? result.rows[0] : null;
+}
+
+/**
+ * Use Case: Create Batch
+ * Check if batch number already exists for the same supplement
+ */
+export async function checkDuplicateBatchNumber(supplementId, batchNumber, excludeId = null) {
+  let query = `
+        SELECT id 
+        FROM SSS.Inventory_Batch 
+        WHERE supplement_id = $1 
+          AND LOWER(batch_number) = LOWER($2)
+    `;
+
+  const params = [supplementId, batchNumber];
+
+  // Exclude specific ID (useful for updates)
+  if (excludeId) {
+    query += ` AND id != $3`;
+    params.push(excludeId);
+  }
+
+  query += ` LIMIT 1`;
+
+  const result = await pool.query(query, params);
+  return result.rows.length > 0;
+}
+
+/**
+ * Use Case: Delete Batch
+ * Check if batch has any tickets (prevent deletion if tickets exist)
+ */
+export async function checkBatchHasTickets(batchId) {
+  const query = `
+        SELECT COUNT(*) as ticket_count
+        FROM SSS.Inventory_Ticket
+        WHERE inventory_batch_id = $1
+    `;
+
+  const result = await pool.query(query, [batchId]);
+  return parseInt(result.rows[0].ticket_count) > 0;
+}
+
+/**
+ * Use Case: Create Batch (UC-SSS-012)
+ * Add a new inventory batch to the database
+ */
+export async function createBatch(batchData) {
+  const query = `
+        INSERT INTO SSS.Inventory_Batch (
+            supplement_id,
+            batch_stock_status_id,
+            batch_number,
+            batch_initial_quantity,
+            batch_price,
+            batch_expiration_date,
+            batch_manufacture_date
+        ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7
+        )
+        RETURNING 
+            id,
+            supplement_id,
+            batch_stock_status_id,
+            batch_number,
+            batch_initial_quantity,
+            batch_price,
+            batch_expiration_date,
+            batch_manufacture_date
+    `;
+
+  const values = [
+    batchData.supplement_id,                    // $1
+    batchData.batch_stock_status_id,            // $2 - auto-set by controller
+    batchData.batch_number,                     // $3
+    batchData.batch_initial_quantity,           // $4
+    batchData.batch_price || null,              // $5
+    batchData.batch_expiration_date || null,    // $6
+    batchData.batch_manufacture_date || null    // $7
+  ];
+
+  const result = await pool.query(query, values);
+  return result.rows[0];
+}
+
+/**
+ * Use Case: Update Batch (UC-SSS-013)
+ * Update one or more fields of an existing batch (partial update)
+ */
+export async function updateBatch(batchId, updateData) {
+  // Build dynamic UPDATE query based on provided fields
+  const fields = [];
+  const values = [];
+  let paramCounter = 1;
+
+  // Map of field names to their values
+  const fieldMapping = {
+    supplement_id: updateData.supplement_id,
+    batch_number: updateData.batch_number,
+    batch_initial_quantity: updateData.batch_initial_quantity,
+    batch_price: updateData.batch_price,
+    batch_expiration_date: updateData.batch_expiration_date,
+    batch_manufacture_date: updateData.batch_manufacture_date
+  };
+
+  // Build SET clause dynamically
+  for (const [field, value] of Object.entries(fieldMapping)) {
+    if (value !== undefined) {
+      fields.push(`${field} = $${paramCounter}`);
+      values.push(value);
+      paramCounter++;
+    }
+  }
+
+  // If no fields to update, return null
+  if (fields.length === 0) {
+    return null;
+  }
+
+  // Add batch ID as the last parameter
+  values.push(batchId);
+
+  const query = `
+        UPDATE SSS.Inventory_Batch 
+        SET ${fields.join(', ')}
+        WHERE id = $${paramCounter}
+        RETURNING 
+            id,
+            supplement_id,
+            batch_stock_status_id,
+            batch_number,
+            batch_initial_quantity,
+            batch_price,
+            batch_expiration_date,
+            batch_manufacture_date
+    `;
+
+  const result = await pool.query(query, values);
+  return result.rows.length > 0 ? result.rows[0] : null;
+}
+
+/**
+ * Use Case: Delete Batch (UC-SSS-014)
+ * Permanently delete one or more batches from database (hard delete, bulk)
+ */
+export async function deleteBatches(batchIds) {
+  const query = `
+        DELETE FROM SSS.Inventory_Batch 
+        WHERE id = ANY($1::uuid[])
+        RETURNING id
+    `;
+
+  const result = await pool.query(query, [batchIds]);
+  return result.rows;
+}

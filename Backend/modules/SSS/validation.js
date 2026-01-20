@@ -1,19 +1,4 @@
 import { z } from 'zod';
-
-// ============================================================================
-// SCHEMA UPDATES - January 2026
-// ============================================================================
-// 1. Renamed: supplement_dose_form_id → supplement_packaging_form_id
-// 2. Added: supplement_status_id (REQUIRED) - Batch Tested / Not Batch Tested / Discontinued
-// 3. batch_testing_org logic based on status:
-//    - "Batch Tested" → user must provide org name (e.g., "NSF", "USP")
-//    - "Not Batch Tested" → automatically set to "NIL" by backend
-//    - "Discontinued" → keep existing value or user provides
-// 4. approved_by set automatically by backend (not in form)
-// 5. Removed: created_by, created_on, last_modified_by, last_modified_on
-//    (Now tracked in admin.audit_log via database triggers)
-// ============================================================================
-
 // ============================================================================
 // REUSABLE VALIDATORS
 // ============================================================================
@@ -24,12 +9,15 @@ const uuidSchema = z.string().uuid('Must be a valid UUID');
 // JSONB validators
 const jsonbArraySchema = z.array(z.string().min(1, 'Array items cannot be empty'));
 
-// ✅ ADD THIS - Text field validator (trims and converts empty to null)
+// ✅ FIXED: Text field validator that preserves undefined for partial updates
 const optionalTextSchema = z.string()
     .trim()
     .optional()
     .nullable()
-    .transform(val => val || null);
+    .transform(val => {
+        if (val === undefined) return undefined;  // ✅ Keep undefined as undefined
+        return val || null;  // Only convert empty string to null
+    });
 
 // URL validator - accepts string OR array, converts to array for database
 const urlSchema = z.preprocess(
@@ -73,7 +61,10 @@ export const createSupplementSchema = z.object({
         .trim()
         .optional()
         .nullable()
-        .transform(val => val || null)
+        .transform(val => {
+            if (val === undefined) return undefined;  // ✅ Preserve undefined
+            return val || null;
+        })
         .describe('Organization name if Batch Tested (e.g., "NSF", "USP"), "NIL" if Not Batch Tested'),
 
     // ---- OPTIONAL TEXT FIELDS ----
@@ -83,7 +74,10 @@ export const createSupplementSchema = z.object({
         .trim()
         .optional()
         .nullable()
-        .transform(val => val || null),
+        .transform(val => {
+            if (val === undefined) return undefined;  // ✅ Preserve undefined
+            return val || null;
+        }),
 
     supplement_description: optionalTextSchema,
 
@@ -171,21 +165,23 @@ export const bulkDeleteSchema = z.object({
 });
 
 // ============================================================================
-// BATCH/INVENTORY SCHEMAS
+// BATCH/INVENTORY SCHEMAS - FIXED
 // ============================================================================
 
 /**
  * Schema for creating a new inventory batch (POST /api/SSS/batches)
  * Based on SSS.Inventory_Batch table structure
+ * 
+ * FIXES:
+ * 1. Removed batch_stock_status_id (auto-set by backend to "available")
+ * 2. Changed batch_price validation to allow zero (nonnegative instead of positive)
+ * 3. Removed date validations (trust user input)
  */
 export const createBatchSchema = z.object({
     // ---- REQUIRED FIELDS ----
 
     supplement_id: uuidSchema
         .describe('Reference to Supplement table'),
-
-    batch_stock_status_id: uuidSchema
-        .describe('Reference to Batch_Stock_Status_Lookup table'),
 
     batch_number: z.string()
         .min(1, 'Batch number is required')
@@ -199,30 +195,25 @@ export const createBatchSchema = z.object({
     // ---- OPTIONAL FIELDS ----
 
     batch_price: z.coerce.number()
-        .positive('Price must be greater than 0')
+        .nonnegative('Price cannot be negative')  // ✅ FIXED: Allows zero
         .multipleOf(0.01, 'Price must have at most 2 decimal places')
         .optional()
         .nullable(),
 
     batch_expiration_date: z.coerce.date()
         .optional()
-        .nullable()
-        .refine(
-            (date) => !date || date > new Date(),
-            'Expiration date must be in the future'
-        ),
+        .nullable(),
+    // ✅ FIXED: Removed .refine() - trust user input
 
     batch_manufacture_date: z.coerce.date()
         .optional()
-        .nullable()
-        .refine(
-            (date) => !date || date <= new Date(),
-            'Manufacture date cannot be in the future'
-        ),
+        .nullable(),
+    // ✅ FIXED: Removed .refine() - trust user input
 
     // ---- FIELDS NOT ACCEPTED (handled by system) ----
 
     id: z.never().optional(),
+    batch_stock_status_id: z.never().optional(),  // ✅ FIXED: Auto-set by backend
     created_on: z.never().optional(),
     created_by: z.never().optional(),
     last_modified_on: z.never().optional(),
@@ -231,11 +222,13 @@ export const createBatchSchema = z.object({
 
 /**
  * Schema for updating a batch (PUT/PATCH /api/SSS/batches/:id)
+ * All fields optional for partial update
  */
 export const updateBatchSchema = createBatchSchema
     .partial()
     .omit({
         id: true,
+        batch_stock_status_id: true,  // ✅ Cannot update status via this endpoint
         created_on: true,
         created_by: true,
         last_modified_on: true,
@@ -369,24 +362,22 @@ export function validateBatchTestingOrg(statusName, batchTestingOrg) {
     }
 }
 
-// ============================================================================
-// CUSTOM VALIDATION FUNCTIONS
-// ============================================================================
-
 /**
- * Validates that a batch number is unique
- * Call this in your controller after schema validation
+ * Get batch stock status ID by name (for auto-setting "available")
+ * Used in batch creation to auto-set batch_stock_status_id
  */
-export async function validateUniqueBatchNumber(batchNumber, excludeId = null) {
-    // This will be implemented in the service layer
-    // Returns true if unique, false if duplicate
-}
+export async function getBatchStockStatusByName(pool, statusName = 'available') {
+    const query = `
+        SELECT id, batch_stock_status, is_active
+        FROM SSS.Batch_Stock_Status_Lookup
+        WHERE LOWER(batch_stock_status) = LOWER($1) AND is_active = true
+    `;
 
-/**
- * Validates that a supplement name + brand combination is unique
- * Call this in your controller after schema validation
- */
-export async function validateUniqueSupplementCombo(name, brand, excludeId = null) {
-    // This will be implemented in the service layer
-    // Returns true if unique, false if duplicate
+    const result = await pool.query(query, [statusName]);
+
+    if (result.rows.length === 0) {
+        throw new Error(`Batch stock status "${statusName}" not found in lookup table`);
+    }
+
+    return result.rows[0];
 }
