@@ -207,3 +207,10 @@ def validate_mapped_product(p: dict):
     missing = [k for k in required if p.get(k) is None]
     if missing:
         raise ValueError(f"Missing required fields: {missing}")
+    
+def mapAndInsertMany(conn,products):
+    mapped_products = [
+    map_extracted_product_to_staging(product,"https://www.healthspanelite.co.uk/protein/","0.5")
+    for product in products
+    ]
+    insert_products_many(conn,mapped_products)

@@ -1,11 +1,23 @@
 import PipelineListScrape
 import PipelineProductScrape
 import PipelineSearch
+import PipelinePush
 import json
 from datetime import datetime
 from pathlib import Path
+import psycopg
+import os
 
 openai_key = "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"
+
+conn = psycopg.connect(
+    host=os.getenv("PGHOST"),
+    port=os.getenv("PGPORT"),
+    dbname=os.getenv("PGDATABASE"),
+    user=os.getenv("PGUSER"),
+    password=os.getenv("PGPASSWORD"),
+    sslmode=os.getenv("PGSSLMODE", "require"),
+)
 
 websites_to_scrape = [
     {"url": "https://www.etixxsports.com/nl-be/collections/all"},
@@ -19,21 +31,26 @@ websites_to_scrape = [
     {"url":  "https://www.healthspanelite.co.uk/sports-nutrition/"}
 ]
 
-def scrapeAllWebsites(websites_list, openai_key):
+
+def scrapeAllWebsitesAndPush(websites_list, openai_key):
     all_products = []
+    all_errors = []
 
     for website in websites_list:
-        products = listFullScrape(website["url"], openai_key)
+        products,errors = listFullScrapeAndPush(website["url"], openai_key)
         all_products.extend(products)
+        all_errors.extend(errors)
 
         print(f"Total products scraped so far: {len(all_products)}")
 
-    return all_products
+    print(all_errors)
+    return all_products,all_errors
 
-def listFullScrape(list_url, openai_key):
+def listFullScrapeAndPush(list_url, openai_key):
     print(f"Scraping website: {list_url}")
 
     all_products = []
+    all_errors = []
 
     product_urls = PipelineListScrape.scrape_all_pages(
         list_url,
@@ -47,20 +64,28 @@ def listFullScrape(list_url, openai_key):
 
     for product_url in product_urls:
         try:
-            products = productFullScrape(product_url, openai_key)
+            products,errors = productFullScrape(product_url, openai_key)
+            all_errors.extend(errors)
 
             if products:
                 all_products.extend(products)
-
+                try:
+                    PipelinePush.mapAndInsertMany(conn,products)
+                except Exception as e:
+                    error = f"Data push failed for {product_url}: {e}"
+                    all_errors.append(error)
+            
         except Exception as e:
-            print(f"Product scrape failed for {product_url}: {e}")
+            error = f"Product scrape failed for {product_url}: {e}"
+            all_errors.append(error)
 
-    return all_products
+    return all_products,all_errors
 
 
 def productFullScrape(product_url,openai_key):
     products = PipelineProductScrape.scrapeProduct(product_url,openai_key)
     output = []
+    errors = []
 
     if not products:
         return []
@@ -85,10 +110,10 @@ def productFullScrape(product_url,openai_key):
             product["Batch_tested"] = None
             product["batch_testing_org"] = None
             product["batch_testing_sources"] = []
-            print(f"Batch test failed for {query}: {e}")
+            errors.append(f"Batch test failed for {query}: {e}")
         output.append(product)
-    print(output)
-    return output
+    print(f"Scraped {len(output)} variants from {product_url}")
+    return output,errors
 
 def save_as_json(data, filename=None, folder="output"):
     Path(folder).mkdir(exist_ok=True)
@@ -104,6 +129,8 @@ def save_as_json(data, filename=None, folder="output"):
 
     print(f"Saved {len(data)} products to {filepath}")
 
-# results = scrapeAllWebsites(websites_to_scrape,openai_key)
-# save_as_json(results)
-    
+results,errors = scrapeAllWebsitesAndPush(websites_to_scrape,openai_key)
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+save_as_json(results)
+save_as_json(errors,f"scraping_errors_{timestamp}.json")
