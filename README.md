@@ -1,15 +1,17 @@
 # Vectorisation Similarity Search
 
-Latest testing phase: `vector_v2.py` script.
+Latest testing phase: `vector_v3.py` script.
 
-This script operates on local mock data to validate the search logic before migration to a production PostgreSQL (`pgvector`) environment.
+~~ This script operates on local mock data to validate the search logic before migration to a production PostgreSQL (`pgvector`) environment. ~~
+
+This script has now been connected to the `sss.supplement` table in the DB.
 
 ## Key Features
 
 * **Hybrid Search:** Combines **Semantic Text Similarity** (Ingredients) and **Mathematical Similarity** (Nutrition) into a single score.
 * **Smart Normalization:** Automatically handles different units (e.g., converting `mg`, `mcg`, and `IU` to standard grams).
 * **Scalable Schema:** Capable of mapping fuzzy OCR keys (e.g., "Vit D3") to a fixed internal schema of ~30 common nutrients.
-* **Self-Exclusion:** Automatically detects if the user scanned a product that already exists in the database (Score > 99%) and excludes it from the "Alternatives" list.
+* **Self-Exclusion:** Automatically detects if the user scanned a product that already exists in the database (Score > 99%) and excludes it from the "Alternatives" list. (Will activate this once the model is verified to work properly)
 
 ---
 
@@ -64,19 +66,19 @@ The script supports two primary inputs via a JSON payload:
 
 1. **Install Dependencies:**
 ```bash
-pip install pandas numpy scikit-learn transformers torch
+pip install pandas numpy scikit-learn transformers torch psycopg2-binary
 
 ```
 * _`torch` is required for the Hugging Face model execution._
 
 
 2. **Run the Search:**
-Run `vector_v2.py` script in your own source-code editor (e.g. VSCode)
+Run `vector_v3.py` script in your own source-code editor (e.g. VSCode)
 
 
 3. **Interactive Mode:**
 Paste a JSON query when prompted.
-"[COPY AND PASTE _supplement_ingredient_ VALUE], "nutrition": [COPY AND PASTE _nutritional_info_per_100g_ or _nutritional_info_per_serving_ VALUE HERE]}
+"[COPY AND PASTE _supplement_ingredient_ VALUE], "nutrition": {COPY AND PASTE _nutritional_info_per_100g_ or _nutritional_info_per_serving_ VALUE HERE}}
 
 Example:
 ```json
