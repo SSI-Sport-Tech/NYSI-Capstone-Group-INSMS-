@@ -2,7 +2,7 @@
 
 Latest testing phase: `vector_v3.py` script.
 
-~~ This script operates on local mock data to validate the search logic before migration to a production PostgreSQL (`pgvector`) environment. ~~
+<del> This script operates on local mock data to validate the search logic before migration to a production PostgreSQL (`pgvector`) environment. </del>
 
 This script has now been connected to the `sss.supplement` table in the DB.
 
