@@ -16,36 +16,58 @@ def normalize_url(url: str) -> str:
     path = parsed.path.rstrip("/")  # remove trailing slash
     return urlunparse(parsed._replace(path=path))
 
-def selenium_fetch(url, wait_time=5, scroll_pause=2):
-    # Configure Selenium WebDriver
+def selenium_fetch(url, wait_time=5, scroll_pause=2, max_scrolls=20):
+    from selenium.webdriver.chrome.options import Options
+    from selenium import webdriver
+    import time
+    from pathlib import Path
+
     options = Options()
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
+
     driver = webdriver.Chrome(options=options)
 
     try:
-        # Open the URL
         driver.get(url)
-        time.sleep(wait_time)  # Allow initial page load
+        time.sleep(wait_time)
 
-        # Simulate scrolling to load more products
+        # Remove overlays
+        driver.execute_script("""
+        document.querySelectorAll(
+            '[role="dialog"], .modal, .popup, .overlay'
+        ).forEach(el => el.remove());
+        """)
+
+        # Scroll in a loop
         last_height = driver.execute_script("return document.body.scrollHeight")
-        while True:
-            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.END)
-            time.sleep(scroll_pause)  # Allow time for additional products to load
+
+        for _ in range(max_scrolls):
+            driver.execute_script("""
+        document.querySelectorAll(
+            '[role="dialog"], .modal, .popup, .overlay'
+        ).forEach(el => el.remove());
+        """)
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(scroll_pause)
+
             new_height = driver.execute_script("return document.body.scrollHeight")
-            if new_height == last_height:  # Break if no new content is loaded
+            if new_height == last_height:
                 break
             last_height = new_height
 
-        # Return the full page source
+        # Optional: save snapshot for debugging
+        Path("debug").mkdir(exist_ok=True)
+        Path("debug/page.html").write_text(driver.page_source, encoding="utf-8")
+
         return driver.page_source
 
     finally:
         driver.quit()
+
 
 
 product_list_prompt = """
@@ -151,6 +173,7 @@ def scrape_all_pages(base_url,openai_key):
     print(f"Total products scraped: {len(all_uniques)}")
     return all_uniques
 
+openai_key = "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"
 
-# scrape_all_pages("https://www.healthspanelite.co.uk/sports-nutrition/",openai_key)
+scrape_all_pages("https://www.etixxsports.com/nl-be/collections/all",openai_key)
 
