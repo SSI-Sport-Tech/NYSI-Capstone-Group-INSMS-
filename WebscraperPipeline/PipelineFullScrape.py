@@ -20,7 +20,7 @@ conn = psycopg.connect(
 )
 
 websites_to_scrape = [
-    {"url": "https://www.etixxsports.com/nl-be/collections/all"},
+    {"url": "https://www.etixxsports.com/en-be/collections/all"},
     {"url": "https://appliednutrition.uk/collections/best-sellers"},
     {"url": "https://www.healthspanelite.co.uk/protein/"},
     {"url": "https://www.healthspanelite.co.uk/sports-nutrition/"},
@@ -31,13 +31,30 @@ websites_to_scrape = [
     {"url":  "https://www.healthspanelite.co.uk/sports-nutrition/"}
 ]
 
+def getWebsitesToScrape(conn):
+    sql = """
+        SELECT
+            id,
+            LOWER(product_catalog_website) AS key
+        FROM sss.webscraper_catalog_url;
+    """
 
-def scrapeAllWebsitesAndPush(websites_list, openai_key):
+    with conn.cursor() as cur:
+        cur.execute(sql)
+        rows = cur.fetchall()
+
+    return {key: id for id, key in rows}
+
+
+def scrapeAllWebsitesAndPush(openai_key):
     all_products = []
     all_errors = []
 
+
+    websites_list = list(getWebsitesToScrape(conn))
+
     for website in websites_list:
-        products,errors = listFullScrapeAndPush(website["url"], openai_key)
+        products,errors = listFullScrapeAndPush(website, openai_key)
         all_products.extend(products)
         all_errors.extend(errors)
 
@@ -88,7 +105,7 @@ def productFullScrape(product_url,openai_key):
     errors = []
 
     if not products:
-        return []
+        return [],[]
 
     if isinstance(products, dict):
         products = products["items"]
@@ -128,9 +145,8 @@ def save_as_json(data, filename=None, folder="output"):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
     print(f"Saved {len(data)} products to {filepath}")
+# results,errors = scrapeAllWebsitesAndPush(openai_key)
+# timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-results,errors = scrapeAllWebsitesAndPush(websites_to_scrape,openai_key)
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-save_as_json(results)
-save_as_json(errors,f"scraping_errors_{timestamp}.json")
+# save_as_json(results)
+# save_as_json(errors,f"scraping_errors_{timestamp}.json")

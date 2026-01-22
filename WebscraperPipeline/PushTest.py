@@ -18,7 +18,7 @@ conn = psycopg.connect(
 
 products = PipelineFullScrape.productFullScrape("https://www.healthspanelite.co.uk/elite-all-blacks-ultimate-whey-protein-blend-chocolate/",openai_key)
 mapped_products = [
-    PipelinePush.map_extracted_product_to_staging(product,"https://www.healthspanelite.co.uk/protein/","0.5")
+    PipelinePush.map_extracted_product_to_staging(conn,product,"https://www.healthspanelite.co.uk/protein/","0.5")
     for product in products
 ]
 print(mapped_products)

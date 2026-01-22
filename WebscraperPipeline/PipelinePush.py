@@ -5,14 +5,14 @@ from psycopg.types.json import Json
 
 load_dotenv("env.txt")
 
-conn = psycopg.connect(
-    host=os.getenv("PGHOST"),
-    port=os.getenv("PGPORT"),
-    dbname=os.getenv("PGDATABASE"),
-    user=os.getenv("PGUSER"),
-    password=os.getenv("PGPASSWORD"),
-    sslmode=os.getenv("PGSSLMODE", "require"),
-)
+# conn = psycopg.connect(
+#     host=os.getenv("PGHOST"),
+#     port=os.getenv("PGPORT"),
+#     dbname=os.getenv("PGDATABASE"),
+#     user=os.getenv("PGUSER"),
+#     password=os.getenv("PGPASSWORD"),
+#     sslmode=os.getenv("PGSSLMODE", "require"),
+# )
 
 def load_packaging_form_lookup(conn) -> dict:
     sql = """
@@ -56,18 +56,10 @@ def load_catalogue_lookup(conn) -> dict:
 
     return {key: id for id, key in rows}
 
-packaging_form_lookup = load_packaging_form_lookup(conn)
-status_lookup = load_status_lookup(conn)
-catalog_lookup = load_catalogue_lookup(conn)
 
-
-Batch_tested_status_dict = {
-    "yes": status_lookup.get("batch tested"),
-    "no": status_lookup.get("not batch tested"),
-    "unknown": status_lookup.get("not batch tested")
-}
 
 def map_extracted_product_to_staging(
+    conn,
     product: dict,
     webscraper_catalog_url: str,
     scraper_version: str,
@@ -82,6 +74,18 @@ def map_extracted_product_to_staging(
     source_url: URL of the specific product page
     scraper_version: string identifying scraper version
     """
+
+    packaging_form_lookup = load_packaging_form_lookup(conn)
+    status_lookup = load_status_lookup(conn)
+    catalog_lookup = load_catalogue_lookup(conn)
+
+
+    Batch_tested_status_dict = {
+        "yes": status_lookup.get("batch tested"),
+        "no": status_lookup.get("not batch tested"),
+        "unknown": status_lookup.get("not batch tested")
+    }
+
     sources = list(product.get("batch_testing_sources") or [])
     url = product.get("URL")
 
@@ -210,7 +214,7 @@ def validate_mapped_product(p: dict):
     
 def mapAndInsertMany(conn,products):
     mapped_products = [
-    map_extracted_product_to_staging(product,"https://www.healthspanelite.co.uk/protein/","0.5")
+    map_extracted_product_to_staging(conn,product,"https://www.healthspanelite.co.uk/protein/","0.5")
     for product in products
     ]
     insert_products_many(conn,mapped_products)
