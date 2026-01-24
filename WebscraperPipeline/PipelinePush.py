@@ -124,7 +124,7 @@ def map_extracted_product_to_staging(
         "nutritional_info_per_serving_definition": product.get("Serving Size"),
 
         "supplement_warning_label": product.get("Warnings"),
-        "supplement_certifications": None,  # optional, could be extracted separately
+        "supplement_certifications": product.get("Certifications"),
         "supplement_additional_information": product.get("Additional Information"),
         "batch_testing_org": product.get("batch_testing_org"),
 

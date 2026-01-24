@@ -20,6 +20,7 @@ class NutritionalProduct(BaseProduct):
         "Bar", "Tablet", "Packet", "Box", "Bag", "Pack"
     ] = Field(..., alias="Minimum Unit")
     Additional_Information: Optional[str] = Field(None, alias="Additional Information")
+    Certifications: Optional[str] = None
     Warnings: Optional[str] = None
     Serving_Size: Optional[str] = Field(None, alias="Serving Size")
     Ingredients: Optional[List[str]] = None
@@ -50,19 +51,20 @@ Requirements:
 2. Include general information and usage instructions in the description field in English.
 3. Include the brand of the supplement.
 4. Include any important information such as allergens or cautionary information in English.
-5. Include the minimum dispensable unit for the supplement, using the exact field names as given below:
+5. Include any certificates that the product is stated to have. If none, indicate "NA".
+6. Include the minimum dispensable unit for the supplement, using the exact field names as given below:
 [Tub, Sleeve, Tube, Sachet, Bottle, Bar, Tablet, Packet, Box, Bag, Pack]
-6. Include `"Per 100g"` and `"Per Serving Size"` sub-objects.
-7. Include all nutritional information on the website.
-8. Flatten all nutrients so that vitamins and minerals appear on the same level as macronutrients (no nested objects inside "Vitamins" or "Minerals").
-9. For any nutrient that matches the following standardized field names, use the exact field name as given below and convert units if neccessary:
+7. Include `"Per 100g"` and `"Per Serving Size"` sub-objects.
+8. Include all nutritional information on the website.
+9. Flatten all nutrients so that vitamins and minerals appear on the same level as macronutrients (no nested objects inside "Vitamins" or "Minerals").
+10. For any nutrient that matches the following standardized field names, use the exact field name as given below and convert units if neccessary:
 
 Standardized nutrients:
 Carbohydrates (g), Glucose (g), Fructose (g), Galactose (g), Ribose (g), Sucrose (g), Maltose (g), Lactose (g), Amylose (g), Amylopectin (g), Proteins (g), Histidine (g), Isoleucine (g), Leucine (g), Lysine (g), Methionine (g), Phenylalanine (g), Threonine (g), Tryptophan (g), Valine (g), Alanine (g), Arginine (g), Aspartic acid (g), Asparagine (g), Cysteine (g), Glutamic acid (g), Glutamine (g), Glycine (g), Proline (g), Serine (g), Tyrosine (g), Fats (g), Saturated Fats (g), Monounsaturated Fats (g), Polyunsaturated Fats (g), Fibre (g), Calcium (mg), Sulfur (mg), Phosphorus (mg), Magnesium (mg), Sodium (mg), Potassium (mg), Iron (mg), Zinc (mg), Boron (mg), Copper (mg), Chlorine (mg), Selenium (µg), Manganese (mg), Molybdenum (µg), Cobalt (µg), Fluorine (mg), Iodine (µg), Silicon (mg), Vitamin B1 (mg), Vitamin B2 (mg), Vitamin B3 (mg), Vitamin B5 (mg), Pyridoxine (mg), Pyridoxal-5-Phosphate (mg), Pyridoxamine (mg), Vitamin B7 (µg), Vitamin B9 (µg), Vitamin B12 (µg), Choline (mg), Vitamin A (µg), Vitamin C (mg), Vitamin D (µg), Vitamin E (mg), Vitamin K1 (µg), Vitamin K2 (µg), Vitamin K3 (mg), Alpha carotene (µg), Beta carotene (µg), Cryptoxanthin (µg), Lutein (µg), Lycopene (µg), Zeaxanthin (µg)
 
-10. If a nutrient is not in the standardized list, use the given English name on the website and make sure it has its units
-11. Give all nutritient values as numerical values. Substitute non-numerical values with appropriate numerical ones. For example: "<0.1" to 0.1, "trace" to 0.0
-12. Example output for supplement page with supplement information text:
+11. If a nutrient is not in the standardized list, use the given English name on the website and make sure it has its units
+12. Give all nutritient values as numerical values. Substitute non-numerical values with appropriate numerical ones. For example: "<0.1" to 0.1, "trace" to 0.0
+13. Example output for supplement page with supplement information text:
 
 [
   {
@@ -72,6 +74,7 @@ Carbohydrates (g), Glucose (g), Fructose (g), Galactose (g), Ribose (g), Sucrose
     "Description": "Ideal isotonic thirst quencher in warm weather. With a neutral pH so that no stomach upset occurs. Effervescent tablet with sugar and sweetener for the preparation of an isotonic drink for athletes enriched with minerals.",
     "Warnings": "Do not to exceed the daily recommended dose. Suitable for persons as of 13 years of age. Contains gluten - vegetarians √ -vegetarians √",
     "Additional Information": "Dissolve 2 effervescent tablets in 500ml of water. Drink at least 500ml per hour of exercise. In warmer temperatures and during intensive exercise it is recommended to drink up to 750ml or 1L per hour.",
+    "Certifications": "ISO 22000, BRC, GMP & Halal accredited",
     "Serving Size": "2 tablets",
     "Ingredients": ["Dextrose","citric acid","sodium hydrogen carbonate","potassium hydrogen carbonate","calcium carbonate","maltodextrin","lime flavouring","magnesium carbonate","sodium chloride","sweetener: sucralose","L-ascorbic acid","colourant: riboflavin","thiamine hydrochloride"],
     "Per 100g": {
@@ -101,6 +104,7 @@ Carbohydrates (g), Glucose (g), Fructose (g), Galactose (g), Ribose (g), Sucrose
     "Description": "Ideal isotonic thirst quencher in warm weather. With a neutral pH so that no stomach upset occurs. Effervescent tablet with sugar and sweetener for the preparation of an isotonic drink for athletes enriched with minerals.",
     "Warnings": "Do not to exceed the daily recommended dose. Suitable for persons as of 13 years of age. Contains gluten - vegetarians √ -vegetarians √",
     "Additional Information": "Dissolve 2 effervescent tablets in 500ml of water. Drink at least 500ml per hour of exercise. In warmer temperatures and during intensive exercise it is recommended to drink up to 750ml or 1L per hour.",
+    "Certifications": "ISO 22000, BRC, GMP & Halal accredited",
     "Serving Size": "2 tablets",
     "Ingredients": ["Dextrose","acidifier: citric acid","sodium hydrogen carbonate","potassium hydrogen carbonate","calcium carbonate","maltodextrin","flavouring: blackcurrant","magnesium carbonate","sodium chloride","sweetener: sucralose","L-ascorbic acid","colouring agent: anthocyanins","thiamine hydrochloride"],
     "Per 100g": {
@@ -124,7 +128,7 @@ Carbohydrates (g), Glucose (g), Fructose (g), Galactose (g), Ribose (g), Sucrose
     "Nutritional Information Image": "NA"
   }
 ]
-13. Example output for supplement page with supplement information image:
+14. Example output for supplement page with supplement information image:
 [
   {
     "Name": "Hydration Water (Lemon)",
@@ -133,6 +137,7 @@ Carbohydrates (g), Glucose (g), Fructose (g), Galactose (g), Ribose (g), Sucrose
     "Description": "Ideal isotonic thirst quencher in warm weather. With a neutral pH so that no stomach upset occurs. Effervescent tablet with sugar and sweetener for the preparation of an isotonic drink for athletes enriched with minerals.",
     "Warnings": "Do not to exceed the daily recommended dose. Suitable for persons as of 13 years of age. Contains gluten - vegetarians √ -vegetarians √",
     "Additional Information": "Dissolve 2 effervescent tablets in 500ml of water. Drink at least 500ml per hour of exercise. In warmer temperatures and during intensive exercise it is recommended to drink up to 750ml or 1L per hour.",
+    "Certifications": "ISO 22000, BRC, GMP & Halal accredited",
     "Serving Size": "2 tablets",
     "Ingredients": ["Dextrose","citric acid","sodium hydrogen carbonate","potassium hydrogen carbonate","calcium carbonate","maltodextrin","lime flavouring","magnesium carbonate","sodium chloride","sweetener: sucralose","L-ascorbic acid","colourant: riboflavin","thiamine hydrochloride"],
     "Per 100g": {
@@ -142,7 +147,7 @@ Carbohydrates (g), Glucose (g), Fructose (g), Galactose (g), Ribose (g), Sucrose
     "Nutritional Information Image": "https://cdn.shopify.com/s/files/1/0454/0871/4919/files/Isotonic_drink_-_Nutritionals_-_1000x1000_42163958-d2cb-4bf5-ad4e-6bd9d63221fa.jpg?v=1742482293"
   }
 ]
-14. Example output for non-supplement page:
+15. Example output for non-supplement page:
 [
   {
     "Name": "Cycling Shorts",
@@ -180,6 +185,5 @@ def scrapeProduct(url, openai_key):
           product = json.loads(product)
         product["URL"] = url
     return result_gpt4o
-# openai_key = "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"
-
-# print(scrapeProduct("https://www.etixxsports.com/nl-be/products/natural-oat-bar?variant=52733530210650",openai_key))
+openai_key = "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"
+print(scrapeProduct("https://www.etixxsports.com/nl-be/products/natural-oat-bar?variant=52733530210650",openai_key))
