@@ -3,10 +3,12 @@ import PipelineProductScrape
 import PipelineFullScrape
 import psycopg
 import os
+from dotenv import load_dotenv
 
 
-openai_key = "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"
+openai_key = os.getenv("OPENAI_API_KEY")
 
+load_dotenv("env.txt")
 conn = psycopg.connect(
     host=os.getenv("PGHOST"),
     port=os.getenv("PGPORT"),

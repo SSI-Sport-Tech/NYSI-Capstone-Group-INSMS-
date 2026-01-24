@@ -7,8 +7,10 @@ from datetime import datetime
 from pathlib import Path
 import psycopg
 import os
+from dotenv import load_dotenv
+load_dotenv("env.txt")
 
-openai_key = "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"
+openai_key = os.getenv("OPENAI_API_KEY")
 
 conn = psycopg.connect(
     host=os.getenv("PGHOST"),
@@ -19,17 +21,17 @@ conn = psycopg.connect(
     sslmode=os.getenv("PGSSLMODE", "require"),
 )
 
-websites_to_scrape = [
-    {"url": "https://www.etixxsports.com/en-be/collections/all"},
-    {"url": "https://appliednutrition.uk/collections/best-sellers"},
-    {"url": "https://www.healthspanelite.co.uk/protein/"},
-    {"url": "https://www.healthspanelite.co.uk/sports-nutrition/"},
-    {"url": "https://www.healthspanelite.co.uk/vitamins-and-supplements/"}
-]
+# websites_to_scrape = [
+#     {"url": "https://www.etixxsports.com/en-be/collections/all"},
+#     {"url": "https://appliednutrition.uk/collections/best-sellers"},
+#     {"url": "https://www.healthspanelite.co.uk/protein/"},
+#     {"url": "https://www.healthspanelite.co.uk/sports-nutrition/"},
+#     {"url": "https://www.healthspanelite.co.uk/vitamins-and-supplements/"}
+# ]
 
-websites_to_scrape = [
-    {"url":  "https://www.healthspanelite.co.uk/sports-nutrition/"}
-]
+# websites_to_scrape = [
+#     {"url":  "https://www.healthspanelite.co.uk/sports-nutrition/"}
+# ]
 
 def getWebsitesToScrape(conn):
     sql = """
@@ -145,8 +147,8 @@ def save_as_json(data, filename=None, folder="output"):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
     print(f"Saved {len(data)} products to {filepath}")
-# results,errors = scrapeAllWebsitesAndPush(openai_key)
-# timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+results,errors = scrapeAllWebsitesAndPush(openai_key)
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-# save_as_json(results)
-# save_as_json(errors,f"scraping_errors_{timestamp}.json")
+save_as_json(results)
+save_as_json(errors,f"scraping_errors_{timestamp}.json")

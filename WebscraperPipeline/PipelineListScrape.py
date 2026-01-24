@@ -173,7 +173,7 @@ def scrape_all_pages(base_url,openai_key):
     print(f"Total products scraped: {len(all_uniques)}")
     return all_uniques
 
-openai_key = "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"
+# openai_key = os.getenv("OPENAI_API_KEY")
 
-scrape_all_pages("https://www.etixxsports.com/nl-be/collections/all",openai_key)
+# scrape_all_pages("https://www.etixxsports.com/nl-be/collections/all",openai_key)
 

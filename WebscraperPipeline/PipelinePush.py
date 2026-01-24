@@ -3,8 +3,8 @@ from dotenv import load_dotenv
 import os
 from psycopg.types.json import Json
 
-load_dotenv("env.txt")
 
+# load_dotenv("env.txt")
 # conn = psycopg.connect(
 #     host=os.getenv("PGHOST"),
 #     port=os.getenv("PGPORT"),

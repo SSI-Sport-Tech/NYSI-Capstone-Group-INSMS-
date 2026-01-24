@@ -3,6 +3,7 @@ from scrapegraphai import graphs
 from scrapegraphai.docloaders import ChromiumLoader
 from pydantic import BaseModel
 from typing import Union, List, Dict
+import os
 
 load_dotenv()
 
@@ -52,9 +53,8 @@ def batchTestSearch(BrandSupplement, openai_key, tries):
       return batchTestSearch(BrandSupplement, openai_key, tries-1)
 
 
-
-# openai_key = "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"
-
+# load_dotenv("env.txt")
+# openai_key = os.getenv("OPENAI_API_KEY")
 # Informed Sport
 # result = batchTestSearch("Healthspan Kick−Start Caffeine Gum", openai_key,2)
 # HASTA

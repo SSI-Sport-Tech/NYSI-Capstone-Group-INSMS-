@@ -5,6 +5,7 @@ import json
 from typing import List, Optional, Dict, Union, Literal
 from enum import Enum
 from pydantic import BaseModel, Field, ConfigDict
+import os
 
 load_dotenv()
 
@@ -185,5 +186,5 @@ def scrapeProduct(url, openai_key):
           product = json.loads(product)
         product["URL"] = url
     return result_gpt4o
-openai_key = "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"
-print(scrapeProduct("https://www.etixxsports.com/nl-be/products/natural-oat-bar?variant=52733530210650",openai_key))
+# openai_key = os.getenv("OPENAI_API_KEY")
+# print(scrapeProduct("https://www.etixxsports.com/nl-be/products/natural-oat-bar?variant=52733530210650",openai_key))
