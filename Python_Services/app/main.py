@@ -12,7 +12,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="NYSI Python Services",
+    title="HPSI Python Services",
     description="OCR, Vectorization, and Web Scraping services for supplement management",
     version="1.0.0",
     docs_url="/docs",

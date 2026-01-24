@@ -26,11 +26,10 @@ class NutritionWorkflow(Workflow):
     def __init__(self, timeout: int = 120, verbose: bool = True):
         super().__init__(timeout=timeout, verbose=verbose)
         
-        # PaddleOCR 3.3.3 compatible initialization
         self.ocr = PaddleOCR(
-            use_angle_cls=True,
+            use_textline_orientation=True,
             lang='en',
-            use_gpu=False
+            ocr_version='PP-OCRv4'
         )
         
         self.llm = OpenAI(
@@ -39,10 +38,7 @@ class NutritionWorkflow(Workflow):
             api_key=settings.openai_api_key
         )
         
-        self.embed_model = HuggingFaceEmbedding(
-            model_name=settings.embedding_model
-        )
-
+        self.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
 
     def parse_amount(self, amount_str: str) -> tuple: 
         """
@@ -217,34 +213,36 @@ class NutritionWorkflow(Workflow):
         
         # --- NUTRITION PER 100G ---
         per_100g = data.get('nutritional_info_per_100g')
-        serving_size_grams = data. get('serving_size_grams')
+        serving_size_grams = data.get('serving_size_grams')
         
         # Calculate per 100g if not provided but we have serving size
         per_100g_calculated = False
         if not per_100g or not per_100g.get('nutrients'):
             if serving_size_grams: 
-                print(f"   🧮 Per 100g not on label.  Calculating from {serving_size_grams}g serving...")
+                print(f"   🧮 Per 100g not on label. Calculating from {serving_size_grams}g serving...")
                 per_100g = self.calculate_per_100g(per_serving, serving_size_grams)
                 per_100g_calculated = True
             else: 
                 print("   ⚠️ Cannot calculate per 100g: No serving size in grams found")
                 per_100g = None
         
-        # --- VECTOR 1: Per Serving ---
-        print("   🔷 Creating vector for PER SERVING...")
-        per_serving_str = json.dumps({
-            "calories": per_serving.get('calories'),
+        # --- VECTOR 1: Per Serving + Ingredients ---
+        print("   🔷 Creating vector for PER SERVING + INGREDIENTS...")
+        per_serving_combined = {
+            "ingredients": data.get('supplement_ingredient', []),
             "nutrients": per_serving.get('nutrients', [])
-        })
+        }
+        per_serving_str = json.dumps(per_serving_combined)
         vector_per_serving = self.embed_model.get_text_embedding(per_serving_str)
         
-        # --- VECTOR 2: Per 100g ---
+        # --- VECTOR 2: Per 100g + Ingredients ---
         if per_100g:
-            print("   🔶 Creating vector for PER 100G...")
-            per_100g_str = json.dumps({
-                "calories": per_100g.get('calories'),
-                "nutrients":  per_100g.get('nutrients', [])
-            })
+            print("   🔶 Creating vector for PER 100G + INGREDIENTS...")
+            per_100g_combined = {
+                "ingredients": data.get('supplement_ingredient', []),
+                "nutrients": per_100g.get('nutrients', [])
+            }
+            per_100g_str = json.dumps(per_100g_combined)
             vector_per_100g = self.embed_model.get_text_embedding(per_100g_str)
         else:
             print("   ⚠️ No per 100g data available, skipping vector")
@@ -254,7 +252,7 @@ class NutritionWorkflow(Workflow):
         final_payload = {
             "supplement_name": data.get('supplement_name'),
             "supplement_brand": data.get('supplement_brand'),
-            "supplement_ingredient":  data.get('supplement_ingredient'),
+            "supplement_ingredient": data.get('supplement_ingredient'),
             
             # Serving info
             "serving_size_text": data.get('serving_size_text'),
@@ -265,7 +263,7 @@ class NutritionWorkflow(Workflow):
             "nutritional_info_per_100g": per_100g,
             "per_100g_calculated": per_100g_calculated,
             
-            # TWO vectors
+            # TWO vectors (now include ingredients!)
             "vector_per_serving": vector_per_serving,
             "vector_per_100g": vector_per_100g
         }

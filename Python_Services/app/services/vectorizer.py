@@ -34,7 +34,6 @@ class SupplementVectorizer:
         # Combine ingredients + nutrition into single structure
         combined_data = {
             "ingredients": ingredients,
-            "calories": nutritional_info.get('calories'),
             "nutrients": nutritional_info.get('nutrients', [])
         }
         
