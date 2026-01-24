@@ -6,7 +6,7 @@ from agent import NutritionWorkflow
 
 async def main():
     # 1. Setup paths
-    folder_path = "test_images"
+    folder_path = "tmp_images"
     
     # Check if folder exists
     if not os.path.exists(folder_path):

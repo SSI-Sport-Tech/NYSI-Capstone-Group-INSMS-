@@ -4,12 +4,12 @@ from typing import List, Optional, Union
 # --- 1. Sub-Schemas for JSONB Columns ---
 
 class Nutrient(BaseModel):
-    name: str = Field(..., description="Nutrient name (e.g., 'Protein', 'Sodium')")
-    amount: str = Field(..., description="Amount with unit (e.g., '24g', '150mg')")
+    name: str = Field(..., description="Nutrient name with unit(e.g., 'Protein (g)', 'Sodium (g)')")
+    amount: float = Field(..., description="Amount in unit(e.g., '24', '150')")
     daily_value: Optional[str] = Field(None, description="% Daily Value if present")
 
 class NutritionFacts(BaseModel):
-    calories: Optional[Union[int, str]] = Field(None, description="Total calories")
+    # calories: Optional[Union[int, str]] = Field(None, description="Total calories")
     nutrients: List[Nutrient] = Field(default_factory=list, description="List of nutrients")
 
 class Ingredient(BaseModel):

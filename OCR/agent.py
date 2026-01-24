@@ -10,9 +10,10 @@ from llama_index.core.workflow import (
 )
 from llama_index.llms.openai import OpenAI
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from schemas import SupplementStagingSchema
+from .schemas import SupplementStagingSchema
 
 load_dotenv()
+load_dotenv("env.txt")
 
 # --- Event Definitions ---
 class ExtractionEvent(Event):
@@ -39,16 +40,32 @@ class NutritionWorkflow(Workflow):
         
         self.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
 
-    def parse_amount(self, amount_str: str) -> tuple: 
+    def parse_amount(self, amount) -> tuple:
         """
-        Parse an amount string like '8g', '160mg', '2mcg' into (value, unit).
-        Returns (0, '') if parsing fails.
+        Parse an amount like '8g', '160mg', '0.5g', '<1g', or numeric values.
+        Returns (value, unit) or (0, '') if parsing fails.
         """
-        if not amount_str:
+
+        if amount is None:
             return 0, ''
-        
-        # Match patterns like:  8g, 160mg, 2. 5mcg, 0.5g, <1g
-        match = re.match(r'[<]? (\d+\. ?\d*)\s*(mg|g|mcg|ug|μg|kcal|cal)?', amount_str. lower().strip())
+
+        # If OCR already gave us a number (assume grams unless told otherwise)
+        if isinstance(amount, (int, float)):
+            return float(amount), ''
+
+        if not isinstance(amount, str):
+            amount = str(amount)
+
+        amount = amount.strip().lower()
+        if not amount:
+            return 0, ''
+
+        # Match: <1g, 8g, 160mg, 0.5g, 2mcg
+        match = re.match(
+            r'[<]?\s*(\d+(?:\.\d+)?)\s*(mg|g|mcg|ug|μg|kcal|cal)?',
+            amount
+        )
+
         if match:
             value = float(match.group(1))
             unit = match.group(2) or ''
@@ -74,17 +91,17 @@ class NutritionWorkflow(Workflow):
         print(f"   📊 Calculating per 100g (multiplier: {multiplier:.2f}x from {serving_size_grams}g serving)")
         
         per_100g = {
-            "calories": None,
+            # "calories": None,
             "nutrients": []
         }
         
         # Convert calories
-        if per_serving. get('calories'):
-            try:
-                cal_value = float(str(per_serving['calories']).replace('kcal', '').strip())
-                per_100g['calories'] = round(cal_value * multiplier)
-            except (ValueError, TypeError):
-                per_100g['calories'] = per_serving['calories']
+        # if per_serving. get('calories'):
+        #     try:
+        #         cal_value = float(str(per_serving['calories']).replace('kcal', '').strip())
+        #         per_100g['calories'] = round(cal_value * multiplier)
+        #     except (ValueError, TypeError):
+        #         per_100g['calories'] = per_serving['calories']
         
         # Convert each nutrient
         for nutrient in per_serving.get('nutrients', []):
@@ -181,9 +198,9 @@ class NutritionWorkflow(Workflow):
             f"Context: 'Nutrition Facts' (Food) or 'Supplement Facts'.\n\n"
             f"RULES:\n"
             f"1. BRAND/NAME:  Infer from text. If completely missing, use 'Generic'.\n"
-            f"2. CALORIES: Find 'Calories' followed by a number.  EXTRACT IT as an integer.\n"
-            f"3. NUTRIENTS: Map lines like 'Total Fat 8g' to 'nutritional_info_per_serving'.\n"
-            f"   - 'name': 'Total Fat', 'amount': '8g'.\n"
+            f"2. NUTRIENTS: Map lines like 'Total Fat 8g' to 'nutritional_info_per_serving'.\n"
+            f"   - 'name': 'Fats (g)', 'amount': '8'.\n"
+            f"3. NUTRIENT NAMES: For any nutrient that matches the following standardized field names, use the exact field name as given below and convert units if neccessary: Standardized nutrients: Energy (kcal), Carbohydrates (g), Glucose (g), Fructose (g), Galactose (g), Ribose (g), Sucrose (g), Maltose (g), Lactose (g), Amylose (g), Amylopectin (g), Proteins (g), Histidine (g), Isoleucine (g), Leucine (g), Lysine (g), Methionine (g), Phenylalanine (g), Threonine (g), Tryptophan (g), Valine (g), Alanine (g), Arginine (g), Aspartic acid (g), Asparagine (g), Cysteine (g), Glutamic acid (g), Glutamine (g), Glycine (g), Proline (g), Serine (g), Tyrosine (g), Fats (g), Saturated Fats (g), Monounsaturated Fats (g), Polyunsaturated Fats (g), Fibre (g), Calcium (mg), Sulfur (mg), Phosphorus (mg), Magnesium (mg), Sodium (mg), Potassium (mg), Iron (mg), Zinc (mg), Boron (mg), Copper (mg), Chlorine (mg), Selenium (µg), Manganese (mg), Molybdenum (µg), Cobalt (µg), Fluorine (mg), Iodine (µg), Silicon (mg), Vitamin B1 (mg), Vitamin B2 (mg), Vitamin B3 (mg), Vitamin B5 (mg), Pyridoxine (mg), Pyridoxal-5-Phosphate (mg), Pyridoxamine (mg), Vitamin B7 (µg), Vitamin B9 (µg), Vitamin B12 (µg), Choline (mg), Vitamin A (µg), Vitamin C (mg), Vitamin D (µg), Vitamin E (mg), Vitamin K1 (µg), Vitamin K2 (µg), Vitamin K3 (mg), Alpha carotene (µg), Beta carotene (µg), Cryptoxanthin (µg), Lutein (µg), Lycopene (µg), Zeaxanthin (µg). \n"
             f"4. SERVING SIZE: CRITICAL - Extract the serving size in grams.\n"
             f"   - Look for patterns like '2/3 cup (55g)', '1 scoop (30g)', 'Serving Size 28g'\n"
             f"   - Extract ONLY the gram number into 'serving_size_grams' (e.g., 55, 30, 28)\n"
@@ -228,7 +245,7 @@ class NutritionWorkflow(Workflow):
         # --- VECTOR 1: Per Serving ---
         print("   🔷 Creating vector for PER SERVING...")
         per_serving_str = json.dumps({
-            "calories": per_serving.get('calories'),
+            # "calories": per_serving.get('calories'),
             "nutrients": per_serving.get('nutrients', [])
         })
         vector_per_serving = self.embed_model.get_text_embedding(per_serving_str)
@@ -237,7 +254,7 @@ class NutritionWorkflow(Workflow):
         if per_100g:
             print("   🔶 Creating vector for PER 100G...")
             per_100g_str = json.dumps({
-                "calories": per_100g.get('calories'),
+                # "calories": per_100g.get('calories'),
                 "nutrients":  per_100g.get('nutrients', [])
             })
             vector_per_100g = self.embed_model.get_text_embedding(per_100g_str)

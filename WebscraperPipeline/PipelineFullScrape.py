@@ -1,7 +1,12 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
 import PipelineListScrape
 import PipelineProductScrape
 import PipelineSearch
 import PipelinePush
+import PipelineOCR
 import json
 from datetime import datetime
 from pathlib import Path
@@ -54,6 +59,7 @@ def scrapeAllWebsitesAndPush(openai_key):
 
 
     websites_list = list(getWebsitesToScrape(conn))
+    websites_list = ["https://appliednutrition.uk/collections/pre-workout"]
 
     for website in websites_list:
         products,errors = listFullScrapeAndPush(website, openai_key)
@@ -109,10 +115,14 @@ def productFullScrape(product_url,openai_key):
     if not products:
         return [],[]
 
-    if isinstance(products, dict):
-        products = products["items"]
-
     for product in products:
+        try:
+            enriched = PipelineOCR.enrich_product_with_ocr(product)
+            if enriched:
+                print(f"OCR enriched: {product.get('Name')}")
+        except Exception as e:
+            errors.append(f"OCR failed for {product.get('Name')}: {e}")
+
         query = f"{product.get('Name','')} {product.get('Brand','')}".strip()
         try:
 
@@ -147,6 +157,8 @@ def save_as_json(data, filename=None, folder="output"):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
     print(f"Saved {len(data)} products to {filepath}")
+
+
 results,errors = scrapeAllWebsitesAndPush(openai_key)
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 

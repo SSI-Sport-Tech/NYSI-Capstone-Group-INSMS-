@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, ConfigDict
 import os
 
 load_dotenv()
-
+load_dotenv("env.txt")
 
 class BaseProduct(BaseModel):
     Name: str
@@ -45,7 +45,7 @@ class ProductInfoResponse(BaseModel):
 product_info_prompt = """
 You are a data extraction model. Always output a valid JSON array. 
 Never include explanations or text outside of the JSON.
-Task: List me all the nutritional information for each flavour of the product in JSON format in English. If nutritional information is stored in a image, give me the absolute URL to the image. If the product is not nutritional, give me the other details of the product."
+Task: List me all the nutritional information for each flavour of the product in JSON format in English. If nutritional information is stored in a image, give me the exact absolute URL to the image. If the product is not nutritional, give me the other details of the product."
 
 Requirements:
 1. Create a separate entry in the list for each flavour or variation, if there is only 1 variation, create a list with only 1 entry. Only include variations that have their nutritional information on the page, do not include variations that are on links to other pages.
@@ -145,7 +145,7 @@ Carbohydrates (g), Glucose (g), Fructose (g), Galactose (g), Ribose (g), Sucrose
     },
     "Per Serving Size": {
     },
-    "Nutritional Information Image": "https://cdn.shopify.com/s/files/1/0454/0871/4919/files/Isotonic_drink_-_Nutritionals_-_1000x1000_42163958-d2cb-4bf5-ad4e-6bd9d63221fa.jpg?v=1742482293"
+    "Nutritional Information Image": "https://cdn.shopify.com/s/files/1/0454/0871/4919/files/Isotonic_drinkNutritionals1000x1000_42163958-d2cb-4bf5-ad4e-6bd9d63221fa.jpg?v=1742482293"
   }
 ]
 15. Example output for non-supplement page:
@@ -185,6 +185,8 @@ def scrapeProduct(url, openai_key):
         if isinstance(product, str):
           product = json.loads(product)
         product["URL"] = url
+    if isinstance(result_gpt4o, dict):
+        result_gpt4o = result_gpt4o["items"]
     return result_gpt4o
 # openai_key = os.getenv("OPENAI_API_KEY")
-# print(scrapeProduct("https://www.etixxsports.com/nl-be/products/natural-oat-bar?variant=52733530210650",openai_key))
+# print(scrapeProduct("https://www.etixxsports.com/en-be/products/energy-bar-marzipan?variant=52733565763930",openai_key))
