@@ -1,3 +1,11 @@
+# Import PyTorch-dependent packages FIRST before OpenCV and PaddleOCR
+from llama_index.core.workflow import (
+    StartEvent, StopEvent, Workflow, step, Context, Event
+)
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+
+# Now import other packages
 import os
 import json
 import re
@@ -5,11 +13,6 @@ import cv2
 import numpy as np
 from dotenv import load_dotenv
 from paddleocr import PaddleOCR
-from llama_index.core.workflow import (
-    StartEvent, StopEvent, Workflow, step, Context, Event
-)
-from llama_index.llms.openai import OpenAI
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from app.schemas.supplement import SupplementStagingSchema
 from app.config.settings import settings
 
@@ -112,12 +115,12 @@ class NutritionWorkflow(Workflow):
 
     @step
     async def ingest_and_ocr(self, ctx: Context, ev: StartEvent) -> ExtractionEvent:
-        """Step 1: Ingest and OCR using the NEW PaddleOCR API."""
+        """Step 1: Ingest and OCR using PaddleOCR."""
         image_path = ev.get("image_path")
         
         if not image_path:
-             print("❌ Error: No image_path provided.")
-             return None
+            print("❌ Error: No image_path provided.")
+            return None
 
         print(f"\n👁️  [Step 1] Scanning image: {image_path}")
         
@@ -132,33 +135,35 @@ class NutritionWorkflow(Workflow):
         
         if width < 800: 
             scale = 800 / width
-            print(f"   🔎 Upscaling {scale:.1f}x for clarity...")  # FIXED: removed space
+            print(f"   🔎 Upscaling {scale:.1f}x for clarity...")
             img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
 
-        # 3. Run OCR using NEW predict() method
-        result = self.ocr.predict(img)
+        # 3. Run OCR using CORRECT ocr() method
+        result = self.ocr.ocr(img, cls=True)
         
-        # 4. Extract text from NEW API response structure
-        if not result or len(result) == 0:
-            print("⚠️ CRITICAL:  PaddleOCR found NO text.  Check image quality.")
+        # 4. Extract text from response structure
+        if not result or len(result) == 0 or result[0] is None:
+            print("⚠️ CRITICAL: PaddleOCR found NO text. Check image quality.")
             return StopEvent(result={"error": "No text detected."})
         
-        # Get the first result (for single image)
+        # PaddleOCR returns: [[[bbox], (text, confidence)], ...]
+        # Get the first page result (for single image)
         ocr_result = result[0]
         
-        # Extract texts and scores
-        texts = ocr_result.get('rec_texts', [])
-        scores = ocr_result.get('rec_scores', [])
-        
-        if not texts: 
+        if not ocr_result:
             print("⚠️ CRITICAL: No text extracted from image.")
             return StopEvent(result={"error": "No text detected."})
         
-        # 5. Filter by confidence score
+        # 5. Extract texts with confidence filtering
         filtered_texts = []
-        for text, score in zip(texts, scores):
-            if score > 0.5 and len(text. strip()) > 0:
+        for line in ocr_result:
+            bbox, (text, score) = line
+            if score > 0.5 and len(text.strip()) > 0:
                 filtered_texts.append(text)
+        
+        if not filtered_texts:
+            print("⚠️ CRITICAL: No high-confidence text found.")
+            return StopEvent(result={"error": "No text detected with sufficient confidence."})
         
         full_text = "\n".join(filtered_texts)
         
