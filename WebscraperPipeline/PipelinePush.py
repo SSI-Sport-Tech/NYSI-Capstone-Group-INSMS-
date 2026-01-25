@@ -2,6 +2,8 @@ import psycopg
 from dotenv import load_dotenv
 import os
 from psycopg.types.json import Json
+from PipelineProductScrape import DEFAULT_MINIMUM_UNIT
+import math
 
 
 # load_dotenv("env.txt")
@@ -13,6 +15,7 @@ from psycopg.types.json import Json
 #     password=os.getenv("PGPASSWORD"),
 #     sslmode=os.getenv("PGSSLMODE", "require"),
 # )
+
 
 def load_packaging_form_lookup(conn) -> dict:
     sql = """
@@ -97,7 +100,9 @@ def map_extracted_product_to_staging(
     return {
         # Lookup IDs
         "supplement_packaging_form_id": packaging_form_lookup.get(
-            (product.get("Minimum Unit") or "").lower()
+            (product.get("Minimum Unit") or "").lower(),
+            packaging_form_lookup.get(
+                DEFAULT_MINIMUM_UNIT.lower())
         ),
         "supplement_status_id": Batch_tested_status_dict.get((product.get("Batch_tested") or "unknown").lower()),
 
@@ -182,23 +187,32 @@ RETURNING id;
 
 def insert_product(conn, mapped_product: dict) -> str:
     validate_mapped_product(mapped_product)
-    with conn.cursor() as cur:
-        cur.execute(INSERT_SUPPLEMENT_STAGING_SQL, mapped_product)
-        new_id = cur.fetchone()[0]
 
-    conn.commit()
-    return new_id
+    try:
+        with conn.cursor() as cur:
+            cur.execute(INSERT_SUPPLEMENT_STAGING_SQL, mapped_product)
+            new_id = cur.fetchone()[0]
+        conn.commit()
+        return new_id
+
+    except Exception as e:
+        conn.rollback()
+        raise
 
 def insert_products_many(conn, mapped_products: list[dict]) -> None:
     for i, p in enumerate(mapped_products):
         try:
             validate_mapped_product(p)
-        except ValueError as e:
-            raise ValueError(f"Product at index {i} failed validation: {e}")
-    with conn.cursor() as cur:
-        cur.executemany(INSERT_SUPPLEMENT_STAGING_SQL, mapped_products)
 
-    conn.commit()
+            with conn.cursor() as cur:
+                cur.execute(INSERT_SUPPLEMENT_STAGING_SQL, p)
+
+            conn.commit()
+
+        except Exception as e:
+            conn.rollback()
+            print(f"❌ Insert failed for product {i}: {e}")
+
 
 def validate_mapped_product(p: dict):
     required = [
@@ -212,9 +226,25 @@ def validate_mapped_product(p: dict):
     if missing:
         raise ValueError(f"Missing required fields: {missing}")
     
+
+def sanitize_json(obj):
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+
+    if isinstance(obj, dict):
+        return {k: sanitize_json(v) for k, v in obj.items()}
+
+    if isinstance(obj, list):
+        return [sanitize_json(v) for v in obj]
+
+    return obj
+    
 def mapAndInsertMany(conn,products):
     mapped_products = [
     map_extracted_product_to_staging(conn,product,"https://www.healthspanelite.co.uk/protein/","0.5")
     for product in products
     ]
-    insert_products_many(conn,mapped_products)
+    sanitized_products = sanitize_json(mapped_products)
+    insert_products_many(conn,sanitized_products)

@@ -15,6 +15,8 @@ class BaseProduct(BaseModel):
     Brand: str
     Description: Optional[str] = None
 
+DEFAULT_MINIMUM_UNIT = "Pack"
+
 class NutritionalProduct(BaseProduct):
     Minimum_Unit: Literal[
         "Tub", "Sleeve", "Tube", "Sachet", "Bottle", 
@@ -45,7 +47,7 @@ class ProductInfoResponse(BaseModel):
 product_info_prompt = """
 You are a data extraction model. Always output a valid JSON array. 
 Never include explanations or text outside of the JSON.
-Task: List me all the nutritional information for each flavour of the product in JSON format in English. If nutritional information is stored in a image, give me the exact absolute URL to the image. If the product is not nutritional, give me the other details of the product."
+Task: List me all the nutritional information for each flavour of the product in JSON format in English. If nutritional information is stored in a image, give me the exact absolute URL to the image and do NOT reformat, normalize, correct, or rewrite the URL. If the product is not nutritional, give me the other details of the product."
 
 Requirements:
 1. Create a separate entry in the list for each flavour or variation, if there is only 1 variation, create a list with only 1 entry. Only include variations that have their nutritional information on the page, do not include variations that are on links to other pages.
@@ -189,4 +191,4 @@ def scrapeProduct(url, openai_key):
         result_gpt4o = result_gpt4o["items"]
     return result_gpt4o
 # openai_key = os.getenv("OPENAI_API_KEY")
-# print(scrapeProduct("https://www.etixxsports.com/en-be/products/energy-bar-marzipan?variant=52733565763930",openai_key))
+# print(scrapeProduct("https://appliednutrition.uk/products/pump-3g-zero-stimulant-375g",openai_key))

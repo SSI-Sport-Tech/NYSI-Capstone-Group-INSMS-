@@ -162,7 +162,7 @@ def scrape_all_pages(base_url,openai_key):
             print(f"Found {len(products)} products on page {page}")
 
             if page == 1:
-                max_pages = page_data.get("pages_no")
+                max_pages = page_data.get("pages_no",1)
             page += 1
 
         except requests.exceptions.RequestException as e:

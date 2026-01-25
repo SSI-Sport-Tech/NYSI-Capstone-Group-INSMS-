@@ -116,6 +116,8 @@ def productFullScrape(product_url,openai_key):
         return [],[]
 
     for product in products:
+        if "Rejected" in product:
+            continue
         try:
             enriched = PipelineOCR.enrich_product_with_ocr(product)
             if enriched:
