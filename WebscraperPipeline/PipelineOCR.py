@@ -57,19 +57,18 @@ def enrich_product_with_ocr(product: dict) -> bool:
     if not image_url or image_url == "NA":
         return False
 
-    # Skip if nutrition already exists
-    if product.get("Per 100g") or product.get("Per Serving Size"):
-        return False
+    # # Skip if nutrition already exists
+    # if product.get("Per 100g") or product.get("Per Serving Size"):
+    #     return False
 
     os.makedirs("tmp_images", exist_ok=True)
     image_path = f"tmp_images/{uuid.uuid4().hex}.jpg"
 
     try:
-        r = requests.get(image_url, timeout=30)
-        r.raise_for_status()
+        content = fetch_image_with_fallback(image_url)
 
         with open(image_path, "wb") as f:
-            f.write(r.content)
+            f.write(content)
 
         result = run_ocr_blocking(image_path)
 
@@ -91,6 +90,36 @@ def enrich_product_with_ocr(product: dict) -> bool:
         if os.path.exists(image_path):
             os.remove(image_path)
 
+
+def swap_dash_underscore(url: str) -> str | None:
+    if "-_" in url:
+        return url.replace("-_", "_-", 1)
+    if "_-" in url:
+        return url.replace("_-", "-_", 1)
+    return None
+
+def fetch_image_with_fallback(url: str, timeout: int = 30) -> bytes:
+    # 1️⃣ Try original
+    r = requests.get(url, timeout=timeout)
+    if r.status_code == 200:
+        return r.content
+
+    # 2️⃣ Only fallback on 404
+    if r.status_code != 404:
+        r.raise_for_status()
+
+    # 3️⃣ Try swapped version
+    swapped = swap_dash_underscore(url)
+    if not swapped:
+        raise requests.exceptions.HTTPError(
+            f"404 and no swappable pattern in URL: {url}"
+        )
+
+    r2 = requests.get(swapped, timeout=timeout)
+    if r2.status_code == 200:
+        return r2.content
+
+    r2.raise_for_status()
 
 def run_ocr_blocking(image_path: str) -> dict | None:
     try:
