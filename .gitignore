@@ -84,3 +84,10 @@ htmlcov/
 # Temporary files
 *.tmp
 *.bak
+
+
+# Webscraper Stuff
+/output/
+/env.txt
+/Applied_Nutrition_Images/
+/tmp_images/
