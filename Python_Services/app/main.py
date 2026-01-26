@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import ocr, vectorization, scraper
+from Python_Services.app.routers import webscraper
+from app.routers import ocr, vectorization
 from app.config.settings import settings
 import logging
 
@@ -31,7 +32,7 @@ app.add_middleware(
 # Include routers
 app.include_router(ocr.router, prefix="/api/ocr", tags=["OCR"])
 app.include_router(vectorization.router, prefix="/api/vectorization", tags=["Vectorization"])
-app.include_router(scraper.router, prefix="/api/scraper", tags=["Web Scraper"])
+app.include_router(webscraper.router, prefix="/api/scraper", tags=["Web Scraper"])
 
 @app.get("/")
 async def root():
