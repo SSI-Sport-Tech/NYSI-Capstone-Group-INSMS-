@@ -141,6 +141,7 @@ def map_extracted_product_to_staging(
         # Vectors (placeholders, generate separately)
         "vector_100g_ingredient": None,
         "vector_perserving_ingredient": None,
+        "is_reviewed": False,
     }
 
 INSERT_SUPPLEMENT_STAGING_SQL = """
@@ -161,7 +162,8 @@ INSERT INTO sss.supplement_staging (
     batch_testing_org,
     webscraper_catalog_url_id,
     product_source_url,
-    scraper_version
+    scraper_version,
+    is_reviewed
 )
 VALUES (
     %(supplement_packaging_form_id)s,
@@ -180,7 +182,8 @@ VALUES (
     %(batch_testing_org)s,
     %(webscraper_catalog_url_id)s,
     %(product_source_url)s,
-    %(scraper_version)s
+    %(scraper_version)s,
+    %(is_reviewed)s
 )
 RETURNING id;
 """
