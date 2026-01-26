@@ -50,7 +50,8 @@ htmlcov/
 
 # Ignore specific folders
 /Applied_Nutrition_Images/
-/tmp_images/
+tmp_images/*
+!tmp_images/
 /output/
 temp/
 
