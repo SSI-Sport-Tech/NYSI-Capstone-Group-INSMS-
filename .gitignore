@@ -49,7 +49,7 @@ htmlcov/
 *.html
 
 # Ignore specific folders
-"applied nutrition images/"
+/Applied_Nutrition_Images/
 /tmp_images/
 /output/
 temp/
