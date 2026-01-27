@@ -1062,3 +1062,99 @@ export async function approveStagingSupplements(req, res) {
         });
     }
 }
+
+// ============================================================================
+// LOOKUP FUNCTIONS
+// ============================================================================
+
+/**
+ * Get Packaging Form Options
+ * GET /api/SSS/lookups/packaging-forms
+ * 
+ * Returns list of packaging forms for dropdown selection
+ */
+export async function getPackagingFormsController(req, res) {
+    try {
+        const includeInactive = req.query.includeInactive === 'true';
+        const result = await services.getPackagingForms(!includeInactive);
+
+        res.json({
+            data: result.rows
+        });
+    } catch (error) {
+        console.error('Error fetching packaging forms:', error);
+        res.status(500).json({
+            error: 'Failed to fetch packaging forms',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}
+
+/**
+ * Get Supplement Status Options
+ * GET /api/SSS/lookups/supplement-statuses
+ * 
+ * Returns list of supplement statuses for dropdown selection
+ */
+export async function getSupplementStatusesController(req, res) {
+    try {
+        const includeInactive = req.query.includeInactive === 'true';
+        const result = await services.getSupplementStatuses(!includeInactive);
+
+        res.json({
+            data: result.rows
+        });
+    } catch (error) {
+        console.error('Error fetching supplement statuses:', error);
+        res.status(500).json({
+            error: 'Failed to fetch supplement statuses',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}
+
+/**
+ * Get Batch Stock Status Options
+ * GET /api/SSS/lookups/batch-statuses
+ * 
+ * Returns list of batch stock statuses for dropdown selection
+ */
+export async function getBatchStockStatusesController(req, res) {
+    try {
+        const includeInactive = req.query.includeInactive === 'true';
+        const result = await services.getBatchStockStatuses(!includeInactive);
+
+        res.json({
+            data: result.rows
+        });
+    } catch (error) {
+        console.error('Error fetching batch stock statuses:', error);
+        res.status(500).json({
+            error: 'Failed to fetch batch stock statuses',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}
+
+/**
+ * Get Ticket Status Options
+ * GET /api/SSS/lookups/ticket-statuses
+ * 
+ * Returns list of ticket statuses for dropdown selection
+ */
+export async function getTicketStatusesController(req, res) {
+    try {
+        const includeInactive = req.query.includeInactive === 'true';
+        const result = await services.getTicketStatuses(!includeInactive);
+
+        res.json({
+            data: result.rows
+        });
+    } catch (error) {
+        console.error('Error fetching ticket statuses:', error);
+        res.status(500).json({
+            error: 'Failed to fetch ticket statuses',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}

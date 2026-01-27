@@ -1445,4 +1445,246 @@ router.delete('/staging-supplements', controller.deleteStagingSupplements);
  */
 router.post('/staging-supplements/approve', controller.approveStagingSupplements);
 
+// ============================================================================
+// LOOKUP ROUTES
+// ============================================================================
+
+/**
+ * @swagger
+ * /api/SSS/lookups/packaging-forms:
+ *   get:
+ *     summary: Get Packaging Form Options
+ *     description: |
+ *       Returns list of packaging form options for dropdown selection.
+ *       
+ *       **Default Behavior:**
+ *       - Returns only active packaging forms (`is_active = true`)
+ *       - Sorted alphabetically by name
+ *       
+ *       **Use Case:** Populate dropdowns in supplement create/edit forms
+ *     tags: [Lookups]
+ *     parameters:
+ *       - in: query
+ *         name: includeInactive
+ *         schema:
+ *           type: boolean
+ *         description: Include inactive packaging forms (default false)
+ *         example: false
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved packaging forms
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                         description: Packaging form ID
+ *                       label:
+ *                         type: string
+ *                         description: Packaging form name
+ *             example:
+ *               data:
+ *                 - id: "607b0fac-9720-4f54-9592-1e19d8e5776a"
+ *                   label: "BOTTLE"
+ *                 - id: "382749cb-383b-4949-b46c-c815ca2ebc73"
+ *                   label: "BAR"
+ *                 - id: "637d71cf-2992-4c11-b654-8f199f716df7"
+ *                   label: "BOX"
+ *                 - id: "257044dd-16eb-4c23-a676-abbfbc54ac7b"
+ *                   label: "PACK"
+ *                 - id: "92ed0e40-b010-44e8-8ab0-1435b7ce49a1"
+ *                   label: "SACHET"
+ *                 - id: "c39d8a4c-3e50-4f70-accd-fcbd1a6f12d0"
+ *                   label: "TABLET"
+ *                 - id: "6f7ae3f3-b451-4696-b4ca-8217e948f7a8"
+ *                   label: "TUB"
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get('/lookups/packaging-forms', controller.getPackagingFormsController);
+
+/**
+ * @swagger
+ * /api/SSS/lookups/supplement-statuses:
+ *   get:
+ *     summary: Get Supplement Status Options
+ *     description: |
+ *       Returns list of supplement status options for dropdown selection.
+ *       
+ *       **Status Options:**
+ *       - BATCH TESTED - Requires batch_testing_org
+ *       - NOT BATCH TESTED - Auto-sets batch_testing_org to "NIL"
+ *       - DISCONTINUED - Keeps existing batch_testing_org
+ *       
+ *       **Default Behavior:**
+ *       - Returns only active statuses (`is_active = true`)
+ *       - Sorted alphabetically by name
+ *       
+ *       **Use Case:** Populate dropdowns in supplement create/edit forms
+ *     tags: [Lookups]
+ *     parameters:
+ *       - in: query
+ *         name: includeInactive
+ *         schema:
+ *           type: boolean
+ *         description: Include inactive statuses (default false)
+ *         example: false
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved supplement statuses
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                         description: Status ID
+ *                       label:
+ *                         type: string
+ *                         description: Status name
+ *             example:
+ *               data:
+ *                 - id: "9f3c014d-79e3-4454-b78b-3bde2e22889d"
+ *                   label: "BATCH TESTED"
+ *                 - id: "28a9cdcc-19ef-4961-8479-9cc7abbc2065"
+ *                   label: "DISCONTINUED"
+ *                 - id: "9b6fb269-6dc0-4843-ad42-9aeeae8d5d7d"
+ *                   label: "NOT BATCH TESTED"
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get('/lookups/supplement-statuses', controller.getSupplementStatusesController);
+
+/**
+ * @swagger
+ * /api/SSS/lookups/batch-statuses:
+ *   get:
+ *     summary: Get Batch Stock Status Options
+ *     description: |
+ *       Returns list of batch stock status options for dropdown selection.
+ *       
+ *       **Status Examples:**
+ *       - Approved - Tested and ready for use
+ *       - Pending - Awaiting testing
+ *       - Quarantined - Quality issues
+ *       - Expired - Past expiration date
+ *       
+ *       **Default Behavior:**
+ *       - Returns only active statuses (`is_active = true`)
+ *       - Sorted alphabetically by name
+ *       - New batches auto-set to "available" status
+ *       
+ *       **Use Case:** Populate dropdowns in batch management interfaces
+ *     tags: [Lookups]
+ *     parameters:
+ *       - in: query
+ *         name: includeInactive
+ *         schema:
+ *           type: boolean
+ *         description: Include inactive statuses (default false)
+ *         example: false
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved batch stock statuses
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                         description: Status ID
+ *                       label:
+ *                         type: string
+ *                         description: Status name
+ *             example:
+ *               data:
+ *                 - id: "status-uuid-1"
+ *                   label: "Approved"
+ *                 - id: "status-uuid-2"
+ *                   label: "Pending"
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get('/lookups/batch-statuses', controller.getBatchStockStatusesController);
+
+/**
+ * @swagger
+ * /api/SSS/lookups/ticket-statuses:
+ *   get:
+ *     summary: Get Ticket Status Options
+ *     description: |
+ *       Returns list of ticket status options for dropdown selection.
+ *       
+ *       **Status Examples:**
+ *       - Confirmed - Ticket approved
+ *       - Pending - Awaiting approval
+ *       - Cancelled - Ticket cancelled
+ *       - Fulfilled - Items distributed
+ *       
+ *       **Default Behavior:**
+ *       - Returns only active statuses (`is_active = true`)
+ *       - Sorted alphabetically by name
+ *       
+ *       **Use Case:** Populate dropdowns in ticket management interfaces
+ *     tags: [Lookups]
+ *     parameters:
+ *       - in: query
+ *         name: includeInactive
+ *         schema:
+ *           type: boolean
+ *         description: Include inactive statuses (default false)
+ *         example: false
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved ticket statuses
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                         description: Status ID
+ *                       label:
+ *                         type: string
+ *                         description: Status name
+ *             example:
+ *               data:
+ *                 - id: "status-uuid-1"
+ *                   label: "Confirmed"
+ *                 - id: "status-uuid-2"
+ *                   label: "Pending"
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get('/lookups/ticket-statuses', controller.getTicketStatusesController);
+
 export default router;
