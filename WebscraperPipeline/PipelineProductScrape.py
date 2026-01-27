@@ -147,7 +147,7 @@ Carbohydrates (g), Glucose (g), Fructose (g), Galactose (g), Ribose (g), Sucrose
     },
     "Per Serving Size": {
     },
-    "Nutritional Information Image": "https://cdn.shopify.com/s/files/1/0454/0871/4919/files/Isotonic_drinkNutritionals1000x1000_42163958-d2cb-4bf5-ad4e-6bd9d63221fa.jpg?v=1742482293"
+    "Nutritional Information Image": "https://exampleimageurl/Hydration_Water.com"
   }
 ]
 15. Example output for non-supplement page:
@@ -183,12 +183,21 @@ def scrapeProduct(url, openai_key):
     result_gpt4o = smart_scraper_graph_gpt4o.run()
     if isinstance(result_gpt4o, str):
       result_gpt4o = json.loads(result_gpt4o)
-    for product in result_gpt4o["items"]:
-        if isinstance(product, str):
-          product = json.loads(product)
-        product["URL"] = url
     if isinstance(result_gpt4o, dict):
-        result_gpt4o = result_gpt4o["items"]
+      result_gpt4o = result_gpt4o["items"]
+    for product in result_gpt4o:
+      if isinstance(product, str):
+        product = json.loads(product)
+        
+      per_100g = product.get("Per 100g")
+      if not isinstance(per_100g, dict):
+          product["Per 100g"] = {}
+
+      per_serving = product.get("Per Serving Size")
+      if not isinstance(per_serving, dict):
+          product["Per Serving Size"] = {}
+      product["URL"] = url
     return result_gpt4o
-# openai_key = os.getenv("OPENAI_API_KEY")
-# print(scrapeProduct("https://appliednutrition.uk/products/pump-3g-zero-stimulant-375g",openai_key))
+
+openai_key = os.getenv("OPENAI_API_KEY")
+print(scrapeProduct("https://appliednutrition.uk/products/applied-starter-pack",openai_key))

@@ -53,13 +53,12 @@ def getWebsitesToScrape(conn):
     return {key: id for id, key in rows}
 
 
-def scrapeAllWebsitesAndPush(openai_key):
+def scrapeAllWebsitesAndPush(openai_key, websites_list=None):
     all_products = []
     all_errors = []
 
-
-    websites_list = list(getWebsitesToScrape(conn))
-    websites_list = ["https://appliednutrition.uk/collections/pre-workout"]
+    if websites_list is None:
+        websites_list = list(getWebsitesToScrape(conn))
 
     for website in websites_list:
         products,errors = listFullScrapeAndPush(website, openai_key)
@@ -160,8 +159,9 @@ def save_as_json(data, filename=None, folder="output"):
 
     print(f"Saved {len(data)} products to {filepath}")
 
-
-results,errors = scrapeAllWebsitesAndPush(openai_key)
+    
+lst = ["https://appliednutrition.uk/collections/pre-workout"]
+results,errors = scrapeAllWebsitesAndPush(openai_key,lst)
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 save_as_json(results)

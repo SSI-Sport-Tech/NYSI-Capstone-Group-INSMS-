@@ -246,7 +246,7 @@ def sanitize_json(obj):
     
 def mapAndInsertMany(conn,products):
     mapped_products = [
-    map_extracted_product_to_staging(conn,product,"https://www.healthspanelite.co.uk/protein/","0.5")
+    map_extracted_product_to_staging(conn,product,"https://www.healthspanelite.co.uk/protein/","0.7")
     for product in products
     ]
     sanitized_products = sanitize_json(mapped_products)

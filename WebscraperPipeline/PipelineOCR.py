@@ -1,5 +1,3 @@
-
-
 import uuid
 import os
 import requests
@@ -57,9 +55,9 @@ def enrich_product_with_ocr(product: dict) -> bool:
     if not image_url or image_url == "NA":
         return False
 
-    # # Skip if nutrition already exists
-    # if product.get("Per 100g") or product.get("Per Serving Size"):
-    #     return False
+    # Skip if nutrition already exists
+    if product.get("Per 100g") or product.get("Per Serving Size"):
+        return False
 
     os.makedirs("tmp_images", exist_ok=True)
     image_path = f"tmp_images/{uuid.uuid4().hex}.jpg"

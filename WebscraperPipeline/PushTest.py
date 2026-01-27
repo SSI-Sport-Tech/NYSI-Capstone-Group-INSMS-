@@ -24,7 +24,7 @@ conn = psycopg.connect(
 
 products,errors = PipelineFullScrape.productFullScrape("https://appliednutrition.uk/products/abe-all-black-everything-375g",openai_key)
 mapped_products = [
-    PipelinePush.map_extracted_product_to_staging(conn,product,"https://appliednutrition.uk/collections/best-sellers","0.6")
+    PipelinePush.map_extracted_product_to_staging(conn,product,"https://appliednutrition.uk/collections/best-sellers","0.7")
     for product in products
 ]
 

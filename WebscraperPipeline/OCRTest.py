@@ -12,7 +12,7 @@ openai_key = os.getenv("OPENAI_API_KEY")
 output = []
 errors = []
 
-products = PipelineProductScrape.scrapeProduct("https://appliednutrition.uk/products/l-citrulline-1500",openai_key)
+products = PipelineProductScrape.scrapeProduct("https://www.etixxsports.com/en-be/products/endurance-tasting-pack?variant=53111029989722",openai_key)
 for product in products:
     enriched = PipelineOCR.enrich_product_with_ocr(product)
     if enriched:
