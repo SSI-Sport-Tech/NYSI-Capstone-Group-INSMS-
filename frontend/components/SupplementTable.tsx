@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   ArrowUpDown,
   MoreVertical,
@@ -191,9 +192,12 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
                     />
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    <span className="font-medium">
+                    <Link
+                      href={`/supplements/${supplement.id}`}
+                      className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                    >
                       {supplement.supplement_name || "N/A"}
-                    </span>
+                    </Link>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
                     {supplement.supplement_brand || "N/A"}

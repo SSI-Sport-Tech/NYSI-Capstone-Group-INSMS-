@@ -59,7 +59,7 @@ const SupplementInfo: React.FC<SupplementInfoProps> = ({ supplement }) => {
                 href={`https://${getSourceUrl()}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline"
+                className="underline break-words"
               >
                 {getSourceUrl() || "N/A"}
               </a>
@@ -79,7 +79,7 @@ const SupplementInfo: React.FC<SupplementInfoProps> = ({ supplement }) => {
             <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
               Testing Org
             </dt>
-            <dd className="text-sm text-gray-900">
+            <dd className="text-sm text-gray-900 break-words">
               {supplement.batch_testing_org || "N/A"}
             </dd>
           </div>
@@ -90,7 +90,7 @@ const SupplementInfo: React.FC<SupplementInfoProps> = ({ supplement }) => {
           <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
             Ingredients
           </dt>
-          <dd className="text-sm text-gray-900">
+          <dd className="text-sm text-gray-900 break-words">
             {supplement.ingredients || "N/A"}
           </dd>
         </div>
@@ -100,7 +100,9 @@ const SupplementInfo: React.FC<SupplementInfoProps> = ({ supplement }) => {
           <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
             Additional Notes
           </dt>
-          <dd className="text-sm text-gray-900">{supplement.notes || "N/A"}</dd>
+          <dd className="text-sm text-gray-900 break-words">
+            {supplement.notes || "N/A"}
+          </dd>
         </div>
       </div>
     </div>
