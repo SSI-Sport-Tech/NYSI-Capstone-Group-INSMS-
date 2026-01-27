@@ -1,14 +1,21 @@
-import React from "react";
-import { ArrowUpDown, MoreVertical, ExternalLink } from "lucide-react";
+import React, { useState } from "react";
+import {
+  ArrowUpDown,
+  MoreVertical,
+  ExternalLink,
+  Plus,
+  Upload,
+} from "lucide-react";
+import axios from "axios";
 
 interface Supplement {
-  id: number;
+  id: string;
   supplement_name: string;
   supplement_brand: string;
   supplement_packaging_form: string;
   supplement_status: string;
   batch_testing_org: string | null;
-  supplement_website: string | null;
+  product_source_url: string[] | string | null;
 }
 
 interface SupplementTableProps {
@@ -16,6 +23,10 @@ interface SupplementTableProps {
   total: number;
   loading: boolean;
   searchQuery?: string;
+  onRefresh?: () => void;
+  currentPage?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
 }
 
 const getStatusBadgeClass = (status: string) => {
@@ -35,7 +46,60 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
   total,
   loading,
   searchQuery,
+  onRefresh,
+  currentPage = 1,
+  totalPages = 1,
+  onPageChange,
 }) => {
+  console.log("SupplementTable props:", {
+    supplements,
+    total,
+    loading,
+    searchQuery,
+  });
+  const [selectedSupplements, setSelectedSupplements] = useState<number[]>([]);
+
+  // Handle export
+  const handleExport = () => {
+    const headers = [
+      "Name",
+      "Brand",
+      "Form",
+      "Status",
+      "Testing Org",
+      "Website",
+    ];
+    const csvContent = [
+      headers.join(","),
+      ...supplements.map((supplement) =>
+        [
+          supplement.supplement_name || "N/A",
+          supplement.supplement_brand || "N/A",
+          supplement.supplement_packaging_form || "Unknown",
+          supplement.supplement_status || "Unknown",
+          supplement.batch_testing_org || "-",
+          Array.isArray(supplement.product_source_url)
+            ? supplement.product_source_url[0] || "-"
+            : supplement.product_source_url || "-",
+        ].join(","),
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `supplements-${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Handle add supplement
+  const handleAddSupplement = () => {
+    // Navigate to add supplement form or open modal
+    window.location.href = "/supplements/add";
+  };
+
   return (
     <div className="bg-white rounded-lg border border-gray-200">
       {/* Table Header */}
@@ -49,12 +113,18 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <button className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded px-3 py-1.5">
-            <span>📤</span>
+          <button
+            onClick={handleExport}
+            className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded px-3 py-1.5"
+          >
+            <Upload className="w-4 h-4" />
             <span>Export</span>
           </button>
-          <button className="bg-black text-white px-4 py-1.5 rounded text-sm flex items-center space-x-2">
-            <span>+</span>
+          <button
+            onClick={handleAddSupplement}
+            className="bg-black text-white px-4 py-1.5 rounded text-sm flex items-center space-x-2 hover:bg-gray-800"
+          >
+            <Plus className="w-4 h-4" />
             <span>Add Supplement</span>
           </button>
         </div>
@@ -99,7 +169,7 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
                 Testing Org
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">
-                Website
+                Source URL
               </th>
               <th className="px-6 py-3 text-left w-16"></th>
             </tr>
@@ -134,7 +204,7 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
                   <td className="px-6 py-4">
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(
-                        supplement.supplement_status || "Unknown"
+                        supplement.supplement_status || "Unknown",
                       )}`}
                     >
                       <span className="w-1.5 h-1.5 bg-current rounded-full mr-1.5"></span>
@@ -145,19 +215,24 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
                     {supplement.batch_testing_org || "-"}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    {supplement.supplement_website ? (
-                      <a
-                        href={supplement.supplement_website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 flex items-center space-x-1"
-                      >
-                        <span>Visit</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    ) : (
-                      "-"
-                    )}
+                    {(() => {
+                      const url = Array.isArray(supplement.product_source_url)
+                        ? supplement.product_source_url[0]
+                        : supplement.product_source_url;
+                      return url ? (
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                        >
+                          <span>Visit</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      ) : (
+                        "-"
+                      );
+                    })()}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-400 text-center">
                     <button className="text-gray-400 hover:text-gray-600 p-1">
@@ -182,16 +257,23 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
       {/* Pagination */}
       <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-600">1 - 10 of {total} items</span>
+          <span className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages} ({total} total items)
+          </span>
         </div>
         <div className="flex items-center space-x-2">
           <button
-            className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700"
-            disabled
+            onClick={() => onPageChange && onPageChange(currentPage - 1)}
+            disabled={currentPage <= 1}
+            className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Previous
           </button>
-          <button className="px-3 py-1 text-sm text-gray-700 hover:text-gray-900">
+          <button
+            onClick={() => onPageChange && onPageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+            className="px-3 py-1 text-sm text-gray-700 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             Next
           </button>
         </div>
