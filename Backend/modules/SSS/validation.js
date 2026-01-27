@@ -381,3 +381,85 @@ export async function getBatchStockStatusByName(pool, statusName = 'available') 
 
     return result.rows[0];
 }
+
+// ============================================================================
+// SUPPLEMENT STAGING SCHEMAS
+// ============================================================================
+
+/**
+ * Schema for updating supplement staging (PATCH /api/SSS/staging-supplements/:id)
+ * Only supplement_name is required, all other fields optional
+ */
+export const updateStagingSupplementSchema = z.object({
+    // ---- OPTIONAL FIELDS (only supplement_name required if provided) ----
+    supplement_name: z.string()
+        .min(1, 'Supplement name cannot be empty')
+        .max(255, 'Supplement name must be less than 255 characters')
+        .trim()
+        .optional(),
+    
+    supplement_packaging_form_id: uuidSchema.optional().nullable(),
+    supplement_status_id: uuidSchema.optional().nullable(),
+    
+    batch_testing_org: optionalTextSchema,
+    
+    supplement_brand: z.string()
+        .max(100, 'Brand name must be less than 100 characters')
+        .trim()
+        .optional()
+        .nullable()
+        .transform(val => {
+            if (val === undefined) return undefined;
+            return val || null;
+        }),
+
+    supplement_description: optionalTextSchema,
+    supplement_warning_label: optionalTextSchema,
+    supplement_certifications: optionalTextSchema,
+    supplement_additional_information: optionalTextSchema,
+    
+    product_source_url: urlSchema,
+    scraper_version: optionalTextSchema,
+    
+    // ---- JSONB FIELDS ----
+    supplement_ingredient: jsonbArraySchema
+        .optional()
+        .nullable()
+        .default([])
+        .describe('Array of ingredient names, e.g., ["Vitamin D3", "Calcium"]'),
+
+    nutritional_info_per_100g: z.record(z.string(), z.any())
+        .optional()
+        .nullable()
+        .describe('Nutritional breakdown per 100g'),
+
+    nutritional_info_per_serving: z.record(z.string(), z.any())
+        .optional()
+        .nullable()
+        .describe('Nutritional breakdown per serving'),
+
+    nutritional_info_per_serving_definition: optionalTextSchema
+        .describe('Definition of serving size, e.g., "1 capsule"'),
+
+    // ---- FIELDS NOT ACCEPTED (system-managed) ----
+    id: z.never().optional(),
+    scraper_catalog_url_id: z.never().optional(), // Read-only
+    is_reviewed: z.never().optional(), // Managed by approval workflow
+    supplement_staging_id: z.never().optional(), // N/A
+    approved_by: z.never().optional(), // N/A
+    supplement_input_type: z.never().optional(), // Set during approval
+    vector_100g_ingredient: z.never().optional(), // Generated during approval
+    vector_perserving_ingredient: z.never().optional(), // Generated during approval
+}).strict();
+
+/**
+ * Schema for approving staging entries (POST /api/SSS/staging-supplements/approve)
+ * Bulk approval of multiple staging entries
+ */
+export const approveStagingSchema = z.object({
+    ids: z.array(
+        z.string().uuid('Each ID must be a valid UUID')
+    )
+        .min(1, 'At least one staging ID is required')
+        .describe('Array of supplement_staging IDs to approve')
+}).strict();

@@ -41,6 +41,10 @@ const swaggerOptions = {
                 description: "Batch inventory management and stock tracking",
             },
             {
+                name: "Staging",
+                description: "Supplement staging area - Web scraper data review and approval",
+            },
+            {
                 name: "Athletes",
                 description: "Athlete profile management (Planned)",
             },
@@ -476,6 +480,280 @@ const swaggerOptions = {
                             type: "string",
                             nullable: true,
                             description: "Search query used (if any)",
+                        },
+                    },
+                },
+// ==================== STAGING SCHEMAS ====================
+                StagingSupplement: {
+                    type: "object",
+                    properties: {
+                        id: {
+                            type: "string",
+                            format: "uuid",
+                            description: "Unique staging supplement identifier",
+                        },
+                        supplement_name: {
+                            type: "string",
+                            description: "Name of the supplement",
+                        },
+                        supplement_brand: {
+                            type: "string",
+                            description: "Brand name",
+                        },
+                        supplement_packaging_form: {
+                            type: "string",
+                            description: "Packaging form (BOTTLE, TABLET, etc.)",
+                        },
+                        supplement_status: {
+                            type: "string",
+                            description: "Testing status",
+                        },
+                        product_source_url: {
+                            type: "array",
+                            items: {
+                                type: "string",
+                                format: "uri"
+                            },
+                            nullable: true,
+                            description: "Product information URLs",
+                        },
+                        is_reviewed: {
+                            type: "boolean",
+                            description: "Whether entry has been reviewed/approved",
+                            example: false,
+                        },
+                    },
+                },
+
+                StagingSupplementDetail: {
+                    type: "object",
+                    properties: {
+                        id: {
+                            type: "string",
+                            format: "uuid",
+                            description: "Unique staging supplement identifier",
+                        },
+                        supplement_name: {
+                            type: "string",
+                            description: "Name of the supplement",
+                        },
+                        supplement_brand: {
+                            type: "string",
+                            nullable: true,
+                            description: "Brand/manufacturer name",
+                        },
+                        supplement_description: {
+                            type: "string",
+                            nullable: true,
+                            description: "Product description",
+                        },
+                        supplement_packaging_form: {
+                            type: "string",
+                            nullable: true,
+                            description: "Physical packaging form",
+                        },
+                        supplement_packaging_form_id: {
+                            type: "string",
+                            format: "uuid",
+                            nullable: true,
+                            description: "Reference to packaging form lookup table",
+                        },
+                        supplement_status: {
+                            type: "string",
+                            nullable: true,
+                            description: "Testing status",
+                        },
+                        supplement_status_id: {
+                            type: "string",
+                            format: "uuid",
+                            nullable: true,
+                            description: "Reference to status lookup table",
+                        },
+                        supplement_ingredient: {
+                            type: "array",
+                            items: { type: "string" },
+                            description: "List of ingredients",
+                        },
+                        nutritional_info_per_100g: {
+                            type: "object",
+                            nullable: true,
+                            description: "Nutritional information per 100g",
+                        },
+                        nutritional_info_per_serving: {
+                            type: "object",
+                            nullable: true,
+                            description: "Nutritional information per serving",
+                        },
+                        nutritional_info_per_serving_definition: {
+                            type: "string",
+                            nullable: true,
+                            description: "Serving size definition",
+                        },
+                        supplement_warning_label: {
+                            type: "string",
+                            nullable: true,
+                            description: "Safety warnings",
+                        },
+                        supplement_certifications: {
+                            type: "string",
+                            nullable: true,
+                            description: "Quality certifications",
+                        },
+                        supplement_additional_information: {
+                            type: "string",
+                            nullable: true,
+                            description: "Additional notes",
+                        },
+                        batch_testing_org: {
+                            type: "string",
+                            nullable: true,
+                            description: "Testing organization or 'NIL'",
+                        },
+                        product_source_url: {
+                            type: "array",
+                            items: {
+                                type: "string",
+                                format: "uri"
+                            },
+                            nullable: true,
+                            description: "Product URLs",
+                        },
+                        scraper_version: {
+                            type: "string",
+                            nullable: true,
+                            description: "Web scraper version used",
+                        },
+                        is_reviewed: {
+                            type: "boolean",
+                            description: "Review status",
+                        },
+                    },
+                },
+
+                UpdateStagingSupplementRequest: {
+                    type: "object",
+                    properties: {
+                        supplement_name: { type: "string" },
+                        supplement_brand: { type: "string", nullable: true },
+                        supplement_packaging_form_id: { type: "string", format: "uuid", nullable: true },
+                        supplement_status_id: { type: "string", format: "uuid", nullable: true },
+                        batch_testing_org: { type: "string", nullable: true },
+                        supplement_description: { type: "string", nullable: true },
+                        supplement_ingredient: {
+                            type: "array",
+                            items: { type: "string" },
+                            nullable: true,
+                        },
+                        nutritional_info_per_100g: { type: "object", nullable: true },
+                        nutritional_info_per_serving: { type: "object", nullable: true },
+                        nutritional_info_per_serving_definition: { type: "string", nullable: true },
+                        supplement_warning_label: { type: "string", nullable: true },
+                        supplement_certifications: { type: "string", nullable: true },
+                        supplement_additional_information: { type: "string", nullable: true },
+                        product_source_url: {
+                            oneOf: [
+                                { type: "string", format: "uri" },
+                                {
+                                    type: "array",
+                                    items: { type: "string", format: "uri" }
+                                }
+                            ],
+                            nullable: true,
+                        },
+                        scraper_version: { type: "string", nullable: true },
+                    },
+                },
+
+                PaginatedStagingSupplementsResponse: {
+                    type: "object",
+                    properties: {
+                        data: {
+                            type: "array",
+                            items: { $ref: "#/components/schemas/StagingSupplement" },
+                        },
+                        currentPage: {
+                            type: "integer",
+                            description: "Current page number",
+                        },
+                        totalPages: {
+                            type: "integer",
+                            description: "Total number of pages",
+                        },
+                        totalCount: {
+                            type: "integer",
+                            description: "Total number of unreviewed staging entries",
+                        },
+                        searchQuery: {
+                            type: "string",
+                            nullable: true,
+                            description: "Always null (no search for staging)",
+                        },
+                    },
+                },
+
+                ApprovalResponse: {
+                    type: "object",
+                    properties: {
+                        message: {
+                            type: "string",
+                            example: "Processed 3 staging entries: 2 succeeded, 1 failed",
+                        },
+                        totalProcessed: {
+                            type: "integer",
+                            description: "Total number of entries processed",
+                        },
+                        succeeded: {
+                            type: "integer",
+                            description: "Number of entries successfully approved",
+                        },
+                        failed: {
+                            type: "integer",
+                            description: "Number of entries that failed",
+                        },
+                        results: {
+                            type: "array",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    staging_id: {
+                                        type: "string",
+                                        format: "uuid",
+                                        description: "Staging entry UUID",
+                                    },
+                                    staging_name: {
+                                        type: "string",
+                                        description: "Supplement name from staging",
+                                    },
+                                    status: {
+                                        type: "string",
+                                        enum: ["success", "failed"],
+                                        description: "Approval status",
+                                    },
+                                    supplement_id: {
+                                        type: "string",
+                                        format: "uuid",
+                                        nullable: true,
+                                        description: "Created supplement UUID (if successful)",
+                                    },
+                                    reason: {
+                                        type: "string",
+                                        description: "Failure reason (if failed)",
+                                    },
+                                    vectorization: {
+                                        type: "object",
+                                        properties: {
+                                            vector_100g: {
+                                                type: "string",
+                                                description: "Vector generation status for per_100g",
+                                            },
+                                            vector_perserving: {
+                                                type: "string",
+                                                description: "Vector generation status for per_serving",
+                                            },
+                                        },
+                                    },
+                                },
+                            },
                         },
                     },
                 },
