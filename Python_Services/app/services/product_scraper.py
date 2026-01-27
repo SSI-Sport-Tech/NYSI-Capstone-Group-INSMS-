@@ -3,8 +3,11 @@ Product detail page scraper service.
 Extracts comprehensive product information including nutrition data.
 """
 
+import nest_asyncio
+nest_asyncio.apply()
 from typing import List, Dict, Optional, Union, Literal
 from pydantic import BaseModel, Field
+import requests
 from scrapegraphai import graphs
 import json
 
@@ -172,7 +175,43 @@ Example 3 - Non-nutritional product:
   }
 ]
 """
+import time
+from selenium.webdriver.chrome.options import Options
+from selenium import webdriver
 
+def selenium_fetch(
+    url: str, 
+    wait_time: int = 5, 
+) -> str:
+    """
+    Fetch page content using Selenium with infinite scroll handling.
+    
+    Args:
+        url: URL to fetch
+        wait_time: Initial page load wait time (seconds)
+        scroll_pause: Pause between scrolls (seconds)
+        max_scrolls: Maximum number of scroll attempts
+        
+    Returns:
+        str: Page HTML source
+    """
+    options = Options()
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=1920,1080")
+
+    driver = webdriver.Chrome(options=options)
+
+    try:
+        driver.get(url)
+        time.sleep(wait_time)
+
+        return driver.page_source
+
+    finally:
+        driver.quit()
 
 # ============================================================================
 # SCRAPER FUNCTION
@@ -199,11 +238,13 @@ async def scrape_product_details(
             "model": "openai/gpt-4o",
         },
     }
+
+    source = selenium_fetch(product_url)
     
     # Create scraper with schema validation
     scraper = graphs.SmartScraperGraph(
         prompt=PRODUCT_INFO_PROMPT,
-        source=product_url,
+        source=source,
         config=config,
         schema=ProductInfoResponse
     )

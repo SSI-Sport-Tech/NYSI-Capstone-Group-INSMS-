@@ -91,11 +91,6 @@ def selenium_fetch(
                 break  # No more content
             last_height = new_height
 
-        # Save snapshot for debugging (optional)
-        debug_dir = Path("debug")
-        debug_dir.mkdir(exist_ok=True)
-        Path("debug/page.html").write_text(driver.page_source, encoding="utf-8")
-
         return driver.page_source
 
     finally:

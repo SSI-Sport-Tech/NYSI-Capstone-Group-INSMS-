@@ -2,6 +2,9 @@
 Webscraper API Router
 Provides endpoints for scraping supplement data from e-commerce websites.
 """
+import nest_asyncio
+nest_asyncio.apply()
+import traceback
 
 import os
 from fastapi import APIRouter, HTTPException, BackgroundTasks
@@ -184,6 +187,7 @@ async def scrape_single_product(request: ScrapeProductRequest):
         
     except Exception as e:
         print(f"❌ Scrape product failed: {e}")
+        traceback.print_exc()
         raise HTTPException(500, f"Scraping failed: {str(e)}")
 
 
