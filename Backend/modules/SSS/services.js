@@ -1,5 +1,9 @@
 import pool from "../../config/db.js";
 
+// Configuration
+const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
+
+
 // ============================================================================
 // SUPPLEMENT FUNCTIONS
 // ============================================================================
@@ -981,6 +985,82 @@ export async function deleteStagingSupplements(stagingIds) {
 }
 
 /**
+ * Generate vectors for a supplement using Python service
+ * @param {Object} supplementData - Supplement data with ingredients and nutrition
+ * @returns {Promise<Object>} Vectorization result or error status
+ */
+async function generateVectorsForSupplement(supplementData) {
+  try {
+    // Extract and prepare data
+    const ingredients = supplementData.supplement_ingredient || [];
+    const perServing = supplementData.nutritional_info_per_serving || {};
+    const per100g = supplementData.nutritional_info_per_100g || {};
+
+    // Skip vectorization if no data available
+    if (ingredients.length === 0 && Object.keys(perServing).length === 0 && Object.keys(per100g).length === 0) {
+      return {
+        success: false,
+        reason: 'No ingredients or nutritional data available',
+        vector_perserving_ingredient: null,
+        vector_100g_ingredient: null
+      };
+    }
+
+    // Call Python service
+    const response = await fetch(`${PYTHON_SERVICE_URL}/api/vectorization/generate-product-vectors`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ingredients: ingredients,
+        per_serving: perServing,
+        per_100g: per100g
+      }),
+      timeout: 10000 // 10 second timeout
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Python service error:', errorText);
+      return {
+        success: false,
+        reason: `Python service returned ${response.status}`,
+        vector_perserving_ingredient: null,
+        vector_100g_ingredient: null
+      };
+    }
+
+    const result = await response.json();
+
+    if (result.success) {
+      return {
+        success: true,
+        vector_perserving_ingredient: result.vector_perserving_ingredient,
+        vector_100g_ingredient: result.vector_100g_ingredient,
+        dimension: result.dimension
+      };
+    } else {
+      return {
+        success: false,
+        reason: 'Python service returned success=false',
+        vector_perserving_ingredient: null,
+        vector_100g_ingredient: null
+      };
+    }
+
+  } catch (error) {
+    console.error('Vectorization error:', error);
+    return {
+      success: false,
+      reason: error.message,
+      vector_perserving_ingredient: null,
+      vector_100g_ingredient: null
+    };
+  }
+}
+
+/**
  * Approve staging entries and create supplements
  * @param {Array<string>} stagingIds - Array of staging UUIDs to approve
  * @returns {Promise<Object>} Approval results with success/failure details
@@ -1112,19 +1192,56 @@ export async function approveStagingSupplements(stagingIds) {
         [stagingId]
       );
 
-      // 6. TODO: Vectorization (to be implemented later)
-      // For now, supplement is created with NULL vectors
-      const vectorization = {
-        vector_100g: 'not implemented - TODO',
-        vector_perserving: 'not implemented - TODO'
-      };
+      // 6. Generate vectors using Python service
+      console.log(`Generating vectors for supplement ${newSupplement.id}...`);
+      const vectorizationResult = await generateVectorsForSupplement(staging);
 
+      // 7. Update supplement with vectors if successful
+      if (vectorizationResult.success) {
+        try {
+          const updateVectorQuery = `
+            UPDATE SSS.Supplement
+            SET 
+              vector_100g_ingredient = $1::vector,
+              vector_perserving_ingredient = $2::vector
+            WHERE id = $3
+          `;
+
+          await pool.query(updateVectorQuery, [
+            vectorizationResult.vector_100g_ingredient
+              ? JSON.stringify(vectorizationResult.vector_100g_ingredient)
+              : null,
+            vectorizationResult.vector_perserving_ingredient
+              ? JSON.stringify(vectorizationResult.vector_perserving_ingredient)
+              : null,
+            newSupplement.id
+          ]);
+
+          console.log(`✅ Vectors generated and stored for supplement ${newSupplement.id}`);
+        } catch (updateError) {
+          console.error(`Failed to update vectors for supplement ${newSupplement.id}:`, updateError);
+          // Don't fail the entire approval - supplement still created
+        }
+      } else {
+        console.warn(`⚠️ Vectorization failed for supplement ${newSupplement.id}: ${vectorizationResult.reason}`);
+      }
+
+      // 8. Build response
       results.push({
         staging_id: stagingId,
         staging_name: staging.supplement_name,
         status: 'success',
         supplement_id: newSupplement.id,
-        vectorization: vectorization
+        vectorization: {
+          status: vectorizationResult.success ? 'generated' : 'failed',
+          reason: vectorizationResult.success ? undefined : vectorizationResult.reason,
+          vector_100g: vectorizationResult.success
+            ? `${vectorizationResult.dimension}d vector generated`
+            : null,
+          vector_perserving: vectorizationResult.success
+            ? `${vectorizationResult.dimension}d vector generated`
+            : null
+        }
       });
 
     } catch (error) {
@@ -1220,4 +1337,5 @@ export async function getTicketStatuses(activeOnly = true) {
     `;
 
   return await pool.query(query);
-}
+};
+
