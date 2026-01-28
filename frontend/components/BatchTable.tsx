@@ -10,6 +10,7 @@ import {
   MoreVertical,
 } from "lucide-react";
 import axios from "axios";
+import AddSupplementModal from "./AddSupplementModal";
 
 interface Batch {
   id: number;
@@ -66,6 +67,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
   const [showFilters, setShowFilters] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [showAddModal, setShowAddModal] = useState(false);
 
   // Handle checkbox selection
   const handleSelectAll = (checked: boolean) => {
@@ -205,7 +207,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
             <span>Export</span>
           </button>
           <button
-            onClick={() => (window.location.href = "/inventory")}
+            onClick={() => setShowAddModal(true)}
             className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4" />
@@ -416,6 +418,16 @@ const BatchTable: React.FC<BatchTableProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Add Supplement Modal */}
+      <AddSupplementModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={() => {
+          setShowAddModal(false);
+          if (onRefresh) onRefresh();
+        }}
+      />
     </div>
   );
 };
