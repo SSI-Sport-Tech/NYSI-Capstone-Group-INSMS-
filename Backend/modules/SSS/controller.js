@@ -10,6 +10,8 @@ import {
     createBatchSchema,
     updateBatchSchema,
     getBatchStockStatusByName,
+    updateStagingSupplementSchema,
+    approveStagingSchema,
 } from './validation.js';
 import { z } from 'zod';
 import pool from '../../config/db.js';
@@ -741,6 +743,417 @@ export async function deleteBatches(req, res) {
         // Handle database errors
         res.status(500).json({
             error: 'Failed to delete batches',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}
+
+// ============================================================================
+// SUPPLEMENT STAGING FUNCTIONS
+// ============================================================================
+
+/**
+ * Use Case: View Supplement Staging Library
+ * GET /api/SSS/staging-supplements?page={pageNumber}
+ * 
+ * Retrieves paginated list of unreviewed supplement staging entries
+ */
+export async function listStagingSupplements(req, res) {
+    try {
+        // Use pagination schema for validation (no search for staging)
+        const { page } = paginationSchema.parse(req.query);
+        const pageSize = 10;
+
+        const [stagingSupplements, totalCount] = await Promise.all([
+            services.getStagingSupplementsByPage(page, pageSize),
+            services.getTotalStagingCount()
+        ]);
+
+        const totalPages = Math.ceil(totalCount / pageSize);
+
+        res.json({
+            data: stagingSupplements.rows,
+            currentPage: page,
+            totalPages,
+            totalCount,
+            searchQuery: null
+        });
+    } catch (error) {
+        console.error('Error in listStagingSupplements:', error);
+
+        // Handle Zod validation errors
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Invalid query parameters',
+                details: error.errors.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message
+                }))
+            });
+        }
+
+        res.status(500).json({ error: error.message });
+    }
+}
+
+/**
+ * Use Case: View Supplement Staging Details
+ * GET /api/SSS/staging-supplements/:id
+ * 
+ * Retrieves full details of a specific supplement staging entry
+ */
+export async function getStagingSupplementDetails(req, res) {
+    try {
+        // Validate staging supplement ID
+        const { id } = uuidParamSchema.parse(req.params);
+
+        // Fetch staging supplement details
+        const stagingSupplement = await services.getStagingSupplementById(id);
+
+        // Check if staging supplement exists
+        if (!stagingSupplement) {
+            return res.status(404).json({
+                error: 'Staging supplement not found',
+                message: `No staging supplement found with ID: ${id}`
+            });
+        }
+
+        // Return comprehensive response - includes IDs for editing
+        res.json({
+            id: stagingSupplement.id,
+            supplement_name: stagingSupplement.supplement_name,
+            supplement_brand: stagingSupplement.supplement_brand,
+            supplement_description: stagingSupplement.supplement_description || null,
+            supplement_packaging_form: stagingSupplement.supplement_packaging_form || null,
+            supplement_packaging_form_id: stagingSupplement.supplement_packaging_form_id || null,
+            supplement_status: stagingSupplement.supplement_status || null,
+            supplement_status_id: stagingSupplement.supplement_status_id || null,
+            supplement_ingredient: stagingSupplement.supplement_ingredient || [],
+            nutritional_info_per_100g: stagingSupplement.nutritional_info_per_100g || null,
+            nutritional_info_per_serving: stagingSupplement.nutritional_info_per_serving || null,
+            nutritional_info_per_serving_definition: stagingSupplement.nutritional_info_per_serving_definition || null,
+            supplement_warning_label: stagingSupplement.supplement_warning_label || null,
+            supplement_certifications: stagingSupplement.supplement_certifications || null,
+            supplement_additional_information: stagingSupplement.supplement_additional_information || null,
+            batch_testing_org: stagingSupplement.batch_testing_org || null,
+            product_source_url: stagingSupplement.product_source_url || null,
+            scraper_version: stagingSupplement.scraper_version || null,
+            is_reviewed: stagingSupplement.is_reviewed
+        });
+
+    } catch (error) {
+        console.error('Error in getStagingSupplementDetails:', error);
+
+        // Handle Zod validation errors
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Invalid parameters',
+                details: error.errors.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message
+                }))
+            });
+        }
+
+        res.status(500).json({
+            error: 'Internal server error',
+            message: error.message
+        });
+    }
+}
+
+/**
+ * Use Case: Edit Supplement Staging
+ * PATCH /api/SSS/staging-supplements/:id
+ * 
+ * Update one or more fields of a supplement staging entry (partial update)
+ */
+export async function updateStagingSupplement(req, res) {
+    try {
+        console.log('Updating supplement staging...');
+        console.log('Staging ID:', req.params.id);
+        console.log('Request body:', req.body);
+
+        // STEP 1: Validate staging supplement ID format
+        console.log('Step 1: Validating staging supplement ID...');
+        const { id } = uuidParamSchema.parse(req.params);
+
+        // STEP 2: Check if staging supplement exists
+        console.log('Step 2: Checking if staging supplement exists...');
+        const existingStagingSupplement = await services.getStagingSupplementById(id);
+
+        if (!existingStagingSupplement) {
+            console.log('Staging supplement not found');
+            return res.status(404).json({
+                error: 'Staging supplement not found',
+                message: `No staging supplement found with ID: ${id}`
+            });
+        }
+        console.log('Staging supplement found');
+
+        // STEP 3: Validate the request body (partial update)
+        console.log('Step 3: Validating update data...');
+        const validatedData = updateStagingSupplementSchema.parse(req.body);
+        console.log('Schema validation passed');
+
+        // Check if there's anything to update
+        if (Object.keys(validatedData).length === 0) {
+            return res.status(400).json({
+                error: 'No fields to update',
+                message: 'Request body must contain at least one field to update'
+            });
+        }
+
+        // STEP 4: Update staging supplement in database
+        console.log('Step 4: Updating database...');
+        const updatedStagingSupplement = await services.updateStagingSupplement(id, validatedData);
+
+        if (!updatedStagingSupplement) {
+            console.log('Update failed');
+            return res.status(500).json({
+                error: 'Failed to update staging supplement',
+                message: 'No rows were updated'
+            });
+        }
+        console.log('Staging supplement updated successfully');
+
+        // STEP 5: Return success response
+        res.json({
+            message: 'Staging supplement updated successfully',
+            data: updatedStagingSupplement
+        });
+
+    } catch (error) {
+        console.error('Error updating staging supplement:', error);
+
+        // Handle Zod validation errors
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.errors.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message,
+                    received: err.received
+                }))
+            });
+        }
+
+        // Handle database errors
+        res.status(500).json({
+            error: 'Failed to update staging supplement',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}
+
+/**
+ * Use Case: Delete Supplement Staging
+ * DELETE /api/SSS/staging-supplements
+ * 
+ * Permanently delete one or more staging supplements (hard delete, bulk)
+ */
+export async function deleteStagingSupplements(req, res) {
+    try {
+        console.log('🗑️ Deleting staging supplements...');
+        console.log('Request body:', req.body);
+
+        // STEP 1: Validate request body
+        console.log('Step 1: Validating request...');
+        const { ids } = bulkDeleteSchema.parse(req.body);
+        console.log(`Validated ${ids.length} staging supplement ID(s)`);
+
+        // STEP 2: Delete staging supplements from database
+        console.log('Step 2: Deleting from database...');
+        const deletedStagingSupplements = await services.deleteStagingSupplements(ids);
+        console.log(`Deleted ${deletedStagingSupplements.length} staging supplement(s)`);
+
+        // STEP 3: Return success response
+        res.json({
+            message: `Successfully deleted ${deletedStagingSupplements.length} staging supplement(s)`,
+            deletedCount: deletedStagingSupplements.length,
+            deletedIds: deletedStagingSupplements.map(s => s.id)
+        });
+
+    } catch (error) {
+        console.error('Error deleting staging supplements:', error);
+
+        // Handle Zod validation errors
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.errors.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message,
+                    received: err.received
+                }))
+            });
+        }
+
+        // Handle database errors
+        res.status(500).json({
+            error: 'Failed to delete staging supplements',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}
+
+/**
+ * Use Case: Verifying Supplement Staging
+ * POST /api/SSS/staging-supplements/approve
+ * 
+ * Approve staging entries and create corresponding supplements
+ * Supports batch approval (multiple staging entries at once)
+ */
+export async function approveStagingSupplements(req, res) {
+    try {
+        console.log('✅ Approving staging supplements...');
+        console.log('Request body:', req.body);
+
+        // STEP 1: Validate request body
+        console.log('Step 1: Validating request...');
+        const { ids } = approveStagingSchema.parse(req.body);
+        console.log(`Validated ${ids.length} staging supplement ID(s)`);
+
+        // STEP 2: Process approval (service handles all business logic)
+        console.log('Step 2: Processing approvals...');
+        const approvalResults = await services.approveStagingSupplements(ids);
+        console.log(`Processed ${approvalResults.totalProcessed} entries`);
+        console.log(`Succeeded: ${approvalResults.succeeded}, Failed: ${approvalResults.failed}`);
+
+        // STEP 3: Determine response status code
+        // - 200 if all succeeded
+        // - 207 Multi-Status if mixed results
+        // - 400 if all failed
+        let statusCode = 200;
+        if (approvalResults.succeeded === 0) {
+            statusCode = 400; // All failed
+        } else if (approvalResults.failed > 0) {
+            statusCode = 207; // Mixed results (Multi-Status)
+        }
+
+        // STEP 4: Return detailed response
+        res.status(statusCode).json({
+            message: `Processed ${approvalResults.totalProcessed} staging entries: ${approvalResults.succeeded} succeeded, ${approvalResults.failed} failed`,
+            totalProcessed: approvalResults.totalProcessed,
+            succeeded: approvalResults.succeeded,
+            failed: approvalResults.failed,
+            results: approvalResults.results
+        });
+
+    } catch (error) {
+        console.error('Error approving staging supplements:', error);
+
+        // Handle Zod validation errors
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.errors.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message,
+                    received: err.received
+                }))
+            });
+        }
+
+        // Handle database errors
+        res.status(500).json({
+            error: 'Failed to approve staging supplements',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}
+
+// ============================================================================
+// LOOKUP FUNCTIONS
+// ============================================================================
+
+/**
+ * Get Packaging Form Options
+ * GET /api/SSS/lookups/packaging-forms
+ * 
+ * Returns list of packaging forms for dropdown selection
+ */
+export async function getPackagingFormsController(req, res) {
+    try {
+        const includeInactive = req.query.includeInactive === 'true';
+        const result = await services.getPackagingForms(!includeInactive);
+
+        res.json({
+            data: result.rows
+        });
+    } catch (error) {
+        console.error('Error fetching packaging forms:', error);
+        res.status(500).json({
+            error: 'Failed to fetch packaging forms',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}
+
+/**
+ * Get Supplement Status Options
+ * GET /api/SSS/lookups/supplement-statuses
+ * 
+ * Returns list of supplement statuses for dropdown selection
+ */
+export async function getSupplementStatusesController(req, res) {
+    try {
+        const includeInactive = req.query.includeInactive === 'true';
+        const result = await services.getSupplementStatuses(!includeInactive);
+
+        res.json({
+            data: result.rows
+        });
+    } catch (error) {
+        console.error('Error fetching supplement statuses:', error);
+        res.status(500).json({
+            error: 'Failed to fetch supplement statuses',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}
+
+/**
+ * Get Batch Stock Status Options
+ * GET /api/SSS/lookups/batch-statuses
+ * 
+ * Returns list of batch stock statuses for dropdown selection
+ */
+export async function getBatchStockStatusesController(req, res) {
+    try {
+        const includeInactive = req.query.includeInactive === 'true';
+        const result = await services.getBatchStockStatuses(!includeInactive);
+
+        res.json({
+            data: result.rows
+        });
+    } catch (error) {
+        console.error('Error fetching batch stock statuses:', error);
+        res.status(500).json({
+            error: 'Failed to fetch batch stock statuses',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}
+
+/**
+ * Get Ticket Status Options
+ * GET /api/SSS/lookups/ticket-statuses
+ * 
+ * Returns list of ticket statuses for dropdown selection
+ */
+export async function getTicketStatusesController(req, res) {
+    try {
+        const includeInactive = req.query.includeInactive === 'true';
+        const result = await services.getTicketStatuses(!includeInactive);
+
+        res.json({
+            data: result.rows
+        });
+    } catch (error) {
+        console.error('Error fetching ticket statuses:', error);
+        res.status(500).json({
+            error: 'Failed to fetch ticket statuses',
             message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
         });
     }
