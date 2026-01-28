@@ -163,10 +163,11 @@ async def scrape_single_product(request: ScrapeProductRequest):
             for product in products:
                 try:
                     query = f"{product.get('Brand', '')} {product.get('Name', '')}".strip()
-                    result = await batch_tester.search_batch_testing(
+                    result = await batch_tester.search_batch_testing_with_consensus(
                         brand_supplement=query,
                         openai_api_key=openai_key,
-                        max_tries=2
+                        num_searches=3,
+                        consensus_threshold=3
                     )
                     product["Batch_tested"] = result.get("Batch_tested")
                     product["batch_testing_org"] = result.get("Organisation")

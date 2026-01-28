@@ -239,12 +239,12 @@ async def scrape_product_details(
         },
     }
 
-    source = selenium_fetch(product_url)
+    # source = selenium_fetch(product_url)
     
     # Create scraper with schema validation
     scraper = graphs.SmartScraperGraph(
         prompt=PRODUCT_INFO_PROMPT,
-        source=source,
+        source=product_url,
         config=config,
         schema=ProductInfoResponse
     )
