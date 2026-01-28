@@ -17,9 +17,6 @@ from llama_index.core.workflow import (
 from llama_index.llms.openai import OpenAI
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
-from app.schemas.ocr_schemas import SupplementStagingSchema
-from app.services.vectorizer import nutrients_list_to_flat_dict
-
 load_dotenv()
 
 
@@ -45,10 +42,11 @@ class NutritionWorkflow(Workflow):
     def __init__(self, timeout: int = 120, verbose: bool = True):
         super().__init__(timeout=timeout, verbose=verbose)
         
+        # PaddleOCR 2.7.x initialization
         self.ocr = PaddleOCR(
-            use_textline_orientation=True,
+            use_angle_cls=False,
             lang='en',
-            ocr_version='PP-OCRv4'
+            show_log=False
         )
         
         self.llm = OpenAI(
@@ -142,15 +140,28 @@ class NutritionWorkflow(Workflow):
             print(f"   🔎 Upscaling {scale:.1f}x for clarity...")
             img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
 
-        result = self.ocr.predict(img)
+        # PaddleOCR 2.7.x uses .ocr() method
+        result = self.ocr.ocr(img, cls=False)
         
         if not result or len(result) == 0:
             print("⚠️ CRITICAL: PaddleOCR found NO text")
             return StopEvent(result={"error": "No text detected"})
         
         ocr_result = result[0]
-        texts = ocr_result.get('rec_texts', [])
-        scores = ocr_result.get('rec_scores', [])
+        
+        # PaddleOCR 2.7.x returns list of [box, (text, confidence)]
+        texts = []
+        scores = []
+        
+        if ocr_result:
+            for line in ocr_result:
+                if line and len(line) >= 2:
+                    # line[1] is a tuple of (text, confidence)
+                    text = line[1][0] if isinstance(line[1], tuple) else str(line[1])
+                    score = line[1][1] if isinstance(line[1], tuple) else 1.0
+                    texts.append(text)
+                    scores.append(score)
+                    print(f"   📝 {text} (conf: {score:.2f})")
         
         if not texts:
             print("⚠️ CRITICAL: No text extracted")

@@ -19,8 +19,8 @@ async def analyze_supplement_label(file: UploadFile = File(...)):
     **Use Case:** OCR-based supplement identification (UC-SSS-006)
     
     **Returns:**
-    - Structured supplement data
-    - Vector embeddings (per_serving + per_100g)
+    - Structured supplement data (Ryan's webscraper format)
+    - Vector embeddings (vector_perserving_ingredient + vector_100g_ingredient)
     """
     
     # Validate file type
@@ -52,23 +52,10 @@ async def analyze_supplement_label(file: UploadFile = File(...)):
                 detail=f"OCR processing failed: {result['error']}"
             )
         
-        # Return structured result
+        # Return Ryan's format directly
         return {
             "success": True,
-            "data": {
-                "supplement_name": result.get('supplement_name'),
-                "supplement_brand": result.get('supplement_brand'),
-                "supplement_ingredient": result.get('supplement_ingredient'),
-                "serving_size_text": result.get('serving_size_text'),
-                "serving_size_grams": result.get('serving_size_grams'),
-                "nutritional_info_per_serving": result.get('nutritional_info_per_serving'),
-                "nutritional_info_per_100g": result.get('nutritional_info_per_100g'),
-                "per_100g_calculated": result.get('per_100g_calculated', False)
-            },
-            "vectors": {
-                "vector_per_serving": result.get('vector_per_serving'),
-                "vector_per_100g": result.get('vector_per_100g')
-            }
+            "data": result
         }
         
     except HTTPException:
