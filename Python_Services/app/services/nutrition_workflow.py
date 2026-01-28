@@ -2,7 +2,14 @@
 Enhanced Nutrition Label OCR Workflow using PaddleOCR + GPT-4o-mini.
 Replaces the existing nutrition_workflow.py with better implementation.
 """
+# Import PyTorch-dependent packages FIRST before OpenCV and PaddleOCR
+from llama_index.core.workflow import (
+    StartEvent, StopEvent, Workflow, step, Context, Event
+)
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
+# Now import other packages
 import os
 import json
 import re
@@ -10,13 +17,8 @@ import cv2
 import numpy as np
 from dotenv import load_dotenv
 from paddleocr import PaddleOCR
-from llama_index.core.workflow import (
-    StartEvent, StopEvent, Workflow, step, Context, Event
-)
-from llama_index.llms.openai import OpenAI
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-
-from app.schemas.ocr_schemas import SupplementStagingSchema
+from app.schemas.supplement import SupplementStagingSchema
+from app.config.settings import settings
 
 load_dotenv()
 
