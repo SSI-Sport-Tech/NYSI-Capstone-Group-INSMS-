@@ -2,8 +2,7 @@
 Webscraper API Router
 Provides endpoints for scraping supplement data from e-commerce websites.
 """
-import nest_asyncio
-nest_asyncio.apply()
+
 import traceback
 
 import os
