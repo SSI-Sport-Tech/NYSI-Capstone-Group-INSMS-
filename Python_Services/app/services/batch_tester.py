@@ -38,13 +38,21 @@ async def search_batch_testing(
 
 
     prompt = f"""Is the supplement "{brand_supplement}" batch tested?
+   Important: 
+   - Only output the batch testing organisation(s) that actually appear on the page.
+   - If multiple organisations are listed, output the correct one(s).
+   - For any organisation that matches the below examples, use the exact name as given below: [Informed Sport, HASTA, NSFSport, Cologne List, Informed Choice]
+   - Do not default to Informed Sport.
 
+   Output example for supplement tested by Informed Sport: 
+   {{"Batch_tested": "Yes",
+   "Organisation": "Informed Sport",
+   "Source": "https://sport.wetestyoutrust.com/supplement-search/1above-jet-lag-relief"}}
 
-IMPORTANT:
-- Only output batch testing organisation(s) that actually appear on the page
-- If multiple organisations listed, output the correct one(s)
-- Use exact names from: [Informed Sport, HASTA, NSF Sport, Cologne List, Informed Choice]
-- Do NOT default to Informed Sport
+   Output example 2 not batch tested by any organisation:
+   {{"Batch_tested": "No",
+   "Organisation": "NA",
+   "Source":"NA"}}
 """
 
 
@@ -58,25 +66,24 @@ IMPORTANT:
     try:
         result = search_graph.run()
 
-
         if result.get("Batch_tested") == "Yes" or max_tries == 1:
             return result
 
-
-        return await search_batch_testing(
-            brand_supplement,
-            openai_api_key,
-            max_tries - 1
-        )
-
-
     except Exception as e:
-        print(f"❌ Batch test search failed: {e}")
-        return {
-            "Batch_tested": "Unknown",
-            "Organisation": "Unknown",
-            "sources": []
-        }
+        print(f"❌ Batch test search failed (tries left {max_tries}): {e}")
+
+        if max_tries == 1:
+            return {
+                "Batch_tested": "Unknown",
+                "Organisation": "Unknown",
+                "sources": []
+            }
+
+    return await search_batch_testing(
+        brand_supplement,
+        openai_api_key,
+        max_tries - 1
+    )
     
 
 # import os
