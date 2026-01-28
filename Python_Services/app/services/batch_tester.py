@@ -79,16 +79,16 @@ IMPORTANT:
         }
     
 
-import os
-from dotenv import load_dotenv
-load_dotenv()
-openai_key = os.getenv("OPENAI_API_KEY")
-import asyncio
-if __name__ == "__main__":
-    result = asyncio.run(
-        search_batch_testing(
-            brand_supplement="Applied Nutrition Creatine Monohydrate",
-            openai_api_key=openai_key
-        )
-    )
-    print(result)
+# import os
+# from dotenv import load_dotenv
+# load_dotenv()
+# openai_key = os.getenv("OPENAI_API_KEY")
+# import asyncio
+# if __name__ == "__main__":
+#     result = asyncio.run(
+#         search_batch_testing(
+#             brand_supplement="Applied Nutrition Creatine Monohydrate",
+#             openai_api_key=openai_key
+#         )
+#     )
+#     print(result)
