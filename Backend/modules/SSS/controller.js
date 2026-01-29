@@ -1,21 +1,39 @@
 import * as services from './services.js';
 import {
+    // ===== SUPPLEMENT SCHEMAS =====
     createSupplementSchema,
     updateSupplementSchema,
-    bulkDeleteSchema,
-    getSupplementStatusById,
-    validateBatchTestingOrg,
-    paginationSchema,
-    uuidParamSchema,
+
+    // ===== BATCH SCHEMAS =====
     createBatchSchema,
     updateBatchSchema,
-    getBatchStockStatusByName,
+
+    // ===== STAGING SCHEMAS =====
     updateStagingSupplementSchema,
     approveStagingSchema,
+
+    // ===== CATALOG URL SCHEMAS =====
+    createCatalogUrlSchema,
+    updateCatalogUrlSchema,
+
+    // ===== SCRAPING SCHEMA =====
+    startScrapingSchema,
+
+    // ===== ALTERNATIVE SUPPLEMENTS =====
+    SIMILARITY_THRESHOLD,  //
+
+    // ===== SHARED SCHEMAS =====
+    bulkDeleteSchema,
+    paginationSchema,
+    uuidParamSchema,
+
+    // ===== HELPER FUNCTIONS =====
+    getSupplementStatusById,
+    validateBatchTestingOrg,
+    getBatchStockStatusByName,
 } from './validation.js';
 import { z } from 'zod';
 import pool from '../../config/db.js';
-
 // ============================================================================
 // SUPPLEMENT FUNCTIONS
 // ============================================================================
@@ -1064,6 +1082,121 @@ export async function approveStagingSupplements(req, res) {
 }
 
 // ============================================================================
+// ALTERNATIVE SUPPLEMENTS FUNCTION
+// ============================================================================
+
+/**
+ * Use Case: Get Alternative Supplements (Similarity Search)
+ * GET /api/SSS/supplements/:id/alternatives?page={pageNumber}
+ * 
+ * Performs vector similarity search to find alternative supplements
+ */
+export async function getAlternativeSupplements(req, res) {
+    try {
+        console.log('🔍 Finding alternative supplements...');
+        console.log('Supplement ID:', req.params.id);
+
+        // STEP 1: Validate supplement ID
+        console.log('Step 1: Validating supplement ID...');
+        const { id } = uuidParamSchema.parse(req.params);
+
+        // STEP 2: Validate pagination
+        const { page } = paginationSchema.parse({ page: req.query.page || 1 });
+        const pageSize = 10;
+
+        // STEP 3: Perform similarity search
+        console.log('Step 3: Performing similarity search...');
+        const result = await services.getAlternativeSupplements(id, page, pageSize);
+
+        // STEP 4: Handle errors
+        if (result.error === 'SUPPLEMENT_NOT_FOUND') {
+            console.log('Supplement not found');
+            return res.status(404).json({
+                error: 'Supplement not found',
+                message: `No supplement found with ID: ${id}`
+            });
+        }
+
+        if (result.error === 'NO_VECTORS') {
+            console.log('No vectors available for similarity search');
+            return res.status(400).json({
+                error: 'No vectors available',
+                message: 'This supplement does not have embedding vectors for similarity matching. Alternatives cannot be found.'
+            });
+        }
+
+        // STEP 5: If no alternatives found, return empty results
+        if (result.alternatives.length === 0) {
+            console.log('No alternatives found matching criteria');
+            return res.json({
+                currentSupplementId: result.currentSupplement.id,
+                currentSupplementName: result.currentSupplement.name,
+                alternatives: [],
+                currentPage: page,
+                totalPages: 0,
+                totalCount: 0,
+                threshold: SIMILARITY_THRESHOLD,
+                message: `No alternative supplements found matching the similarity threshold (${SIMILARITY_THRESHOLD * 100}%)`
+            });
+        }
+
+        // STEP 6: Get stock status for all alternatives
+        console.log('Step 6: Calculating stock status...');
+        const supplementIds = result.alternatives.map(alt => alt.id);
+        const stockStatusMap = await services.getStockStatusMap(supplementIds);
+
+        // STEP 7: Format response with stock status and percentage similarities
+        console.log('Step 7: Formatting response...');
+        const totalPages = Math.ceil(result.totalCount / pageSize);
+
+        const formattedAlternatives = result.alternatives.map(alt => ({
+            id: alt.id,
+            supplement_name: alt.supplement_name,
+            supplement_brand: alt.supplement_brand || null,
+            similarity_score_100g: alt.similarity_100g !== null
+                ? `${Math.round(alt.similarity_100g * 100)}%`
+                : null,
+            similarity_score_perserving: alt.similarity_perserving !== null
+                ? `${Math.round(alt.similarity_perserving * 100)}%`
+                : null,
+            supplement_status: alt.supplement_status,
+            stock_status: stockStatusMap[alt.id] || 'Out of Stock'
+        }));
+
+        console.log(`Found ${result.alternatives.length} alternatives on page ${page}`);
+
+        res.json({
+            currentSupplementId: result.currentSupplement.id,
+            currentSupplementName: result.currentSupplement.name,
+            alternatives: formattedAlternatives,
+            currentPage: page,
+            totalPages,
+            totalCount: result.totalCount,
+            threshold: 0.6
+        });
+
+    } catch (error) {
+        console.error('Error finding alternative supplements:', error);
+
+        // Handle Zod validation errors
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Invalid parameters',
+                details: error.errors.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message
+                }))
+            });
+        }
+
+        res.status(500).json({
+            error: 'Internal server error',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Failed to find alternative supplements'
+        });
+    }
+}
+
+// ============================================================================
 // LOOKUP FUNCTIONS
 // ============================================================================
 
@@ -1155,6 +1288,352 @@ export async function getTicketStatusesController(req, res) {
         res.status(500).json({
             error: 'Failed to fetch ticket statuses',
             message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}
+
+// ============================================================================
+// CATALOG URL MANAGEMENT FUNCTIONS
+// ============================================================================
+
+/**
+ * List all catalog URLs (paginated)
+ * GET /api/admin/catalog-urls?page=1
+ */
+export async function listCatalogUrls(req, res) {
+    try {
+        const { page } = paginationSchema.parse(req.query);
+        const pageSize = 10;
+
+        const [catalogUrls, totalCount] = await Promise.all([
+            services.getCatalogUrls(page, pageSize),
+            services.getTotalCatalogUrlCount()
+        ]);
+
+        const totalPages = Math.ceil(totalCount / pageSize);
+
+        res.json({
+            data: catalogUrls.rows,
+            currentPage: page,
+            totalPages,
+            totalCount
+        });
+
+    } catch (error) {
+        console.error('Error listing catalog URLs:', error);
+
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Invalid query parameters',
+                details: error.errors.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message
+                }))
+            });
+        }
+
+        res.status(500).json({
+            error: 'Failed to list catalog URLs',
+            message: error.message
+        });
+    }
+}
+
+/**
+ * Get catalog URL by ID
+ * GET /api/admin/catalog-urls/:id
+ */
+export async function getCatalogUrlDetails(req, res) {
+    try {
+        const { id } = uuidParamSchema.parse(req.params);
+
+        const catalogUrl = await services.getCatalogUrlById(id);
+
+        if (!catalogUrl) {
+            return res.status(404).json({
+                error: 'Catalog URL not found',
+                message: `No catalog URL found with ID: ${id}`
+            });
+        }
+
+        res.json(catalogUrl);
+
+    } catch (error) {
+        console.error('Error getting catalog URL:', error);
+
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Invalid parameters',
+                details: error.errors.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message
+                }))
+            });
+        }
+
+        res.status(500).json({
+            error: 'Failed to get catalog URL',
+            message: error.message
+        });
+    }
+}
+
+/**
+ * Create new catalog URL
+ * POST /api/admin/catalog-urls
+ */
+export async function createCatalogUrl(req, res) {
+    try {
+        console.log('Creating new catalog URL...');
+        console.log('Request body:', req.body);
+
+        // Validate request
+        const validatedData = createCatalogUrlSchema.parse(req.body);
+
+        // Check for duplicate URL
+        const duplicate = await services.checkDuplicateCatalogUrl(validatedData.product_catalog_website);
+
+        if (duplicate) {
+            return res.status(409).json({
+                error: 'Duplicate catalog URL',
+                message: 'This catalog URL already exists in the database'
+            });
+        }
+
+        // Create catalog URL
+        const newCatalogUrl = await services.createCatalogUrl(validatedData);
+
+        console.log('Catalog URL created:', newCatalogUrl.id);
+
+        res.status(201).json({
+            message: 'Catalog URL created successfully',
+            data: newCatalogUrl
+        });
+
+    } catch (error) {
+        console.error('Error creating catalog URL:', error);
+
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.errors.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message
+                }))
+            });
+        }
+
+        res.status(500).json({
+            error: 'Failed to create catalog URL',
+            message: error.message
+        });
+    }
+}
+
+/**
+ * Update catalog URL
+ * PATCH /api/admin/catalog-urls/:id
+ */
+export async function updateCatalogUrl(req, res) {
+    try {
+        console.log('Updating catalog URL...');
+        console.log('Catalog URL ID:', req.params.id);
+        console.log('Request body:', req.body);
+
+        // Validate ID
+        const { id } = uuidParamSchema.parse(req.params);
+
+        // Check if exists
+        const existingCatalogUrl = await services.getCatalogUrlById(id);
+
+        if (!existingCatalogUrl) {
+            return res.status(404).json({
+                error: 'Catalog URL not found',
+                message: `No catalog URL found with ID: ${id}`
+            });
+        }
+
+        // Validate update data
+        const validatedData = updateCatalogUrlSchema.parse(req.body);
+
+        // Check if there's anything to update
+        if (Object.keys(validatedData).length === 0) {
+            return res.status(400).json({
+                error: 'No fields to update',
+                message: 'Request body must contain at least one field to update'
+            });
+        }
+
+        // Check for duplicate URL if changing URL
+        if (validatedData.product_catalog_website &&
+            validatedData.product_catalog_website !== existingCatalogUrl.product_catalog_website) {
+            const duplicate = await services.checkDuplicateCatalogUrl(validatedData.product_catalog_website, id);
+
+            if (duplicate) {
+                return res.status(409).json({
+                    error: 'Duplicate catalog URL',
+                    message: 'This catalog URL already exists in the database'
+                });
+            }
+        }
+
+        // Update catalog URL
+        const updatedCatalogUrl = await services.updateCatalogUrl(id, validatedData);
+
+        console.log('Catalog URL updated successfully');
+
+        res.json({
+            message: 'Catalog URL updated successfully',
+            data: updatedCatalogUrl
+        });
+
+    } catch (error) {
+        console.error('Error updating catalog URL:', error);
+
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.errors.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message
+                }))
+            });
+        }
+
+        res.status(500).json({
+            error: 'Failed to update catalog URL',
+            message: error.message
+        });
+    }
+}
+
+/**
+ * Delete catalog URLs (bulk)
+ * DELETE /api/admin/catalog-urls
+ */
+export async function deleteCatalogUrls(req, res) {
+    try {
+        console.log('Deleting catalog URLs...');
+        console.log('Request body:', req.body);
+
+        // Validate request
+        const { ids } = bulkDeleteSchema.parse(req.body);
+
+        // Delete catalog URLs
+        const deletedCatalogUrls = await services.deleteCatalogUrls(ids);
+
+        console.log(`Deleted ${deletedCatalogUrls.length} catalog URL(s)`);
+
+        res.json({
+            message: `Successfully deleted ${deletedCatalogUrls.length} catalog URL(s)`,
+            deletedCount: deletedCatalogUrls.length,
+            deletedIds: deletedCatalogUrls.map(c => c.id)
+        });
+
+    } catch (error) {
+        console.error('Error deleting catalog URLs:', error);
+
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.errors.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message
+                }))
+            });
+        }
+
+        res.status(500).json({
+            error: 'Failed to delete catalog URLs',
+            message: error.message
+        });
+    }
+}
+
+// ============================================================================
+// SCRAPING FUNCTION
+// ============================================================================
+
+/**
+ * Start scraping job (fire-and-forget with URL selection)
+ * POST /api/admin/scraping/start
+ */
+export async function startScrapingJob(req, res) {
+    try {
+        console.log('🚀 Starting scraping job...');
+        console.log('Request body:', req.body);
+
+        // Validate request (optional catalog_url_ids)
+        const { catalog_url_ids } = startScrapingSchema.parse(req.body);
+
+        // Get catalog URLs (all active, or selected)
+        const catalogUrlRecords = await services.getActiveCatalogUrls(catalog_url_ids);
+
+        if (catalogUrlRecords.length === 0) {
+            return res.status(400).json({
+                error: 'No catalog URLs to scrape',
+                message: catalog_url_ids
+                    ? 'Selected catalog URLs are either inactive or not found'
+                    : 'No active catalog URLs found. Please add catalog URLs first.'
+            });
+        }
+
+        console.log(`Found ${catalogUrlRecords.length} catalog URL(s) to scrape`);
+
+        // Fire async requests to Python webscraper service
+        const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
+
+        // Call your existing /scrape-full endpoint for each catalog URL
+        const scrapePromises = catalogUrlRecords.map(record =>
+            fetch(`${PYTHON_SERVICE_URL}/api/webscraper/scrape-full`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    catalog_url: record.product_catalog_website,
+                    push_to_staging: true
+                })
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        console.error(`Failed to scrape ${record.product_catalog_website}: ${response.statusText}`);
+                    }
+                    return response;
+                })
+                .catch(err => {
+                    console.error(`Failed to submit scraping for ${record.product_catalog_website}:`, err);
+                })
+        );
+
+        // Fire all requests (don't await, fire-and-forget)
+        Promise.all(scrapePromises);
+
+        // Return immediately
+        res.status(202).json({
+            message: 'Scraping started successfully',
+            catalogs_to_scrape: catalogUrlRecords.map(r => ({
+                id: r.id,
+                url: r.product_catalog_website
+            })),
+            total_catalogs: catalogUrlRecords.length,
+            info: 'Scraping is running in the background. Check "Staging Supplements" page later to review results.'
+        });
+
+    } catch (error) {
+        console.error('Error starting scraping job:', error);
+
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.errors.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message
+                }))
+            });
+        }
+
+        res.status(500).json({
+            error: 'Failed to start scraping job',
+            message: error.message
         });
     }
 }

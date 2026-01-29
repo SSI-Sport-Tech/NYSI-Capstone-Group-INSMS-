@@ -40,6 +40,7 @@ const urlSchema = z.preprocess(
  * Schema for creating a new supplement (POST /api/SSS/supplements)
  * UPDATED: New required fields and renamed fields
  */
+
 export const createSupplementSchema = z.object({
     // ---- REQUIRED FIELDS ----
 
@@ -397,12 +398,12 @@ export const updateStagingSupplementSchema = z.object({
         .max(255, 'Supplement name must be less than 255 characters')
         .trim()
         .optional(),
-    
+
     supplement_packaging_form_id: uuidSchema.optional().nullable(),
     supplement_status_id: uuidSchema.optional().nullable(),
-    
+
     batch_testing_org: optionalTextSchema,
-    
+
     supplement_brand: z.string()
         .max(100, 'Brand name must be less than 100 characters')
         .trim()
@@ -417,10 +418,10 @@ export const updateStagingSupplementSchema = z.object({
     supplement_warning_label: optionalTextSchema,
     supplement_certifications: optionalTextSchema,
     supplement_additional_information: optionalTextSchema,
-    
+
     product_source_url: urlSchema,
     scraper_version: optionalTextSchema,
-    
+
     // ---- JSONB FIELDS ----
     supplement_ingredient: jsonbArraySchema
         .optional()
@@ -452,6 +453,16 @@ export const updateStagingSupplementSchema = z.object({
     vector_perserving_ingredient: z.never().optional(), // Generated during approval
 }).strict();
 
+// ============================================================================
+// ALTERNATIVE SUPPLEMENTS SCHEMAS
+// ============================================================================
+/**
+ * Similarity threshold for alternative supplements
+ * Supplements with similarity score >= this value will be returned
+ * Range: 0.0 to 1.0 (e.g., 0.6 = 60% similarity)
+ */
+export const SIMILARITY_THRESHOLD = 0.6;
+
 /**
  * Schema for approving staging entries (POST /api/SSS/staging-supplements/approve)
  * Bulk approval of multiple staging entries
@@ -462,4 +473,60 @@ export const approveStagingSchema = z.object({
     )
         .min(1, 'At least one staging ID is required')
         .describe('Array of supplement_staging IDs to approve')
+}).strict();
+
+// ============================================================================
+// CATALOG URL SCHEMAS
+// ============================================================================
+
+/**
+ * Schema for creating a new catalog URL
+ * POST /api/admin/catalog-urls
+ */
+export const createCatalogUrlSchema = z.object({
+    product_catalog_website: z.string()
+        .url('Must be a valid URL')
+        .min(1, 'Website URL is required')
+        .describe('URL of the product catalog page'),
+
+    is_active: z.boolean()
+        .default(true)
+        .describe('Whether this catalog should be scraped'),
+
+    // Deprecated field - ignore in request, set to NULL
+    number_of_catalog_page: z.never().optional(),
+
+    // Fields not accepted
+    id: z.never().optional(),
+}).strict();
+
+/**
+ * Schema for updating a catalog URL
+ * PATCH /api/admin/catalog-urls/:id
+ */
+export const updateCatalogUrlSchema = z.object({
+    product_catalog_website: z.string()
+        .url('Must be a valid URL')
+        .optional()
+        .describe('URL of the product catalog page'),
+
+    is_active: z.boolean()
+        .optional()
+        .describe('Whether this catalog should be scraped'),
+
+    // Deprecated field - ignore
+    number_of_catalog_page: z.never().optional(),
+    id: z.never().optional(),
+}).strict();
+
+/**
+ * Schema for starting scraping job with URL selection
+ * POST /api/admin/scraping/start
+ */
+export const startScrapingSchema = z.object({
+    catalog_url_ids: z.array(
+        z.string().uuid('Each ID must be a valid UUID')
+    )
+        .optional()
+        .describe('Array of catalog URL IDs to scrape. If not provided, scrapes all active URLs.'),
 }).strict();
