@@ -1263,6 +1263,208 @@ export async function approveStagingSupplements(stagingIds) {
     results: results
   };
 }
+
+// ============================================================================
+// ALTERNATIVE SUPPLEMENTS (SIMILARITY SEARCH)
+// ============================================================================
+
+/**
+ * Get stock status map for multiple supplements
+ * Determines stock availability based on batch statuses
+ * Priority: AVAILABLE > LOW STOCK > OUT OF STOCK
+ * 
+ * @param {Array<string>} supplementIds - Array of supplement UUIDs
+ * @returns {Promise<Object>} Map of supplement_id -> stock_status
+ */
+export async function getStockStatusMap(supplementIds) {
+  if (!supplementIds || supplementIds.length === 0) {
+    return {};
+  }
+
+  const query = `
+        SELECT 
+            ib.supplement_id,
+            CASE
+                WHEN COUNT(CASE WHEN bssl.batch_stock_status = 'AVAILABLE' THEN 1 END) > 0 
+                    THEN 'Available'
+                WHEN COUNT(CASE WHEN bssl.batch_stock_status = 'LOW STOCK' THEN 1 END) > 0 
+                    THEN 'Low Stock'
+                ELSE 'Out of Stock'
+            END AS stock_status
+        FROM SSS.Inventory_Batch ib
+        LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl 
+            ON ib.batch_stock_status_id = bssl.id
+        WHERE ib.supplement_id = ANY($1::uuid[])
+            AND bssl.is_active = true
+        GROUP BY ib.supplement_id
+    `;
+
+  const result = await pool.query(query, [supplementIds]);
+
+  // Create a map for easy lookup
+  const stockMap = {};
+  result.rows.forEach(row => {
+    stockMap[row.supplement_id] = row.stock_status;
+  });
+
+  // For supplements with no batches, set to "Out of Stock"
+  supplementIds.forEach(id => {
+    if (!stockMap[id]) {
+      stockMap[id] = 'Out of Stock';
+    }
+  });
+
+  return stockMap;
+}
+
+/**
+ * Get alternative supplements using vector similarity search
+ * Uses both vector_100g_ingredient and vector_perserving_ingredient
+ * Orders by the higher similarity score
+ * 
+ * @param {string} supplementId - UUID of current supplement
+ * @param {number} pageNumber - Page number (1-indexed)
+ * @param {number} pageSize - Items per page (default 10)
+ * @returns {Promise<Object>} Alternative supplements with pagination
+ */
+export async function getAlternativeSupplements(supplementId, pageNumber, pageSize = 10) {
+  const offset = (pageNumber - 1) * pageSize;
+
+  // Import threshold from validation
+  const { SIMILARITY_THRESHOLD } = await import('./validation.js');
+
+  // STEP 1: Get current supplement's vectors
+  const currentQuery = `
+        SELECT 
+            id,
+            supplement_name,
+            vector_100g_ingredient,
+            vector_perserving_ingredient,
+            supplement_status_id
+        FROM SSS.Supplement
+        WHERE id = $1
+    `;
+
+  const currentResult = await pool.query(currentQuery, [supplementId]);
+
+  if (currentResult.rows.length === 0) {
+    return { error: 'SUPPLEMENT_NOT_FOUND' };
+  }
+
+  const currentSupplement = currentResult.rows[0];
+
+  // STEP 2: Check if vectors exist
+  if (!currentSupplement.vector_100g_ingredient && !currentSupplement.vector_perserving_ingredient) {
+    return { error: 'NO_VECTORS' };
+  }
+
+  // STEP 3: Get DISCONTINUED status ID to exclude
+  const discontinuedQuery = `
+        SELECT id FROM SSS.Supplement_Status_Lookup 
+        WHERE UPPER(supplement_status) = 'DISCONTINUED' 
+            AND is_active = true
+    `;
+  const discontinuedResult = await pool.query(discontinuedQuery);
+  const discontinuedStatusId = discontinuedResult.rows[0]?.id;
+
+  // STEP 4: Build similarity search query
+  // Calculate both similarities, use GREATEST for ordering
+  const hasVector100g = currentSupplement.vector_100g_ingredient !== null;
+  const hasVectorPerServing = currentSupplement.vector_perserving_ingredient !== null;
+
+  const query = `
+        WITH alternative_supplements AS (
+            SELECT 
+                s.id,
+                s.supplement_name,
+                s.supplement_brand,
+                ssl.supplement_status,
+                s.supplement_status_id,
+                ${hasVector100g
+      ? `1 - (s.vector_100g_ingredient <=> $1::vector) AS similarity_100g,`
+      : 'NULL AS similarity_100g,'}
+                ${hasVectorPerServing
+      ? `1 - (s.vector_perserving_ingredient <=> $2::vector) AS similarity_perserving,`
+      : 'NULL AS similarity_perserving,'}
+                GREATEST(
+                    ${hasVector100g ? `COALESCE(1 - (s.vector_100g_ingredient <=> $1::vector), 0)` : '0'},
+                    ${hasVectorPerServing ? `COALESCE(1 - (s.vector_perserving_ingredient <=> $2::vector), 0)` : '0'}
+                ) AS max_similarity
+            FROM SSS.Supplement s
+            LEFT JOIN SSS.Supplement_Status_Lookup ssl 
+                ON s.supplement_status_id = ssl.id
+            WHERE s.id != $3
+                AND ssl.is_active = true
+                ${discontinuedStatusId ? `AND s.supplement_status_id != $4` : ''}
+                AND (
+                    ${hasVector100g
+      ? `(s.vector_100g_ingredient IS NOT NULL 
+                           AND 1 - (s.vector_100g_ingredient <=> $1::vector) >= $${discontinuedStatusId ? '5' : '4'})`
+      : 'FALSE'}
+                    ${hasVector100g && hasVectorPerServing ? 'OR' : ''}
+                    ${hasVectorPerServing
+      ? `(s.vector_perserving_ingredient IS NOT NULL 
+                           AND 1 - (s.vector_perserving_ingredient <=> $2::vector) >= $${discontinuedStatusId ? '5' : '4'})`
+      : 'FALSE'}
+                )
+        )
+        SELECT * FROM alternative_supplements
+        ORDER BY max_similarity DESC
+        LIMIT $${discontinuedStatusId ? '6' : '5'} 
+        OFFSET $${discontinuedStatusId ? '7' : '6'}
+    `;
+
+  // Build parameters array
+  const params = [
+    hasVector100g ? currentSupplement.vector_100g_ingredient : null,
+    hasVectorPerServing ? currentSupplement.vector_perserving_ingredient : null,
+    supplementId
+  ];
+
+  if (discontinuedStatusId) {
+    params.push(discontinuedStatusId);
+  }
+
+  params.push(SIMILARITY_THRESHOLD, pageSize, offset);
+
+  // Execute query
+  const alternatives = await pool.query(query, params);
+
+  // STEP 5: Get total count for pagination
+  const countQuery = `
+        SELECT COUNT(*) as count
+        FROM SSS.Supplement s
+        LEFT JOIN SSS.Supplement_Status_Lookup ssl 
+            ON s.supplement_status_id = ssl.id
+        WHERE s.id != $3
+            AND ssl.is_active = true
+            ${discontinuedStatusId ? `AND s.supplement_status_id != $4` : ''}
+            AND (
+                ${hasVector100g
+      ? `(s.vector_100g_ingredient IS NOT NULL 
+                       AND 1 - (s.vector_100g_ingredient <=> $1::vector) >= $${discontinuedStatusId ? '5' : '4'})`
+      : 'FALSE'}
+                ${hasVector100g && hasVectorPerServing ? 'OR' : ''}
+                ${hasVectorPerServing
+      ? `(s.vector_perserving_ingredient IS NOT NULL 
+                       AND 1 - (s.vector_perserving_ingredient <=> $2::vector) >= $${discontinuedStatusId ? '5' : '4'})`
+      : 'FALSE'}
+            )
+    `;
+
+  const countParams = params.slice(0, discontinuedStatusId ? 5 : 4);
+  const countResult = await pool.query(countQuery, countParams);
+
+  return {
+    currentSupplement: {
+      id: currentSupplement.id,
+      name: currentSupplement.supplement_name
+    },
+    alternatives: alternatives.rows,
+    totalCount: parseInt(countResult.rows[0].count)
+  };
+}
+
 // ============================================================================
 // LOOKUP SERVICES
 // ============================================================================
@@ -1339,3 +1541,195 @@ export async function getTicketStatuses(activeOnly = true) {
   return await pool.query(query);
 };
 
+// ============================================================================
+// CATALOG URL MANAGEMENT
+// ============================================================================
+
+/**
+ * Get all catalog URLs (paginated)
+ * @param {number} pageNumber - Page number (1-indexed)
+ * @param {number} pageSize - Items per page (default 10)
+ * @returns {Promise<Object>} Query result with rows
+ */
+export async function getCatalogUrls(pageNumber, pageSize = 10) {
+  const offset = (pageNumber - 1) * pageSize;
+
+  const query = `
+        SELECT 
+            id,
+            product_catalog_website,
+            is_active
+        FROM webscraper_catalog_url
+        ORDER BY id DESC
+        LIMIT $1 OFFSET $2
+    `;
+
+  return await pool.query(query, [pageSize, offset]);
+}
+
+/**
+ * Get total count of catalog URLs
+ * @returns {Promise<number>} Total count
+ */
+export async function getTotalCatalogUrlCount() {
+  const query = `SELECT COUNT(*) as count FROM webscraper_catalog_url`;
+  const result = await pool.query(query);
+  return parseInt(result.rows[0].count);
+}
+
+/**
+ * Get catalog URL by ID
+ * @param {string} catalogUrlId - UUID of catalog URL
+ * @returns {Promise<Object|null>} Catalog URL object or null
+ */
+export async function getCatalogUrlById(catalogUrlId) {
+  const query = `
+        SELECT 
+            id,
+            product_catalog_website,
+            is_active
+        FROM webscraper_catalog_url
+        WHERE id = $1
+    `;
+
+  const result = await pool.query(query, [catalogUrlId]);
+  return result.rows.length > 0 ? result.rows[0] : null;
+}
+
+/**
+ * Create new catalog URL
+ * @param {Object} catalogUrlData - Catalog URL data
+ * @returns {Promise<Object>} Created catalog URL
+ */
+export async function createCatalogUrl(catalogUrlData) {
+  const query = `
+        INSERT INTO webscraper_catalog_url (
+            product_catalog_website,
+            is_active,
+            number_of_catalog_page
+        ) VALUES ($1, $2, NULL)
+        RETURNING 
+            id,
+            product_catalog_website,
+            is_active
+    `;
+
+  const values = [
+    catalogUrlData.product_catalog_website,
+    catalogUrlData.is_active !== undefined ? catalogUrlData.is_active : true
+  ];
+
+  const result = await pool.query(query, values);
+  return result.rows[0];
+}
+
+/**
+ * Check for duplicate catalog URL
+ * @param {string} websiteUrl - URL to check
+ * @param {string} excludeId - ID to exclude (for updates)
+ * @returns {Promise<boolean>} True if duplicate exists
+ */
+export async function checkDuplicateCatalogUrl(websiteUrl, excludeId = null) {
+  let query = `
+        SELECT id FROM webscraper_catalog_url 
+        WHERE product_catalog_website = $1
+    `;
+
+  const params = [websiteUrl];
+
+  if (excludeId) {
+    query += ` AND id != $2`;
+    params.push(excludeId);
+  }
+
+  query += ` LIMIT 1`;
+
+  const result = await pool.query(query, params);
+  return result.rows.length > 0;
+}
+
+/**
+ * Update catalog URL
+ * @param {string} catalogUrlId - UUID of catalog URL
+ * @param {Object} updateData - Fields to update
+ * @returns {Promise<Object|null>} Updated catalog URL or null
+ */
+export async function updateCatalogUrl(catalogUrlId, updateData) {
+  const fields = [];
+  const values = [];
+  let paramCounter = 1;
+
+  const fieldMapping = {
+    product_catalog_website: updateData.product_catalog_website,
+    is_active: updateData.is_active
+  };
+
+  // Build SET clause dynamically
+  for (const [field, value] of Object.entries(fieldMapping)) {
+    if (value !== undefined) {
+      fields.push(`${field} = $${paramCounter}`);
+      values.push(value);
+      paramCounter++;
+    }
+  }
+
+  if (fields.length === 0) {
+    return null;
+  }
+
+  values.push(catalogUrlId);
+
+  const query = `
+        UPDATE webscraper_catalog_url 
+        SET ${fields.join(', ')}
+        WHERE id = $${paramCounter}
+        RETURNING 
+            id,
+            product_catalog_website,
+            is_active
+    `;
+
+  const result = await pool.query(query, values);
+  return result.rows.length > 0 ? result.rows[0] : null;
+}
+
+/**
+ * Delete catalog URLs (bulk)
+ * @param {Array<string>} catalogUrlIds - Array of UUIDs to delete
+ * @returns {Promise<Array>} Array of deleted row objects
+ */
+export async function deleteCatalogUrls(catalogUrlIds) {
+  const query = `
+        DELETE FROM webscraper_catalog_url
+        WHERE id = ANY($1::uuid[])
+        RETURNING id, product_catalog_website
+    `;
+
+  const result = await pool.query(query, [catalogUrlIds]);
+  return result.rows;
+}
+
+/**
+ * Get active catalog URLs (all or selected)
+ * @param {Array<string>} catalogUrlIds - Optional array of IDs to filter
+ * @returns {Promise<Array>} Array of catalog URL objects with {id, product_catalog_website}
+ */
+export async function getActiveCatalogUrls(catalogUrlIds = null) {
+  let query = `
+        SELECT id, product_catalog_website
+        FROM webscraper_catalog_url
+        WHERE is_active = true
+    `;
+
+  const params = [];
+
+  if (catalogUrlIds && catalogUrlIds.length > 0) {
+    query += ` AND id = ANY($1::uuid[])`;
+    params.push(catalogUrlIds);
+  }
+
+  query += ` ORDER BY id`;
+
+  const result = await pool.query(query, params);
+  return result.rows;
+}

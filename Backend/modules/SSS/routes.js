@@ -196,6 +196,165 @@ router.get('/supplements/:id', controller.getSupplementDetails);
 
 /**
  * @swagger
+ * /api/SSS/supplements/{id}/alternatives:
+ *   get:
+ *     summary: Get Alternative Supplements (Similarity Search)
+ *     description: |
+ *       Find similar supplements based on ingredient and nutritional vector embeddings.
+ *       
+ *       **Similarity Calculation:**
+ *       - Uses cosine similarity on both `vector_100g_ingredient` and `vector_perserving_ingredient`
+ *       - Shows BOTH similarity scores (per 100g and per serving)
+ *       - Orders results by the HIGHER of the two scores
+ *       - Minimum threshold: 60% similarity
+ *       
+ *       **Stock Status Logic:**
+ *       - "Available": At least one batch with "AVAILABLE" status
+ *       - "Low Stock": At least one batch with "LOW STOCK" status (no available)
+ *       - "Out of Stock": No batches or no available/low stock batches
+ *       
+ *       **Exclusions:**
+ *       - Current supplement (excluded from results)
+ *       - Supplements with "DISCONTINUED" status
+ *       
+ *       **Use Case:** Find alternative supplements when primary is out of stock
+ *     tags: [Supplements]
+ *     parameters:
+ *       - $ref: '#/components/parameters/SupplementIdParam'
+ *       - name: page
+ *         in: query
+ *         description: Page number (default 1)
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved alternative supplements
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 currentSupplementId:
+ *                   type: string
+ *                   format: uuid
+ *                   description: ID of the supplement being compared
+ *                 currentSupplementName:
+ *                   type: string
+ *                   description: Name of the supplement being compared
+ *                 alternatives:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       supplement_name:
+ *                         type: string
+ *                       supplement_brand:
+ *                         type: string
+ *                         nullable: true
+ *                       similarity_score_100g:
+ *                         type: string
+ *                         description: Similarity based on per-100g nutrition (e.g., "87%")
+ *                         nullable: true
+ *                       similarity_score_perserving:
+ *                         type: string
+ *                         description: Similarity based on per-serving nutrition (e.g., "92%")
+ *                         nullable: true
+ *                       supplement_status:
+ *                         type: string
+ *                         description: Status from lookup table
+ *                       stock_status:
+ *                         type: string
+ *                         enum: [Available, Low Stock, Out of Stock]
+ *                         description: Calculated stock availability
+ *                 currentPage:
+ *                   type: integer
+ *                 totalPages:
+ *                   type: integer
+ *                 totalCount:
+ *                   type: integer
+ *                 threshold:
+ *                   type: number
+ *                   description: Minimum similarity threshold (0.6 = 60%)
+ *                 message:
+ *                   type: string
+ *                   description: Optional message (e.g., when no results found)
+ *             examples:
+ *               withResults:
+ *                 summary: Found alternative supplements
+ *                 value:
+ *                   currentSupplementId: "8483aa30-ff76-42e4-b8ba-3e03aae6de4e"
+ *                   currentSupplementName: "Vitamin D3 2000 IU"
+ *                   alternatives:
+ *                     - id: "new-uuid-1"
+ *                       supplement_name: "Vitamin D3 5000 IU"
+ *                       supplement_brand: "NOW Foods"
+ *                       similarity_score_100g: "92%"
+ *                       similarity_score_perserving: "87%"
+ *                       supplement_status: "BATCH TESTED"
+ *                       stock_status: "Available"
+ *                     - id: "new-uuid-2"
+ *                       supplement_name: "Vitamin D3 1000 IU"
+ *                       supplement_brand: "Nature Made"
+ *                       similarity_score_100g: "85%"
+ *                       similarity_score_perserving: null
+ *                       supplement_status: "NOT BATCH TESTED"
+ *                       stock_status: "Low Stock"
+ *                   currentPage: 1
+ *                   totalPages: 2
+ *                   totalCount: 15
+ *                   threshold: 0.6
+ *               noResults:
+ *                 summary: No alternatives found
+ *                 value:
+ *                   currentSupplementId: "8483aa30-ff76-42e4-b8ba-3e03aae6de4e"
+ *                   currentSupplementName: "Unique Supplement"
+ *                   alternatives: []
+ *                   currentPage: 1
+ *                   totalPages: 0
+ *                   totalCount: 0
+ *                   threshold: 0.6
+ *                   message: "No alternative supplements found matching the similarity threshold (60%)"
+ *       400:
+ *         description: Supplement has no vectors for similarity matching
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *             example:
+ *               error: "No vectors available"
+ *               message: "This supplement does not have embedding vectors for similarity matching. Alternatives cannot be found."
+ *       404:
+ *         description: Supplement not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *             example:
+ *               error: "Supplement not found"
+ *               message: "No supplement found with ID: ..."
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get('/supplements/:id/alternatives', controller.getAlternativeSupplements);
+
+/**
+ * @swagger
  * /api/SSS/supplements:
  *   post:
  *     summary: Create New Supplement
@@ -1686,5 +1845,359 @@ router.get('/lookups/batch-statuses', controller.getBatchStockStatusesController
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.get('/lookups/ticket-statuses', controller.getTicketStatusesController);
+
+// ============================================================================
+// ADMIN - CATALOG URL MANAGEMENT ROUTES
+// ============================================================================
+
+/**
+ * @swagger
+ * /api/SSS/admin/catalog-urls:
+ *   get:
+ *     summary: List Catalog URLs
+ *     description: |
+ *       Get paginated list of all catalog URLs for web scraping.
+ *       
+ *       **Catalog URLs:**
+ *       - Product listing pages to scrape (e.g., iHerb vitamins page)
+ *       - Can be activated/deactivated
+ *       - Admin can select which ones to scrape
+ *     tags: [Admin - Catalog URLs]
+ *     parameters:
+ *       - $ref: '#/components/parameters/PageParam'
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved catalog URLs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       product_catalog_website:
+ *                         type: string
+ *                       is_active:
+ *                         type: boolean
+ *                 currentPage:
+ *                   type: integer
+ *                 totalPages:
+ *                   type: integer
+ *                 totalCount:
+ *                   type: integer
+ *             example:
+ *               data:
+ *                 - id: "uuid-1"
+ *                   product_catalog_website: "https://iherb.com/vitamins"
+ *                   is_active: true
+ *               currentPage: 1
+ *               totalPages: 1
+ *               totalCount: 1
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get('/admin/catalog-urls', controller.listCatalogUrls);
+
+/**
+ * @swagger
+ * /api/SSS/admin/catalog-urls/{id}:
+ *   get:
+ *     summary: Get Catalog URL Details
+ *     description: Retrieve details of a specific catalog URL
+ *     tags: [Admin - Catalog URLs]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved catalog URL
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 product_catalog_website:
+ *                   type: string
+ *                 is_active:
+ *                   type: boolean
+ *       404:
+ *         description: Catalog URL not found
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get('/admin/catalog-urls/:id', controller.getCatalogUrlDetails);
+
+/**
+ * @swagger
+ * /api/SSS/admin/catalog-urls:
+ *   post:
+ *     summary: Create Catalog URL
+ *     description: |
+ *       Add a new catalog URL for web scraping.
+ *       
+ *       **Required:**
+ *       - product_catalog_website (must be unique)
+ *       
+ *       **Optional:**
+ *       - is_active (default: true)
+ *       
+ *       **Note:** number_of_catalog_page is deprecated and set to NULL automatically
+ *     tags: [Admin - Catalog URLs]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               product_catalog_website:
+ *                 type: string
+ *                 format: uri
+ *               is_active:
+ *                 type: boolean
+ *             required:
+ *               - product_catalog_website
+ *           examples:
+ *             basic:
+ *               summary: Add iHerb catalog
+ *               value:
+ *                 product_catalog_website: "https://iherb.com/vitamins"
+ *                 is_active: true
+ *             shopee:
+ *               summary: Add Shopee catalog
+ *               value:
+ *                 product_catalog_website: "https://shopee.sg/Protein-Powders-cat.123"
+ *                 is_active: true
+ *     responses:
+ *       201:
+ *         description: Catalog URL created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     product_catalog_website:
+ *                       type: string
+ *                     is_active:
+ *                       type: boolean
+ *       400:
+ *         description: Validation failed
+ *       409:
+ *         description: Duplicate catalog URL
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.post('/admin/catalog-urls', controller.createCatalogUrl);
+
+/**
+ * @swagger
+ * /api/SSS/admin/catalog-urls/{id}:
+ *   patch:
+ *     summary: Update Catalog URL
+ *     description: Update one or more fields of a catalog URL
+ *     tags: [Admin - Catalog URLs]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               product_catalog_website:
+ *                 type: string
+ *               is_active:
+ *                 type: boolean
+ *           examples:
+ *             deactivate:
+ *               summary: Deactivate catalog
+ *               value:
+ *                 is_active: false
+ *             updateUrl:
+ *               summary: Update URL
+ *               value:
+ *                 product_catalog_website: "https://iherb.com/vitamins-updated"
+ *     responses:
+ *       200:
+ *         description: Catalog URL updated successfully
+ *       400:
+ *         description: Validation failed or no fields to update
+ *       404:
+ *         description: Catalog URL not found
+ *       409:
+ *         description: Duplicate catalog URL
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.patch('/admin/catalog-urls/:id', controller.updateCatalogUrl);
+
+/**
+ * @swagger
+ * /api/SSS/admin/catalog-urls:
+ *   delete:
+ *     summary: Delete Catalog URLs (Bulk)
+ *     description: Permanently delete one or more catalog URLs
+ *     tags: [Admin - Catalog URLs]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *             required:
+ *               - ids
+ *           examples:
+ *             singleDelete:
+ *               summary: Delete single catalog
+ *               value:
+ *                 ids: ["uuid-1"]
+ *             bulkDelete:
+ *               summary: Delete multiple catalogs
+ *               value:
+ *                 ids: ["uuid-1", "uuid-2", "uuid-3"]
+ *     responses:
+ *       200:
+ *         description: Catalog URLs deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 deletedCount:
+ *                   type: integer
+ *                 deletedIds:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *       400:
+ *         description: Validation failed
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.delete('/admin/catalog-urls', controller.deleteCatalogUrls);
+
+// ============================================================================
+// ADMIN - SCRAPING ROUTE
+// ============================================================================
+
+/**
+ * @swagger
+ * /api/SSS/admin/scraping/start:
+ *   post:
+ *     summary: Start Web Scraping (Background)
+ *     description: |
+ *       Initiates web scraping in the background. Returns immediately.
+ *       
+ *       **URL Selection:**
+ *       - If `catalog_url_ids` not provided → Scrapes ALL active catalog URLs
+ *       - If `catalog_url_ids` provided → Scrapes only selected URLs
+ *       
+ *       **Process:**
+ *       1. Reads catalog URLs from database (all active or selected)
+ *       2. Submits to Python webscraper service (one request per URL)
+ *       3. Returns immediately (user can continue working)
+ *       4. Scraper writes results to SSS.Supplement_Staging
+ *       5. Check "Staging Supplements" page later to review results
+ *       
+ *       **Requirements:**
+ *       - Python service must be running at PYTHON_SERVICE_URL (default: http://localhost:8001)
+ *       - Catalog URLs must exist in webscraper_catalog_url table
+ *       
+ *       **No Job Tracking:**
+ *       - Simple fire-and-forget approach
+ *       - Results appear in Staging Supplements (is_reviewed = false)
+ *     tags: [Admin - Scraping]
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               catalog_url_ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 description: Optional array of catalog URL IDs to scrape
+ *           examples:
+ *             scrapeAll:
+ *               summary: Scrape all active catalogs
+ *               value: {}
+ *             scrapeSelected:
+ *               summary: Scrape specific catalogs
+ *               value:
+ *                 catalog_url_ids: ["uuid-1", "uuid-2"]
+ *     responses:
+ *       202:
+ *         description: Scraping started successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 catalogs_to_scrape:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       url:
+ *                         type: string
+ *                 total_catalogs:
+ *                   type: integer
+ *                 info:
+ *                   type: string
+ *             example:
+ *               message: "Scraping started successfully"
+ *               catalogs_to_scrape:
+ *                 - id: "uuid-1"
+ *                   url: "https://iherb.com/vitamins"
+ *               total_catalogs: 1
+ *               info: "Scraping is running in the background. Check 'Staging Supplements' page later to review results."
+ *       400:
+ *         description: No active catalog URLs or selected URLs not found
+ *       500:
+ *         description: Failed to start scraping
+ */
+router.post('/admin/scraping/start', controller.startScrapingJob);
 
 export default router;

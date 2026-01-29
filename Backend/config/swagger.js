@@ -5,9 +5,9 @@ const swaggerOptions = {
         openapi: "3.0.0",
         info: {
             title: "NYSI Backend API",
-            version: "2.0.0",
+            version: "2.1.0", // ✅ UPDATED: Incremented version
             description:
-                "New York Sports Institute - Supplement Management System API. Comprehensive API for managing supplements, inventory batches, and athlete profiles.",
+                "New York Sports Institute - Supplement Management System API. Comprehensive API for managing supplements, inventory batches, athlete profiles, and web scraping operations.",
             contact: {
                 name: "NYSI Development Team",
                 email: "dev@nysi.com",
@@ -34,7 +34,7 @@ const swaggerOptions = {
             },
             {
                 name: "Supplements",
-                description: "Supplement library management - CRUD operations",
+                description: "Supplement library management - CRUD operations, search, and similarity matching",
             },
             {
                 name: "Inventory",
@@ -43,6 +43,18 @@ const swaggerOptions = {
             {
                 name: "Staging",
                 description: "Supplement staging area - Web scraper data review and approval",
+            },
+            {
+                name: "Lookups", // ✅ NEW TAG
+                description: "Lookup tables for dropdowns (packaging forms, statuses)",
+            },
+            {
+                name: "Admin - Catalog URLs", // ✅ NEW TAG
+                description: "Manage web scraping catalog URLs (admin only)",
+            },
+            {
+                name: "Admin - Scraping", // ✅ NEW TAG
+                description: "Web scraping operations (admin only)",
             },
             {
                 name: "Athletes",
@@ -147,8 +159,8 @@ const swaggerOptions = {
                             nullable: true,
                             description: "Additional product notes",
                         },
-                        product_source_url: { // ✅ CHANGED: was source_url
-                            type: "array", // ✅ CHANGED: was string
+                        product_source_url: {
+                            type: "array",
                             items: {
                                 type: "string",
                                 format: "uri"
@@ -205,8 +217,8 @@ const swaggerOptions = {
                             nullable: true,
                             description: "Testing organization or 'NIL'",
                         },
-                        product_source_url: { // ✅ CHANGED: was source_url
-                            type: "array", // ✅ CHANGED: was string
+                        product_source_url: {
+                            type: "array",
                             items: {
                                 type: "string",
                                 format: "uri"
@@ -293,8 +305,8 @@ const swaggerOptions = {
                             nullable: true,
                             description: "Additional notes",
                         },
-                        product_source_url: { // ✅ CHANGED: was source_url
-                            oneOf: [ // ✅ NEW: Accepts string OR array
+                        product_source_url: {
+                            oneOf: [
                                 {
                                     type: "string",
                                     format: "uri",
@@ -345,8 +357,8 @@ const swaggerOptions = {
                         supplement_warning_label: { type: "string", nullable: true },
                         supplement_certifications: { type: "string", nullable: true },
                         supplement_additional_information: { type: "string", nullable: true },
-                        product_source_url: { // ✅ CHANGED: was source_url
-                            oneOf: [ // ✅ NEW: Accepts string OR array
+                        product_source_url: {
+                            oneOf: [
                                 {
                                     type: "string",
                                     format: "uri"
@@ -363,6 +375,103 @@ const swaggerOptions = {
                             description: "Product URL(s) - string or array",
                         },
                     },
+                },
+
+                // ==================== ALTERNATIVE SUPPLEMENTS SCHEMAS (NEW) ====================
+
+                AlternativeSupplementItem: {
+                    type: "object",
+                    properties: {
+                        id: {
+                            type: "string",
+                            format: "uuid",
+                            description: "Supplement UUID",
+                        },
+                        supplement_name: {
+                            type: "string",
+                            description: "Name of alternative supplement",
+                        },
+                        supplement_brand: {
+                            type: "string",
+                            nullable: true,
+                            description: "Brand name",
+                        },
+                        similarity_score_100g: {
+                            type: "string",
+                            nullable: true,
+                            description: "Similarity based on per-100g nutrition (e.g., '87%')",
+                            example: "87%",
+                        },
+                        similarity_score_perserving: {
+                            type: "string",
+                            nullable: true,
+                            description: "Similarity based on per-serving nutrition (e.g., '92%')",
+                            example: "92%",
+                        },
+                        supplement_status: {
+                            type: "string",
+                            description: "Testing status",
+                            example: "BATCH TESTED",
+                        },
+                        stock_status: {
+                            type: "string",
+                            enum: ["Available", "Low Stock", "Out of Stock"],
+                            description: "Calculated stock availability",
+                            example: "Available",
+                        },
+                    },
+                    required: ["id", "supplement_name", "supplement_status", "stock_status"],
+                },
+
+                AlternativeSupplementsResponse: {
+                    type: "object",
+                    properties: {
+                        currentSupplementId: {
+                            type: "string",
+                            format: "uuid",
+                            description: "ID of the supplement being compared",
+                        },
+                        currentSupplementName: {
+                            type: "string",
+                            description: "Name of the supplement being compared",
+                        },
+                        alternatives: {
+                            type: "array",
+                            items: { $ref: "#/components/schemas/AlternativeSupplementItem" },
+                            description: "List of alternative supplements",
+                        },
+                        currentPage: {
+                            type: "integer",
+                            description: "Current page number",
+                        },
+                        totalPages: {
+                            type: "integer",
+                            description: "Total number of pages",
+                        },
+                        totalCount: {
+                            type: "integer",
+                            description: "Total number of alternatives found",
+                        },
+                        threshold: {
+                            type: "number",
+                            description: "Minimum similarity threshold (0.6 = 60%)",
+                            example: 0.6,
+                        },
+                        message: {
+                            type: "string",
+                            nullable: true,
+                            description: "Optional message (e.g., when no results found)",
+                        },
+                    },
+                    required: [
+                        "currentSupplementId",
+                        "currentSupplementName",
+                        "alternatives",
+                        "currentPage",
+                        "totalPages",
+                        "totalCount",
+                        "threshold"
+                    ],
                 },
 
                 // ==================== BATCH/INVENTORY SCHEMAS ====================
@@ -423,67 +532,8 @@ const swaggerOptions = {
                     },
                 },
 
-                // ==================== PAGINATION SCHEMAS ====================
+                // ==================== STAGING SCHEMAS ====================
 
-                PaginatedSupplementsResponse: {
-                    type: "object",
-                    properties: {
-                        data: {
-                            type: "array",
-                            items: { $ref: "#/components/schemas/Supplement" },
-                        },
-                        currentPage: {
-                            type: "integer",
-                            description: "Current page number",
-                            example: 1,
-                        },
-                        totalPages: {
-                            type: "integer",
-                            description: "Total number of pages",
-                            example: 15,
-                        },
-                        totalCount: {
-                            type: "integer",
-                            description: "Total number of items",
-                            example: 147,
-                        },
-                        searchQuery: {
-                            type: "string",
-                            nullable: true,
-                            description: "Search query used (if any)",
-                            example: "vitamin",
-                        },
-                    },
-                    required: ["data", "currentPage", "totalPages", "totalCount"],
-                },
-
-                PaginatedBatchesResponse: {
-                    type: "object",
-                    properties: {
-                        data: {
-                            type: "array",
-                            items: { $ref: "#/components/schemas/Batch" },
-                        },
-                        currentPage: {
-                            type: "integer",
-                            description: "Current page number",
-                        },
-                        totalPages: {
-                            type: "integer",
-                            description: "Total number of pages",
-                        },
-                        totalCount: {
-                            type: "integer",
-                            description: "Total number of items",
-                        },
-                        searchQuery: {
-                            type: "string",
-                            nullable: true,
-                            description: "Search query used (if any)",
-                        },
-                    },
-                },
-// ==================== STAGING SCHEMAS ====================
                 StagingSupplement: {
                     type: "object",
                     properties: {
@@ -664,33 +714,6 @@ const swaggerOptions = {
                     },
                 },
 
-                PaginatedStagingSupplementsResponse: {
-                    type: "object",
-                    properties: {
-                        data: {
-                            type: "array",
-                            items: { $ref: "#/components/schemas/StagingSupplement" },
-                        },
-                        currentPage: {
-                            type: "integer",
-                            description: "Current page number",
-                        },
-                        totalPages: {
-                            type: "integer",
-                            description: "Total number of pages",
-                        },
-                        totalCount: {
-                            type: "integer",
-                            description: "Total number of unreviewed staging entries",
-                        },
-                        searchQuery: {
-                            type: "string",
-                            nullable: true,
-                            description: "Always null (no search for staging)",
-                        },
-                    },
-                },
-
                 ApprovalResponse: {
                     type: "object",
                     properties: {
@@ -754,6 +777,230 @@ const swaggerOptions = {
                                     },
                                 },
                             },
+                        },
+                    },
+                },
+
+                // ==================== CATALOG URL SCHEMAS (NEW) ====================
+
+                CatalogUrl: {
+                    type: "object",
+                    properties: {
+                        id: {
+                            type: "string",
+                            format: "uuid",
+                            description: "Unique catalog URL identifier",
+                        },
+                        product_catalog_website: {
+                            type: "string",
+                            format: "uri",
+                            description: "Product catalog URL to scrape",
+                            example: "https://iherb.com/vitamins",
+                        },
+                        is_active: {
+                            type: "boolean",
+                            description: "Whether catalog is active for scraping",
+                            example: true,
+                        },
+                    },
+                    required: ["id", "product_catalog_website", "is_active"],
+                },
+
+                CreateCatalogUrlRequest: {
+                    type: "object",
+                    properties: {
+                        product_catalog_website: {
+                            type: "string",
+                            format: "uri",
+                            description: "Product catalog URL (must be unique)",
+                            example: "https://iherb.com/vitamins",
+                        },
+                        is_active: {
+                            type: "boolean",
+                            description: "Active status (default: true)",
+                            default: true,
+                            example: true,
+                        },
+                    },
+                    required: ["product_catalog_website"],
+                },
+
+                UpdateCatalogUrlRequest: {
+                    type: "object",
+                    properties: {
+                        product_catalog_website: {
+                            type: "string",
+                            format: "uri",
+                            description: "Updated catalog URL",
+                        },
+                        is_active: {
+                            type: "boolean",
+                            description: "Active status",
+                        },
+                    },
+                    description: "At least one field required",
+                },
+
+                // ==================== SCRAPING SCHEMAS (NEW) ====================
+
+                ScrapingStartRequest: {
+                    type: "object",
+                    properties: {
+                        catalog_url_ids: {
+                            type: "array",
+                            items: {
+                                type: "string",
+                                format: "uuid",
+                            },
+                            nullable: true,
+                            description: "Optional: Specific catalog URL IDs to scrape. If not provided, scrapes all active catalogs.",
+                            example: ["uuid-1", "uuid-2"],
+                        },
+                    },
+                },
+
+                ScrapingStartResponse: {
+                    type: "object",
+                    properties: {
+                        message: {
+                            type: "string",
+                            example: "Scraping started successfully",
+                        },
+                        catalogs_to_scrape: {
+                            type: "array",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    id: {
+                                        type: "string",
+                                        format: "uuid",
+                                    },
+                                    url: {
+                                        type: "string",
+                                        format: "uri",
+                                    },
+                                },
+                            },
+                            description: "List of catalogs being scraped",
+                        },
+                        total_catalogs: {
+                            type: "integer",
+                            description: "Number of catalogs to scrape",
+                        },
+                        info: {
+                            type: "string",
+                            example: "Scraping is running in the background. Check 'Staging Supplements' page later to review results.",
+                        },
+                    },
+                    required: ["message", "catalogs_to_scrape", "total_catalogs", "info"],
+                },
+
+                // ==================== PAGINATION SCHEMAS ====================
+
+                PaginatedSupplementsResponse: {
+                    type: "object",
+                    properties: {
+                        data: {
+                            type: "array",
+                            items: { $ref: "#/components/schemas/Supplement" },
+                        },
+                        currentPage: {
+                            type: "integer",
+                            description: "Current page number",
+                            example: 1,
+                        },
+                        totalPages: {
+                            type: "integer",
+                            description: "Total number of pages",
+                            example: 15,
+                        },
+                        totalCount: {
+                            type: "integer",
+                            description: "Total number of items",
+                            example: 147,
+                        },
+                        searchQuery: {
+                            type: "string",
+                            nullable: true,
+                            description: "Search query used (if any)",
+                            example: "vitamin",
+                        },
+                    },
+                    required: ["data", "currentPage", "totalPages", "totalCount"],
+                },
+
+                PaginatedBatchesResponse: {
+                    type: "object",
+                    properties: {
+                        data: {
+                            type: "array",
+                            items: { $ref: "#/components/schemas/Batch" },
+                        },
+                        currentPage: {
+                            type: "integer",
+                            description: "Current page number",
+                        },
+                        totalPages: {
+                            type: "integer",
+                            description: "Total number of pages",
+                        },
+                        totalCount: {
+                            type: "integer",
+                            description: "Total number of items",
+                        },
+                        searchQuery: {
+                            type: "string",
+                            nullable: true,
+                            description: "Search query used (if any)",
+                        },
+                    },
+                },
+
+                PaginatedStagingSupplementsResponse: {
+                    type: "object",
+                    properties: {
+                        data: {
+                            type: "array",
+                            items: { $ref: "#/components/schemas/StagingSupplement" },
+                        },
+                        currentPage: {
+                            type: "integer",
+                            description: "Current page number",
+                        },
+                        totalPages: {
+                            type: "integer",
+                            description: "Total number of pages",
+                        },
+                        totalCount: {
+                            type: "integer",
+                            description: "Total number of unreviewed staging entries",
+                        },
+                        searchQuery: {
+                            type: "string",
+                            nullable: true,
+                            description: "Always null (no search for staging)",
+                        },
+                    },
+                },
+
+                PaginatedCatalogUrlsResponse: {
+                    type: "object",
+                    properties: {
+                        data: {
+                            type: "array",
+                            items: { $ref: "#/components/schemas/CatalogUrl" },
+                        },
+                        currentPage: {
+                            type: "integer",
+                            description: "Current page number",
+                        },
+                        totalPages: {
+                            type: "integer",
+                            description: "Total number of pages",
+                        },
+                        totalCount: {
+                            type: "integer",
+                            description: "Total number of catalog URLs",
                         },
                     },
                 },
