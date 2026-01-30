@@ -18,12 +18,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
         {/* Logo */}
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6">
           <div className="flex items-center justify-center">
             <img
               src="/HPSI_LOGO.png"
               alt="HPSI - High Performance Sport Institute"
-              className="w-full max-w-[200px] h-auto"
+              className="w-full max-w-[100px] h-auto"
             />
           </div>
         </div>
@@ -38,7 +38,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 : "text-gray-600 hover:bg-gray-50"
             }`}
           >
-            <LayoutDashboard className="w-5 h-5" />
             <span className="font-medium">Dashboard</span>
           </Link>
 
@@ -82,51 +81,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             )}
           </div>
         </nav>
-
-        {/* User Profile (Bottom) */}
-        <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-white font-medium text-sm">AT</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-900 truncate">Amy Tan</div>
-              <div className="text-xs text-gray-500">Nutritionist</div>
-            </div>
-          </div>
-        </div>
       </aside>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Header */}
-        <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-end">
-          <div className="flex items-center space-x-6">
-            {/* Notifications */}
-            <button className="relative">
-              <Bell className="w-6 h-6 text-gray-600" />
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                3
-              </span>
-            </button>
-
-            {/* User Info */}
-            <div className="flex items-center space-x-3">
-              <div className="text-right">
-                <div className="text-sm font-medium text-gray-900">Amy Tan</div>
-                <div className="text-xs text-gray-500">Nutritionist</div>
-              </div>
-              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                <span className="text-white font-medium">AT</span>
-              </div>
-            </div>
-          </div>
-        </header>
-
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-8">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

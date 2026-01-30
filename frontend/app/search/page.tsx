@@ -33,6 +33,8 @@ export default function InventoryPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Batch[]>([]);
   const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -62,12 +64,12 @@ export default function InventoryPage() {
     loadBatches();
   }, []);
 
-  const loadBatches = async (searchQuery = "") => {
+  const loadBatches = async (searchQuery = "", page = 1) => {
     setLoading(true);
     setError("");
 
     try {
-      const params: { page: number; search?: string } = { page: 1 };
+      const params: { page: number; search?: string } = { page };
       if (searchQuery.trim()) {
         params.search = searchQuery;
       }
@@ -77,27 +79,39 @@ export default function InventoryPage() {
       if (response.data && Array.isArray(response.data.data)) {
         setResults(response.data.data);
         setTotal(response.data.totalCount || 0);
+        setCurrentPage(response.data.currentPage || 1);
+        setTotalPages(response.data.totalPages || 1);
       } else {
         setResults([]);
         setTotal(0);
+        setCurrentPage(1);
+        setTotalPages(1);
       }
     } catch (err) {
       setError("Failed to load batches. Please check your database connection.");
       console.error(err);
       setResults([]);
       setTotal(0);
+      setCurrentPage(1);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSearch = async () => {
-    await loadBatches(query);
+    await loadBatches(query, 1);
+    setCurrentPage(1);
   };
 
   const handleClearSearch = async () => {
     setQuery("");
-    await loadBatches();
+    await loadBatches("", 1);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = async (page: number) => {
+    await loadBatches(query, page);
   };
 
   return (
@@ -131,6 +145,10 @@ export default function InventoryPage() {
           total={total}
           loading={loading}
           searchQuery={query}
+          onRefresh={() => loadBatches(query, currentPage)}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
         />
       </div>
     </DashboardLayout>

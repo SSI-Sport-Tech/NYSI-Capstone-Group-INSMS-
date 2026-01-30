@@ -31,8 +31,8 @@ const ViewTabs: React.FC<ViewTabsProps> = ({ tabs }) => {
   };
 
   return (
-    <div className="border-b border-gray-200 mb-6">
-      <nav className="-mb-px flex space-x-8">
+    <div className="mb-6 border-b rounded-t-xl">
+      <div className="flex space-x-1 px-2">
         {tabs.map((tab) => {
           const isActive =
             pathname === tab.href ||
@@ -43,18 +43,21 @@ const ViewTabs: React.FC<ViewTabsProps> = ({ tabs }) => {
             <Link
               key={tab.id}
               href={tab.href}
-              className={`group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
-                isActive
-                  ? "border-black text-gray-900"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
+              className={`
+                inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all
+                ${
+                  isActive
+                    ? "bg-gray-50 text-gray-900 border-b-2 border-gray-900"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                }
+              `}
             >
-              {tab.icon && <span className="mr-2">{getIcon(tab.icon)}</span>}
-              {tab.label}
+              {tab.icon && <span>{getIcon(tab.icon)}</span>}
+              <span>{tab.label}</span>
             </Link>
           );
         })}
-      </nav>
+      </div>
     </div>
   );
 };
