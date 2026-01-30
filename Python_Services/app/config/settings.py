@@ -1,39 +1,226 @@
+"""
+Application Configuration Settings
+Loads environment variables from .env file using Pydantic
+"""
+
 from pydantic_settings import BaseSettings
 from typing import Optional
 
 
 class Settings(BaseSettings):
-    """Application configuration."""
+    """
+    Application settings loaded from environment variables.
     
-    # OpenAI API
+    All values are loaded from .env file automatically by Pydantic.
+    See .env.example for template.
+    """
+    
+    # ========================================================================
+    # OpenAI Configuration
+    # ========================================================================
     openai_api_key: str
+    """OpenAI API key for GPT-4o-mini (OCR parsing, web scraping)"""
     
+    # ========================================================================
     # Service Configuration
+    # ========================================================================
     service_port: int = 8001
+    """Port number for FastAPI server (default: 8001)"""
+    
     service_host: str = "0.0.0.0"
+    """Host address for FastAPI server (default: 0.0.0.0 for all interfaces)"""
+    
     backend_url: str = "http://localhost:8000"
+    """URL of Node.js backend API (for future integration)"""
     
-    # ML Configuration
+    # ========================================================================
+    # Database Configuration (PostgreSQL)
+    # ========================================================================
+    postgres_host: str = "localhost"
+    """PostgreSQL host address"""
+    
+    postgres_port: int = 5432
+    """PostgreSQL port number"""
+    
+    postgres_db: str = "nysi_db"
+    """PostgreSQL database name"""
+    
+    postgres_user: str = "postgres"
+    """PostgreSQL username"""
+    
+    postgres_password: str
+    """PostgreSQL password (REQUIRED - no default)"""
+    
+    # ========================================================================
+    # ML/AI Configuration
+    # ========================================================================
+    
+    # Embedding Model
     embedding_model: str = "BAAI/bge-small-en-v1.5"
+    """HuggingFace embedding model for vectorization (384 dimensions)"""
+    
     vector_dimension: int = 384
+    """Vector dimension for BAAI/bge-small-en-v1.5 embeddings"""
     
-    # Database Configuration (for webscraper)
-    pghost: Optional[str] = "localhost"
-    pgport: Optional[str] = "5432"
-    pgdatabase: Optional[str] = "nysi_db"
-    pguser: Optional[str] = None
-    pgpassword: Optional[str] = None
-    pgsslmode: str = "prefer"
+    # OCR Configuration
+    ocr_language: str = "en"
+    """PaddleOCR language (default: English)"""
     
-    # Webscraper Configuration
-    scraper_version: str = "0.7"
-    max_scrape_pages: int = 10
-    selenium_headless: bool = True
+    ocr_use_gpu: bool = False
+    """Use GPU for OCR (default: False for CPU-only)"""
     
+    # ========================================================================
+    # Web Scraping Configuration
+    # ========================================================================
+    scraper_version: str = "1.0.0"
+    """Web scraper version for tracking in staging table"""
+    
+    scraper_headless: bool = True
+    """Run browser in headless mode (default: True)"""
+    
+    scraper_timeout: int = 30
+    """Selenium timeout in seconds (default: 30)"""
+    
+    # ========================================================================
+    # Application Behavior
+    # ========================================================================
+    debug_mode: bool = False
+    """Enable debug logging and verbose output"""
+    
+    max_concurrent_requests: int = 5
+    """Maximum concurrent scraping requests"""
+    
+    # ========================================================================
+    # Pydantic Configuration
+    # ========================================================================
     class Config:
+        """Pydantic configuration"""
         env_file = ".env"
+        env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "ignore"  # Ignore extra fields in .env
+    
+    # ========================================================================
+    # Helper Methods
+    # ========================================================================
+    
+    @property
+    def database_url(self) -> str:
+        """
+        Construct PostgreSQL connection URL.
+        
+        Returns:
+            str: PostgreSQL connection string
+        """
+        return (
+            f"postgresql://{self.postgres_user}:{self.postgres_password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
+    
+    def get_openai_config(self) -> dict:
+        """
+        Get OpenAI configuration for ScrapegraphAI and LlamaIndex.
+        
+        Returns:
+            dict: OpenAI configuration
+        """
+        return {
+            "api_key": self.openai_api_key,
+            "model": "openai/gpt-4o-mini"
+        }
+    
+    def get_embedding_config(self) -> dict:
+        """
+        Get embedding model configuration.
+        
+        Returns:
+            dict: Embedding configuration
+        """
+        return {
+            "model_name": self.embedding_model,
+            "embed_batch_size": 10,
+            "device": "cpu"  # Force CPU for compatibility
+        }
+    
+    def validate_required_settings(self) -> bool:
+        """
+        Validate that all required settings are present.
+        
+        Returns:
+            bool: True if all required settings valid
+            
+        Raises:
+            ValueError: If required settings missing
+        """
+        required = [
+            ("openai_api_key", self.openai_api_key),
+            ("postgres_password", self.postgres_password)
+        ]
+        
+        missing = [name for name, value in required if not value]
+        
+        if missing:
+            raise ValueError(
+                f"Missing required environment variables: {', '.join(missing)}"
+            )
+        
+        return True
+    
+    def __repr__(self) -> str:
+        """Safe string representation (hides secrets)"""
+        return (
+            f"Settings("
+            f"service_port={self.service_port}, "
+            f"database={self.postgres_db}, "
+            f"embedding_model={self.embedding_model}, "
+            f"openai_api_key={'*' * 20 if self.openai_api_key else 'NOT SET'}"
+            f")"
+        )
 
 
-# Global settings instance
+# ============================================================================
+# Global Settings Instance
+# ============================================================================
+
 settings = Settings()
+"""
+Global settings instance.
+Import this in your services:
+
+    from app.config.settings import settings
+    
+    openai_key = settings.openai_api_key
+    db_url = settings.database_url
+"""
+
+
+# ============================================================================
+# Startup Validation
+# ============================================================================
+
+def validate_settings():
+    """
+    Validate settings on application startup.
+    Call this from main.py on startup.
+    """
+    try:
+        settings.validate_required_settings()
+        print("✅ Settings validated successfully")
+        print(f"   Service: http://{settings.service_host}:{settings.service_port}")
+        print(f"   Database: {settings.postgres_host}:{settings.postgres_port}/{settings.postgres_db}")
+        print(f"   Embedding Model: {settings.embedding_model}")
+        return True
+    except ValueError as e:
+        print(f"❌ Settings validation failed: {e}")
+        print("\n💡 Make sure you have a .env file with all required variables.")
+        print("   See .env.example for template.")
+        return False
+
+
+# Run validation on import (optional - can also call from main.py)
+if __name__ != "__main__":
+    # Silent validation on import
+    try:
+        settings.validate_required_settings()
+    except ValueError:
+        pass  # Will fail loudly when service tries to start

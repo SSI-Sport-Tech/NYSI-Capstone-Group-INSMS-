@@ -2,7 +2,14 @@
 Enhanced Nutrition Label OCR Workflow using PaddleOCR + GPT-4o-mini.
 Replaces the existing nutrition_workflow.py with better implementation.
 """
+# Import PyTorch-dependent packages FIRST before OpenCV and PaddleOCR
+from llama_index.core.workflow import (
+    StartEvent, StopEvent, Workflow, step, Context, Event
+)
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
+# Now import other packages
 import os
 import json
 import re
@@ -10,13 +17,8 @@ import cv2
 import numpy as np
 from dotenv import load_dotenv
 from paddleocr import PaddleOCR
-from llama_index.core.workflow import (
-    StartEvent, StopEvent, Workflow, step, Context, Event
-)
-from llama_index.llms.openai import OpenAI
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-
-from app.schemas.ocr_schemas import SupplementStagingSchema
+from app.schemas.supplement import SupplementStagingSchema
+from app.config.settings import settings
 
 load_dotenv()
 
@@ -169,7 +171,7 @@ class NutritionWorkflow(Workflow):
         Process:
         1. Load image
         2. Upscale if too small (< 800px width)
-        3. Run OCR with PaddleOCR v4
+        3. Run OCR with PaddleOCR
         4. Filter results by confidence (> 0.5)
         5. Return concatenated text
         """
@@ -198,28 +200,42 @@ class NutritionWorkflow(Workflow):
                 fx=scale, fy=scale, 
                 interpolation=cv2.INTER_CUBIC
             )
+            # Save upscaled image temporarily
+            temp_path = image_path.replace('.jpg', '_upscaled.jpg')
+            cv2.imwrite(temp_path, img)
+            image_path = temp_path
 
-        # Run OCR using NEW predict() API (PaddleOCR v2.8+)
-        result = self.ocr.predict(img)
+        # ✅ CORRECT: Run OCR using .ocr() method
+        result = self.ocr.ocr(image_path, cls=True)
         
-        # Extract text from response structure
-        if not result or len(result) == 0:
+        # ✅ CORRECT: Extract text from PaddleOCR response format
+        # result = [
+        #     [
+        #         [[x1,y1], [x2,y2], [x3,y3], [x4,y4]],  # bbox
+        #         ('text', confidence)                     # (text, score)
+        #     ],
+        #     ...
+        # ]
+        
+        if not result or not result[0]:
             print("⚠️ CRITICAL: PaddleOCR found NO text")
             return StopEvent(result={"error": "No text detected"})
         
-        ocr_result = result[0]
-        texts = ocr_result.get('rec_texts', [])
-        scores = ocr_result.get('rec_scores', [])
+        # Parse PaddleOCR format
+        filtered_texts = []
+        for line in result[0]:
+            bbox = line[0]  # Bounding box (not used here)
+            text_info = line[1]  # (text, confidence)
+            text = text_info[0]
+            confidence = text_info[1]
+            
+            # Filter by confidence > 0.5
+            if confidence > 0.5 and len(text.strip()) > 0:
+                filtered_texts.append(text)
         
-        if not texts: 
-            print("⚠️ CRITICAL: No text extracted")
+        if not filtered_texts:
+            print("⚠️ CRITICAL: No text with confidence > 0.5")
             return StopEvent(result={"error": "No text detected"})
-        
-        # Filter by confidence score (> 0.5)
-        filtered_texts = [
-            text for text, score in zip(texts, scores)
-            if score > 0.5 and len(text.strip()) > 0
-        ]
         
         full_text = "\n".join(filtered_texts)
         

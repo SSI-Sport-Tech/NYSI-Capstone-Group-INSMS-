@@ -3,6 +3,8 @@ Webscraper API Router
 Provides endpoints for scraping supplement data from e-commerce websites.
 """
 
+import traceback
+
 import os
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from typing import List
@@ -161,10 +163,11 @@ async def scrape_single_product(request: ScrapeProductRequest):
             for product in products:
                 try:
                     query = f"{product.get('Brand', '')} {product.get('Name', '')}".strip()
-                    result = await batch_tester.search_batch_testing(
+                    result = await batch_tester.search_batch_testing_with_consensus(
                         brand_supplement=query,
                         openai_api_key=openai_key,
-                        max_tries=2
+                        num_searches=3,
+                        consensus_threshold=3
                     )
                     product["Batch_tested"] = result.get("Batch_tested")
                     product["batch_testing_org"] = result.get("Organisation")
@@ -184,6 +187,7 @@ async def scrape_single_product(request: ScrapeProductRequest):
         
     except Exception as e:
         print(f"❌ Scrape product failed: {e}")
+        traceback.print_exc()
         raise HTTPException(500, f"Scraping failed: {str(e)}")
 
 
