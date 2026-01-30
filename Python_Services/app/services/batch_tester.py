@@ -3,8 +3,8 @@ Batch testing certification search service.
 Searches web for batch testing certifications (Informed Sport, NSF, etc.)
 """
 
-# import nest_asyncio  
-# nest_asyncio.apply()  
+import nest_asyncio  
+nest_asyncio.apply()  
 
 from typing import Dict, List
 from pydantic import BaseModel
@@ -86,26 +86,26 @@ async def search_batch_testing(
     )
     
 
-import os
-from dotenv import load_dotenv
-load_dotenv()
-openai_key = os.getenv("OPENAI_API_KEY")
-import asyncio
-if __name__ == "__main__":
-    result = asyncio.run(
-        search_batch_testing(
-            brand_supplement="Applied Nutrition Creatine Monohydrate",
-            openai_api_key=openai_key
-        )
-    )
-    print(result)
+# import os
+# from dotenv import load_dotenv
+# load_dotenv()
+# openai_key = os.getenv("OPENAI_API_KEY")
+# import asyncio
+# if __name__ == "__main__":
+#     result = asyncio.run(
+#         search_batch_testing(
+#             brand_supplement="Applied Nutrition Creatine Monohydrate",
+#             openai_api_key=openai_key
+#         )
+#     )
+#     print(result)
 
 
 async def search_batch_testing_with_consensus(
     brand_supplement: str,
     openai_api_key: str,
     num_searches: int = 3,
-    consensus_threshold: int = 2
+    consensus_threshold: int = 3
 ) -> Dict:
     """
     Run multiple concurrent searches and return when consensus_threshold complete.
@@ -251,7 +251,7 @@ def analyze_consensus(results: List[Dict], supplement: str) -> Dict:
     return result
 
 
-# supplement = "Optimum Nutrition Gold Standard Whey"
+# supplement = "1st Phorm Optigreens 50"
 # import os
 # from dotenv import load_dotenv
 # load_dotenv()
@@ -263,7 +263,92 @@ def analyze_consensus(results: List[Dict], supplement: str) -> Dict:
 #         brand_supplement=supplement,
 #         openai_api_key=openai_key,
 #         num_searches=3,
-#         consensus_threshold=2
+#         consensus_threshold=3
 #     )
 #     )
 #     print(f"\n🏁 Final Result: {result}")
+
+
+class URLSearchSchema(BaseModel):
+    """Schema for batch testing search results."""
+    Batch_tested: str
+    URL: str
+
+# not reliable
+async def search_batch_testing_url(
+    brand_supplement: str,
+    organisation: str,
+    openai_api_key: str,
+    max_tries: int = 2
+) -> Dict:
+
+
+    config = {
+        "llm": {
+            "api_key": openai_api_key,
+            "model": "openai/gpt-4o-mini",
+        },
+    }
+
+
+    prompt = f"""Find the url (if any) of the product page for {brand_supplement} under the organisation:{organisation}
+   Important: 
+   - Only return the URL if it is an official page for {organisation}
+   - Do not return the URL for any other products.
+
+   Output example for supplement tested by Informed Sport: 
+   {{"Batch_tested": "Yes",
+   "URL": "https://sport.wetestyoutrust.com/supplement-search/1above-jet-lag-relief"}}
+
+   Output example 2 not batch tested by {organisation}:
+   {{"Batch_tested": "No",
+   "URL": "NA"}}
+"""
+    print(prompt)
+
+    search_graph = graphs.SearchGraph(
+        prompt=prompt,
+        config=config,
+        schema=URLSearchSchema
+    )
+
+
+    try:
+        result = search_graph.run()
+
+        if result.get("Batch_tested") == "Yes" or max_tries <= 1:
+            return result
+
+    except Exception as e:
+        print(f"❌ Batch test search failed (tries left {max_tries}): {e}")
+
+        if max_tries == 1:
+            return {
+                "Batch_tested": "Unknown",
+                "URL": "NA",
+                "sources": []
+            }
+
+    return await search_batch_testing_url(
+        brand_supplement,
+        organisation,
+        openai_api_key,
+        max_tries - 1
+    )
+    
+
+# import os
+# from dotenv import load_dotenv
+# load_dotenv()
+# openai_key = os.getenv("OPENAI_API_KEY")
+# import asyncio
+# if __name__ == "__main__":
+#     result = asyncio.run(
+#         search_batch_testing_url(
+#             brand_supplement="Applied Nutrition Creatine Monohydrate",
+#             organisation= "Informed Sport",
+#             openai_api_key=openai_key,
+#             max_tries=5
+#         )
+#     )
+#     print(result)
