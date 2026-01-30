@@ -1559,7 +1559,7 @@ export async function getCatalogUrls(pageNumber, pageSize = 10) {
             id,
             product_catalog_website,
             is_active
-        FROM webscraper_catalog_url
+        FROM SSS.webscraper_catalog_url
         ORDER BY id DESC
         LIMIT $1 OFFSET $2
     `;
@@ -1572,7 +1572,7 @@ export async function getCatalogUrls(pageNumber, pageSize = 10) {
  * @returns {Promise<number>} Total count
  */
 export async function getTotalCatalogUrlCount() {
-  const query = `SELECT COUNT(*) as count FROM webscraper_catalog_url`;
+  const query = `SELECT COUNT(*) as count FROM SSS.webscraper_catalog_url`;
   const result = await pool.query(query);
   return parseInt(result.rows[0].count);
 }
@@ -1588,7 +1588,7 @@ export async function getCatalogUrlById(catalogUrlId) {
             id,
             product_catalog_website,
             is_active
-        FROM webscraper_catalog_url
+        FROM SSS.webscraper_catalog_url
         WHERE id = $1
     `;
 
@@ -1603,7 +1603,7 @@ export async function getCatalogUrlById(catalogUrlId) {
  */
 export async function createCatalogUrl(catalogUrlData) {
   const query = `
-        INSERT INTO webscraper_catalog_url (
+        INSERT INTO SSS.webscraper_catalog_url (
             product_catalog_website,
             is_active,
             number_of_catalog_page
@@ -1631,7 +1631,7 @@ export async function createCatalogUrl(catalogUrlData) {
  */
 export async function checkDuplicateCatalogUrl(websiteUrl, excludeId = null) {
   let query = `
-        SELECT id FROM webscraper_catalog_url 
+        SELECT id FROM SSS.webscraper_catalog_url 
         WHERE product_catalog_website = $1
     `;
 
@@ -1680,7 +1680,7 @@ export async function updateCatalogUrl(catalogUrlId, updateData) {
   values.push(catalogUrlId);
 
   const query = `
-        UPDATE webscraper_catalog_url 
+        UPDATE SSS.webscraper_catalog_url 
         SET ${fields.join(', ')}
         WHERE id = $${paramCounter}
         RETURNING 
@@ -1700,7 +1700,7 @@ export async function updateCatalogUrl(catalogUrlId, updateData) {
  */
 export async function deleteCatalogUrls(catalogUrlIds) {
   const query = `
-        DELETE FROM webscraper_catalog_url
+        DELETE FROM SSS.webscraper_catalog_url
         WHERE id = ANY($1::uuid[])
         RETURNING id, product_catalog_website
     `;
@@ -1717,7 +1717,7 @@ export async function deleteCatalogUrls(catalogUrlIds) {
 export async function getActiveCatalogUrls(catalogUrlIds = null) {
   let query = `
         SELECT id, product_catalog_website
-        FROM webscraper_catalog_url
+        FROM SSS.webscraper_catalog_url
         WHERE is_active = true
     `;
 
