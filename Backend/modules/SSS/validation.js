@@ -90,23 +90,21 @@ export const createSupplementSchema = z.object({
 
     product_source_url: urlSchema,
 
-    // ---- JSONB FIELDS ----
+    // ---- JSONB FIELDS (Required for vectorization) ----
 
     supplement_ingredient: jsonbArraySchema
-        .optional()
-        .nullable()
-        .default([])
-        .describe('Array of ingredient names, e.g., ["Vitamin D3", "Calcium"]'),
+        .min(1, 'At least one ingredient is required for vectorization')
+        .describe('Array of ingredient names, e.g., ["Vitamin D3", "Calcium"]. Required for vectorization.'),
 
     nutritional_info_per_100g: z.record(z.string(), z.any())
         .optional()
         .nullable()
-        .describe('Nutritional breakdown per 100g'),
+        .describe('Nutritional breakdown per 100g. At least one of per_100g or per_serving is required for vectorization.'),
 
     nutritional_info_per_serving: z.record(z.string(), z.any())
         .optional()
         .nullable()
-        .describe('Nutritional breakdown per serving'),
+        .describe('Nutritional breakdown per serving. At least one of per_100g or per_serving is required for vectorization.'),
 
     nutritional_info_per_serving_definition: optionalTextSchema
         .describe('Definition of serving size, e.g., "1 capsule"'),

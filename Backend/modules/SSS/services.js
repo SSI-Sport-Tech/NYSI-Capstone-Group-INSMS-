@@ -294,11 +294,13 @@ export async function createSupplement(supplementData) {
       supplement_certifications,
       supplement_additional_information,
       product_source_url,
-      supplement_input_type
+      supplement_input_type,
+      vector_100g_ingredient,
+      vector_perserving_ingredient
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
     )
-    RETURNING 
+    RETURNING
       id,
       supplement_name,
       supplement_brand,
@@ -339,6 +341,12 @@ export async function createSupplement(supplementData) {
     supplementData.supplement_additional_information || null, // $14
     urlArray, // $15 - TEXT[]: pg handles array conversion
     supplementData.supplement_input_type || "Manual", // $16
+    supplementData.vector_100g_ingredient
+      ? JSON.stringify(supplementData.vector_100g_ingredient)
+      : null, // $17 - vector: stringify array for pgvector
+    supplementData.vector_perserving_ingredient
+      ? JSON.stringify(supplementData.vector_perserving_ingredient)
+      : null, // $18 - vector: stringify array for pgvector
   ];
 
   const result = await pool.query(query, values);
@@ -407,7 +415,13 @@ export async function updateSupplement(supplementId, updateData) {
       ? (Array.isArray(updateData.product_source_url)
         ? updateData.product_source_url
         : [updateData.product_source_url])
-      : undefined  // TEXT[]: pg handles array conversion
+      : undefined,  // TEXT[]: pg handles array conversion
+    vector_100g_ingredient: updateData.vector_100g_ingredient
+      ? JSON.stringify(updateData.vector_100g_ingredient)  // ✅ Stringify for pgvector
+      : undefined,
+    vector_perserving_ingredient: updateData.vector_perserving_ingredient
+      ? JSON.stringify(updateData.vector_perserving_ingredient)  // ✅ Stringify for pgvector
+      : undefined
   };
 
   // Build SET clause dynamically
@@ -428,10 +442,10 @@ export async function updateSupplement(supplementId, updateData) {
   values.push(supplementId);
 
   const query = `
-    UPDATE SSS.Supplement 
+    UPDATE SSS.Supplement
     SET ${fields.join(', ')}
     WHERE id = $${paramCounter}
-    RETURNING 
+    RETURNING
       id,
       supplement_name,
       supplement_brand,

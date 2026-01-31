@@ -34,6 +34,142 @@ import {
 } from './validation.js';
 import { z } from 'zod';
 import pool from '../../config/db.js';
+
+// ============================================================================
+// VECTORIZATION HELPER FUNCTIONS
+// ============================================================================
+
+// Configuration
+const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
+
+/**
+ * Transform nutritional info from JSONB format to Python vectorization service format
+ *
+ * Input format (flexible JSONB):
+ *   { "protein": "10g", "calories": 100, "vitamin_d": "2000 IU" }
+ *   OR
+ *   { "nutrients": [...], "calories": 100 }
+ *
+ * Output format (Python service expects):
+ *   { "calories": 100, "nutrients": [{ "name": "protein", "amount": "10g" }, ...] }
+ *
+ * @param {Object} nutritionalInfo - JSONB nutritional data from database
+ * @returns {Object} Transformed data for Python service
+ */
+function transformNutritionalDataForVectorization(nutritionalInfo) {
+    if (!nutritionalInfo || typeof nutritionalInfo !== 'object') {
+        return { calories: null, nutrients: [] };
+    }
+
+    // If already in the expected format with nutrients array, return as-is
+    if (Array.isArray(nutritionalInfo.nutrients)) {
+        return {
+            calories: nutritionalInfo.calories || null,
+            nutrients: nutritionalInfo.nutrients
+        };
+    }
+
+    // Transform flat object to nutrients array format
+    const nutrients = [];
+    let calories = null;
+
+    for (const [key, value] of Object.entries(nutritionalInfo)) {
+        if (key.toLowerCase() === 'calories') {
+            calories = typeof value === 'number' ? value : parseInt(value) || null;
+        } else if (value !== null && value !== undefined) {
+            nutrients.push({
+                name: key,
+                amount: String(value),
+                daily_value: null
+            });
+        }
+    }
+
+    return { calories, nutrients };
+}
+
+/**
+ * Generate a single vector using the Python vectorization service
+ *
+ * @param {Array<string>} ingredients - List of ingredient names
+ * @param {Object} nutritionalInfo - Nutritional data (JSONB from database)
+ * @param {string} basis - Either 'per_100g' or 'per_serving'
+ * @returns {Promise<Object>} Result with success status and vector
+ */
+async function generateVector(ingredients, nutritionalInfo, basis) {
+    try {
+        // Transform nutritional data to expected format
+        const transformedNutrition = transformNutritionalDataForVectorization(nutritionalInfo);
+
+        const requestBody = {
+            ingredients: ingredients || [],
+            nutritional_info: transformedNutrition,
+            basis: basis
+        };
+
+        console.log(`Calling vectorization service for ${basis}...`);
+
+        const response = await fetch(`${PYTHON_SERVICE_URL}/api/vectorization/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Vectorization service error (${response.status}):`, errorText);
+            throw new Error(`Vectorization service returned ${response.status}: ${errorText}`);
+        }
+
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error('Vectorization service returned success=false');
+        }
+
+        console.log(`✅ Vector generated for ${basis} (${result.dimension} dimensions)`);
+
+        return {
+            success: true,
+            vector: result.vector,
+            dimension: result.dimension
+        };
+
+    } catch (error) {
+        console.error(`Vectorization error for ${basis}:`, error.message);
+        throw error; // Re-throw to be handled by caller (strict error handling)
+    }
+}
+
+/**
+ * Generate vectors for a supplement based on available nutritional data
+ *
+ * @param {Array<string>} ingredients - List of ingredient names
+ * @param {Object|null} nutritionalInfoPer100g - Per 100g nutritional data
+ * @param {Object|null} nutritionalInfoPerServing - Per serving nutritional data
+ * @returns {Promise<Object>} Object with vector_100g_ingredient and vector_perserving_ingredient
+ */
+async function generateSupplementVectors(ingredients, nutritionalInfoPer100g, nutritionalInfoPerServing) {
+    const result = {
+        vector_100g_ingredient: null,
+        vector_perserving_ingredient: null
+    };
+
+    // Generate per_100g vector if data exists
+    if (nutritionalInfoPer100g && Object.keys(nutritionalInfoPer100g).length > 0) {
+        const vectorResult = await generateVector(ingredients, nutritionalInfoPer100g, 'per_100g');
+        result.vector_100g_ingredient = vectorResult.vector;
+    }
+
+    // Generate per_serving vector if data exists
+    if (nutritionalInfoPerServing && Object.keys(nutritionalInfoPerServing).length > 0) {
+        const vectorResult = await generateVector(ingredients, nutritionalInfoPerServing, 'per_serving');
+        result.vector_perserving_ingredient = vectorResult.vector;
+    }
+
+    return result;
+}
+
 // ============================================================================
 // SUPPLEMENT FUNCTIONS
 // ============================================================================
@@ -238,15 +374,64 @@ export async function createSupplement(req, res) {
         }
         console.log('No duplicate found');
 
-        // STEP 6: Insert supplement into database
-        console.log('Step 6: Inserting into database...');
+        // STEP 6: Validate nutritional data exists (at least one required for vectorization)
+        console.log('Step 6: Checking nutritional data for vectorization...');
+        const hasNutritionalPer100g = validatedData.nutritional_info_per_100g &&
+            Object.keys(validatedData.nutritional_info_per_100g).length > 0;
+        const hasNutritionalPerServing = validatedData.nutritional_info_per_serving &&
+            Object.keys(validatedData.nutritional_info_per_serving).length > 0;
+
+        if (!hasNutritionalPer100g && !hasNutritionalPerServing) {
+            console.log('No nutritional data provided - vectorization requires at least one');
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: [{
+                    field: 'nutritional_info',
+                    message: 'At least one of nutritional_info_per_100g or nutritional_info_per_serving is required for vectorization'
+                }]
+            });
+        }
+        console.log(`Nutritional data: per_100g=${hasNutritionalPer100g}, per_serving=${hasNutritionalPerServing}`);
+
+        // STEP 7: Generate vectors using Python vectorization service
+        console.log('Step 7: Generating vectors...');
+        try {
+            const vectors = await generateSupplementVectors(
+                validatedData.supplement_ingredient || [],
+                validatedData.nutritional_info_per_100g,
+                validatedData.nutritional_info_per_serving
+            );
+
+            // Add vectors to validated data
+            validatedData.vector_100g_ingredient = vectors.vector_100g_ingredient;
+            validatedData.vector_perserving_ingredient = vectors.vector_perserving_ingredient;
+
+            console.log(`Vectors generated: per_100g=${vectors.vector_100g_ingredient ? 'yes' : 'no'}, per_serving=${vectors.vector_perserving_ingredient ? 'yes' : 'no'}`);
+        } catch (vectorError) {
+            console.error('Vectorization failed:', vectorError.message);
+            return res.status(500).json({
+                error: 'Vectorization failed',
+                message: `Failed to generate vectors: ${vectorError.message}`,
+                details: [{
+                    field: 'vectorization',
+                    message: 'The Python vectorization service failed. Please ensure the service is running on port 8001.'
+                }]
+            });
+        }
+
+        // STEP 8: Insert supplement into database
+        console.log('Step 8: Inserting into database...');
         const newSupplement = await services.createSupplement(validatedData);
         console.log('Supplement created with ID:', newSupplement.id);
 
-        // STEP 7: Return success response
+        // STEP 9: Return success response
         res.status(201).json({
             message: 'Supplement created successfully',
-            data: newSupplement
+            data: newSupplement,
+            vectorization: {
+                vector_100g_ingredient: validatedData.vector_100g_ingredient ? 'generated' : null,
+                vector_perserving_ingredient: validatedData.vector_perserving_ingredient ? 'generated' : null
+            }
         });
 
     } catch (error) {
@@ -335,8 +520,80 @@ export async function updateSupplement(req, res) {
             }
         }
 
-        // STEP 5: Update supplement in database
-        console.log('Step 5: Updating database...');
+        // STEP 5: Check if vectorization is needed (only if relevant fields are updated)
+        console.log('Step 5: Checking if vectorization is needed...');
+        const ingredientsUpdated = validatedData.supplement_ingredient !== undefined;
+        const nutritionPer100gUpdated = validatedData.nutritional_info_per_100g !== undefined;
+        const nutritionPerServingUpdated = validatedData.nutritional_info_per_serving !== undefined;
+
+        const needsVectorization = ingredientsUpdated || nutritionPer100gUpdated || nutritionPerServingUpdated;
+        let vectorizationResult = null;
+
+        if (needsVectorization) {
+            console.log(`Vectorization needed: ingredients=${ingredientsUpdated}, per_100g=${nutritionPer100gUpdated}, per_serving=${nutritionPerServingUpdated}`);
+
+            // Merge updated data with existing data for vectorization
+            const mergedIngredients = validatedData.supplement_ingredient ?? existingSupplement.supplement_ingredient ?? [];
+            const mergedNutritionPer100g = validatedData.nutritional_info_per_100g ?? existingSupplement.nutritional_info_per_100g;
+            const mergedNutritionPerServing = validatedData.nutritional_info_per_serving ?? existingSupplement.nutritional_info_per_serving;
+
+            // Check if at least one nutritional info exists for vectorization
+            const hasNutritionalPer100g = mergedNutritionPer100g && Object.keys(mergedNutritionPer100g).length > 0;
+            const hasNutritionalPerServing = mergedNutritionPerServing && Object.keys(mergedNutritionPerServing).length > 0;
+
+            if (!hasNutritionalPer100g && !hasNutritionalPerServing) {
+                console.log('No nutritional data available after merge - vectorization requires at least one');
+                return res.status(400).json({
+                    error: 'Validation failed',
+                    details: [{
+                        field: 'nutritional_info',
+                        message: 'At least one of nutritional_info_per_100g or nutritional_info_per_serving is required for vectorization'
+                    }]
+                });
+            }
+
+            try {
+                // Determine which vectors to regenerate
+                const regeneratePer100g = ingredientsUpdated || nutritionPer100gUpdated;
+                const regeneratePerServing = ingredientsUpdated || nutritionPerServingUpdated;
+
+                console.log(`Regenerating vectors: per_100g=${regeneratePer100g}, per_serving=${regeneratePerServing}`);
+
+                vectorizationResult = { vector_100g_ingredient: null, vector_perserving_ingredient: null };
+
+                // Generate per_100g vector if needed and data exists
+                if (regeneratePer100g && hasNutritionalPer100g) {
+                    const vectorResult = await generateVector(mergedIngredients, mergedNutritionPer100g, 'per_100g');
+                    validatedData.vector_100g_ingredient = vectorResult.vector;
+                    vectorizationResult.vector_100g_ingredient = 'regenerated';
+                }
+
+                // Generate per_serving vector if needed and data exists
+                if (regeneratePerServing && hasNutritionalPerServing) {
+                    const vectorResult = await generateVector(mergedIngredients, mergedNutritionPerServing, 'per_serving');
+                    validatedData.vector_perserving_ingredient = vectorResult.vector;
+                    vectorizationResult.vector_perserving_ingredient = 'regenerated';
+                }
+
+                console.log('Vectorization completed successfully');
+
+            } catch (vectorError) {
+                console.error('Vectorization failed:', vectorError.message);
+                return res.status(500).json({
+                    error: 'Vectorization failed',
+                    message: `Failed to generate vectors: ${vectorError.message}`,
+                    details: [{
+                        field: 'vectorization',
+                        message: 'The Python vectorization service failed. Please ensure the service is running on port 8001.'
+                    }]
+                });
+            }
+        } else {
+            console.log('No vectorization needed - no relevant fields updated');
+        }
+
+        // STEP 6: Update supplement in database
+        console.log('Step 6: Updating database...');
         const updatedSupplement = await services.updateSupplement(id, validatedData);
 
         if (!updatedSupplement) {
@@ -348,11 +605,18 @@ export async function updateSupplement(req, res) {
         }
         console.log('Supplement updated successfully');
 
-        // STEP 6: Return success response
-        res.json({
+        // STEP 7: Return success response
+        const response = {
             message: 'Supplement updated successfully',
             data: updatedSupplement
-        });
+        };
+
+        // Include vectorization info if vectors were regenerated
+        if (vectorizationResult) {
+            response.vectorization = vectorizationResult;
+        }
+
+        res.json(response);
 
     } catch (error) {
         console.error('Error updating supplement:', error);
