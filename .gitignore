@@ -91,3 +91,8 @@ htmlcov/
 /env.txt
 /Applied_Nutrition_Images/
 /tmp_images/
+
+# Claude Code xd
+CLAUDE.md
+.claude
+docs/
