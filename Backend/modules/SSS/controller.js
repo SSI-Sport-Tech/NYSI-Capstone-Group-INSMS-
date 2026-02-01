@@ -437,11 +437,12 @@ export async function createSupplement(req, res) {
     } catch (error) {
         console.error('Error creating supplement:', error);
 
-        // Handle Zod validation errors
+        // Handle Zod validation errors (Zod v4 uses 'issues', older versions use 'errors')
         if (error instanceof z.ZodError) {
+            const zodErrors = error.issues || error.errors || [];
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(err => ({
+                details: zodErrors.map(err => ({
                     field: err.path.join('.'),
                     message: err.message,
                     received: err.received
@@ -621,11 +622,12 @@ export async function updateSupplement(req, res) {
     } catch (error) {
         console.error('Error updating supplement:', error);
 
-        // Handle Zod validation errors
+        // Handle Zod validation errors (Zod v4 uses 'issues', older versions use 'errors')
         if (error instanceof z.ZodError) {
+            const zodErrors = error.issues || error.errors || [];
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(err => ({
+                details: zodErrors.map(err => ({
                     field: err.path.join('.'),
                     message: err.message,
                     received: err.received
@@ -667,11 +669,12 @@ export async function deleteSupplements(req, res) {
     } catch (error) {
         console.error('Error deleting supplements:', error);
 
-        // Handle Zod validation errors
+        // Handle Zod validation errors (Zod v4 uses 'issues', older versions use 'errors')
         if (error instanceof z.ZodError) {
+            const zodErrors = error.issues || error.errors || [];
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(err => ({
+                details: zodErrors.map(err => ({
                     field: err.path.join('.'),
                     message: err.message,
                     received: err.received
@@ -813,11 +816,12 @@ export async function createBatch(req, res) {
     } catch (error) {
         console.error('Error creating batch:', error);
 
-        // Handle Zod validation errors
+        // Handle Zod validation errors (Zod v4 uses 'issues', older versions use 'errors')
         if (error instanceof z.ZodError) {
+            const zodErrors = error.issues || error.errors || [];
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(err => ({
+                details: zodErrors.map(err => ({
                     field: err.path.join('.'),
                     message: err.message,
                     received: err.received
@@ -930,11 +934,12 @@ export async function updateBatch(req, res) {
     } catch (error) {
         console.error('Error updating batch:', error);
 
-        // Handle Zod validation errors
+        // Handle Zod validation errors (Zod v4 uses 'issues', older versions use 'errors')
         if (error instanceof z.ZodError) {
+            const zodErrors = error.issues || error.errors || [];
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(err => ({
+                details: zodErrors.map(err => ({
                     field: err.path.join('.'),
                     message: err.message,
                     received: err.received
@@ -1010,11 +1015,12 @@ export async function deleteBatches(req, res) {
     } catch (error) {
         console.error('Error deleting batches:', error);
 
-        // Handle Zod validation errors
+        // Handle Zod validation errors (Zod v4 uses 'issues', older versions use 'errors')
         if (error instanceof z.ZodError) {
+            const zodErrors = error.issues || error.errors || [];
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(err => ({
+                details: zodErrors.map(err => ({
                     field: err.path.join('.'),
                     message: err.message,
                     received: err.received
@@ -1208,11 +1214,12 @@ export async function updateStagingSupplement(req, res) {
     } catch (error) {
         console.error('Error updating staging supplement:', error);
 
-        // Handle Zod validation errors
+        // Handle Zod validation errors (Zod v4 uses 'issues', older versions use 'errors')
         if (error instanceof z.ZodError) {
+            const zodErrors = error.issues || error.errors || [];
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(err => ({
+                details: zodErrors.map(err => ({
                     field: err.path.join('.'),
                     message: err.message,
                     received: err.received
@@ -1259,11 +1266,12 @@ export async function deleteStagingSupplements(req, res) {
     } catch (error) {
         console.error('Error deleting staging supplements:', error);
 
-        // Handle Zod validation errors
+        // Handle Zod validation errors (Zod v4 uses 'issues', older versions use 'errors')
         if (error instanceof z.ZodError) {
+            const zodErrors = error.issues || error.errors || [];
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(err => ({
+                details: zodErrors.map(err => ({
                     field: err.path.join('.'),
                     message: err.message,
                     received: err.received
@@ -1300,24 +1308,44 @@ export async function approveStagingSupplements(req, res) {
         console.log('Step 2: Processing approvals...');
         const approvalResults = await services.approveStagingSupplements(ids);
         console.log(`Processed ${approvalResults.totalProcessed} entries`);
-        console.log(`Succeeded: ${approvalResults.succeeded}, Failed: ${approvalResults.failed}`);
+        console.log(`Succeeded: ${approvalResults.succeeded}, Failed: ${approvalResults.failed}, Duplicates: ${approvalResults.duplicates}`);
 
         // STEP 3: Determine response status code
-        // - 200 if all succeeded
-        // - 207 Multi-Status if mixed results
-        // - 400 if all failed
+        // - 200 if no failures (all succeeded, all duplicates, or mix of success+duplicate)
+        // - 207 Multi-Status if there are failures mixed with successes/duplicates
+        // - 400 if all failed (no successes, no duplicates)
         let statusCode = 200;
-        if (approvalResults.succeeded === 0) {
-            statusCode = 400; // All failed
-        } else if (approvalResults.failed > 0) {
-            statusCode = 207; // Mixed results (Multi-Status)
+        const hasSuccesses = approvalResults.succeeded > 0;
+        const hasDuplicates = approvalResults.duplicates > 0;
+        const hasFailures = approvalResults.failed > 0;
+
+        if (hasFailures) {
+            if (hasSuccesses || hasDuplicates) {
+                statusCode = 207; // Mixed results
+            } else {
+                statusCode = 400; // All failed
+            }
+        }
+        // else: 200 (no failures - could be all success, all duplicate, or mix)
+
+        // STEP 4: Build response message
+        const messageParts = [];
+        if (approvalResults.succeeded > 0) {
+            messageParts.push(`${approvalResults.succeeded} approved`);
+        }
+        if (approvalResults.duplicates > 0) {
+            messageParts.push(`${approvalResults.duplicates} duplicate${approvalResults.duplicates > 1 ? 's' : ''} removed`);
+        }
+        if (approvalResults.failed > 0) {
+            messageParts.push(`${approvalResults.failed} failed`);
         }
 
-        // STEP 4: Return detailed response
+        // STEP 5: Return detailed response
         res.status(statusCode).json({
-            message: `Processed ${approvalResults.totalProcessed} staging entries: ${approvalResults.succeeded} succeeded, ${approvalResults.failed} failed`,
+            message: `Processed ${approvalResults.totalProcessed} staging entries: ${messageParts.join(', ')}`,
             totalProcessed: approvalResults.totalProcessed,
             succeeded: approvalResults.succeeded,
+            duplicates: approvalResults.duplicates,
             failed: approvalResults.failed,
             results: approvalResults.results
         });
@@ -1325,11 +1353,12 @@ export async function approveStagingSupplements(req, res) {
     } catch (error) {
         console.error('Error approving staging supplements:', error);
 
-        // Handle Zod validation errors
+        // Handle Zod validation errors (Zod v4 uses 'issues', older versions use 'errors')
         if (error instanceof z.ZodError) {
+            const zodErrors = error.issues || error.errors || [];
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(err => ({
+                details: zodErrors.map(err => ({
                     field: err.path.join('.'),
                     message: err.message,
                     received: err.received

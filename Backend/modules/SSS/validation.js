@@ -462,6 +462,27 @@ export const updateStagingSupplementSchema = z.object({
 export const SIMILARITY_THRESHOLD = 0.6;
 
 /**
+ * Similarity threshold for duplicate detection during staging approval
+ * Supplements with similarity score >= this value are potential duplicates
+ * Range: 0.0 to 1.0 (0.95 = 95% similarity)
+ */
+export const DUPLICATE_SIMILARITY_THRESHOLD = 0.95;
+
+/**
+ * Normalize a string for duplicate comparison
+ * Removes special characters, extra spaces, and converts to lowercase
+ * @param {string} str - String to normalize
+ * @returns {string} Normalized string
+ */
+export function normalizeForComparison(str) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '') // Remove all non-alphanumeric characters
+    .trim();
+}
+
+/**
  * Schema for approving staging entries (POST /api/SSS/staging-supplements/approve)
  * Bulk approval of multiple staging entries
  */

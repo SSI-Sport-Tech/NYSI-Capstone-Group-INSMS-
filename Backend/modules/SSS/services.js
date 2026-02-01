@@ -1,4 +1,5 @@
 import pool from "../../config/db.js";
+import { DUPLICATE_SIMILARITY_THRESHOLD, normalizeForComparison } from './validation.js';
 
 // Configuration
 const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
@@ -1075,9 +1076,112 @@ async function generateVectorsForSupplement(supplementData) {
 }
 
 /**
+ * Check if a supplement with similar vectors and matching name+brand exists
+ * @param {Object} vectors - Object with vector_100g_ingredient and vector_perserving_ingredient
+ * @param {string} name - Supplement name to check
+ * @param {string} brand - Supplement brand to check
+ * @returns {Promise<Object|null>} Duplicate supplement if found, null otherwise
+ */
+async function checkForDuplicate(vectors, name, brand) {
+  // Skip check if no vectors provided
+  if (!vectors.vector_100g_ingredient && !vectors.vector_perserving_ingredient) {
+    return null;
+  }
+
+  const hasVector100g = vectors.vector_100g_ingredient !== null;
+  const hasVectorPerServing = vectors.vector_perserving_ingredient !== null;
+
+  // Build SELECT columns for similarity scores
+  const selectColumns = ['s.id', 's.supplement_name', 's.supplement_brand'];
+  if (hasVector100g) {
+    selectColumns.push('1 - (s.vector_100g_ingredient <=> $1::vector) AS similarity_100g');
+  } else {
+    selectColumns.push('NULL AS similarity_100g');
+  }
+  if (hasVectorPerServing) {
+    selectColumns.push('1 - (s.vector_perserving_ingredient <=> $2::vector) AS similarity_perserving');
+  } else {
+    selectColumns.push('NULL AS similarity_perserving');
+  }
+
+  // Build WHERE conditions
+  const whereConditions = [];
+  if (hasVector100g) {
+    whereConditions.push(`(s.vector_100g_ingredient IS NOT NULL AND 1 - (s.vector_100g_ingredient <=> $1::vector) >= $3)`);
+  }
+  if (hasVectorPerServing) {
+    whereConditions.push(`(s.vector_perserving_ingredient IS NOT NULL AND 1 - (s.vector_perserving_ingredient <=> $2::vector) >= $3)`);
+  }
+
+  // Build ORDER BY for GREATEST similarity
+  const orderByParts = [];
+  if (hasVector100g) {
+    orderByParts.push('COALESCE(1 - (s.vector_100g_ingredient <=> $1::vector), 0)');
+  }
+  if (hasVectorPerServing) {
+    orderByParts.push('COALESCE(1 - (s.vector_perserving_ingredient <=> $2::vector), 0)');
+  }
+
+  const query = `
+    SELECT ${selectColumns.join(', ')}
+    FROM SSS.Supplement s
+    WHERE (${whereConditions.join(' OR ')})
+    ORDER BY GREATEST(${orderByParts.join(', ')}) DESC
+    LIMIT 10
+  `;
+
+  const params = [
+    hasVector100g ? JSON.stringify(vectors.vector_100g_ingredient) : null,
+    hasVectorPerServing ? JSON.stringify(vectors.vector_perserving_ingredient) : null,
+    DUPLICATE_SIMILARITY_THRESHOLD
+  ];
+
+  try {
+    const result = await pool.query(query, params);
+
+    if (result.rows.length === 0) {
+      return null; // No similar supplements found
+    }
+
+    // Normalize the staging entry's name and brand for comparison
+    const normalizedName = normalizeForComparison(name);
+    const normalizedBrand = normalizeForComparison(brand);
+
+    // Check each similar supplement for name+brand match
+    for (const row of result.rows) {
+      const existingNormalizedName = normalizeForComparison(row.supplement_name);
+      const existingNormalizedBrand = normalizeForComparison(row.supplement_brand);
+
+      if (normalizedName === existingNormalizedName && normalizedBrand === existingNormalizedBrand) {
+        // Found a duplicate
+        return {
+          id: row.id,
+          supplement_name: row.supplement_name,
+          supplement_brand: row.supplement_brand,
+          similarity_100g: row.similarity_100g,
+          similarity_perserving: row.similarity_perserving
+        };
+      }
+    }
+
+    // No name+brand match found among similar vectors
+    return null;
+
+  } catch (error) {
+    console.error('Error checking for duplicate:', error);
+    // On error, don't block approval - return null (no duplicate)
+    return null;
+  }
+}
+
+/**
  * Approve staging entries and create supplements
+ * Includes duplicate detection: generates vectors first, then checks for
+ * existing supplements with ≥95% vector similarity AND matching name+brand.
+ * Duplicates are auto-removed from staging.
+ *
  * @param {Array<string>} stagingIds - Array of staging UUIDs to approve
- * @returns {Promise<Object>} Approval results with success/failure details
+ * @returns {Promise<Object>} Approval results with success/failure/duplicate details
  */
 export async function approveStagingSupplements(stagingIds) {
   const results = [];
@@ -1143,7 +1247,53 @@ export async function approveStagingSupplements(stagingIds) {
         finalBatchTestingOrg = 'NIL';
       }
 
-      // 4. Create Supplement record
+      // 4. Generate vectors FIRST (before creating supplement)
+      console.log(`Generating vectors for staging entry ${stagingId}...`);
+      const vectorizationResult = await generateVectorsForSupplement(staging);
+
+      // 5. Check for duplicates if vectors were generated successfully
+      if (vectorizationResult.success) {
+        const duplicate = await checkForDuplicate(
+          {
+            vector_100g_ingredient: vectorizationResult.vector_100g_ingredient,
+            vector_perserving_ingredient: vectorizationResult.vector_perserving_ingredient
+          },
+          staging.supplement_name,
+          staging.supplement_brand
+        );
+
+        if (duplicate) {
+          // Duplicate found - delete from staging and report
+          console.log(`🔄 Duplicate detected for "${staging.supplement_name}" - matches existing supplement ${duplicate.id}`);
+
+          await pool.query(
+            'DELETE FROM SSS.Supplement_Staging WHERE id = $1',
+            [stagingId]
+          );
+
+          results.push({
+            staging_id: stagingId,
+            staging_name: staging.supplement_name,
+            status: 'duplicate',
+            reason: `Duplicate of existing supplement: "${duplicate.supplement_name}" (ID: ${duplicate.id})`,
+            supplement_id: null,
+            duplicate_of: {
+              id: duplicate.id,
+              name: duplicate.supplement_name,
+              brand: duplicate.supplement_brand,
+              similarity_100g: duplicate.similarity_100g
+                ? `${(duplicate.similarity_100g * 100).toFixed(1)}%`
+                : null,
+              similarity_perserving: duplicate.similarity_perserving
+                ? `${(duplicate.similarity_perserving * 100).toFixed(1)}%`
+                : null
+            }
+          });
+          continue;
+        }
+      }
+
+      // 6. No duplicate found - Create Supplement record
       const insertQuery = `
                 INSERT INTO SSS.Supplement (
                     supplement_name,
@@ -1163,9 +1313,12 @@ export async function approveStagingSupplements(stagingIds) {
                     scraper_version,
                     supplement_input_type,
                     approved_by,
-                    supplement_staging_id
+                    supplement_staging_id,
+                    vector_100g_ingredient,
+                    vector_perserving_ingredient
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
+                    $19::vector, $20::vector
                 )
                 RETURNING *
             `;
@@ -1194,50 +1347,29 @@ export async function approveStagingSupplements(stagingIds) {
         staging.scraper_version || null,
         'Scraper', // supplement_input_type
         'e9e9f927-40f4-4f0a-bdca-a5503b5974da', // approved_by (hardcoded Dr. Khoo)
-        stagingId // supplement_staging_id
+        stagingId, // supplement_staging_id
+        // Include vectors in initial insert (if available)
+        vectorizationResult.success && vectorizationResult.vector_100g_ingredient
+          ? JSON.stringify(vectorizationResult.vector_100g_ingredient)
+          : null,
+        vectorizationResult.success && vectorizationResult.vector_perserving_ingredient
+          ? JSON.stringify(vectorizationResult.vector_perserving_ingredient)
+          : null
       ];
 
       const supplementResult = await pool.query(insertQuery, insertValues);
       const newSupplement = supplementResult.rows[0];
 
-      // 5. Mark staging as reviewed
+      // 7. Mark staging as reviewed
       await pool.query(
         'UPDATE SSS.Supplement_Staging SET is_reviewed = true WHERE id = $1',
         [stagingId]
       );
 
-      // 6. Generate vectors using Python service
-      console.log(`Generating vectors for supplement ${newSupplement.id}...`);
-      const vectorizationResult = await generateVectorsForSupplement(staging);
-
-      // 7. Update supplement with vectors if successful
       if (vectorizationResult.success) {
-        try {
-          const updateVectorQuery = `
-            UPDATE SSS.Supplement
-            SET 
-              vector_100g_ingredient = $1::vector,
-              vector_perserving_ingredient = $2::vector
-            WHERE id = $3
-          `;
-
-          await pool.query(updateVectorQuery, [
-            vectorizationResult.vector_100g_ingredient
-              ? JSON.stringify(vectorizationResult.vector_100g_ingredient)
-              : null,
-            vectorizationResult.vector_perserving_ingredient
-              ? JSON.stringify(vectorizationResult.vector_perserving_ingredient)
-              : null,
-            newSupplement.id
-          ]);
-
-          console.log(`✅ Vectors generated and stored for supplement ${newSupplement.id}`);
-        } catch (updateError) {
-          console.error(`Failed to update vectors for supplement ${newSupplement.id}:`, updateError);
-          // Don't fail the entire approval - supplement still created
-        }
+        console.log(`✅ Supplement ${newSupplement.id} created with vectors`);
       } else {
-        console.warn(`⚠️ Vectorization failed for supplement ${newSupplement.id}: ${vectorizationResult.reason}`);
+        console.warn(`⚠️ Supplement ${newSupplement.id} created without vectors: ${vectorizationResult.reason}`);
       }
 
       // 8. Build response
@@ -1249,10 +1381,10 @@ export async function approveStagingSupplements(stagingIds) {
         vectorization: {
           status: vectorizationResult.success ? 'generated' : 'failed',
           reason: vectorizationResult.success ? undefined : vectorizationResult.reason,
-          vector_100g: vectorizationResult.success
+          vector_100g: vectorizationResult.success && vectorizationResult.vector_100g_ingredient
             ? `${vectorizationResult.dimension}d vector generated`
             : null,
-          vector_perserving: vectorizationResult.success
+          vector_perserving: vectorizationResult.success && vectorizationResult.vector_perserving_ingredient
             ? `${vectorizationResult.dimension}d vector generated`
             : null
         }
@@ -1274,6 +1406,7 @@ export async function approveStagingSupplements(stagingIds) {
     totalProcessed: results.length,
     succeeded: results.filter(r => r.status === 'success').length,
     failed: results.filter(r => r.status === 'failed').length,
+    duplicates: results.filter(r => r.status === 'duplicate').length,
     results: results
   };
 }
