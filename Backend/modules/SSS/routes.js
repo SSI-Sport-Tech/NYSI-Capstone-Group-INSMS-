@@ -1910,22 +1910,22 @@ router.get('/lookups/batch-statuses', controller.getBatchStockStatusesController
 router.get('/lookups/ticket-statuses', controller.getTicketStatusesController);
 
 // ============================================================================
-// ADMIN - CATALOG URL MANAGEMENT ROUTES
+// CATALOG URL MANAGEMENT ROUTES
 // ============================================================================
 
 /**
  * @swagger
- * /api/SSS/admin/catalog-urls:
+ * /api/SSS/catalog-urls:
  *   get:
  *     summary: List Catalog URLs
  *     description: |
  *       Get paginated list of all catalog URLs for web scraping.
- *       
+ *
  *       **Catalog URLs:**
  *       - Product listing pages to scrape (e.g., iHerb vitamins page)
  *       - Can be activated/deactivated
- *       - Admin can select which ones to scrape
- *     tags: [Admin - Catalog URLs]
+ *       - Users can select which ones to scrape
+ *     tags: [Catalog URLs]
  *     parameters:
  *       - $ref: '#/components/parameters/PageParam'
  *     responses:
@@ -1967,15 +1967,15 @@ router.get('/lookups/ticket-statuses', controller.getTicketStatusesController);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/admin/catalog-urls', controller.listCatalogUrls);
+router.get('/catalog-urls', controller.listCatalogUrls);
 
 /**
  * @swagger
- * /api/SSS/admin/catalog-urls/{id}:
+ * /api/SSS/catalog-urls/{id}:
  *   get:
  *     summary: Get Catalog URL Details
  *     description: Retrieve details of a specific catalog URL
- *     tags: [Admin - Catalog URLs]
+ *     tags: [Catalog URLs]
  *     parameters:
  *       - name: id
  *         in: path
@@ -2002,24 +2002,24 @@ router.get('/admin/catalog-urls', controller.listCatalogUrls);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/admin/catalog-urls/:id', controller.getCatalogUrlDetails);
+router.get('/catalog-urls/:id', controller.getCatalogUrlDetails);
 
 /**
  * @swagger
- * /api/SSS/admin/catalog-urls:
+ * /api/SSS/catalog-urls:
  *   post:
  *     summary: Create Catalog URL
  *     description: |
  *       Add a new catalog URL for web scraping.
- *       
+ *
  *       **Required:**
  *       - product_catalog_website (must be unique)
- *       
+ *
  *       **Optional:**
  *       - is_active (default: true)
- *       
+ *
  *       **Note:** number_of_catalog_page is deprecated and set to NULL automatically
- *     tags: [Admin - Catalog URLs]
+ *     tags: [Catalog URLs]
  *     requestBody:
  *       required: true
  *       content:
@@ -2071,15 +2071,15 @@ router.get('/admin/catalog-urls/:id', controller.getCatalogUrlDetails);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/admin/catalog-urls', controller.createCatalogUrl);
+router.post('/catalog-urls', controller.createCatalogUrl);
 
 /**
  * @swagger
- * /api/SSS/admin/catalog-urls/{id}:
+ * /api/SSS/catalog-urls/{id}:
  *   patch:
  *     summary: Update Catalog URL
  *     description: Update one or more fields of a catalog URL
- *     tags: [Admin - Catalog URLs]
+ *     tags: [Catalog URLs]
  *     parameters:
  *       - name: id
  *         in: path
@@ -2119,15 +2119,15 @@ router.post('/admin/catalog-urls', controller.createCatalogUrl);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch('/admin/catalog-urls/:id', controller.updateCatalogUrl);
+router.patch('/catalog-urls/:id', controller.updateCatalogUrl);
 
 /**
  * @swagger
- * /api/SSS/admin/catalog-urls:
+ * /api/SSS/catalog-urls:
  *   delete:
  *     summary: Delete Catalog URLs (Bulk)
  *     description: Permanently delete one or more catalog URLs
- *     tags: [Admin - Catalog URLs]
+ *     tags: [Catalog URLs]
  *     requestBody:
  *       required: true
  *       content:
@@ -2172,39 +2172,39 @@ router.patch('/admin/catalog-urls/:id', controller.updateCatalogUrl);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete('/admin/catalog-urls', controller.deleteCatalogUrls);
+router.delete('/catalog-urls', controller.deleteCatalogUrls);
 
 // ============================================================================
-// ADMIN - SCRAPING ROUTE
+// SCRAPING ROUTE
 // ============================================================================
 
 /**
  * @swagger
- * /api/SSS/admin/scraping/start:
+ * /api/SSS/scraping/start:
  *   post:
  *     summary: Start Web Scraping (Background)
  *     description: |
  *       Initiates web scraping in the background. Returns immediately.
- *       
+ *
  *       **URL Selection:**
  *       - If `catalog_url_ids` not provided → Scrapes ALL active catalog URLs
  *       - If `catalog_url_ids` provided → Scrapes only selected URLs
- *       
+ *
  *       **Process:**
  *       1. Reads catalog URLs from database (all active or selected)
  *       2. Submits to Python webscraper service (one request per URL)
  *       3. Returns immediately (user can continue working)
  *       4. Scraper writes results to SSS.Supplement_Staging
  *       5. Check "Staging Supplements" page later to review results
- *       
+ *
  *       **Requirements:**
  *       - Python service must be running at PYTHON_SERVICE_URL (default: http://localhost:8001)
  *       - Catalog URLs must exist in webscraper_catalog_url table
- *       
+ *
  *       **No Job Tracking:**
  *       - Simple fire-and-forget approach
  *       - Results appear in Staging Supplements (is_reviewed = false)
- *     tags: [Admin - Scraping]
+ *     tags: [Scraping]
  *     requestBody:
  *       required: false
  *       content:
@@ -2261,6 +2261,6 @@ router.delete('/admin/catalog-urls', controller.deleteCatalogUrls);
  *       500:
  *         description: Failed to start scraping
  */
-router.post('/admin/scraping/start', controller.startScrapingJob);
+router.post('/scraping/start', controller.startScrapingJob);
 
 export default router;
