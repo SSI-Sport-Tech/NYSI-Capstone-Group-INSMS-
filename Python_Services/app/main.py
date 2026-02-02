@@ -1,11 +1,11 @@
 """
 NYSI Python Services - FastAPI Application
-OCR, Vectorization, and Web Scraping services
+OCR, Vectorization, Web Scraping, and Batch Verification services
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import ocr, vectorization, webscraper  # ← FIXED IMPORT
+from app.routers import ocr, vectorization, webscraper, batch_verification
 from app.config.settings import settings
 import logging
 
@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="HPSI Python Services",
-    description="OCR, Vectorization, and Web Scraping services for supplement management",
-    version="1.0.0",
+    title="NYSI Python Services",
+    description="OCR, Vectorization, Web Scraping, and Batch Verification services for supplement management",
+    version="1.1.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -42,7 +42,8 @@ app.add_middleware(
 # Note: webscraper.router already has prefix="/api/webscraper" defined
 app.include_router(ocr.router, prefix="/api/ocr", tags=["OCR"])
 app.include_router(vectorization.router, prefix="/api/vectorization", tags=["Vectorization"])
-app.include_router(webscraper.router)  # ← FIXED: No prefix (router has its own)
+app.include_router(webscraper.router)  # No prefix (router has its own)
+app.include_router(batch_verification.router, prefix="/api/batch-verification", tags=["Batch Verification"])
 
 @app.get("/")
 async def root():
@@ -50,7 +51,7 @@ async def root():
     return {
         "service": "NYSI Python Services",
         "status": "running",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "endpoints": {
             "docs": "/docs",
             "redoc": "/redoc",
@@ -59,7 +60,8 @@ async def root():
         "services": [
             "OCR - /api/ocr/*",
             "Vectorization - /api/vectorization/*",
-            "Web Scraper - /api/webscraper/*"  # ← Note: /api/webscraper not /api/scraper
+            "Web Scraper - /api/webscraper/*",
+            "Batch Verification - /api/batch-verification/*"
         ]
     }
 
@@ -71,7 +73,8 @@ async def health_check():
         "services": {
             "ocr": "available",
             "vectorization": "available",
-            "scraper": "available"  # ← FIXED: Changed from "planned" to "available"
+            "scraper": "available",
+            "batch_verification": "available"
         },
         "config": {
             "embedding_model": settings.embedding_model,
@@ -87,6 +90,7 @@ async def startup_event():
     logger.info(f"📊 Embedding Model: {settings.embedding_model}")
     logger.info(f"🔢 Vector Dimension: {settings.vector_dimension}")
     logger.info(f"🌐 Service running on port: {settings.service_port}")
+    logger.info("✅ Batch Verification service enabled")
 
 # Shutdown event (optional)
 @app.on_event("shutdown")
