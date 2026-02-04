@@ -118,7 +118,6 @@ export const createSupplementSchema = z.object({
     // ---- FIELDS NOT ACCEPTED (handled by system) ----
 
     id: z.never().optional(),
-    supplement_staging_id: z.never().optional(),
     approved_by: z.never().optional(),
     vector_100g_ingredient: z.never().optional(),
     vector_perserving_ingredient: z.never().optional(),
@@ -141,7 +140,6 @@ export const updateSupplementSchema = createSupplementSchema
         supplement_input_type: true,
         approved_by: true,
         id: true,
-        supplement_staging_id: true,
         vector_100g_ingredient: true,
         vector_perserving_ingredient: true,
         scraper_version: true,
@@ -444,7 +442,7 @@ export const updateStagingSupplementSchema = z.object({
     id: z.never().optional(),
     scraper_catalog_url_id: z.never().optional(), // Read-only
     is_reviewed: z.never().optional(), // Managed by approval workflow
-    supplement_staging_id: z.never().optional(), // N/A
+    promoted_to_supplement_id: z.never().optional(), // Managed by approval workflow
     approved_by: z.never().optional(), // N/A
     supplement_input_type: z.never().optional(), // Set during approval
     vector_100g_ingredient: z.never().optional(), // Generated during approval

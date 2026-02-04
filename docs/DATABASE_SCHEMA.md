@@ -84,7 +84,6 @@ nysi_db/
 CREATE TABLE SSS.Supplement (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     supplement_packaging_form_id UUID NOT NULL,
-    supplement_staging_id UUID,  -- Nullable (manual entries)
     supplement_input_type TEXT,
     supplement_name TEXT,
     supplement_brand TEXT,
@@ -108,8 +107,6 @@ CREATE TABLE SSS.Supplement (
         REFERENCES SSS.Supplement_Packaging_Form_Lookup(id),
     FOREIGN KEY (supplement_status_id) 
         REFERENCES SSS.Supplement_Status_Lookup(id),
-    FOREIGN KEY (supplement_staging_id) 
-        REFERENCES SSS.Supplement_Staging(id)
 );
 ```
 
@@ -119,7 +116,6 @@ CREATE TABLE SSS.Supplement (
 |--------|------|----------|-------------|
 | `id` | UUID | No | Primary key (auto-generated) |
 | `supplement_packaging_form_id` | UUID | No | FK to packaging form lookup |
-| `supplement_staging_id` | UUID | Yes | FK to staging (NULL for manual entries) |
 | `supplement_input_type` | TEXT | Yes | "Manual" or "Web Scraper" |
 | `supplement_name` | TEXT | Yes | Product name (e.g., "Vitamin D3 2000 IU") |
 | `supplement_brand` | TEXT | Yes | Brand/manufacturer |
@@ -227,7 +223,7 @@ LIMIT 5;
 - Web scraper deposits new supplement data here
 - Admin reviews and approves
 - Approved data copied to SSS.Supplement
-- Maintains link via `supplement_staging_id`
+- Maintains link via `promoted_to_supplement_id` on the staging record
 
 **Note:** Skip this table for normal operations. Only relevant for web scraping workflow.
 

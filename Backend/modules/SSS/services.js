@@ -1313,12 +1313,11 @@ export async function approveStagingSupplements(stagingIds) {
                     scraper_version,
                     supplement_input_type,
                     approved_by,
-                    supplement_staging_id,
                     vector_100g_ingredient,
                     vector_perserving_ingredient
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
-                    $19::vector, $20::vector
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+                    $18::vector, $19::vector
                 )
                 RETURNING *
             `;
@@ -1347,7 +1346,6 @@ export async function approveStagingSupplements(stagingIds) {
         staging.scraper_version || null,
         'Scraper', // supplement_input_type
         'e9e9f927-40f4-4f0a-bdca-a5503b5974da', // approved_by (hardcoded Dr. Khoo)
-        stagingId, // supplement_staging_id
         // Include vectors in initial insert (if available)
         vectorizationResult.success && vectorizationResult.vector_100g_ingredient
           ? JSON.stringify(vectorizationResult.vector_100g_ingredient)
@@ -1360,10 +1358,10 @@ export async function approveStagingSupplements(stagingIds) {
       const supplementResult = await pool.query(insertQuery, insertValues);
       const newSupplement = supplementResult.rows[0];
 
-      // 7. Mark staging as reviewed
+      // 7. Mark staging as reviewed and link to promoted supplement
       await pool.query(
-        'UPDATE SSS.Supplement_Staging SET is_reviewed = true WHERE id = $1',
-        [stagingId]
+        'UPDATE SSS.Supplement_Staging SET is_reviewed = true, promoted_to_supplement_id = $1 WHERE id = $2',
+        [newSupplement.id, stagingId]
       );
 
       if (vectorizationResult.success) {

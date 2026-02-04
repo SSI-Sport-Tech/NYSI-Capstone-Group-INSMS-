@@ -1560,7 +1560,7 @@ router.delete('/staging-supplements', controller.deleteStagingSupplements);
  *       **Auto-Set Fields:**
  *       - `approved_by` = System user (hardcoded)
  *       - `supplement_input_type` = 'Scraper'
- *       - `supplement_staging_id` = Links back to staging entry
+ *       - `promoted_to_supplement_id` = Set on staging entry, linking to the created supplement
  *       
  *       **Response Codes:**
  *       - 200: All succeeded
