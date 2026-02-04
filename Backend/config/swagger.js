@@ -1154,7 +1154,9 @@ const swaggerOptions = {
     },
     // Paths to files containing OpenAPI annotations
     apis: [
-        "./modules/SSS/routes.js",
+        "./modules/SSS/supplements/routes.js",
+        "./modules/SSS/inventory/routes.js",
+        "./modules/SSS/staging/routes.js",
         "./modules/AthleteProfileSystem/routes.js",
         "./modules/OCR/routes.js",
         "./server.js",

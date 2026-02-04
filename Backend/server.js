@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import swaggerUi from "swagger-ui-express";
 import swaggerSpecs from "./config/swagger.js";
 import ocrRoutes from "./modules/OCR/routes.js";
-import supplementRoutes from "./modules/SSS/routes.js";
+import supplementRoutes from "./modules/SSS/index.js";
 import athleteRoutes from "./modules/AthleteProfileSystem/routes.js";
 
 // Load environment variables
