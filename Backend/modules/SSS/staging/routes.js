@@ -1,3 +1,5 @@
+// Routes for CRUD for staging, CRUD for Catalog Url, and starting scraping job 
+
 import express from 'express';
 import * as controller from './controller.js';
 
