@@ -5,7 +5,7 @@ import swaggerUi from "swagger-ui-express";
 import swaggerSpecs from "./config/swagger.js";
 import ocrRoutes from "./modules/OCR/routes.js";
 import supplementRoutes from "./modules/SSS/index.js";
-import athleteRoutes from "./modules/AthleteProfileSystem/routes.js";
+import athleteRoutes from "./modules/AMS/index.js";
 
 // Load environment variables
 dotenv.config();
@@ -59,7 +59,7 @@ app.get("/docs.json", (req, res) => {
 // ==================== API ROUTES ====================
 
 app.use("/api/SSS", supplementRoutes);
-app.use("/api/APS", athleteRoutes);
+app.use("/api/AMS", athleteRoutes);
 app.use("/api/ocr", ocrRoutes);
 
 // ==================== HEALTH CHECK ENDPOINTS ====================
