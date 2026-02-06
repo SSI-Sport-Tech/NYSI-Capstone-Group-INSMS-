@@ -82,7 +82,7 @@ app.use("/api/auth", authRoutes);
 
 // Existing routes
 app.use("/api/SSS", supplementRoutes);
-app.use("/api/APS", athleteRoutes);
+app.use("/api/AMS", athleteRoutes);
 app.use("/api/ocr", ocrRoutes);
 
 // ==================== HEALTH CHECK ENDPOINTS ====================
