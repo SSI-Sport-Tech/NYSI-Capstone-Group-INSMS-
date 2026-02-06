@@ -16,7 +16,7 @@ import json
 import re
 import logging
 import functools
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from urllib.parse import quote_plus, urlparse
 from concurrent.futures import ThreadPoolExecutor
 from app.config.settings import settings
@@ -935,3 +935,93 @@ def get_database_info() -> List[Dict]:
         }
         for name, config in CERTIFICATION_DATABASES.items()
     ]
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def build_verification_summary(results: List[Dict]) -> Dict[str, Any]:
+    """
+    Build a clean summary from certification search results.
+    
+    Returns:
+        - is_verified: True if at least ONE site found the product
+        - found_count: Number of sites that found the product
+        - found_websites: List of website names where product was found
+        - urls: List of URLs where product was found
+    """
+    found_results = [r for r in results if r.get("found") and r.get("batch_tested")]
+    
+    # Extract URLs
+    found_urls = []
+    for r in found_results:
+        url_info = {
+            "website": r.get("organisation"),
+            "product_url": r.get("product_url"),
+            "search_url": r.get("search_url"),
+            "product_name": r.get("matched_product_name"),
+            "confidence": r.get("confidence", "low")
+        }
+        
+        # Include all products found if available
+        if r.get("products_found"):
+            url_info["all_products"] = r.get("products_found")
+        
+        found_urls.append(url_info)
+    
+    # Quick links - just the product URLs
+    quick_links = [
+        u["product_url"] for u in found_urls 
+        if u.get("product_url")
+    ]
+    
+    return {
+        "is_verified": len(found_results) > 0,  # TRUE if at least one found
+        "found_count": len(found_results),
+        "total_searched": len(results),
+        "found_websites": [r.get("organisation") for r in found_results],
+        "urls": found_urls,
+        "quick_links": quick_links
+    }
+
+
+def build_batch_id_summary(results: List[Dict]) -> Dict[str, Any]:
+    """
+    Build summary for batch ID verification results.
+    """
+    batch_verified_results = [r for r in results if r.get("batch_id_verified")]
+    found_results = [r for r in results if r.get("found")]
+    
+    # URLs where batch ID was verified
+    batch_verified_urls = []
+    for r in batch_verified_results:
+        batch_verified_urls.append({
+            "website": r.get("organisation"),
+            "product_url": r.get("product_url"),
+            "search_url": r.get("search_url"),
+            "product_name": r.get("matched_product_name"),
+            "matched_batch_id": r.get("matched_batch_id")
+        })
+    
+    # URLs where product was found (even if batch not specifically verified)
+    found_urls = []
+    for r in found_results:
+        found_urls.append({
+            "website": r.get("organisation"),
+            "product_url": r.get("product_url"),
+            "search_url": r.get("search_url"),
+            "product_name": r.get("matched_product_name"),
+            "batch_id_verified": r.get("batch_id_verified", False)
+        })
+    
+    return {
+        "batch_id_verified": len(batch_verified_results) > 0,
+        "batch_verified_count": len(batch_verified_results),
+        "batch_verified_websites": [r.get("organisation") for r in batch_verified_results],
+        "batch_verified_urls": batch_verified_urls,
+        "product_found": len(found_results) > 0,
+        "product_found_count": len(found_results),
+        "product_found_websites": [r.get("organisation") for r in found_results],
+        "product_found_urls": found_urls,
+        "quick_links": [u["product_url"] for u in found_urls if u.get("product_url")]
+    }

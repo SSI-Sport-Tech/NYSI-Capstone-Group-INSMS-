@@ -17,7 +17,7 @@ from app.schemas.webscraper_schemas import (
     PushStagingRequest, PushStagingResponse,
     WebscraperHealthResponse
 )
-from app.services import list_scraper, product_scraper, batch_tester, ocr_enricher, staging_service
+from app.services import list_scraper, product_scraper, batch_tester, ocr_enricher, staging_service, certification_searcher
 from app.utils.database import get_db_connection, test_db_connection
 
 load_dotenv()
@@ -162,19 +162,26 @@ async def scrape_single_product(request: ScrapeProductRequest):
         if request.verify_batch_testing:
             for product in products:
                 try:
-                    query = f"{product.get('Brand', '')} {product.get('Name', '')}".strip()
-                    result = await batch_tester.search_batch_testing_with_consensus(
-                        brand_supplement=query,
-                        openai_api_key=openai_key,
-                        num_searches=3,
-                        consensus_threshold=3
+                    results = await certification_searcher.search_all_certifications(
+                        brand=product.get('Brand', ''),
+                        product_name=product.get('Name', '')
                     )
-                    product["Batch_tested"] = result.get("Batch_tested")
-                    product["batch_testing_org"] = result.get("Organisation")
-                    product["batch_testing_sources"] = result.get("sources", [])
+
+                    summary = certification_searcher.build_verification_summary(results)
+
+                    print(f"✅ Verified: {summary['is_verified']} (found on {summary['found_count']} sites)")
+
+                    product["Batch_tested"] = summary["is_verified"]
+                    product["batch_testing_org"] = ", ".join(summary["found_websites"])
+                    print(summary["quick_links"])
+                    product["batch_testing_sources"] = summary["quick_links"]
+                
+                    
+                    if summary["is_verified"]:
+                        print(f"  ✅ Batch tested: {product.get('Brand', '')} {product.get('Name', '')} ({', '.join(summary['found_websites'])})")
                 except Exception as e:
-                    errors.append(f"Batch test failed for {query}: {str(e)}")
-                    product["Batch_tested"] = "Unknown"
+                    errors.append(f"Batch test failed for {product.get('Brand', '')} {product.get('Name', '')}: {str(e)}")
+                    product["Batch_tested"] = False
                     product["batch_testing_org"] = "Unknown"
         
         return ScrapeProductResponse(
@@ -261,21 +268,25 @@ async def scrape_full_catalog(
         print("\n🔍 Step 4: Verifying batch testing...")
         for product in all_products:
             try:
-                query = f"{product.get('Brand', '')} {product.get('Name', '')}".strip()
-                result = await batch_tester.search_batch_testing(
-                    brand_supplement=query,
-                    openai_api_key=openai_key,
-                    max_tries=2
+                results = await certification_searcher.search_all_certifications(
+                    brand=product.get('Brand', ''),
+                    product_name=product.get('Name', '')
                 )
-                product["Batch_tested"] = result.get("Batch_tested")
-                product["batch_testing_org"] = result.get("Organisation")
-                product["batch_testing_sources"] = result.get("sources", [])
+
+                summary = certification_searcher.build_verification_summary(results)
+
+                print(f"✅ Verified: {summary['is_verified']} (found on {summary['found_count']} sites)")
+
+                product["Batch_tested"] = summary["is_verified"]
+                product["batch_testing_org"] = ", ".join(summary["found_websites"])
+                product["batch_testing_sources"] = summary["quick_links"]
+            
                 
-                if result.get("Batch_tested") == "Yes":
-                    print(f"  ✅ Batch tested: {query} ({result.get('Organisation')})")
+                if summary["is_verified"]:
+                    print(f"  ✅ Batch tested: {product.get('Brand', '')} {product.get('Name', '')} ({', '.join(summary['found_websites'])})")
             except Exception as e:
-                errors.append(f"Batch test failed for {query}: {str(e)}")
-                product["Batch_tested"] = "Unknown"
+                errors.append(f"Batch test failed for {product.get('Brand', '')} {product.get('Name', '')}: {str(e)}")
+                product["Batch_tested"] = False
                 product["batch_testing_org"] = "Unknown"
         
         # Step 5: Push to staging (if requested)

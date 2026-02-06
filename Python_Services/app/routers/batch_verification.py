@@ -22,95 +22,6 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
-
-def build_verification_summary(results: List[Dict]) -> Dict[str, Any]:
-    """
-    Build a clean summary from certification search results.
-    
-    Returns:
-        - is_verified: True if at least ONE site found the product
-        - found_count: Number of sites that found the product
-        - found_websites: List of website names where product was found
-        - urls: List of URLs where product was found
-    """
-    found_results = [r for r in results if r.get("found") and r.get("batch_tested")]
-    
-    # Extract URLs
-    found_urls = []
-    for r in found_results:
-        url_info = {
-            "website": r.get("organisation"),
-            "product_url": r.get("product_url"),
-            "search_url": r.get("search_url"),
-            "product_name": r.get("matched_product_name"),
-            "confidence": r.get("confidence", "low")
-        }
-        
-        # Include all products found if available
-        if r.get("products_found"):
-            url_info["all_products"] = r.get("products_found")
-        
-        found_urls.append(url_info)
-    
-    # Quick links - just the product URLs
-    quick_links = [
-        u["product_url"] for u in found_urls 
-        if u.get("product_url")
-    ]
-    
-    return {
-        "is_verified": len(found_results) > 0,  # TRUE if at least one found
-        "found_count": len(found_results),
-        "total_searched": len(results),
-        "found_websites": [r.get("organisation") for r in found_results],
-        "urls": found_urls,
-        "quick_links": quick_links
-    }
-
-
-def build_batch_id_summary(results: List[Dict]) -> Dict[str, Any]:
-    """
-    Build summary for batch ID verification results.
-    """
-    batch_verified_results = [r for r in results if r.get("batch_id_verified")]
-    found_results = [r for r in results if r.get("found")]
-    
-    # URLs where batch ID was verified
-    batch_verified_urls = []
-    for r in batch_verified_results:
-        batch_verified_urls.append({
-            "website": r.get("organisation"),
-            "product_url": r.get("product_url"),
-            "search_url": r.get("search_url"),
-            "product_name": r.get("matched_product_name"),
-            "matched_batch_id": r.get("matched_batch_id")
-        })
-    
-    # URLs where product was found (even if batch not specifically verified)
-    found_urls = []
-    for r in found_results:
-        found_urls.append({
-            "website": r.get("organisation"),
-            "product_url": r.get("product_url"),
-            "search_url": r.get("search_url"),
-            "product_name": r.get("matched_product_name"),
-            "batch_id_verified": r.get("batch_id_verified", False)
-        })
-    
-    return {
-        "batch_id_verified": len(batch_verified_results) > 0,
-        "batch_verified_count": len(batch_verified_results),
-        "batch_verified_websites": [r.get("organisation") for r in batch_verified_results],
-        "batch_verified_urls": batch_verified_urls,
-        "product_found": len(found_results) > 0,
-        "product_found_count": len(found_results),
-        "product_found_websites": [r.get("organisation") for r in found_results],
-        "product_found_urls": found_urls,
-        "quick_links": [u["product_url"] for u in found_urls if u.get("product_url")]
-    }
 
 
 # ============================================================================
@@ -138,7 +49,7 @@ async def verify_from_text(
             product_name=supplement_name
         )
         
-        summary = build_verification_summary(results)
+        summary = certification_searcher.build_verification_summary(results)
         
         logger.info(f"✅ Verified: {summary['is_verified']} (found on {summary['found_count']} sites)")
         
@@ -221,7 +132,7 @@ async def verify_from_image(file: UploadFile = File(...)):
         # Search certifications
         results = await certification_searcher.search_all_certifications(brand, name, variant)
         
-        summary = build_verification_summary(results)
+        summary = certification_searcher.build_verification_summary(results)
         
         logger.info(f"✅ Verified: {summary['is_verified']} (found on {summary['found_count']} sites)")
         
@@ -303,7 +214,7 @@ async def verify_batch_id(
             product_name=supplement_name
         )
         
-        summary = build_batch_id_summary(results)
+        summary = certification_searcher.build_batch_id_summary(results)
         
         # Overall verification: TRUE if batch verified OR product found
         is_verified = summary["batch_id_verified"] or summary["product_found"]
@@ -414,7 +325,7 @@ async def verify_batch_id_from_image(
             product_name=supplement_name
         )
         
-        summary = build_batch_id_summary(results)
+        summary = certification_searcher.build_batch_id_summary(results)
         is_verified = summary["batch_id_verified"] or summary["product_found"]
         
         return {
@@ -479,11 +390,11 @@ async def verify_combined(
         )
         
         # Build summaries
-        brand_summary = build_verification_summary(results.get("brand_results", []))
+        brand_summary = certification_searcher.build_verification_summary(results.get("brand_results", []))
         
         batch_summary = None
         if batch_id and results.get("batch_id_results"):
-            batch_summary = build_batch_id_summary(results.get("batch_id_results", []))
+            batch_summary = certification_searcher.build_batch_id_summary(results.get("batch_id_results", []))
         
         # Overall verification
         is_verified = brand_summary["is_verified"]
@@ -608,11 +519,11 @@ async def verify_combined_from_images(
         )
         
         # Build summaries
-        brand_summary = build_verification_summary(results.get("brand_results", []))
+        brand_summary = certification_searcher.build_verification_summary(results.get("brand_results", []))
         
         batch_summary = None
         if batch_id and results.get("batch_id_results"):
-            batch_summary = build_batch_id_summary(results.get("batch_id_results", []))
+            batch_summary = certification_searcher.build_batch_id_summary(results.get("batch_id_results", []))
         
         is_verified = brand_summary["is_verified"]
         batch_verified = batch_summary["batch_id_verified"] if batch_summary else False
