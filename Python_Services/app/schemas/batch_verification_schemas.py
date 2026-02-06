@@ -1,5 +1,5 @@
 """
-Pydantic schemas for batch verification OCR workflow.
+Pydantic schemas for batch verification API.
 """
 
 from pydantic import BaseModel, Field
@@ -7,90 +7,106 @@ from typing import List, Optional, Literal
 
 
 # ============================================================================
-# OCR EXTRACTION SCHEMA
+# SUPPLEMENT IDENTIFICATION
 # ============================================================================
 
 class SupplementIdentification(BaseModel):
-    """Schema for LLM to extract supplement info from image."""
-    supplement_name: str = Field(..., description="Product name from label")
-    supplement_brand: str = Field(..., description="Brand name from label")
-    variant: Optional[str] = Field(None, description="Flavor/variant if visible")
+    """Schema for supplement identification (from OCR or manual input)."""
+    supplement_name: str = Field(..., description="Product name")
+    supplement_brand: str = Field(..., description="Brand name")
+    variant: Optional[str] = Field(None, description="Flavor/variant if detected")
 
 
 # ============================================================================
-# CERTIFICATION SEARCH RESULTS
+# CERTIFICATION RESULTS
 # ============================================================================
 
 class CertificationResult(BaseModel):
     """Result from a single certification database search."""
-    organisation: Literal[
-        "Informed Sport", 
-        "Informed Choice", 
-        "HASTA", 
-        "NSF Sport", 
-        "Cologne List", 
-        "BSCG"
-    ]
+    organisation: str = Field(..., description="Certification organization name")
     found: bool = Field(..., description="Whether supplement was found in database")
     batch_tested: bool = Field(False, description="Whether it's confirmed batch tested")
     product_url: Optional[str] = Field(None, description="Direct URL to product on certification site")
     search_url: Optional[str] = Field(None, description="Search URL used")
-    confidence: Literal["high", "medium", "low"] = Field(
-        "low", 
+    confidence: Optional[Literal["high", "medium", "low"]] = Field(
+        None,
         description="Confidence level of the match"
     )
-    notes: Optional[str] = Field(None, description="Additional notes about the match")
-
-
-class CertificationSearchSchema(BaseModel):
-    """Schema for LLM certification search output."""
-    found: bool
-    batch_tested: bool
-    product_url: Optional[str] = None
-    confidence: str = "low"
+    matched_product_name: Optional[str] = Field(None, description="Product name as shown on cert site")
+    search_term_used: Optional[str] = Field(None, description="Search term that found the match")
+    database_description: Optional[str] = Field(None, description="Description of the certification")
 
 
 # ============================================================================
-# API REQUEST/RESPONSE
+# API REQUEST SCHEMAS
 # ============================================================================
 
 class BatchVerificationRequest(BaseModel):
-    """Request for batch verification (if not using image upload)."""
-    supplement_name: str = Field(..., description="Name of the supplement")
-    supplement_brand: str = Field(..., description="Brand of the supplement")
+    """Request for batch verification from text (no image)."""
+    supplement_name: str = Field(
+        ...,
+        description="Name of the supplement",
+        min_length=2,
+        examples=["Gold Standard Whey", "Creatine Monohydrate"]
+    )
+    supplement_brand: str = Field(
+        ...,
+        description="Brand of the supplement",
+        min_length=2,
+        examples=["Optimum Nutrition", "MyProtein", "Applied Nutrition"]
+    )
 
+
+# ============================================================================
+# API RESPONSE SCHEMAS
+# ============================================================================
 
 class BatchVerificationResponse(BaseModel):
-    """Response from batch verification workflow."""
+    """Response from batch verification."""
     success: bool
     
-    # Extracted supplement info
+    # Supplement info
     supplement_name: str
     supplement_brand: str
     variant: Optional[str] = None
     
     # Overall result
     is_batch_tested: bool = Field(
-        ..., 
+        ...,
         description="True if found in ANY certification database"
     )
     
     # Individual certification results
-    certifications: List[CertificationResult] = Field(default_factory=list)
+    certifications: List[CertificationResult] = Field(
+        default_factory=list,
+        description="Results from each certification database"
+    )
     
-    # Best match (highest confidence found result)
-    primary_certification: Optional[CertificationResult] = None
+    # Best match
+    primary_certification: Optional[CertificationResult] = Field(
+        None,
+        description="Highest confidence match (if any found)"
+    )
     
-    # Errors during processing
-    errors: List[str] = Field(default_factory=list)
+    # Errors
+    errors: List[str] = Field(
+        default_factory=list,
+        description="Any errors during processing"
+    )
 
 
 class OCRBatchVerificationResponse(BaseModel):
-    """Response from OCR + batch verification workflow."""
+    """Response from OCR + batch verification (image input)."""
     success: bool
     
-    # OCR extraction
-    ocr_extracted: SupplementIdentification
+    # OCR extraction result
+    ocr_extracted: SupplementIdentification = Field(
+        ...,
+        description="Supplement info extracted from image"
+    )
     
     # Verification results
-    verification: BatchVerificationResponse
+    verification: BatchVerificationResponse = Field(
+        ...,
+        description="Batch testing verification results"
+    )
