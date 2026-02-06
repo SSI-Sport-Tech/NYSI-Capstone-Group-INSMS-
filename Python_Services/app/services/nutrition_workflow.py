@@ -1,29 +1,30 @@
 """
-Enhanced Nutrition Label OCR Workflow using PaddleOCR + GPT-4o-mini.
-Replaces the existing nutrition_workflow.py with better implementation.
+Nutrition Label OCR Workflow using modular services.
+Now uses lazy-loaded ocr_engine, llm_structurer, and vectorizer singletons.
+
+This workflow can accept either:
+1. image_path - runs OCR → Structure → Vectorize
+2. raw_text - skips OCR, runs Structure → Vectorize directly
 """
-# Import PyTorch-dependent packages FIRST before OpenCV and PaddleOCR
+
 from llama_index.core.workflow import (
     StartEvent, StopEvent, Workflow, step, Context, Event
 )
-from llama_index.llms.openai import OpenAI
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-
-# Now import other packages
-import os
 import json
 import re
-import cv2
-import numpy as np
-from dotenv import load_dotenv
-from paddleocr import PaddleOCR
-from app.schemas.supplement import SupplementStagingSchema
-from app.config.settings import settings
+import logging
 
-load_dotenv()
+# Import modular services (lazy-loaded singletons)
+from app.services import ocr_engine, llm_structurer
+from app.services.vectorizer import SupplementVectorizer
+
+logger = logging.getLogger(__name__)
 
 
-# --- Event Definitions ---
+# ============================================================================
+# EVENT DEFINITIONS
+# ============================================================================
+
 class ExtractionEvent(Event):
     """Event containing raw OCR text."""
     raw_text: str
@@ -34,35 +35,38 @@ class VectorizationEvent(Event):
     structured_data: dict
 
 
+# ============================================================================
+# WORKFLOW CLASS
+# ============================================================================
+
 class NutritionWorkflow(Workflow):
     """
     3-step workflow for nutrition label processing:
-    1. OCR: Extract text from image using PaddleOCR
-    2. Structure: Parse text into structured format using GPT-4o-mini
+    1. OCR: Extract text from image (uses ocr_engine module - lazy loaded)
+    2. Structure: Parse text into structured format (uses llm_structurer module - lazy loaded)
     3. Vectorize: Generate embeddings and calculate per 100g nutrition
+    
+    Now supports two input modes:
+    - image_path: Full pipeline (OCR → Structure → Vectorize)
+    - raw_text: Skip OCR (Structure → Vectorize only)
     """
     
     def __init__(self, timeout: int = 120, verbose: bool = True):
         super().__init__(timeout=timeout, verbose=verbose)
         
-        # Initialize PaddleOCR with v4 engine
-        self.ocr = PaddleOCR(
-            use_textline_orientation=True,
-            lang='en',
-            ocr_version='PP-OCRv4'
-        )
+        # NO initialization of PaddleOCR, LLM, or embeddings here!
+        # All components use lazy-loaded singletons from modular services
         
-        # Initialize LLM for text extraction
-        self.llm = OpenAI(
-            model="gpt-4o-mini", 
-            temperature=0,
-            api_key=os.getenv("OPENAI_API_KEY")
-        )
-        
-        # Initialize embedding model (384-dimensional)
-        self.embed_model = HuggingFaceEmbedding(
-            model_name="BAAI/bge-small-en-v1.5"
-        )
+        # Vectorizer is lightweight, can initialize here or lazy-load
+        self._vectorizer = None
+    
+    @property
+    def vectorizer(self) -> SupplementVectorizer:
+        """Lazy-load vectorizer on first use."""
+        if self._vectorizer is None:
+            logger.info("🔄 Initializing vectorizer (lazy load)...")
+            self._vectorizer = SupplementVectorizer()
+        return self._vectorizer
 
     def parse_amount(self, amount) -> tuple:
         """
@@ -128,11 +132,11 @@ class NutritionWorkflow(Workflow):
             dict: Nutrition facts scaled to 100g or None if calculation fails
         """
         if not serving_size_grams or serving_size_grams <= 0:
-            print("   ⚠️ Cannot calculate per 100g: missing serving size")
+            logger.warning("Cannot calculate per 100g: missing serving size")
             return None
         
         multiplier = 100 / serving_size_grams
-        print(f"   📊 Calculating per 100g ({multiplier:.2f}x from {serving_size_grams}g)")
+        logger.info(f"📊 Calculating per 100g ({multiplier:.2f}x from {serving_size_grams}g)")
         
         per_100g = {"nutrients": []}
         
@@ -166,86 +170,49 @@ class NutritionWorkflow(Workflow):
         ev: StartEvent
     ) -> ExtractionEvent:
         """
-        Step 1: Extract text from nutrition label image using PaddleOCR.
+        Step 1: Extract text from nutrition label image OR use provided text.
         
-        Process:
-        1. Load image
-        2. Upscale if too small (< 800px width)
-        3. Run OCR with PaddleOCR
-        4. Filter results by confidence (> 0.5)
-        5. Return concatenated text
+        Supports two input modes:
+        - image_path: Run OCR using ocr_engine module (lazy-loaded PaddleOCR)
+        - raw_text: Skip OCR entirely, use provided text
+        
+        This allows the workflow to be used both for image processing
+        AND for re-processing edited/corrected text.
         """
+        # Check if raw_text is provided directly (skip OCR)
+        raw_text = ev.get("raw_text")
+        if raw_text:
+            logger.info("📝 [Step 1] Using provided raw text (skipping OCR)")
+            logger.info(f"   Text length: {len(raw_text)} chars")
+            return ExtractionEvent(raw_text=raw_text)
+        
+        # Otherwise, run OCR on image
         image_path = ev.get("image_path")
         
         if not image_path:
-            print("❌ Error: No image_path provided")
-            return StopEvent(result={"error": "No image_path provided"})
+            logger.error("No image_path or raw_text provided")
+            return StopEvent(result={"error": "No image_path or raw_text provided"})
 
-        print(f"\n👁️  [Step 1] Scanning image: {image_path}")
+        logger.info(f"👁️ [Step 1] Scanning image: {image_path}")
         
-        # Load image
-        img = cv2.imread(image_path)
-        if img is None:
-            return StopEvent(result={"error": "Could not read image file"})
-
-        # Upscale if needed for better OCR accuracy
-        height, width = img.shape[:2]
-        print(f"   📐 Image size: {width}x{height}")
-        
-        if width < 800: 
-            scale = 800 / width
-            print(f"   🔎 Upscaling {scale:.1f}x for clarity...")
-            img = cv2.resize(
-                img, None, 
-                fx=scale, fy=scale, 
-                interpolation=cv2.INTER_CUBIC
-            )
-            # Save upscaled image temporarily
-            temp_path = image_path.replace('.jpg', '_upscaled.jpg')
-            cv2.imwrite(temp_path, img)
-            image_path = temp_path
-
-        # ✅ CORRECT: Run OCR using .ocr() method
-        result = self.ocr.ocr(image_path, cls=True)
-        
-        # ✅ CORRECT: Extract text from PaddleOCR response format
-        # result = [
-        #     [
-        #         [[x1,y1], [x2,y2], [x3,y3], [x4,y4]],  # bbox
-        #         ('text', confidence)                     # (text, score)
-        #     ],
-        #     ...
-        # ]
-        
-        if not result or not result[0]:
-            print("⚠️ CRITICAL: PaddleOCR found NO text")
-            return StopEvent(result={"error": "No text detected"})
-        
-        # Parse PaddleOCR format
-        filtered_texts = []
-        for line in result[0]:
-            bbox = line[0]  # Bounding box (not used here)
-            text_info = line[1]  # (text, confidence)
-            text = text_info[0]
-            confidence = text_info[1]
+        try:
+            # Use modular ocr_engine (lazy-loaded PaddleOCR singleton)
+            full_text = ocr_engine.extract_text(image_path)
             
-            # Filter by confidence > 0.5
-            if confidence > 0.5 and len(text.strip()) > 0:
-                filtered_texts.append(text)
-        
-        if not filtered_texts:
-            print("⚠️ CRITICAL: No text with confidence > 0.5")
-            return StopEvent(result={"error": "No text detected"})
-        
-        full_text = "\n".join(filtered_texts)
-        
-        print("-" * 40)
-        print("📝 RAW OCR OUTPUT:")
-        print(full_text)
-        print(f"📊 Total lines: {len(filtered_texts)}")
-        print("-" * 40)
+            logger.info("-" * 40)
+            logger.info("📝 RAW OCR OUTPUT:")
+            logger.info(full_text)
+            logger.info(f"📊 Total lines: {len(full_text.split(chr(10)))}")
+            logger.info("-" * 40)
             
-        return ExtractionEvent(raw_text=full_text)
+            return ExtractionEvent(raw_text=full_text)
+            
+        except ValueError as e:
+            logger.error(f"OCR failed: {str(e)}")
+            return StopEvent(result={"error": f"OCR failed: {str(e)}"})
+        except Exception as e:
+            logger.error(f"Unexpected OCR error: {str(e)}")
+            return StopEvent(result={"error": f"OCR error: {str(e)}"})
 
     @step
     async def structurize_text(
@@ -256,53 +223,21 @@ class NutritionWorkflow(Workflow):
         """
         Step 2: Parse OCR text into structured format using GPT-4o-mini.
         
-        Uses structured output to ensure consistent schema matching
-        SSS.Supplement_Staging table.
+        Uses llm_structurer module (lazy-loaded LLM singleton).
         """
-        print("🧠 [Step 2] Extracting structured data with GPT-4o-mini...")
+        logger.info("🧠 [Step 2] Extracting structured data with GPT-4o-mini...")
         
-        sllm = self.llm.as_structured_llm(SupplementStagingSchema)
-        
-        # Comprehensive extraction prompt with standardized nutrient names
-        prompt = f"""You are a Data Extraction Engine. Extract nutrition data from OCR text.
-
-Context: This is from a 'Nutrition Facts' or 'Supplement Facts' label.
-
-EXTRACTION RULES:
-
-1. BRAND/NAME: Infer from text. If missing, use 'Generic'.
-
-2. NUTRIENTS: Map lines like 'Total Fat 8g' to 'nutritional_info_per_serving'.
-   Format: {{"name": "Fats (g)", "amount": "8"}}
-
-3. STANDARDIZED NUTRIENT NAMES: Use exact names from this list when applicable:
-   Energy (kcal), Carbohydrates (g), Glucose (g), Fructose (g), Proteins (g),
-   Fats (g), Saturated Fats (g), Fibre (g), Calcium (mg), Sodium (mg),
-   Potassium (mg), Iron (mg), Zinc (mg), Vitamin B1 (mg), Vitamin B2 (mg),
-   Vitamin B3 (mg), Vitamin B5 (mg), Vitamin B6 (mg), Vitamin B7 (µg),
-   Vitamin B9 (µg), Vitamin B12 (µg), Vitamin A (µg), Vitamin C (mg),
-   Vitamin D (µg), Vitamin E (mg), Vitamin K1 (µg), etc.
-
-4. SERVING SIZE - CRITICAL:
-   - Look for: '2/3 cup (55g)', '1 scoop (30g)', 'Serving Size 28g'
-   - Extract gram number into 'serving_size_grams' (e.g., 55, 30, 28)
-   - Full text into 'serving_size_text' (e.g., '2/3 cup (55g)')
-
-5. PER 100G: Only extract if explicitly shown on label.
-   If NOT shown, leave 'nutritional_info_per_100g' as null.
-
-6. INGREDIENTS: Capture full ingredient list.
-
-7. RETURN VALID DATA: Do not return empty objects if text is visible.
-
-RAW OCR TEXT:
-{ev.raw_text}
-"""
-        
-        response = sllm.complete(prompt)
-        structured_data = json.loads(response.text)
-        
-        return VectorizationEvent(structured_data=structured_data)
+        try:
+            # Use modular llm_structurer (lazy-loaded LLM singleton)
+            structured_data = llm_structurer.structure_nutrition_text(ev.raw_text)
+            
+            logger.info(f"✅ Structured: {structured_data.get('supplement_brand', 'Unknown')} - {structured_data.get('supplement_name', 'Unknown')}")
+            
+            return VectorizationEvent(structured_data=structured_data)
+            
+        except Exception as e:
+            logger.error(f"LLM structuring failed: {str(e)}")
+            return StopEvent(result={"error": f"Text structuring failed: {str(e)}"})
 
     @step
     async def vectorize_ingredients(
@@ -319,7 +254,7 @@ RAW OCR TEXT:
         
         Embedding: BAAI/bge-small-en-v1.5 (384-dimensional)
         """
-        print("🔢 [Step 3] Generating vectors & processing nutrition...")
+        logger.info("🔢 [Step 3] Generating vectors & processing nutrition...")
         
         data = ev.structured_data
         
@@ -334,50 +269,94 @@ RAW OCR TEXT:
         per_100g_calculated = False
         if not per_100g or not per_100g.get('nutrients'):
             if serving_size_grams: 
-                print(f"   🧮 Calculating per 100g from {serving_size_grams}g serving...")
+                logger.info(f"🧮 Calculating per 100g from {serving_size_grams}g serving...")
                 per_100g = self.calculate_per_100g(per_serving, serving_size_grams)
                 per_100g_calculated = True
             else: 
-                print("   ⚠️ Cannot calculate per 100g: No serving size")
+                logger.warning("Cannot calculate per 100g: No serving size")
                 per_100g = None
         
         # --- VECTOR 1: Per Serving ---
-        print("   🔷 Creating vector for PER SERVING...")
+        logger.info("🔷 Creating vector for PER SERVING...")
         per_serving_str = json.dumps({
             "nutrients": per_serving.get('nutrients', [])
         })
-        vector_per_serving = self.embed_model.get_text_embedding(per_serving_str)
+        vector_per_serving = self.vectorizer.embed_model.get_text_embedding(per_serving_str)
         
         # --- VECTOR 2: Per 100g ---
+        vector_per_100g = None
         if per_100g:
-            print("   🔶 Creating vector for PER 100G...")
+            logger.info("🔶 Creating vector for PER 100G...")
             per_100g_str = json.dumps({
                 "nutrients": per_100g.get('nutrients', [])
             })
-            vector_per_100g = self.embed_model.get_text_embedding(per_100g_str)
+            vector_per_100g = self.vectorizer.embed_model.get_text_embedding(per_100g_str)
         else:
-            print("   ⚠️ No per 100g data, skipping vector")
-            vector_per_100g = None
+            logger.warning("No per 100g data, skipping vector")
         
         # --- BUILD FINAL PAYLOAD ---
         final_payload = {
             "supplement_name": data.get('supplement_name'),
             "supplement_brand": data.get('supplement_brand'),
+            "supplement_description": data.get('supplement_description'),
             "supplement_ingredient": data.get('supplement_ingredient'),
             
             # Serving info
             "serving_size_text": data.get('serving_size_text'),
             "serving_size_grams": serving_size_grams,
+            "nutritional_info_per_serving_definition": data.get('nutritional_info_per_serving_definition'),
             
             # Nutrition data
             "nutritional_info_per_serving": per_serving,
             "nutritional_info_per_100g": per_100g,
             "per_100g_calculated": per_100g_calculated,
             
+            # Additional fields
+            "supplement_warning_label": data.get('supplement_warning_label'),
+            "supplement_certifications": data.get('supplement_certifications'),
+            "supplement_additional_information": data.get('supplement_additional_information'),
+            "batch_testing_org": data.get('batch_testing_org'),
+            
             # TWO vectors (384-dimensional each)
             "vector_per_serving": vector_per_serving,
             "vector_per_100g": vector_per_100g
         }
         
-        print("✅ [Step 3] Pipeline Complete!")
+        logger.info("✅ [Step 3] Pipeline Complete!")
         return StopEvent(result=final_payload)
+
+
+# ============================================================================
+# CONVENIENCE FUNCTIONS
+# ============================================================================
+
+async def process_nutrition_image(image_path: str, timeout: int = 120) -> dict:
+    """
+    Convenience function to process a nutrition label image.
+    
+    Args:
+        image_path: Path to the image file
+        timeout: Workflow timeout in seconds
+        
+    Returns:
+        dict: Processed nutrition data with vectors
+    """
+    workflow = NutritionWorkflow(timeout=timeout, verbose=False)
+    result = await workflow.run(image_path=image_path)
+    return result
+
+
+async def process_nutrition_text(raw_text: str, timeout: int = 60) -> dict:
+    """
+    Convenience function to process raw nutrition text (no OCR).
+    
+    Args:
+        raw_text: Raw text containing nutrition information
+        timeout: Workflow timeout in seconds
+        
+    Returns:
+        dict: Processed nutrition data with vectors
+    """
+    workflow = NutritionWorkflow(timeout=timeout, verbose=False)
+    result = await workflow.run(raw_text=raw_text)
+    return result

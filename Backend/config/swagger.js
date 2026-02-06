@@ -32,37 +32,48 @@ const swaggerOptions = {
                 name: "Health",
                 description: "Health check and system status endpoints",
             },
+            // ==================== SSS (Supplement Management) ====================
             {
-                name: "Supplements",
+                name: "SSS - Supplements",
                 description: "Supplement library management - CRUD operations, search, and similarity matching",
             },
             {
-                name: "Inventory",
+                name: "SSS - Inventory",
                 description: "Batch inventory management and stock tracking",
             },
             {
-                name: "Staging",
+                name: "SSS - Staging",
                 description: "Supplement staging area - Web scraper data review and approval",
             },
             {
-                name: "Lookups", // ✅ NEW TAG
-                description: "Lookup tables for dropdowns (packaging forms, statuses)",
+                name: "SSS - Catalog URLs",
+                description: "Manage web scraping catalog URLs",
             },
             {
-                name: "Admin - Catalog URLs", // ✅ NEW TAG
-                description: "Manage web scraping catalog URLs (admin only)",
+                name: "SSS - Scraping",
+                description: "Web scraping operations",
             },
             {
-                name: "Admin - Scraping", // ✅ NEW TAG
-                description: "Web scraping operations (admin only)",
+                name: "SSS - Lookups",
+                description: "SSS lookup tables for dropdowns (packaging forms, statuses)",
+            },
+            // ==================== AMS (Athlete Management) ====================
+            {
+                name: "AMS - Athletes",
+                description: "Athlete Management System - CRUD, registry, and medical records",
             },
             {
-                name: "Athletes",
-                description: "Athlete profile management (Planned)",
+                name: "AMS - Lookups",
+                description: "AMS lookup tables for dropdowns (sports)",
             },
+            // ==================== Other ====================
             {
                 name: "OCR",
                 description: "OCR and text extraction services",
+            },
+            {
+                name: "Authentication",
+                description: "User authentication, login, logout, and 2FA",
             },
         ],
         components: {
@@ -1040,6 +1051,16 @@ const swaggerOptions = {
                         },
                     },
                 },
+
+            },
+            // ==================== SECURITY SCHEMA ====================
+            securitySchemes: {
+                bearerAuth: {
+                    type: "http",
+                    scheme: "bearer",
+                    bearerFormat: "JWT",
+                    description: "Enter JWT token in the format: Bearer <token>",
+                },
             },
 
             // ==================== REUSABLE PARAMETERS ====================
@@ -1154,10 +1175,13 @@ const swaggerOptions = {
     },
     // Paths to files containing OpenAPI annotations
     apis: [
-        "./modules/SSS/routes.js",
-        "./modules/AthleteProfileSystem/routes.js",
+        "./modules/SSS/supplements/routes.js",
+        "./modules/SSS/inventory/routes.js",
+        "./modules/SSS/staging/routes.js",
+        "./modules/AMS/athlete/routes.js",
         "./modules/OCR/routes.js",
         "./server.js",
+        "./modules/Auth/routes.js",
     ],
 };
 

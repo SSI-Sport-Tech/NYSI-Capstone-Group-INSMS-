@@ -131,6 +131,7 @@ async def enrich_product_with_ocr(product: Dict) -> bool:
     
     # Skip if no image or already has nutrition data
     if not image_url or image_url == "NA":
+        product["Nutrition_Source"] = "Scraped"
         return False
     
     image_path = None
