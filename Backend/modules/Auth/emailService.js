@@ -23,11 +23,11 @@ const transporter = nodemailer.createTransport({
 export const sendVerificationEmail = async (email, code, firstName = "User") => {
     const mailOptions = {
         from: {
-            name: "NYSI Authentication",
+            name: "INSMS Authentication",
             address: process.env.EMAIL_USER,
         },
         to: email,
-        subject: "Your NYSI Login Verification Code",
+        subject: "Your INSMS Login Verification Code",
         html: `
             <!DOCTYPE html>
             <html>
@@ -140,7 +140,7 @@ export const sendVerificationEmail = async (email, code, firstName = "User") => 
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1>🔐 NYSI Security</h1>
+                        <h1>🔐 INSMS Security</h1>
                     </div>
                     
                     <div class="content">
@@ -149,7 +149,7 @@ export const sendVerificationEmail = async (email, code, firstName = "User") => 
                         </div>
                         
                         <div class="message">
-                            You recently requested to log in to your NYSI account. To complete the login process, please use the verification code below:
+                            You recently requested to log in to your INSMS account. To complete the login process, please use the verification code below:
                         </div>
                         
                         <div class="code-container">
@@ -167,7 +167,7 @@ export const sendVerificationEmail = async (email, code, firstName = "User") => 
                             For your security:
                             <ul style="margin: 10px 0; padding-left: 20px;">
                                 <li>Never share this code with anyone</li>
-                                <li>NYSI staff will never ask for this code</li>
+                                <li>HPSI staff will never ask for this code</li>
                                 <li>This code is only valid for 10 minutes</li>
                                 <li>You have 3 attempts to enter the correct code</li>
                             </ul>
@@ -176,8 +176,8 @@ export const sendVerificationEmail = async (email, code, firstName = "User") => 
                     
                     <div class="footer">
                         <p>
-                            This is an automated message from the NYSI Authentication System.<br>
-                            © ${new Date().getFullYear()} New York Sports Institute. All rights reserved.
+                            This is an automated message from the HPSI Authentication System.<br>
+                            © ${new Date().getFullYear()} High Performance Sports Institute. All rights reserved.
                         </p>
                         <p>
                             Need help? <a href="mailto:${process.env.SUPPORT_EMAIL || 'support@nysi.com'}">Contact Support</a>
@@ -190,7 +190,7 @@ export const sendVerificationEmail = async (email, code, firstName = "User") => 
         text: `
 Hello ${firstName},
 
-Your NYSI verification code is: ${code}
+Your INSMS verification code is: ${code}
 
 This code will expire in 10 minutes.
 
@@ -198,11 +198,11 @@ If you didn't request this code, please ignore this email.
 
 For security:
 - Never share this code with anyone
-- NYSI staff will never ask for this code
+- INSMS staff will never ask for this code
 - This code is only valid for 10 minutes
 - You have 3 attempts to enter the correct code
 
-© ${new Date().getFullYear()} New York Sports Institute
+© ${new Date().getFullYear()} High Performance Sports Institute
         `.trim(),
     };
 
@@ -224,11 +224,11 @@ For security:
 export const sendWelcomeEmail = async (email, firstName) => {
     const mailOptions = {
         from: {
-            name: "NYSI Team",
+            name: "INSMS Team",
             address: process.env.EMAIL_USER,
         },
         to: email,
-        subject: "Welcome to NYSI - Your Account is Ready!",
+        subject: "Welcome to INSMS - Your Account is Ready!",
         html: `
             <!DOCTYPE html>
             <html>
@@ -246,7 +246,7 @@ export const sendWelcomeEmail = async (email, firstName) => {
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1>🎉 Welcome to NYSI!</h1>
+                        <h1>🎉 Welcome to INSMS!</h1>
                     </div>
                     <div class="content">
                         <h2>Hi ${firstName},</h2>
@@ -259,7 +259,7 @@ export const sendWelcomeEmail = async (email, firstName) => {
                             <li>Access product information</li>
                         </ul>
                         <p>If you have any questions, our support team is here to help.</p>
-                        <p>Best regards,<br>The NYSI Team</p>
+                        <p>Best regards,<br>The INSMS Team</p>
                     </div>
                 </div>
             </body>

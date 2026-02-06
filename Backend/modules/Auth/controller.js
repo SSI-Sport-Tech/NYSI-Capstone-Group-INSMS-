@@ -173,6 +173,7 @@ export async function login(req, res) {
         // STEP 5: Generate 6-digit verification code
         console.log('Step 5: Generating verification code...');
         const verificationCode = crypto.randomInt(100000, 999999).toString();
+        const codeHash = crypto.createHmac("sha256", process.env.OTP_SECRET).update(verificationCode).digest("hex");
         const expiresAt = new Date(Date.now() + CODE_EXPIRY_MINUTES * 60 * 1000);
         console.log(`Verification code generated (expires in ${CODE_EXPIRY_MINUTES} minutes)`);
 
@@ -185,7 +186,7 @@ export async function login(req, res) {
         console.log('Step 7: Storing verification code...');
         await services.createVerificationCode({
             user_id: user.id,
-            code: verificationCode,
+            code: codeHash,
             expires_at: expiresAt,
             attempts: 0,
         });
@@ -303,7 +304,12 @@ export async function verifyCode(req, res) {
 
         // STEP 5: Verify code
         console.log('Step 5: Verifying code...');
-        if (verification.code !== validatedData.code) {
+        const inputHash = crypto
+            .createHmac("sha256", process.env.OTP_SECRET)
+            .update(validatedData.code)
+            .digest("hex");
+
+        if (verification.code !== inputHash) {
             console.log('Invalid code');
             // Increment attempts
             await services.incrementVerificationAttempts(user.id);
@@ -423,6 +429,7 @@ export async function resendCode(req, res) {
         // STEP 4: Generate new verification code
         console.log('Step 4: Generating new verification code...');
         const verificationCode = crypto.randomInt(100000, 999999).toString();
+        const codeHash = crypto.createHmac("sha256", process.env.OTP_SECRET).update(verificationCode).digest("hex");
         const expiresAt = new Date(Date.now() + CODE_EXPIRY_MINUTES * 60 * 1000);
         console.log('New code generated');
 
@@ -431,7 +438,7 @@ export async function resendCode(req, res) {
         await services.deleteVerificationCodesByUserId(user.id);
         await services.createVerificationCode({
             user_id: user.id,
-            code: verificationCode,
+            code: codeHash,
             expires_at: expiresAt,
             attempts: 0,
         });
