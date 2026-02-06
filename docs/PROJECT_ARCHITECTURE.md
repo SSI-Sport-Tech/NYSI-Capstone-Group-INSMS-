@@ -3,9 +3,9 @@
 ## Document Purpose
 This document provides a comprehensive overview of the project architecture, technology stack, design patterns, and structural organization.
 
-**Last Updated:** January 31, 2026
-**Version:** 3.0
-**Status:** Active Development - Phase 2.5 Complete (Vectorization & Webscraper)
+**Last Updated:** February 5, 2026
+**Version:** 4.0
+**Status:** Active Development - Phase 2.5 Complete, AMS Phase 1 Implemented
 
 ---
 
@@ -29,8 +29,8 @@ This document provides a comprehensive overview of the project architecture, tec
 Develop a comprehensive supplement management system for the New York Sports Institute (NYSI) to streamline supplement inventory, athlete nutrition tracking, and supplement verification through OCR technology.
 
 ### Core Modules
-1. **SSS (Supplement Support System)** - Primary module for supplement management
-2. **AMS (Athlete Management System)** - Athlete profile and supplement allocation (Planned)
+1. **SSS (Supplement Support System)** - Primary module for supplement management, inventory, staging, and web scraping
+2. **AMS (Athlete Management System)** - Athlete profile CRUD with registry and medical records (Phase 1 Implemented)
 3. **OCR Services** - Optical Character Recognition for supplement label scanning (In Progress)
 
 ### Current Phase
@@ -159,12 +159,34 @@ NYSI-Capstone-Group-INSMS-/
 │   │
 │   ├── modules/
 │   │   ├── SSS/                  # Supplement Support System
-│   │   │   ├── routes.js         # API routes + Swagger docs
-│   │   │   ├── controller.js     # Business logic layer
-│   │   │   ├── services.js       # Database operations
-│   │   │   └── validation.js     # Zod schemas
+│   │   │   ├── index.js          # Route aggregator (supplements + inventory + staging)
+│   │   │   ├── supplements/      # Supplement CRUD, alternatives, lookups
+│   │   │   │   ├── routes.js
+│   │   │   │   ├── controller.js
+│   │   │   │   ├── services.js
+│   │   │   │   └── validation.js
+│   │   │   ├── inventory/        # Batch CRUD
+│   │   │   │   ├── routes.js
+│   │   │   │   ├── controller.js
+│   │   │   │   ├── services.js
+│   │   │   │   └── validation.js
+│   │   │   ├── staging/          # Staging review, approval, catalog URLs, scraping
+│   │   │   │   ├── routes.js
+│   │   │   │   ├── controller.js
+│   │   │   │   ├── services.js
+│   │   │   │   └── validation.js
+│   │   │   └── shared/           # Reusable validators and helpers
+│   │   │       ├── validation.js # uuidSchema, paginationSchema, bulkDeleteSchema, business logic helpers
+│   │   │       └── vectorization.js # Python service integration helpers
 │   │   │
-│   │   ├── AMS/                  # Athlete Management System (Planned)
+│   │   ├── AMS/                  # Athlete Management System
+│   │   │   ├── index.js          # Route aggregator
+│   │   │   └── athlete/          # Athlete CRUD, registry, medical, lookups
+│   │   │       ├── routes.js
+│   │   │       ├── controller.js
+│   │   │       ├── services.js
+│   │   │       └── validation.js
+│   │   │
 │   │   └── OCR/                  # OCR Services (In Progress)
 │   │
 │   ├── server.js                 # Express app entry point
@@ -172,16 +194,31 @@ NYSI-Capstone-Group-INSMS-/
 │   ├── .env                      # Environment variables
 │   └── .gitignore
 │
-├── OCR_service/                  # Python OCR microservice
-│   ├── paddleocr_script.py       # OCR implementation
-│   └── fastapi_server.py         # FastAPI server
+├── Python_Services/              # Python FastAPI microservice
+│   ├── app/
+│   │   ├── main.py               # FastAPI entry point
+│   │   ├── config/settings.py    # Pydantic settings
+│   │   ├── routers/
+│   │   │   ├── ocr.py            # OCR endpoints
+│   │   │   ├── vectorization.py  # Vectorization endpoints
+│   │   │   └── webscraper.py     # Web scraper endpoints
+│   │   └── services/
+│   │       ├── vectorizer.py     # Embedding generation (BAAI/bge-small-en-v1.5)
+│   │       └── nutrition_workflow.py  # OCR workflow
+│   ├── requirements.txt
+│   └── .env
 │
-└── Documentation/
-    ├── PROJECT_ARCHITECTURE.md   # This file
-    ├── DATABASE_SCHEMA.md        # Database documentation
-    ├── USE_CASES.md              # Use case specifications
-    ├── ONBOARDING_GUIDE.md       # Developer onboarding
-    └── AI_ASSISTANT_GUIDELINES.md # AI collaboration rules
+├── frontend/                     # Next.js 15 frontend
+│   └── app/                      # App Router pages
+│
+└── docs/
+    ├── PROJECT_ARCHITECTURE.md
+    ├── DATABASE_SCHEMA.md
+    ├── AMS_DATABASE_SCHEMA.md
+    ├── USE_CASES_IMPLEMENTATION.md
+    ├── AI_ASSISTANT_GUIDELINES.md
+    ├── PROJECT_INSTRUCTIONS.md
+    └── PYTHON_SERVICES.md
 ```
 
 ---
@@ -191,68 +228,52 @@ NYSI-Capstone-Group-INSMS-/
 ### SSS Module (Supplement Support System)
 
 #### Responsibility
-Complete supplement lifecycle management from creation to deletion, including inventory tracking.
+Complete supplement lifecycle management: CRUD, inventory batch tracking, web scraper staging/approval, vectorization, and similarity search.
 
-#### Components
+#### Sub-Module Structure
+The SSS module is split into sub-modules, each with its own routes/controller/services/validation:
 
-**1. Routes Layer (`routes.js`)**
-- Defines HTTP endpoints
-- Swagger documentation (inline JSDoc)
-- Parameter extraction
-- Route → Controller mapping
-
-**2. Controller Layer (`controller.js`)**
-```javascript
-Responsibilities:
-- Request validation (Zod schemas)
-- Business rule enforcement
-- Service layer orchestration
-- Response formatting
-- Error handling
-
-Key Functions:
-- listSupplements()       # GET /supplements
-- getSupplementDetails()  # GET /supplements/:id
-- createSupplement()      # POST /supplements
-- updateSupplement()      # PATCH /supplements/:id
-- deleteSupplements()     # DELETE /supplements
-- listBatches()           # GET /batches
+```
+SSS/
+├── index.js              # Aggregates all sub-module routes
+├── supplements/          # Supplement CRUD, alternatives, lookups
+├── inventory/            # Batch CRUD
+├── staging/              # Staging review, approval, catalog URLs, scraping
+└── shared/               # Reusable validators, vectorization helpers
 ```
 
-**3. Service Layer (`services.js`)**
+**`index.js`** imports and mounts routes from each sub-module:
 ```javascript
-Responsibilities:
-- SQL query construction
-- Database interactions
-- Data transformation
-- Pagination logic
-- Search logic
-
-Key Functions:
-- getSupplementsByPage()
-- searchSupplements()
-- getSupplementById()
-- createSupplement()
-- updateSupplement()
-- deleteSupplements()
-- checkDuplicateSupplement()
+import supplementRoutes from './supplements/routes.js';
+import inventoryRoutes from './inventory/routes.js';
+import stagingRoutes from './staging/routes.js';
+router.use(supplementRoutes);
+router.use(inventoryRoutes);
+router.use(stagingRoutes);
 ```
 
-**4. Validation Layer (`validation.js`)**
-```javascript
-Responsibilities:
-- Schema definitions (Zod)
-- Type validation
-- Data transformation
-- Business logic helpers
+#### supplements/ Sub-Module
+- **CRUD**: list (paginated + search), get details (with stock summary + batches), create, update, delete
+- **Alternatives**: Vector similarity search (60% threshold, cosine similarity via pgvector)
+- **Lookups**: Packaging forms, supplement statuses, batch statuses, ticket statuses
+- **Vectorization on create**: Generates both `vector_100g_ingredient` and `vector_perserving_ingredient`
+- **Vectorization on update**: Re-generates vectors only if ingredients or nutritional info changed (merges existing data with updates)
 
-Key Schemas:
-- createSupplementSchema
-- updateSupplementSchema
-- bulkDeleteSchema
-- paginationSchema
-- uuidParamSchema
-```
+#### inventory/ Sub-Module
+- **Batch CRUD**: list (paginated + search), create (auto-sets status to "available"), update, delete
+- **Deletion guard**: Cannot delete batches that have inventory tickets
+- **Calculated fields**: `booked` (sum of ticket quantities) and `available` (initial - booked)
+
+#### staging/ Sub-Module
+- **Staging CRUD**: list unreviewed entries, get details, edit, bulk delete
+- **Approval workflow**: Validates → generates vectors → checks for duplicates → promotes to main library
+- **Duplicate detection**: 95% vector similarity + normalized name/brand comparison; duplicates auto-deleted from staging
+- **Catalog URL CRUD**: Manage scraper target URLs
+- **Scraping**: Fire-and-forget requests to Python service (`POST /api/webscraper/scrape-full`)
+
+#### shared/ Sub-Module
+- **validation.js**: Reusable Zod validators (`uuidSchema`, `paginationSchema`, `bulkDeleteSchema`), business logic helpers (`validateBatchTestingOrg`, `getSupplementStatusById`)
+- **vectorization.js**: Python service integration helpers (`generateVector`, `generateSupplementVectors`, `transformNutritionalDataForVectorization`)
 ## Python Services Architecture
 
 ### Overview
@@ -315,9 +336,10 @@ Python_Services/
     │   └── settings.py    # Pydantic settings
     ├── routers/
     │   ├── __init__.py
-    │   ├── ocr.py         # OCR endpoints
-    │   ├── vectorization.py   # Vectorization endpoints
-    │   └── scraper.py     # Web scraper (placeholder)
+    │   ├── ocr.py              # OCR endpoints
+    │   ├── vectorization.py    # Vectorization endpoints (/generate, /generate-product-vectors, /health)
+    │   ├── webscraper.py       # Web scraper endpoints (/scrape-full)
+    │   └── batch_verification.py # Batch verification endpoints
     ├── services/
     │   ├── __init__.py
     │   ├── nutrition_workflow.py  # OCR workflow
@@ -358,39 +380,69 @@ Python_Services/
 
 **Python Service Base URL:** `http://localhost:8001`
 ```
-POST   /api/ocr/analyze              - Upload image → Extract supplement data
-GET    /api/ocr/health               - OCR service health check
+POST   /api/ocr/analyze                            - Upload image → Extract supplement data
+GET    /api/ocr/health                             - OCR service health check
 
-POST   /api/vectorization/generate   - Generate single 384-dim vector
-POST   /api/vectorization/batch      - Generate multiple vectors
-GET    /api/vectorization/health     - Vectorization health check
+POST   /api/vectorization/generate                 - Generate single 384-dim vector (used by manual supplement create/update)
+POST   /api/vectorization/generate-product-vectors - Generate both per_serving and per_100g vectors (used by staging approval)
+GET    /api/vectorization/health                   - Vectorization health check
 
-POST   /api/webscraper/scrape-full   - Scrape catalog URL → push to staging
-GET    /api/webscraper/health        - Scraper status
+POST   /api/webscraper/scrape-full                 - Scrape catalog URL → push to staging
+GET    /api/webscraper/health                      - Scraper status
 
-GET    /health                       - Global health check
+GET    /health                                     - Global health check
 ```
 
 **Node.js Endpoints:** `http://localhost:8000`
 ```
-# Catalog URL Management
-GET    /api/SSS/catalog-urls           - List catalog URLs (paginated)
-GET    /api/SSS/catalog-urls/:id       - Get catalog URL details
-POST   /api/SSS/catalog-urls           - Create catalog URL
-PATCH  /api/SSS/catalog-urls/:id       - Update catalog URL
-DELETE /api/SSS/catalog-urls           - Delete catalog URLs (bulk)
+# SSS - Supplements
+GET    /api/SSS/supplements                        - List/search supplements (paginated)
+GET    /api/SSS/supplements/:id                    - Get supplement details + stock + batches
+GET    /api/SSS/supplements/:id/alternatives       - Find similar supplements (vector similarity)
+POST   /api/SSS/supplements                        - Create supplement (with vectorization)
+PATCH  /api/SSS/supplements/:id                    - Update supplement (re-vectorize if needed)
+DELETE /api/SSS/supplements                        - Bulk delete supplements
 
-# Staging Supplements
-GET    /api/SSS/staging-supplements          - List staging supplements
-PATCH  /api/SSS/staging-supplements/:id      - Update staging supplement
-POST   /api/SSS/staging-supplements/approve  - Approve to main library (bulk)
-DELETE /api/SSS/staging-supplements          - Delete staging supplements (bulk)
+# SSS - Inventory
+GET    /api/SSS/batches                            - List/search batches (paginated)
+POST   /api/SSS/batches                            - Create batch
+PATCH  /api/SSS/batches/:id                        - Update batch
+DELETE /api/SSS/batches                            - Bulk delete batches
 
-# Scraping Control
-POST   /api/SSS/scraping/start         - Start scraping job
+# SSS - Staging
+GET    /api/SSS/staging-supplements                - List unreviewed staging entries
+GET    /api/SSS/staging-supplements/:id            - Get staging details
+PATCH  /api/SSS/staging-supplements/:id            - Edit staging entry
+POST   /api/SSS/staging-supplements/approve        - Approve (vectorize + duplicate check + promote)
+DELETE /api/SSS/staging-supplements                - Bulk delete staging entries
 
-# Alternatives (Similarity Search)
-GET    /api/SSS/supplements/:id/alternatives - Find similar supplements
+# SSS - Catalog URLs
+GET    /api/SSS/catalog-urls                       - List catalog URLs (paginated)
+GET    /api/SSS/catalog-urls/:id                   - Get catalog URL details
+POST   /api/SSS/catalog-urls                       - Create catalog URL
+PATCH  /api/SSS/catalog-urls/:id                   - Update catalog URL
+DELETE /api/SSS/catalog-urls                       - Bulk delete catalog URLs
+
+# SSS - Scraping
+POST   /api/SSS/scraping/start                     - Start scraping job (fire-and-forget)
+
+# SSS - Lookups
+GET    /api/SSS/lookups/packaging-forms            - Packaging form options
+GET    /api/SSS/lookups/supplement-statuses         - Supplement status options
+GET    /api/SSS/lookups/batch-statuses             - Batch stock status options
+GET    /api/SSS/lookups/ticket-statuses            - Ticket status options
+
+# AMS - Athletes
+GET    /api/AMS/athletes                           - List/search athletes (paginated)
+GET    /api/AMS/athletes/:id                       - Athlete detail (athlete + registry)
+POST   /api/AMS/athletes                           - Create athlete + registry + medical (transaction)
+PATCH  /api/AMS/athletes/:id                       - Update athlete base fields
+DELETE /api/AMS/athletes                           - Bulk delete athletes
+PATCH  /api/AMS/athletes/:id/registry              - Update registry
+PATCH  /api/AMS/athletes/:id/medical               - Update medical record
+
+# AMS - Lookups
+GET    /api/AMS/lookups/sports                     - Sports dropdown
 ```
 
 ### Integration Pattern (Implemented January 2026)
@@ -613,14 +665,25 @@ try {
 ```
 PostgreSQL Database
 ├── SSS (Supplement Support System)
-│   ├── Supplement                    # Main supplement data
-│   ├── Supplement_Staging            # Web scraper staging
+│   ├── Supplement                    # Main supplement data (with vector columns)
+│   ├── Supplement_Staging            # Web scraper staging area
 │   ├── Inventory_Batch               # Batch/lot tracking
 │   ├── Inventory_Ticket              # Supplement allocations
+│   ├── webscraper_catalog_url        # Scraper target URLs
 │   ├── Supplement_Packaging_Form_Lookup
 │   ├── Supplement_Status_Lookup
 │   ├── Batch_Stock_Status_Lookup
 │   └── Ticket_Status_Lookup
+│
+├── AMS (Athlete Management System)
+│   ├── Athlete                       # Main athlete profile
+│   ├── Athlete_Registry              # Carding status (1:1 with Athlete)
+│   ├── Athlete_Medical               # Medical info (1:1 with Athlete)
+│   ├── Coach_Athlete_Mapping         # M:M athlete-coach
+│   ├── Nutritionist_Athlete_Mapping  # M:M athlete-nutritionist
+│   ├── Coach                         # Coach catalog
+│   ├── Nutritionist                  # Nutritionist catalog
+│   └── Sport_Lookup                  # Sports reference
 │
 └── audit (Admin Schema)
     └── audit_log                     # Centralized audit trail
@@ -848,80 +911,51 @@ Client ← Routes ← Controller ← Service
 
 ## Future Architecture Plans
 
-### Phase 2: Enhanced Features
+### Completed Phases
 
-**1. Authentication System**
+**Phase 1: Core CRUD** - ✅ Complete
+- Supplement CRUD with validation
+- Inventory batch CRUD with stock calculations
+- Lookup tables and dropdowns
+
+**Phase 2: Vectorization & Webscraper** - ✅ Complete
+- Vector similarity search (pgvector, 384-dim BAAI/bge-small-en-v1.5)
+- Alternative supplement recommendations (60% threshold)
+- Vectorization on create and update (re-vectorize when ingredients/nutrition change)
+- Web scraper integration (catalog URLs, fire-and-forget scraping)
+- Staging workflow with duplicate detection (95% vector similarity + name/brand)
+- Staging approval promotes to main library with vectors
+
+**Phase 2.5: AMS Phase 1** - ✅ Complete
+- Athlete CRUD with registry + medical in single transaction
+- Athlete detail page (athlete + registry)
+- Sport lookup for dropdowns
+
+### Upcoming Phases
+
+**Phase 3: AMS Phase 2**
+```
+Features:
+- Coach/Nutritionist CRUD
+- Coach-Athlete and Nutritionist-Athlete assignment management
+- Additional lookup endpoints
+```
+
+**Phase 4: Authentication & Security**
 ```
 Components:
 - User table
 - JWT tokens
 - Login/logout endpoints
-- Password reset flow
-- Role management
+- Role-based access control
 ```
 
-**2. Batch CRUD Operations**
-```
-Endpoints:
-- POST /api/SSS/batches
-- GET /api/SSS/batches/:id
-- PATCH /api/SSS/batches/:id
-- DELETE /api/SSS/batches
-```
-
-**3. File Upload**
+**Phase 5: Inventory Tickets & OCR**
 ```
 Features:
-- Supplement label images
-- Image storage (local/cloud)
-- Image optimization
-- OCR integration
-```
-
-### Phase 3: Advanced Features
-
-**1. Vector Search (pgvector)**
-```
-Features:
-- Supplement similarity search
-- Find alternatives
-- Embedding generation
-- Cosine similarity ranking
-```
-
-**2. OCR Integration**
-```
-Flow:
-Client → Upload Image → OCR Service → AI Parsing → Supplement Match
-```
-
-**3. Web Scraping**
-```
-Components:
-- Scraper scheduler
-- Data validation
-- Staging table workflow
-- Admin approval interface
-```
-
-### Phase 4: Athlete Management
-
-**1. AMS Module**
-```
-Features:
-- Athlete profiles
-- Supplement allocations
-- Progress tracking
-- Health metrics
-```
-
-**2. Inventory Tickets**
-```
-Features:
-- Ticket creation
-- Stock reservation
-- Fulfillment tracking
-- History logs
+- Ticket creation and fulfillment
+- OCR integration for supplement labels
+- File upload for supplement images
 ```
 
 ---
@@ -1209,8 +1243,8 @@ Increment:
 
 ---
 
-**Document Version:** 3.0
-**Last Updated:** January 31, 2026
-**Changes:** Added vectorization integration code, webscraper endpoints, admin API routes, catalog URL management
-**Next Review:** After Phase 3 (Authentication) completion
+**Document Version:** 4.0
+**Last Updated:** February 5, 2026
+**Changes:** Updated SSS to subfolder structure, added staging duplicate detection, vectorization on update, AMS module, complete endpoint listing
+**Next Review:** After AMS Phase 2 (assignments)
 **Maintained By:** Development Team

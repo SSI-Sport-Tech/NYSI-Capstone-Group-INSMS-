@@ -24,7 +24,7 @@ const router = express.Router();
  *       - Ordered by ID (newest first)
  *
  *       **Use Case:** View Supplement Staging Library
- *     tags: [Staging]
+ *     tags: [SSS - Staging]
  *     parameters:
  *       - $ref: '#/components/parameters/PageParam'
  *     responses:
@@ -69,7 +69,7 @@ router.get('/staging-supplements', controller.listStagingSupplements);
  *       - Includes `is_reviewed` status
  *
  *       **Use Case:** View Supplement Staging Details
- *     tags: [Staging]
+ *     tags: [SSS - Staging]
  *     parameters:
  *       - name: id
  *         in: path
@@ -146,7 +146,7 @@ router.get('/staging-supplements/:id', controller.getStagingSupplementDetails);
  *       - Cannot edit: `is_reviewed` (managed by approval workflow)
  *
  *       **Use Case:** Edit Supplement Staging
- *     tags: [Staging]
+ *     tags: [SSS - Staging]
  *     parameters:
  *       - name: id
  *         in: path
@@ -227,7 +227,7 @@ router.patch('/staging-supplements/:id', controller.updateStagingSupplement);
  *       - No validation checks needed (entries won't be in list if reviewed)
  *
  *       **Use Case:** Delete Supplement Staging
- *     tags: [Staging]
+ *     tags: [SSS - Staging]
  *     requestBody:
  *       required: true
  *       content:
@@ -308,7 +308,7 @@ router.delete('/staging-supplements', controller.deleteStagingSupplements);
  *       - 400: All failed
  *
  *       **Use Case:** Verifying Supplement Staging
- *     tags: [Staging]
+ *     tags: [SSS - Staging]
  *     requestBody:
  *       required: true
  *       content:
@@ -423,7 +423,7 @@ router.post('/staging-supplements/approve', controller.approveStagingSupplements
  *       - Product listing pages to scrape (e.g., iHerb vitamins page)
  *       - Can be activated/deactivated
  *       - Users can select which ones to scrape
- *     tags: [Catalog URLs]
+ *     tags: [SSS - Catalog URLs]
  *     parameters:
  *       - $ref: '#/components/parameters/PageParam'
  *     responses:
@@ -473,7 +473,7 @@ router.get('/catalog-urls', controller.listCatalogUrls);
  *   get:
  *     summary: Get Catalog URL Details
  *     description: Retrieve details of a specific catalog URL
- *     tags: [Catalog URLs]
+ *     tags: [SSS - Catalog URLs]
  *     parameters:
  *       - name: id
  *         in: path
@@ -517,7 +517,7 @@ router.get('/catalog-urls/:id', controller.getCatalogUrlDetails);
  *       - is_active (default: true)
  *
  *       **Note:** number_of_catalog_page is deprecated and set to NULL automatically
- *     tags: [Catalog URLs]
+ *     tags: [SSS - Catalog URLs]
  *     requestBody:
  *       required: true
  *       content:
@@ -577,7 +577,7 @@ router.post('/catalog-urls', controller.createCatalogUrl);
  *   patch:
  *     summary: Update Catalog URL
  *     description: Update one or more fields of a catalog URL
- *     tags: [Catalog URLs]
+ *     tags: [SSS - Catalog URLs]
  *     parameters:
  *       - name: id
  *         in: path
@@ -625,7 +625,7 @@ router.patch('/catalog-urls/:id', controller.updateCatalogUrl);
  *   delete:
  *     summary: Delete Catalog URLs (Bulk)
  *     description: Permanently delete one or more catalog URLs
- *     tags: [Catalog URLs]
+ *     tags: [SSS - Catalog URLs]
  *     requestBody:
  *       required: true
  *       content:
@@ -702,7 +702,7 @@ router.delete('/catalog-urls', controller.deleteCatalogUrls);
  *       **No Job Tracking:**
  *       - Simple fire-and-forget approach
  *       - Results appear in Staging Supplements (is_reviewed = false)
- *     tags: [Scraping]
+ *     tags: [SSS - Scraping]
  *     requestBody:
  *       required: false
  *       content:

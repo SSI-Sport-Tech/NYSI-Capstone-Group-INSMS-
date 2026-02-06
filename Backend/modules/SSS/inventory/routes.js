@@ -14,7 +14,7 @@ const router = express.Router();
  *     summary: List or Search Inventory Batches
  *     description: |
  *       Retrieve a paginated list of inventory batches with optional search functionality.
- *     tags: [Inventory]
+ *     tags: [SSS - Inventory]
  *     parameters:
  *       - $ref: '#/components/parameters/PageParam'
  *       - $ref: '#/components/parameters/SearchParam'
@@ -40,7 +40,7 @@ router.get('/batches', controller.listBatches);
  *     description: |
  *       Add a new inventory batch to the database.
  *       `batch_stock_status_id` is auto-set to "available" by backend.
- *     tags: [Inventory]
+ *     tags: [SSS - Inventory]
  *     requestBody:
  *       required: true
  *       content:
@@ -87,7 +87,7 @@ router.post('/batches', controller.createBatch);
  *   patch:
  *     summary: Update Batch (Partial)
  *     description: Update one or more fields of an existing batch.
- *     tags: [Inventory]
+ *     tags: [SSS - Inventory]
  *     parameters:
  *       - name: id
  *         in: path
@@ -137,7 +137,7 @@ router.patch('/batches/:id', controller.updateBatch);
  *   delete:
  *     summary: Delete Batches (Bulk)
  *     description: Permanently delete one or more batches. Prevents deletion if batch has existing tickets.
- *     tags: [Inventory]
+ *     tags: [SSS - Inventory]
  *     requestBody:
  *       required: true
  *       content:

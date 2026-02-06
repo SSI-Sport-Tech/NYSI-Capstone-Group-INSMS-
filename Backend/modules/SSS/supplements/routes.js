@@ -22,7 +22,7 @@ const router = express.Router();
  *       - Returns 10 items per page
  *
  *       **Use Cases:** UC-SSS-001 (Show Library), UC-SSS-002 (Search)
- *     tags: [Supplements]
+ *     tags: [SSS - Supplements]
  *     parameters:
  *       - $ref: '#/components/parameters/PageParam'
  *       - $ref: '#/components/parameters/SearchParam'
@@ -83,7 +83,7 @@ router.get('/supplements', controller.listSupplements);
  *       - Paginated list of related inventory batches
  *
  *       **Use Case:** UC-SSS-005 (View Supplement Details)
- *     tags: [Supplements]
+ *     tags: [SSS - Supplements]
  *     parameters:
  *       - $ref: '#/components/parameters/SupplementIdParam'
  *       - name: batchPage
@@ -218,7 +218,7 @@ router.get('/supplements/:id', controller.getSupplementDetails);
  *       - Supplements with "DISCONTINUED" status
  *
  *       **Use Case:** Find alternative supplements when primary is out of stock
- *     tags: [Supplements]
+ *     tags: [SSS - Supplements]
  *     parameters:
  *       - $ref: '#/components/parameters/SupplementIdParam'
  *       - name: page
@@ -389,7 +389,7 @@ router.get('/supplements/:id/alternatives', controller.getAlternativeSupplements
  *       - Returns 409 Conflict if duplicate found
  *
  *       **Use Case:** UC-SSS-009 (Create Supplement)
- *     tags: [Supplements]
+ *     tags: [SSS - Supplements]
  *     requestBody:
  *       required: true
  *       content:
@@ -624,7 +624,7 @@ router.post('/supplements', controller.createSupplement);
  *       - If changing to "DISCONTINUED" -> `batch_testing_org` keeps value
  *
  *       **Use Case:** UC-SSS-010 (Edit Supplement)
- *     tags: [Supplements]
+ *     tags: [SSS - Supplements]
  *     parameters:
  *       - $ref: '#/components/parameters/SupplementIdParam'
  *     requestBody:
@@ -713,7 +713,7 @@ router.patch('/supplements/:id', controller.updateSupplement);
  *       - Consider deleting related batches first, or use CASCADE constraints
  *
  *       **Use Case:** UC-SSS-011 (Delete Supplement)
- *     tags: [Supplements]
+ *     tags: [SSS - Supplements]
  *     requestBody:
  *       required: true
  *       content:
@@ -823,7 +823,7 @@ router.delete('/supplements', controller.deleteSupplements);
  *       - Sorted alphabetically by name
  *
  *       **Use Case:** Populate dropdowns in supplement create/edit forms
- *     tags: [Lookups]
+ *     tags: [SSS - Lookups]
  *     parameters:
  *       - in: query
  *         name: includeInactive
@@ -890,7 +890,7 @@ router.get('/lookups/packaging-forms', controller.getPackagingFormsController);
  *       - Sorted alphabetically by name
  *
  *       **Use Case:** Populate dropdowns in supplement create/edit forms
- *     tags: [Lookups]
+ *     tags: [SSS - Lookups]
  *     parameters:
  *       - in: query
  *         name: includeInactive
@@ -951,7 +951,7 @@ router.get('/lookups/supplement-statuses', controller.getSupplementStatusesContr
  *       - New batches auto-set to "available" status
  *
  *       **Use Case:** Populate dropdowns in batch management interfaces
- *     tags: [Lookups]
+ *     tags: [SSS - Lookups]
  *     parameters:
  *       - in: query
  *         name: includeInactive
@@ -1009,7 +1009,7 @@ router.get('/lookups/batch-statuses', controller.getBatchStockStatusesController
  *       - Sorted alphabetically by name
  *
  *       **Use Case:** Populate dropdowns in ticket management interfaces
- *     tags: [Lookups]
+ *     tags: [SSS - Lookups]
  *     parameters:
  *       - in: query
  *         name: includeInactive
