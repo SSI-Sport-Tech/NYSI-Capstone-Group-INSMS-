@@ -3,9 +3,9 @@
 ## Document Purpose
 This document provides a comprehensive overview of the project architecture, technology stack, design patterns, and structural organization.
 
-**Last Updated:** February 5, 2026
-**Version:** 4.0
-**Status:** Active Development - Phase 2.5 Complete, AMS Phase 1 Implemented
+**Last Updated:** February 7, 2026
+**Version:** 5.0
+**Status:** Active Development - Phase 2.5 Complete, AMS Phase 1 Implemented, 2FA Auth & OCR Implemented
 
 ---
 
@@ -187,7 +187,19 @@ NYSI-Capstone-Group-INSMS-/
 │   │   │       ├── services.js
 │   │   │       └── validation.js
 │   │   │
-│   │   └── OCR/                  # OCR Services (In Progress)
+│   │   ├── Auth/                 # Authentication (2FA)
+│   │   │   ├── routes.js         # Auth endpoints
+│   │   │   ├── controller.js     # Auth logic
+│   │   │   ├── services.js       # User CRUD, code management
+│   │   │   ├── validation.js     # Zod schemas
+│   │   │   ├── authMiddleware.js # JWT verification
+│   │   │   └── emailService.js   # Nodemailer for 2FA codes
+│   │   │
+│   │   └── OCR/                  # OCR Services
+│   │       ├── routes.js         # /analyze, /extract, /verify endpoints
+│   │       ├── controller.js     # OCR request handling
+│   │       ├── services.js       # Python service calls, similarity search
+│   │       └── validation.js     # File/query validation
 │   │
 │   ├── server.js                 # Express app entry point
 │   ├── package.json              # Dependencies
@@ -274,6 +286,94 @@ router.use(stagingRoutes);
 #### shared/ Sub-Module
 - **validation.js**: Reusable Zod validators (`uuidSchema`, `paginationSchema`, `bulkDeleteSchema`), business logic helpers (`validateBatchTestingOrg`, `getSupplementStatusById`)
 - **vectorization.js**: Python service integration helpers (`generateVector`, `generateSupplementVectors`, `transformNutritionalDataForVectorization`)
+
+---
+
+### Auth Module (Authentication)
+
+#### Responsibility
+Email-based 2FA authentication with JWT tokens.
+
+#### Structure
+```
+Auth/
+├── routes.js         # Auth endpoints with rate limiting
+├── controller.js     # Request handling
+├── services.js       # User CRUD, code management
+├── validation.js     # Zod schemas
+├── authMiddleware.js # JWT verification middleware
+└── emailService.js   # Nodemailer for 2FA codes
+```
+
+#### Key Features
+- **2FA Flow**: Login → Send code via email → Verify code → Get JWT
+- **Rate Limiting**: Prevents brute force attacks
+- **Password Hashing**: bcrypt with salt rounds
+- **JWT Tokens**: 24-hour expiry, includes user ID and role
+
+#### Endpoints
+```
+POST /api/auth/register      - Create new user (rate limited: 3/hour)
+POST /api/auth/login         - Step 1: Validate credentials, send code (5/15min)
+POST /api/auth/verify-code   - Step 2: Verify code, get token (3/min)
+POST /api/auth/resend-code   - Resend verification code (2/5min)
+GET  /api/auth/me            - Get current user (requires auth)
+POST /api/auth/logout        - Logout (requires auth)
+```
+
+---
+
+### OCR Module
+
+#### Responsibility
+Nutrition label analysis and batch testing verification via Python services.
+
+#### Structure
+```
+OCR/
+├── routes.js         # OCR endpoints with Multer file upload
+├── controller.js     # Request handling, error responses
+├── services.js       # Python service calls, similarity search
+└── validation.js     # File validation, query schemas
+```
+
+#### Use Cases
+
+**UC1: Nutrition Label Analysis**
+```
+POST /api/ocr/analyze
+- Upload nutrition label image (jpg, png, webp - max 10MB)
+- Python service extracts text via PaddleOCR
+- GPT-4o-mini structures data
+- Generate embedding vectors (384-dim)
+- Find similar supplements in DB (60% cosine similarity)
+- Return extracted data + similar supplements (paginated)
+```
+
+**UC2: Brand/Batch Verification**
+```
+POST /api/ocr/extract
+- Upload brand image (required) + batch image (optional)
+- Extract brand/product name via OCR + LLM
+- Extract batch ID via regex patterns (if batch image provided)
+- Return extracted info for user verification
+
+POST /api/ocr/verify
+- Submit verified brand/name/batch_id
+- Search 6 certification databases via Playwright:
+  - Informed Sport, Informed Choice, HASTA
+  - NSF Sport, Cologne List, BSCG
+- Return verification results with quick links
+```
+
+#### Configuration
+- **File Size Limit**: 10MB
+- **Allowed Types**: image/jpeg, image/png, image/webp
+- **Similarity Threshold**: 60%
+- **Python Service Timeout**: 60 seconds
+
+---
+
 ## Python Services Architecture
 
 ### Overview
@@ -336,14 +436,18 @@ Python_Services/
     │   └── settings.py    # Pydantic settings
     ├── routers/
     │   ├── __init__.py
-    │   ├── ocr.py              # OCR endpoints
-    │   ├── vectorization.py    # Vectorization endpoints (/generate, /generate-product-vectors, /health)
-    │   ├── webscraper.py       # Web scraper endpoints (/scrape-full)
-    │   └── batch_verification.py # Batch verification endpoints
+    │   ├── ocr.py                  # OCR endpoints (/analyze, /analyze-text, /identify, /ocr-only)
+    │   ├── vectorization.py        # Vectorization endpoints (/generate, /batch-generate)
+    │   ├── webscraper.py           # Web scraper endpoints (/scrape-full)
+    │   └── batch_verification.py   # Batch verification (Playwright-based)
     ├── services/
     │   ├── __init__.py
-    │   ├── nutrition_workflow.py  # OCR workflow
-    │   └── vectorizer.py          # Embedding generation
+    │   ├── ocr_engine.py           # PaddleOCR wrapper (lazy-loaded)
+    │   ├── llm_structurer.py       # GPT-4o-mini text structuring
+    │   ├── vectorizer.py           # Embedding generation
+    │   ├── batch_id_extractor.py   # Batch ID extraction from text
+    │   ├── certification_searcher.py  # Search certification databases
+    │   └── batch_tester.py         # Batch testing with consensus
     └── schemas/
         ├── __init__.py
         └── supplement.py  # Pydantic models
@@ -380,13 +484,27 @@ Python_Services/
 
 **Python Service Base URL:** `http://localhost:8001`
 ```
-POST   /api/ocr/analyze                            - Upload image → Extract supplement data
+# OCR Endpoints
+POST   /api/ocr/analyze                            - Full pipeline: image → OCR → structured data → vectors
+POST   /api/ocr/analyze-text                       - Structure raw text (no image/OCR)
+POST   /api/ocr/identify                           - Extract brand/name only (fast)
+POST   /api/ocr/ocr-only                           - Extract raw text from image (no LLM)
 GET    /api/ocr/health                             - OCR service health check
 
-POST   /api/vectorization/generate                 - Generate single 384-dim vector (used by manual supplement create/update)
-POST   /api/vectorization/generate-product-vectors - Generate both per_serving and per_100g vectors (used by staging approval)
+# Vectorization Endpoints
+POST   /api/vectorization/generate                 - Generate single 384-dim vector
+POST   /api/vectorization/batch-generate           - Generate multiple vectors
 GET    /api/vectorization/health                   - Vectorization health check
 
+# Batch Verification Endpoints (requires Playwright)
+POST   /api/batch-verification/verify              - Verify by brand/product name
+POST   /api/batch-verification/verify-image        - Verify from product image
+POST   /api/batch-verification/verify-batch-id     - Verify by batch/lot number
+POST   /api/batch-verification/verify-combined     - Combined brand + batch ID verification
+GET    /api/batch-verification/databases           - List supported certification databases
+GET    /api/batch-verification/health              - Batch verification health check
+
+# Web Scraper Endpoints
 POST   /api/webscraper/scrape-full                 - Scrape catalog URL → push to staging
 GET    /api/webscraper/health                      - Scraper status
 
@@ -443,6 +561,20 @@ PATCH  /api/AMS/athletes/:id/medical               - Update medical record
 
 # AMS - Lookups
 GET    /api/AMS/lookups/sports                     - Sports dropdown
+
+# Auth - Authentication (2FA)
+POST   /api/auth/register                          - Register new user
+POST   /api/auth/login                             - Step 1: Validate credentials, send 2FA code
+POST   /api/auth/verify-code                       - Step 2: Verify 2FA code, get JWT token
+POST   /api/auth/resend-code                       - Resend 2FA verification code
+GET    /api/auth/me                                - Get current user profile (requires auth)
+POST   /api/auth/logout                            - Logout (requires auth)
+
+# OCR - Nutrition Label Analysis
+POST   /api/ocr/analyze                            - Upload label → extract data → find similar supplements
+POST   /api/ocr/extract                            - Extract brand/name from image + optional batch ID
+POST   /api/ocr/verify                             - Verify supplement on certification sites
+POST   /api/ocr/upload                             - Legacy OCR endpoint (deprecated)
 ```
 
 ### Integration Pattern (Implemented January 2026)
@@ -874,38 +1006,57 @@ Client ← Routes ← Controller ← Service
 
 ## Security Architecture
 
-### Current State: ⚠️ Development Only
+### Current State: ✅ Authentication Implemented
 
-**Not Implemented:**
-- ❌ Authentication
-- ❌ Authorization
-- ❌ Rate limiting
-- ❌ Input sanitization (beyond validation)
-- ❌ SQL injection protection (using parameterized queries, but no additional layer)
-- ❌ XSS protection
-- ❌ CSRF protection
-
-**Implemented:**
+**Implemented (February 2026):**
+- ✅ 2FA Email-based authentication (6-digit codes via Nodemailer)
+- ✅ JWT-based authorization (jsonwebtoken)
+- ✅ Password hashing (bcrypt)
+- ✅ Rate limiting on auth endpoints (express-rate-limit)
+  - Login: 5 attempts per 15 minutes
+  - Code verification: 3 attempts per minute
+  - Code resend: 2 requests per 5 minutes
+  - Registration: 3 attempts per hour
 - ✅ Parameterized SQL queries (prevents SQL injection)
 - ✅ Input validation (Zod schemas)
 - ✅ UUID validation
 - ✅ Environment variable usage
+- ✅ CORS configuration
+
+**Not Yet Implemented:**
+- ❌ Role-based access control (RBAC) - roles exist but not enforced
+- ❌ Helmet.js security headers
+- ❌ CSRF protection
+- ❌ Token refresh mechanism
+- ❌ Token blacklisting on logout
+
+### Authentication Flow (2FA)
+
+```
+1. POST /api/auth/login
+   - Validate email + password
+   - Generate 6-digit code
+   - Send code via email (expires in 10 minutes)
+   - Return masked email for UI
+
+2. POST /api/auth/verify-code
+   - Validate 6-digit code
+   - Generate JWT token (24h expiry)
+   - Return token + user info
+
+3. Subsequent requests
+   - Include token: Authorization: Bearer <token>
+   - Middleware validates JWT
+   - Attaches user to req.user
+```
 
 ### Planned Security Measures
 
-**Phase 2:**
-1. JWT-based authentication
-2. Role-based access control (RBAC)
-3. API rate limiting
-4. Request logging
-5. Input sanitization middleware
-
 **Phase 3:**
-6. Helmet.js security headers
-7. CORS configuration
-8. Password hashing (bcrypt)
-9. Session management
-10. Audit logging enhancement
+1. Role-based access control (RBAC) enforcement
+2. Helmet.js security headers
+3. Token refresh mechanism
+4. Audit logging enhancement
 
 ---
 
@@ -931,9 +1082,17 @@ Client ← Routes ← Controller ← Service
 - Athlete detail page (athlete + registry)
 - Sport lookup for dropdowns
 
+**Phase 3: Authentication & OCR** - ✅ Complete (February 2026)
+- Email-based 2FA authentication (nodemailer, bcrypt, jsonwebtoken)
+- Rate limiting on auth endpoints
+- OCR nutrition label analysis (PaddleOCR + GPT-4o-mini)
+- Vector similarity search for similar supplements
+- Batch testing verification (6 certification databases via Playwright)
+- Brand/name/batch ID extraction from images
+
 ### Upcoming Phases
 
-**Phase 3: AMS Phase 2**
+**Phase 4: AMS Phase 2**
 ```
 Features:
 - Coach/Nutritionist CRUD
@@ -941,21 +1100,20 @@ Features:
 - Additional lookup endpoints
 ```
 
-**Phase 4: Authentication & Security**
+**Phase 5: RBAC & Token Management**
 ```
-Components:
-- User table
-- JWT tokens
-- Login/logout endpoints
-- Role-based access control
+Features:
+- Role-based access control enforcement
+- Token refresh mechanism
+- Token blacklisting
+- Protected routes by role
 ```
 
-**Phase 5: Inventory Tickets & OCR**
+**Phase 6: Inventory Tickets**
 ```
 Features:
 - Ticket creation and fulfillment
-- OCR integration for supplement labels
-- File upload for supplement images
+- Athlete supplement allocation tracking
 ```
 
 ---
@@ -1243,8 +1401,8 @@ Increment:
 
 ---
 
-**Document Version:** 4.0
-**Last Updated:** February 5, 2026
-**Changes:** Updated SSS to subfolder structure, added staging duplicate detection, vectorization on update, AMS module, complete endpoint listing
+**Document Version:** 5.0
+**Last Updated:** February 7, 2026
+**Changes:** Added Auth module (2FA), OCR module (nutrition analysis, batch verification), updated Security Architecture, updated Python Services endpoints
 **Next Review:** After AMS Phase 2 (assignments)
 **Maintained By:** Development Team
