@@ -4,9 +4,9 @@
 
 The NYSI Python Services is a FastAPI microservice that handles AI/ML operations for the supplement management system.
 
-**Version:** 2.0
+**Version:** 3.0
 **Port:** 8001
-**Last Updated:** January 31, 2026
+**Last Updated:** February 7, 2026
 
 ---
 
@@ -55,7 +55,13 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-**5. Configure Environment:**
+**5. Install Playwright Browsers (required for batch verification):**
+```bash
+playwright install
+```
+> **Note**: This downloads browser binaries (~500MB). For a smaller install, use `playwright install chromium` instead.
+
+**6. Configure Environment:**
 ```bash
 # Create .env file
 cp .env.example .env
@@ -64,12 +70,12 @@ cp .env.example .env
 OPENAI_API_KEY=sk-proj-your-key-here
 ```
 
-**6. Start Server:**
+**7. Start Server:**
 ```bash
 uvicorn app.main:app --reload --port 8001
 ```
 
-**7. Verify:**
+**8. Verify:**
 - Server: http://localhost:8001
 - Swagger Docs: http://localhost:8001/docs
 - Health Check: http://localhost:8001/health
@@ -82,18 +88,24 @@ uvicorn app.main:app --reload --port 8001
 ```
 Python_Services/
 ├── app/
-│   ├── main.py              # FastAPI app + CORS
+│   ├── main.py                    # FastAPI app + CORS
 │   ├── config/
-│   │   └── settings.py      # Environment config
+│   │   └── settings.py            # Environment config
 │   ├── routers/
-│   │   ├── ocr.py          # OCR endpoints
-│   │   ├── vectorization.py # Embedding endpoints
-│   │   └── scraper.py      # Web scraper (placeholder)
+│   │   ├── ocr.py                 # OCR endpoints (/analyze, /analyze-text, /identify, /ocr-only)
+│   │   ├── vectorization.py       # Embedding endpoints (/generate, /batch-generate)
+│   │   ├── batch_verification.py  # Batch testing verification (Playwright)
+│   │   └── webscraper.py          # Web scraper endpoints
 │   ├── services/
-│   │   ├── nutrition_workflow.py  # OCR + LLM workflow
-│   │   └── vectorizer.py          # Embedding generation
+│   │   ├── ocr_engine.py          # PaddleOCR wrapper (lazy-loaded)
+│   │   ├── llm_structurer.py      # GPT-4o-mini text structuring
+│   │   ├── vectorizer.py          # Embedding generation
+│   │   ├── batch_id_extractor.py  # Batch ID extraction from text
+│   │   ├── certification_searcher.py  # Search certification databases
+│   │   └── batch_tester.py        # Batch testing with consensus
 │   └── schemas/
-│       └── supplement.py   # Pydantic models
+│       ├── supplement.py          # Supplement Pydantic models
+│       └── ocr_schemas.py         # OCR response schemas
 ├── .env                    # API keys (not in git)
 ├── requirements.txt        # Locked dependencies
 └── venv/                   # Virtual environment
@@ -177,7 +189,7 @@ Content-Type: application/json
 
 #### **2. OCR**
 
-**Analyze Supplement Label:**
+**Full Pipeline (Image → OCR → Structured Data → Vectors):**
 ```http
 POST /api/ocr/analyze
 Content-Type: multipart/form-data
@@ -203,9 +215,94 @@ file: <image file>
 }
 ```
 
+**Structure Raw Text (No Image/OCR):**
+```http
+POST /api/ocr/analyze-text
+Content-Type: application/json
+
+{
+  "raw_text": "Nutrition Facts\nServing Size 1 capsule\n..."
+}
+```
+
+**Extract Brand/Name Only (Fast):**
+```http
+POST /api/ocr/identify
+Content-Type: application/json
+
+{
+  "raw_text": "OPTIMUM NUTRITION GOLD STANDARD WHEY..."
+}
+```
+
+**Extract Raw Text Only (No LLM):**
+```http
+POST /api/ocr/ocr-only
+Content-Type: multipart/form-data
+
+file: <image file>
+```
+
 ---
 
-#### **3. Web Scraper**
+#### **3. Batch Verification**
+
+> **Note**: Requires Playwright browsers to be installed (`playwright install`)
+
+**Verify by Brand/Product Name:**
+```http
+POST /api/batch-verification/verify
+Content-Type: application/json
+
+{
+  "supplement_brand": "Optimum Nutrition",
+  "supplement_name": "Gold Standard Whey"
+}
+```
+
+**Verify with Batch ID (Combined):**
+```http
+POST /api/batch-verification/verify-combined
+Content-Type: application/json
+
+{
+  "supplement_brand": "Optimum Nutrition",
+  "supplement_name": "Gold Standard Whey",
+  "batch_id": "BN108446"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "is_verified": true,
+  "is_batch_tested": true,
+  "found_count": 2,
+  "found_websites": ["Informed Sport", "NSF Sport"],
+  "urls": [
+    {
+      "website": "Informed Sport",
+      "product_url": "https://...",
+      "product_name": "Gold Standard 100% Whey",
+      "confidence": "high"
+    }
+  ],
+  "quick_links": ["https://..."]
+}
+```
+
+**Supported Databases:**
+- Informed Sport
+- Informed Choice
+- HASTA
+- NSF Sport
+- Cologne List
+- BSCG
+
+---
+
+#### **4. Web Scraper**
 
 **Scrape Full Catalog (Called by Node.js):**
 ```http
@@ -236,7 +333,7 @@ Content-Type: application/json
 
 ---
 
-#### **4. Health Checks**
+#### **5. Health Checks**
 
 **Global Health:**
 ```http
@@ -251,6 +348,11 @@ GET /api/ocr/health
 **Vectorization Health:**
 ```http
 GET /api/vectorization/health
+```
+
+**Batch Verification Health:**
+```http
+GET /api/batch-verification/health
 ```
 
 **Webscraper Health:**
@@ -387,24 +489,45 @@ lsof -ti:8001 | xargs kill -9
 First run downloads embedding model (~150MB)
 **Solution:** Wait patiently, subsequent starts are fast
 
+**5. Playwright Browser Not Found:**
+```
+Error: Please run the following command to download new browsers: playwright install
+```
+**Solution:** Install Playwright browsers
+```bash
+# Activate venv first
+venv\Scripts\activate  # Windows
+source venv/bin/activate  # Mac/Linux
+
+# Install all browsers (~500MB)
+playwright install
+
+# Or install only Chromium (~150MB)
+playwright install chromium
+```
+
 ---
 
 ## Performance Notes
 
-**First Startup:** ~30 seconds (loads models)  
-**Subsequent Startups:** ~5 seconds  
-**Vectorization:** ~1-2 seconds per request  
-**OCR:** ~10-25 seconds per image  
+**First Startup:** ~30 seconds (loads models)
+**Subsequent Startups:** ~5 seconds
+**Vectorization:** ~1-2 seconds per request
+**OCR:** ~10-25 seconds per image
+**Batch Verification:** ~15-60 seconds (searches 6 websites via Playwright)
 **Memory Usage:** ~2-3 GB (models in memory)
 
 ---
 
 ## Next Steps
 
-**Phase 3 (Completed):**
+**Phase 3 (Completed - February 2026):**
 - [x] Integrate with Node.js backend (vectorization on create/update)
 - [x] Web scraper integration with staging workflow
-- [ ] Add authentication
+- [x] OCR endpoints (analyze, analyze-text, identify, ocr-only)
+- [x] Batch verification endpoints (6 certification databases)
+- [x] Playwright browser automation for certification searches
+- [ ] Add service authentication
 - [ ] Implement caching
 - [ ] Add monitoring
 
@@ -417,7 +540,7 @@ First run downloads embedding model (~150MB)
 
 ---
 
-**Document Version:** 2.0
-**Last Updated:** January 31, 2026
-**Changes:** Added webscraper endpoints documentation, updated integration status
+**Document Version:** 3.0
+**Last Updated:** February 7, 2026
+**Changes:** Added Playwright setup, batch verification endpoints, expanded OCR endpoints, updated architecture
 **Maintained By:** Development Team
