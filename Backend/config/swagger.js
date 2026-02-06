@@ -71,6 +71,10 @@ const swaggerOptions = {
                 name: "OCR",
                 description: "OCR and text extraction services",
             },
+            {
+                name: "Authentication",
+                description: "User authentication, login, logout, and 2FA",
+            },
         ],
         components: {
             schemas: {
@@ -1047,6 +1051,16 @@ const swaggerOptions = {
                         },
                     },
                 },
+
+            },
+            // ==================== SECURITY SCHEMA ====================
+            securitySchemes: {
+                bearerAuth: {
+                    type: "http",
+                    scheme: "bearer",
+                    bearerFormat: "JWT",
+                    description: "Enter JWT token in the format: Bearer <token>",
+                },
             },
 
             // ==================== REUSABLE PARAMETERS ====================
@@ -1167,6 +1181,7 @@ const swaggerOptions = {
         "./modules/AMS/athlete/routes.js",
         "./modules/OCR/routes.js",
         "./server.js",
+        "./modules/Auth/routes.js",
     ],
 };
 
