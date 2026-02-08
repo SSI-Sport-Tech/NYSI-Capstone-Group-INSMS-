@@ -81,7 +81,7 @@ CREATE TABLE AMS.Athlete (
 | `sport_id` | UUID | No | FK to Sport_Lookup (current/historical sport) |
 | `sportsyncID` | TEXT | No | External system ID for integration |
 | `athlete_name_abbr` | TEXT | No | Athlete's abbreviated name |
-| `gender` | TEXT | No | Athlete's gender |
+| `gender` | TEXT | No | Athlete's gender (CHECK: MALE, FEMALE, OTHER) |
 | `date_of_birth` | DATE | No | Athlete's birth date |
 
 **Business Rules:**
@@ -92,7 +92,7 @@ CREATE TABLE AMS.Athlete (
 **Important Notes:**
 - ✅ **All fields must be provided** during athlete creation
 - ✅ **No validation constraints** on athlete_name_abbr (free text)
-- ✅ **gender is TEXT** (not a lookup table)
+- ✅ **gender is TEXT** with CHECK constraint: must be `MALE`, `FEMALE`, or `OTHER` (uppercase)
 
 ---
 
@@ -108,7 +108,7 @@ CREATE TABLE AMS.Athlete_Registry (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     athlete_id UUID NOT NULL UNIQUE,  -- UNIQUE ensures 1:1
     carding_status TEXT NOT NULL,
-    athlete_mathlid_on DATE NOT NULL,
+    athlete_notified_on DATE NOT NULL,
     carding_start_date DATE NOT NULL,
     carding_end_date DATE NOT NULL,
     medical_clearance BOOLEAN NOT NULL,
@@ -127,7 +127,7 @@ CREATE TABLE AMS.Athlete_Registry (
 | `id` | UUID | No | Primary key |
 | `athlete_id` | UUID | No (UNIQUE) | FK to Athlete (1:1 relationship) |
 | `carding_status` | TEXT | No | Carding status (free text) |
-| `athlete_mathlid_on` | DATE | No | Athlete math/ID date (logging) |
+| `athlete_notified_on` | DATE | No | Athlete math/ID date (logging) |
 | `carding_start_date` | DATE | No | Carding period start |
 | `carding_end_date` | DATE | No | Carding period end |
 | `medical_clearance` | BOOLEAN | No | Medical clearance flag |
@@ -605,7 +605,7 @@ RETURNING *;
 INSERT INTO AMS.Athlete_Registry (
     athlete_id,
     carding_status,
-    athlete_mathlid_on,
+    athlete_notified_on,
     carding_start_date,
     carding_end_date,
     medical_clearance,

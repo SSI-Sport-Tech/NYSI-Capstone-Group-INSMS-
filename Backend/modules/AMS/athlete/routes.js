@@ -45,6 +45,7 @@ const router = express.Router();
  *                         type: string
  *                       gender:
  *                         type: string
+ *                         enum: [MALE, FEMALE, OTHER]
  *                       date_of_birth:
  *                         type: string
  *                         format: date
@@ -109,6 +110,7 @@ router.get('/athletes', controller.listAthletes);
  *                       type: string
  *                     gender:
  *                       type: string
+ *                       enum: [MALE, FEMALE, OTHER]
  *                     date_of_birth:
  *                       type: string
  *                       format: date
@@ -128,7 +130,7 @@ router.get('/athletes', controller.listAthletes);
  *                       format: uuid
  *                     carding_status:
  *                       type: string
- *                     athlete_mathlid_on:
+ *                     athlete_notified_on:
  *                       type: string
  *                       format: date
  *                     carding_start_date:
@@ -177,7 +179,7 @@ router.get('/athletes/:id', controller.getAthleteDetails);
  *               - gender
  *               - date_of_birth
  *               - carding_status
- *               - athlete_mathlid_on
+ *               - athlete_notified_on
  *               - carding_start_date
  *               - carding_end_date
  *               - medical_clearance
@@ -200,7 +202,8 @@ router.get('/athletes/:id', controller.getAthleteDetails);
  *                 description: Athlete abbreviated name
  *               gender:
  *                 type: string
- *                 description: Athlete gender
+ *                 enum: [MALE, FEMALE, OTHER]
+ *                 description: Athlete gender (must be MALE, FEMALE, or OTHER)
  *               date_of_birth:
  *                 type: string
  *                 format: date
@@ -208,7 +211,7 @@ router.get('/athletes/:id', controller.getAthleteDetails);
  *               carding_status:
  *                 type: string
  *                 description: Carding status
- *               athlete_mathlid_on:
+ *               athlete_notified_on:
  *                 type: string
  *                 format: date
  *               carding_start_date:
@@ -237,10 +240,10 @@ router.get('/athletes/:id', controller.getAthleteDetails);
  *             sport_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
  *             sportsync_id: "SS-12345"
  *             athlete_name_abbr: "J. Smith"
- *             gender: "Male"
+ *             gender: "MALE"
  *             date_of_birth: "1998-03-15"
  *             carding_status: "Active"
- *             athlete_mathlid_on: "2024-01-01"
+ *             athlete_notified_on: "2024-01-01"
  *             carding_start_date: "2024-01-01"
  *             carding_end_date: "2025-12-31"
  *             medical_clearance: true
@@ -312,6 +315,7 @@ router.post('/athletes', controller.createAthlete);
  *                 type: string
  *               gender:
  *                 type: string
+ *                 enum: [MALE, FEMALE, OTHER]
  *               date_of_birth:
  *                 type: string
  *                 format: date
@@ -418,7 +422,7 @@ router.delete('/athletes', controller.deleteAthletes);
  *             properties:
  *               carding_status:
  *                 type: string
- *               athlete_mathlid_on:
+ *               athlete_notified_on:
  *                 type: string
  *                 format: date
  *               carding_start_date:

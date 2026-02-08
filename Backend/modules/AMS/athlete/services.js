@@ -199,7 +199,7 @@ export async function createAthleteWithRelations(athleteData, registryData, medi
         // 2. Insert registry
         const registryResult = await client.query(`
             INSERT INTO AMS.Athlete_Registry (
-                athlete_id, carding_status, athlete_mathlid_on,
+                athlete_id, carding_status, athlete_notified_on,
                 carding_start_date, carding_end_date, medical_clearance,
                 approved_start_date, approved_end_date
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -207,7 +207,7 @@ export async function createAthleteWithRelations(athleteData, registryData, medi
         `, [
             athlete.id,
             registryData.carding_status,
-            registryData.athlete_mathlid_on,
+            registryData.athlete_notified_on,
             registryData.carding_start_date,
             registryData.carding_end_date,
             registryData.medical_clearance,
@@ -312,7 +312,7 @@ export async function deleteAthletes(athleteIds) {
  */
 export async function getRegistryByAthleteId(athleteId) {
     const query = `
-        SELECT id, athlete_id, carding_status, athlete_mathlid_on,
+        SELECT id, athlete_id, carding_status, athlete_notified_on,
                carding_start_date, carding_end_date, medical_clearance,
                approved_start_date, approved_end_date
         FROM AMS.Athlete_Registry
@@ -336,7 +336,7 @@ export async function updateRegistry(athleteId, updateData) {
 
     const fieldMapping = {
         carding_status: updateData.carding_status,
-        athlete_mathlid_on: updateData.athlete_mathlid_on,
+        athlete_notified_on: updateData.athlete_notified_on,
         carding_start_date: updateData.carding_start_date,
         carding_end_date: updateData.carding_end_date,
         medical_clearance: updateData.medical_clearance,

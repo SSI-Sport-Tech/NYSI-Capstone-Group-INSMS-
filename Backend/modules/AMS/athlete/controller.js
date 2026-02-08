@@ -159,7 +159,7 @@ export async function createAthlete(req, res) {
 
         const registryData = {
             carding_status: validated.carding_status,
-            athlete_mathlid_on: validated.athlete_mathlid_on,
+            athlete_notified_on: validated.athlete_notified_on,
             carding_start_date: validated.carding_start_date,
             carding_end_date: validated.carding_end_date,
             medical_clearance: validated.medical_clearance,
