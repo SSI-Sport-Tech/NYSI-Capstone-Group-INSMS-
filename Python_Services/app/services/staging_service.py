@@ -86,9 +86,9 @@ def map_product_to_staging(
     
     # Map batch testing status
     batch_status_map = {
-        True: status_lookup.get("batch tested"),
-        False: status_lookup.get("not batch tested"),
-        None: status_lookup.get("not batch tested"),  # or "unknown" if you have it
+        "yes": status_lookup.get("batch tested"),
+        "no": status_lookup.get("not batch tested"),
+        "unknown": status_lookup.get("not batch tested")
     }
     
     # Collect all source URLs
@@ -103,9 +103,8 @@ def map_product_to_staging(
             (product.get("Minimum Unit") or "").lower(),
             packaging_lookup.get(DEFAULT_MINIMUM_UNIT.lower())
         ),
-        "supplement_status_id":batch_status_map.get(
-            product.get("Batch_tested"),
-            status_lookup.get("not batch tested")
+        "supplement_status_id": batch_status_map.get(
+            (product.get("Batch_tested") or "unknown").lower()
         ),
         
         # Input info

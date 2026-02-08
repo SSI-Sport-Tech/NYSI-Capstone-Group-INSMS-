@@ -3,8 +3,8 @@ Batch testing certification search service.
 Searches web for batch testing certifications (Informed Sport, NSF, etc.)
 """
 
-# import nest_asyncio  
-# nest_asyncio.apply()  
+import nest_asyncio  
+nest_asyncio.apply()  
 
 from typing import Dict, List
 from pydantic import BaseModel

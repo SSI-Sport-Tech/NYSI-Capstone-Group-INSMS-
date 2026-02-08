@@ -4,11 +4,8 @@ import dotenv from "dotenv";
 import swaggerUi from "swagger-ui-express";
 import swaggerSpecs from "./config/swagger.js";
 import ocrRoutes from "./modules/OCR/routes.js";
-import supplementRoutes from "./modules/SSS/index.js";
-import athleteRoutes from "./modules/AMS/index.js";
-import authRoutes from "./modules/Auth/routes.js"; // ✅ NEW: Authentication routes
-import { verifyEmailConfig } from "./modules/Auth/emailService.js"; // ✅ NEW: Email verification
-
+import supplementRoutes from "./modules/SSS/routes.js";
+import athleteRoutes from "./modules/AthleteProfileSystem/routes.js";
 
 // Load environment variables
 dotenv.config();
@@ -36,27 +33,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // ==================== API DOCUMENTATION ====================
 
-// Update Swagger with security scheme for JWT
-const swaggerOptions = {
-    ...swaggerSpecs,
-    components: {
-        ...swaggerSpecs.components,
-        securitySchemes: {
-            bearerAuth: {
-                type: "http",
-                scheme: "bearer",
-                bearerFormat: "JWT",
-                description: "Enter your JWT token from /api/auth/verify-code",
-            },
-        },
-    },
-};
-
 // Swagger UI setup
 app.use(
     "/docs",
     swaggerUi.serve,
-    swaggerUi.setup(swaggerOptions, {
+    swaggerUi.setup(swaggerSpecs, {
         explorer: true,
         customCss: ".swagger-ui .topbar { display: none }",
         customSiteTitle: "NYSI API Documentation",
@@ -72,17 +53,13 @@ app.use(
 // Swagger JSON endpoint (useful for importing into other tools)
 app.get("/docs.json", (req, res) => {
     res.setHeader("Content-Type", "application/json");
-    res.send(swaggerOptions);
+    res.send(swaggerSpecs);
 });
 
 // ==================== API ROUTES ====================
 
-// ✅ NEW: Authentication routes (must be first for security)
-app.use("/api/auth", authRoutes);
-
-// Existing routes
 app.use("/api/SSS", supplementRoutes);
-app.use("/api/AMS", athleteRoutes);
+app.use("/api/APS", athleteRoutes);
 app.use("/api/ocr", ocrRoutes);
 
 // ==================== HEALTH CHECK ENDPOINTS ====================
@@ -107,11 +84,7 @@ app.use("/api/ocr", ocrRoutes);
  *                   example: "NYSI Backend API is running"
  *                 version:
  *                   type: string
- *                   example: "2.1"
- *                 features:
- *                   type: array
- *                   items:
- *                     type: string
+ *                   example: "2.0"
  *                 documentation:
  *                   type: string
  *                   example: "http://localhost:8000/docs"
@@ -122,14 +95,7 @@ app.use("/api/ocr", ocrRoutes);
 app.get("/", (req, res) => {
     res.json({
         message: "NYSI Backend API is running",
-        version: "2.1",
-        features: [
-            "2FA Email Authentication",
-            "Supplement Management",
-            "Athlete Profiles",
-            "OCR Services",
-            "Web Scraping",
-        ],
+        version: "2.0",
         documentation: `http://localhost:${PORT}/docs`,
         timestamp: new Date().toISOString(),
     });
@@ -199,9 +165,6 @@ app.get("/api/test", (req, res) => {
  *                     database:
  *                       type: string
  *                       example: "connected"
- *                     email:
- *                       type: string
- *                       example: "configured"
  *                 timestamp:
  *                   type: string
  *                   format: date-time
@@ -223,15 +186,11 @@ app.get("/api/health", async (req, res) => {
         // Test database connection
         await pool.query("SELECT 1");
 
-        // Check email configuration
-        const emailConfigured = process.env.EMAIL_USER && process.env.EMAIL_PASSWORD;
-
         res.json({
             status: "healthy",
             services: {
                 api: "running",
                 database: "connected",
-                email: emailConfigured ? "configured" : "not_configured",
             },
             timestamp: new Date().toISOString(),
         });
@@ -241,7 +200,6 @@ app.get("/api/health", async (req, res) => {
             services: {
                 api: "running",
                 database: "disconnected",
-                email: "unknown",
             },
             error: error.message,
             timestamp: new Date().toISOString(),
@@ -273,7 +231,7 @@ app.use((err, req, res, next) => {
 
 // ==================== START SERVER ====================
 
-const server = app.listen(PORT, async () => {
+const server = app.listen(PORT, () => {
     console.log("\n" + "=".repeat(60));
     console.log("✅ NYSI Backend API Server Started");
     console.log("=".repeat(60));
@@ -284,13 +242,7 @@ const server = app.listen(PORT, async () => {
         `🔗 CORS Enabled For:  ${process.env.FRONTEND_URL || "http://localhost:3000"
         }`
     );
-    console.log("=".repeat(60));
-    console.log("🔒 Authentication:    2FA Email Enabled");
-    console.log("📧 Email Service:     Checking configuration...");
     console.log("=".repeat(60) + "\n");
-
-    // ✅ NEW: Verify email configuration on startup
-    await verifyEmailConfig();
 });
 
 // Increase timeout for long-running OCR requests (2 minutes)
