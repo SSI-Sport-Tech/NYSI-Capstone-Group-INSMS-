@@ -1,5 +1,5 @@
 import * as services from './services.js';
-import { createCoachSchema, updateCoachSchema, uuidParamSchema, bulkDeleteSchema } from './validation.js';
+import { createCoachSchema, updateCoachSchema, uuidParamSchema, bulkDeleteSchema, createMappingSchema, deleteMappingSchema } from './validation.js';
 
 // ============================================================================
 // LIST COACHES
@@ -150,5 +150,128 @@ export async function deleteCoaches(req, res) {
         }
         console.error('Error deleting coaches:', error);
         res.status(500).json({ error: 'Failed to delete coaches', message: error.message });
+    }
+}
+
+// ============================================================================
+// LIST COACH-ATHLETE MAPPINGS
+// ============================================================================
+
+export async function listMappings(req, res) {
+    try {
+        const result = await services.getAllMappings();
+        res.json({ data: result.rows });
+    } catch (error) {
+        console.error('Error listing coach-athlete mappings:', error);
+        res.status(500).json({ error: 'Failed to fetch mappings', message: error.message });
+    }
+}
+
+// ============================================================================
+// LIST MAPPINGS BY ATHLETE
+// ============================================================================
+
+export async function listMappingsByAthlete(req, res) {
+    try {
+        const athleteId = req.params.athleteId;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(athleteId)) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: [{ field: 'athleteId', message: 'athleteId must be a valid UUID' }],
+            });
+        }
+
+        const result = await services.getMappingsByAthleteId(athleteId);
+        res.json({ data: result.rows });
+    } catch (error) {
+        console.error('Error listing mappings by athlete:', error);
+        res.status(500).json({ error: 'Failed to fetch mappings', message: error.message });
+    }
+}
+
+// ============================================================================
+// CREATE COACH-ATHLETE MAPPING
+// ============================================================================
+
+export async function createMapping(req, res) {
+    try {
+        const validated = createMappingSchema.parse(req.body);
+
+        // Validate athlete exists
+        const athleteExists = await services.checkAthleteExists(validated.athlete_id);
+        if (!athleteExists) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: [{ field: 'athlete_id', message: 'Athlete not found' }],
+            });
+        }
+
+        // Validate coach exists
+        const coachExists = await services.getCoachById(validated.coach_id);
+        if (!coachExists) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: [{ field: 'coach_id', message: 'Coach not found' }],
+            });
+        }
+
+        // Check duplicate composite key
+        const exists = await services.checkMappingExists(validated.athlete_id, validated.coach_id);
+        if (exists) {
+            return res.status(409).json({
+                error: 'Duplicate mapping',
+                details: [{ message: 'This coach-athlete mapping already exists' }],
+            });
+        }
+
+        const created = await services.createMapping(validated.athlete_id, validated.coach_id, validated.is_active);
+
+        res.status(201).json({
+            message: 'Coach-athlete mapping created successfully',
+            data: created,
+        });
+    } catch (error) {
+        if (error.name === 'ZodError') {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.errors.map(e => ({
+                    field: e.path.join('.'),
+                    message: e.message,
+                })),
+            });
+        }
+        console.error('Error creating coach-athlete mapping:', error);
+        res.status(500).json({ error: 'Failed to create mapping', message: error.message });
+    }
+}
+
+// ============================================================================
+// DELETE COACH-ATHLETE MAPPINGS (BULK)
+// ============================================================================
+
+export async function deleteMappings(req, res) {
+    try {
+        const validated = deleteMappingSchema.parse(req.body);
+
+        const deleted = await services.deleteMappings(validated);
+
+        res.json({
+            message: `Successfully deleted ${deleted.length} mapping(s)`,
+            deletedCount: deleted.length,
+            deleted,
+        });
+    } catch (error) {
+        if (error.name === 'ZodError') {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.errors.map(e => ({
+                    field: e.path.join('.'),
+                    message: e.message,
+                })),
+            });
+        }
+        console.error('Error deleting coach-athlete mappings:', error);
+        res.status(500).json({ error: 'Failed to delete mappings', message: error.message });
     }
 }

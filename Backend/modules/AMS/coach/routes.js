@@ -110,6 +110,225 @@ router.get('/coaches', controller.listCoaches);
  */
 router.post('/coaches', controller.createCoach);
 
+// ============================================================================
+// COACH-ATHLETE MAPPING ROUTES
+// ============================================================================
+
+/**
+ * @swagger
+ * /api/AMS/coaches/mappings:
+ *   get:
+ *     summary: List Coach-Athlete Mappings
+ *     description: |
+ *       Get all coach-athlete mappings with coach and athlete names.
+ *       Returns mappings sorted by athlete name then coach name.
+ *     tags: [AMS - Coaches]
+ *     responses:
+ *       200:
+ *         description: List of coach-athlete mappings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       athlete_id:
+ *                         type: string
+ *                         format: uuid
+ *                       coach_id:
+ *                         type: string
+ *                         format: uuid
+ *                       is_active:
+ *                         type: boolean
+ *                       coach_name:
+ *                         type: string
+ *                       athlete_name:
+ *                         type: string
+ *             example:
+ *               data:
+ *                 - athlete_id: "uuid-athlete-1"
+ *                   coach_id: "uuid-coach-1"
+ *                   is_active: true
+ *                   coach_name: "John Smith"
+ *                   athlete_name: "Jane Doe"
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get('/coaches/mappings', controller.listMappings);
+
+/**
+ * @swagger
+ * /api/AMS/coaches/mappings/athlete/{athleteId}:
+ *   get:
+ *     summary: List Mappings by Athlete
+ *     description: |
+ *       Get all coach-athlete mappings for a specific athlete.
+ *       Returns mappings sorted by coach name.
+ *     tags: [AMS - Coaches]
+ *     parameters:
+ *       - name: athleteId
+ *         in: path
+ *         required: true
+ *         description: Athlete UUID
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: List of mappings for the athlete
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       athlete_id:
+ *                         type: string
+ *                         format: uuid
+ *                       coach_id:
+ *                         type: string
+ *                         format: uuid
+ *                       is_active:
+ *                         type: boolean
+ *                       coach_name:
+ *                         type: string
+ *                       athlete_name:
+ *                         type: string
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get('/coaches/mappings/athlete/:athleteId', controller.listMappingsByAthlete);
+
+/**
+ * @swagger
+ * /api/AMS/coaches/mappings:
+ *   post:
+ *     summary: Create Coach-Athlete Mapping
+ *     description: |
+ *       Create a new coach-athlete mapping.
+ *       Both athlete_id and coach_id must reference existing records.
+ *       Duplicate composite key (athlete_id + coach_id) is rejected with 409.
+ *     tags: [AMS - Coaches]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [athlete_id, coach_id]
+ *             properties:
+ *               athlete_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Athlete UUID
+ *               coach_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Coach UUID
+ *               is_active:
+ *                 type: boolean
+ *                 default: true
+ *                 description: Whether the mapping is active
+ *     responses:
+ *       201:
+ *         description: Mapping created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Coach-athlete mapping created successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     athlete_id:
+ *                       type: string
+ *                       format: uuid
+ *                     coach_id:
+ *                       type: string
+ *                       format: uuid
+ *                     is_active:
+ *                       type: boolean
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       409:
+ *         $ref: '#/components/responses/Conflict'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.post('/coaches/mappings', controller.createMapping);
+
+/**
+ * @swagger
+ * /api/AMS/coaches/mappings:
+ *   delete:
+ *     summary: Delete Coach-Athlete Mappings (Bulk)
+ *     description: |
+ *       Delete one or more coach-athlete mappings by composite key pairs.
+ *       Request body is an array of { athlete_id, coach_id } objects.
+ *     tags: [AMS - Coaches]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: array
+ *             items:
+ *               type: object
+ *               required: [athlete_id, coach_id]
+ *               properties:
+ *                 athlete_id:
+ *                   type: string
+ *                   format: uuid
+ *                 coach_id:
+ *                   type: string
+ *                   format: uuid
+ *             minItems: 1
+ *           example:
+ *             - athlete_id: "uuid-athlete-1"
+ *               coach_id: "uuid-coach-1"
+ *     responses:
+ *       200:
+ *         description: Mappings deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 deletedCount:
+ *                   type: integer
+ *                 deleted:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       athlete_id:
+ *                         type: string
+ *                         format: uuid
+ *                       coach_id:
+ *                         type: string
+ *                         format: uuid
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.delete('/coaches/mappings', controller.deleteMappings);
+
 /**
  * @swagger
  * /api/AMS/coaches/{id}:
