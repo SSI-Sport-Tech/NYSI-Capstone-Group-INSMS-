@@ -67,6 +67,10 @@ const swaggerOptions = {
                 description: "Sport lookup admin CRUD - create, list, and delete sports",
             },
             {
+                name: "AMS - Coaches",
+                description: "Coach management - CRUD operations for coaches",
+            },
+            {
                 name: "AMS - Lookups",
                 description: "AMS lookup tables for dropdowns (sports)",
             },
@@ -1184,6 +1188,7 @@ const swaggerOptions = {
         "./modules/SSS/staging/routes.js",
         "./modules/AMS/athlete/routes.js",
         "./modules/AMS/sport/routes.js",
+        "./modules/AMS/coach/routes.js",
         "./modules/OCR/routes.js",
         "./server.js",
         "./modules/Auth/routes.js",
