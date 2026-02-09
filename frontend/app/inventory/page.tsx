@@ -42,13 +42,13 @@ export default function InventoryPage() {
     {
       id: "inventory",
       label: "Current Inventory View",
-      icon: "globe",
+      icon: "inventory",
       href: "/inventory",
     },
     {
       id: "scraper",
       label: "Web Scraper View",
-      icon: "search",
+      icon: "scraper",
       href: "/web-scraper",
     },
     {

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import ViewTabs from "@/components/ViewTabs";
+import UrlSelectionModal from "@/components/UrlSelectionModal";
 import {
   Play,
   Clock,
@@ -10,6 +11,7 @@ import {
   Save,
   ChevronDown,
   ExternalLink,
+  X,
 } from "lucide-react";
 import axios from "axios";
 
@@ -26,17 +28,23 @@ interface StagingSupplement {
   created_at?: string;
 }
 
+interface CatalogUrl {
+  id: string;
+  product_catalog_website: string;
+  is_active: boolean;
+}
+
 const tabs = [
   {
     id: "inventory",
     label: "Current Inventory View",
-    icon: "globe",
+    icon: "inventory",
     href: "/inventory",
   },
   {
     id: "scraper",
     label: "Web Scraper View",
-    icon: "search",
+    icon: "scraper",
     href: "/web-scraper",
   },
   {
@@ -53,6 +61,7 @@ export default function WebScraperPage() {
   >([]);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  const [showUrlModal, setShowUrlModal] = useState(false);
   const [scrapingStatus, setScrapingStatus] = useState({
     lastRun: "Today at 9:14 PM",
     scheduled: "Weekly on Mondays",
@@ -93,12 +102,20 @@ export default function WebScraperPage() {
     }
   };
 
-  // Start manual scraping
-  const handleManualScraping = async () => {
+  // Show URL selection modal
+  const handleManualScraping = () => {
+    setShowUrlModal(true);
+  };
+
+  // Start scraping with selected URLs
+  const handleStartScraping = async (selectedUrlIds: string[]) => {
     setLoading(true);
     try {
-      await axios.post("/api/SSS/scraping/start");
+      await axios.post("/api/SSS/scraping/start", {
+        catalog_url_ids: selectedUrlIds,
+      });
       alert("Scraping started successfully!");
+      setShowUrlModal(false);
       // Refresh staging supplements after a delay
       setTimeout(() => {
         loadStagingSupplements();
@@ -370,6 +387,14 @@ export default function WebScraperPage() {
             </div>
           )}
         </div>
+
+        {/* URL Selection Modal */}
+        <UrlSelectionModal
+          isOpen={showUrlModal}
+          onClose={() => setShowUrlModal(false)}
+          onStartScraping={handleStartScraping}
+          loading={loading}
+        />
       </div>
     </DashboardLayout>
   );
