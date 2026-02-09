@@ -16,10 +16,25 @@ const optionalDateSchema = z.string()
     .optional();
 
 // ============================================================================
-// CREATE ATHLETE SCHEMA (includes registry + medical)
+// CREATE BASIC ATHLETE SCHEMA (athlete record only)
 // ============================================================================
 
-export const createAthleteSchema = z.object({
+export const createBasicAthleteSchema = z.object({
+    sport_id: uuidSchema.describe('Reference to AMS.Sport_Lookup'),
+    sportsync_id: z.string().trim().min(1, 'sportsync_id is required'),
+    athlete_name_abbr: z.string().trim().min(1, 'Athlete name abbreviation is required'),
+    gender: z.enum(['MALE', 'FEMALE', 'OTHER'], { required_error: 'Gender is required', invalid_type_error: 'Gender must be one of: MALE, FEMALE, OTHER' }),
+    date_of_birth: dateSchema,
+
+    // --- Reject system-managed fields ---
+    id: z.never().optional(),
+}).strict();
+
+// ============================================================================
+// CREATE COMPLETE ATHLETE SCHEMA (athlete + registry + medical + assignments)
+// ============================================================================
+
+export const createCompleteAthleteSchema = z.object({
     // --- Athlete base fields ---
     sport_id: uuidSchema.describe('Reference to AMS.Sport_Lookup'),
     sportsync_id: z.string().trim().min(1, 'sportsync_id is required'),
@@ -41,6 +56,10 @@ export const createAthleteSchema = z.object({
     food_allergy: z.string().trim().min(1, 'Food allergy is required'),
     drug_allergy: z.string().trim().min(1, 'Drug allergy is required'),
     past_injury: z.string().trim().min(1, 'Past injury is required'),
+
+    // --- Assignment arrays ---
+    coach_ids: z.array(uuidSchema).optional().default([]),
+    nutritionist_ids: z.array(uuidSchema).optional().default([]),
 
     // --- Reject system-managed fields ---
     id: z.never().optional(),

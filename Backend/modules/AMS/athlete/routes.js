@@ -71,6 +71,151 @@ router.get('/athletes', controller.listAthletes);
 
 /**
  * @swagger
+ * /api/AMS/athletes/complete:
+ *   post:
+ *     summary: Create Complete Athlete
+ *     description: |
+ *       Create a new athlete with registry, medical, coach mappings, and nutritionist mappings
+ *       in a single transaction. If any insert fails, the entire transaction is rolled back.
+ *       coach_ids and nutritionist_ids are optional (default to empty arrays).
+ *     tags: [AMS - Athletes]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - sport_id
+ *               - sportsync_id
+ *               - athlete_name_abbr
+ *               - gender
+ *               - date_of_birth
+ *               - carding_status
+ *               - athlete_notified_on
+ *               - carding_start_date
+ *               - carding_end_date
+ *               - medical_clearance
+ *               - approved_start_date
+ *               - approved_end_date
+ *               - medical_condition
+ *               - food_allergy
+ *               - drug_allergy
+ *               - past_injury
+ *             properties:
+ *               sport_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Reference to Sport_Lookup
+ *               sportsync_id:
+ *                 type: string
+ *                 description: External system ID (must be unique)
+ *               athlete_name_abbr:
+ *                 type: string
+ *                 description: Athlete abbreviated name
+ *               gender:
+ *                 type: string
+ *                 enum: [MALE, FEMALE, OTHER]
+ *               date_of_birth:
+ *                 type: string
+ *                 format: date
+ *               carding_status:
+ *                 type: string
+ *               athlete_notified_on:
+ *                 type: string
+ *                 format: date
+ *               carding_start_date:
+ *                 type: string
+ *                 format: date
+ *               carding_end_date:
+ *                 type: string
+ *                 format: date
+ *               medical_clearance:
+ *                 type: boolean
+ *               approved_start_date:
+ *                 type: string
+ *                 format: date
+ *               approved_end_date:
+ *                 type: string
+ *                 format: date
+ *               medical_condition:
+ *                 type: string
+ *               food_allergy:
+ *                 type: string
+ *               drug_allergy:
+ *                 type: string
+ *               past_injury:
+ *                 type: string
+ *               coach_ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 description: Array of coach UUIDs to assign (optional)
+ *               nutritionist_ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 description: Array of nutritionist UUIDs to assign (optional)
+ *           example:
+ *             sport_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+ *             sportsync_id: "SS-12345"
+ *             athlete_name_abbr: "J. Smith"
+ *             gender: "MALE"
+ *             date_of_birth: "1998-03-15"
+ *             carding_status: "Active"
+ *             athlete_notified_on: "2024-01-01"
+ *             carding_start_date: "2024-01-01"
+ *             carding_end_date: "2025-12-31"
+ *             medical_clearance: true
+ *             approved_start_date: "2024-01-01"
+ *             approved_end_date: "2025-12-31"
+ *             medical_condition: "None"
+ *             food_allergy: "Shellfish"
+ *             drug_allergy: "None"
+ *             past_injury: "ACL tear (2022)"
+ *             coach_ids: ["b2c3d4e5-f6a7-8901-bcde-f12345678901"]
+ *             nutritionist_ids: ["c3d4e5f6-a7b8-9012-cdef-123456789012"]
+ *     responses:
+ *       201:
+ *         description: Athlete created successfully with all relations
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Athlete created successfully with all relations"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     athlete:
+ *                       type: object
+ *                     registry:
+ *                       type: object
+ *                     medical:
+ *                       type: object
+ *                     coachMappings:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     nutritionistMappings:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       409:
+ *         $ref: '#/components/responses/Conflict'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.post('/athletes/complete', controller.createCompleteAthlete);
+
+/**
+ * @swagger
  * /api/AMS/athletes/{id}:
  *   get:
  *     summary: Get Athlete Details
@@ -160,11 +305,10 @@ router.get('/athletes/:id', controller.getAthleteDetails);
  * @swagger
  * /api/AMS/athletes:
  *   post:
- *     summary: Create Athlete
+ *     summary: Create Basic Athlete
  *     description: |
- *       Create a new athlete with registry and medical records in a single transaction.
- *       All three records (athlete, registry, medical) are required.
- *       If any insert fails, the entire transaction is rolled back.
+ *       Create a new athlete record with only base fields.
+ *       Does not create registry, medical, or assignment records.
  *     tags: [AMS - Athletes]
  *     requestBody:
  *       required: true
@@ -178,17 +322,6 @@ router.get('/athletes/:id', controller.getAthleteDetails);
  *               - athlete_name_abbr
  *               - gender
  *               - date_of_birth
- *               - carding_status
- *               - athlete_notified_on
- *               - carding_start_date
- *               - carding_end_date
- *               - medical_clearance
- *               - approved_start_date
- *               - approved_end_date
- *               - medical_condition
- *               - food_allergy
- *               - drug_allergy
- *               - past_injury
  *             properties:
  *               sport_id:
  *                 type: string
@@ -203,56 +336,16 @@ router.get('/athletes/:id', controller.getAthleteDetails);
  *               gender:
  *                 type: string
  *                 enum: [MALE, FEMALE, OTHER]
- *                 description: Athlete gender (must be MALE, FEMALE, or OTHER)
  *               date_of_birth:
  *                 type: string
  *                 format: date
  *                 description: Date of birth (YYYY-MM-DD)
- *               carding_status:
- *                 type: string
- *                 description: Carding status
- *               athlete_notified_on:
- *                 type: string
- *                 format: date
- *               carding_start_date:
- *                 type: string
- *                 format: date
- *               carding_end_date:
- *                 type: string
- *                 format: date
- *               medical_clearance:
- *                 type: boolean
- *               approved_start_date:
- *                 type: string
- *                 format: date
- *               approved_end_date:
- *                 type: string
- *                 format: date
- *               medical_condition:
- *                 type: string
- *               food_allergy:
- *                 type: string
- *               drug_allergy:
- *                 type: string
- *               past_injury:
- *                 type: string
  *           example:
  *             sport_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
  *             sportsync_id: "SS-12345"
  *             athlete_name_abbr: "J. Smith"
  *             gender: "MALE"
  *             date_of_birth: "1998-03-15"
- *             carding_status: "Active"
- *             athlete_notified_on: "2024-01-01"
- *             carding_start_date: "2024-01-01"
- *             carding_end_date: "2025-12-31"
- *             medical_clearance: true
- *             approved_start_date: "2024-01-01"
- *             approved_end_date: "2025-12-31"
- *             medical_condition: "None"
- *             food_allergy: "Shellfish"
- *             drug_allergy: "None"
- *             past_injury: "ACL tear (2022)"
  *     responses:
  *       201:
  *         description: Athlete created successfully
@@ -266,13 +359,6 @@ router.get('/athletes/:id', controller.getAthleteDetails);
  *                   example: "Athlete created successfully"
  *                 data:
  *                   type: object
- *                   properties:
- *                     athlete:
- *                       type: object
- *                     registry:
- *                       type: object
- *                     medical:
- *                       type: object
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       409:
@@ -280,7 +366,7 @@ router.get('/athletes/:id', controller.getAthleteDetails);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/athletes', controller.createAthlete);
+router.post('/athletes', controller.createBasicAthlete);
 
 /**
  * @swagger
@@ -494,56 +580,5 @@ router.patch('/athletes/:id/registry', controller.updateRegistryController);
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.patch('/athletes/:id/medical', controller.updateMedicalController);
-
-// ============================================================================
-// LOOKUP ROUTES
-// ============================================================================
-
-/**
- * @swagger
- * /api/AMS/lookups/sports:
- *   get:
- *     summary: Get Sports List
- *     description: |
- *       Returns list of sports for dropdown selection.
- *       By default returns only active sports.
- *     tags: [AMS - Lookups]
- *     parameters:
- *       - name: includeInactive
- *         in: query
- *         required: false
- *         description: Include inactive sports
- *         schema:
- *           type: boolean
- *           default: false
- *     responses:
- *       200:
- *         description: List of sports
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: string
- *                         format: uuid
- *                       label:
- *                         type: string
- *                         description: Sport name
- *             example:
- *               data:
- *                 - id: "uuid-1"
- *                   label: "Swimming"
- *                 - id: "uuid-2"
- *                   label: "Athletics"
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
- */
-router.get('/lookups/sports', controller.getSportsController);
 
 export default router;
