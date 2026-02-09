@@ -126,7 +126,7 @@ class ScrapedProduct(BaseModel):
     url: str = Field(..., alias="URL")
     
     # Batch testing (added by PipelineSearch)
-    batch_tested: Optional[str] = Field(None, alias="Batch_tested")
+    batch_tested: Optional[bool] = Field(None, alias="Batch_tested")
     batch_testing_org: Optional[str] = None
     batch_testing_sources: List[str] = Field(default_factory=list)
     

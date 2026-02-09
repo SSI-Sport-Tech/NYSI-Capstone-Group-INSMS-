@@ -159,7 +159,11 @@ export async function createAthlete(req, res) {
 
         const registryData = {
             carding_status: validated.carding_status,
+<<<<<<< HEAD
             athlete_notified_on: validated.athlete_notified_on,
+=======
+            athlete_mathlid_on: validated.athlete_mathlid_on,
+>>>>>>> parent of e16bfa5 (Revert "Merge pull request #14 from Mike-Umali/Web-Portal")
             carding_start_date: validated.carding_start_date,
             carding_end_date: validated.carding_end_date,
             medical_clearance: validated.medical_clearance,

@@ -1,11 +1,15 @@
 """
 NYSI Python Services - FastAPI Application
-OCR, Vectorization, and Web Scraping services
+OCR, Vectorization, Web Scraping, and Batch Verification services
+
+Version: 1.1.0
+- Added modular services with lazy loading
+- Added batch verification endpoints
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import ocr, vectorization, webscraper  # ← FIXED IMPORT
+from app.routers import ocr, vectorization, webscraper, batch_verification
 from app.config.settings import settings
 import logging
 
@@ -18,9 +22,9 @@ logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="HPSI Python Services",
-    description="OCR, Vectorization, and Web Scraping services for supplement management",
-    version="1.0.0",
+    title="NYSI Python Services",
+    description="OCR, Vectorization, Web Scraping, and Batch Verification services for supplement management",
+    version="1.1.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -29,9 +33,9 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        settings.backend_url, 
+        settings.backend_url,
         "http://localhost:8000",
-        "http://localhost:3000"  # Optional: if you have a frontend
+        "http://localhost:3000"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -39,10 +43,11 @@ app.add_middleware(
 )
 
 # Register routers
-# Note: webscraper.router already has prefix="/api/webscraper" defined
 app.include_router(ocr.router, prefix="/api/ocr", tags=["OCR"])
 app.include_router(vectorization.router, prefix="/api/vectorization", tags=["Vectorization"])
-app.include_router(webscraper.router)  # ← FIXED: No prefix (router has its own)
+app.include_router(webscraper.router)  # Has its own prefix
+app.include_router(batch_verification.router, prefix="/api/batch-verification", tags=["Batch Verification"])
+
 
 @app.get("/")
 async def root():
@@ -50,7 +55,7 @@ async def root():
     return {
         "service": "NYSI Python Services",
         "status": "running",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "endpoints": {
             "docs": "/docs",
             "redoc": "/redoc",
@@ -59,39 +64,52 @@ async def root():
         "services": [
             "OCR - /api/ocr/*",
             "Vectorization - /api/vectorization/*",
-            "Web Scraper - /api/webscraper/*"  # ← Note: /api/webscraper not /api/scraper
+            "Web Scraper - /api/webscraper/*",
+            "Batch Verification - /api/batch-verification/*"
         ]
     }
+
 
 @app.get("/health")
 async def health_check():
     """Global health check endpoint."""
+    from app.services import ocr_engine, llm_structurer
+    
     return {
         "status": "healthy",
         "services": {
             "ocr": "available",
             "vectorization": "available",
-            "scraper": "available"  # ← FIXED: Changed from "planned" to "available"
+            "scraper": "available",
+            "batch_verification": "available"
         },
         "config": {
             "embedding_model": settings.embedding_model,
             "vector_dimension": settings.vector_dimension,
             "service_port": settings.service_port
+        },
+        "lazy_loading": {
+            "ocr_engine_loaded": ocr_engine.is_loaded(),
+            "llm_loaded": llm_structurer.is_loaded(),
+            "description": "Components load on first use to save memory"
         }
     }
 
-# Startup event (optional but useful)
+
 @app.on_event("startup")
 async def startup_event():
     logger.info("🚀 NYSI Python Services starting...")
     logger.info(f"📊 Embedding Model: {settings.embedding_model}")
     logger.info(f"🔢 Vector Dimension: {settings.vector_dimension}")
     logger.info(f"🌐 Service running on port: {settings.service_port}")
+    logger.info("✅ Modular services with lazy loading enabled")
+    logger.info("✅ Batch Verification service enabled")
 
-# Shutdown event (optional)
+
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("👋 NYSI Python Services shutting down...")
+
 
 if __name__ == "__main__":
     import uvicorn
