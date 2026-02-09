@@ -1,8 +1,8 @@
 import pool from "../../config/db.js";
 
 // Configuration
-const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
-
+const PYTHON_SERVICE_URL =
+  process.env.PYTHON_SERVICE_URL || "http://localhost:8001";
 
 // ============================================================================
 // SUPPLEMENT FUNCTIONS
@@ -39,7 +39,7 @@ export async function getSupplementsByPage(pageNumber, pageSize = 10) {
 export async function searchSupplements(
   searchQuery,
   pageNumber,
-  pageSize = 10
+  pageSize = 10,
 ) {
   const offset = (pageNumber - 1) * pageSize;
   const searchWords = searchQuery
@@ -78,20 +78,20 @@ export async function searchSupplements(
       s.product_source_url,
       CASE 
         WHEN ${searchWords
-      .map((_, i) => `s.supplement_name ILIKE $${i + 1}`)
-      .join(" AND ")} THEN 1
+          .map((_, i) => `s.supplement_name ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 1
         WHEN ${searchWords
-      .map((_, i) => `s.supplement_brand ILIKE $${i + 1}`)
-      .join(" AND ")} THEN 2
+          .map((_, i) => `s.supplement_brand ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 2
         WHEN ${searchWords
-      .map((_, i) => `s.supplement_ingredient::text ILIKE $${i + 1}`)
-      .join(" AND ")} THEN 3
+          .map((_, i) => `s.supplement_ingredient::text ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 3
         WHEN ${searchWords
-      .map((_, i) => `spf.supplement_packaging_form ILIKE $${i + 1}`)
-      .join(" AND ")} THEN 4
+          .map((_, i) => `spf.supplement_packaging_form ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 4
         WHEN ${searchWords
-      .map((_, i) => `ssl.supplement_status ILIKE $${i + 1}`)
-      .join(" AND ")} THEN 5
+          .map((_, i) => `ssl.supplement_status ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 5
         ELSE 6
       END AS relevance_order
     FROM SSS.Supplement s
@@ -232,7 +232,7 @@ export async function getSupplementStockSummary(supplementId) {
 export async function getBatchesBySupplementId(
   supplementId,
   pageNumber,
-  pageSize = 10
+  pageSize = 10,
 ) {
   const offset = (pageNumber - 1) * pageSize;
 
@@ -313,9 +313,9 @@ export async function createSupplement(supplementData) {
 
   // Ensure URLs are in array format
   const urlArray = supplementData.product_source_url
-    ? (Array.isArray(supplementData.product_source_url)
+    ? Array.isArray(supplementData.product_source_url)
       ? supplementData.product_source_url
-      : [supplementData.product_source_url])
+      : [supplementData.product_source_url]
     : null;
 
   const values = [
@@ -326,9 +326,10 @@ export async function createSupplement(supplementData) {
     supplementData.approved_by, // $5
     supplementData.batch_testing_org || null, // $6
     supplementData.supplement_description || null, // $7
-    supplementData.supplement_ingredient && supplementData.supplement_ingredient.length > 0
+    supplementData.supplement_ingredient &&
+    supplementData.supplement_ingredient.length > 0
       ? JSON.stringify(supplementData.supplement_ingredient)
-      : '[]', // $8 - ✅ JSONB: stringify array
+      : "[]", // $8 - ✅ JSONB: stringify array
     supplementData.nutritional_info_per_100g
       ? JSON.stringify(supplementData.nutritional_info_per_100g)
       : null, // $9 - ✅ JSONB: stringify object
@@ -399,29 +400,31 @@ export async function updateSupplement(supplementId, updateData) {
     batch_testing_org: updateData.batch_testing_org,
     supplement_description: updateData.supplement_description,
     supplement_ingredient: updateData.supplement_ingredient
-      ? JSON.stringify(updateData.supplement_ingredient)  // ✅ Stringify for JSONB
+      ? JSON.stringify(updateData.supplement_ingredient) // ✅ Stringify for JSONB
       : undefined,
     nutritional_info_per_100g: updateData.nutritional_info_per_100g
-      ? JSON.stringify(updateData.nutritional_info_per_100g)  // ✅ Stringify for JSONB
+      ? JSON.stringify(updateData.nutritional_info_per_100g) // ✅ Stringify for JSONB
       : undefined,
     nutritional_info_per_serving: updateData.nutritional_info_per_serving
-      ? JSON.stringify(updateData.nutritional_info_per_serving)  // ✅ Stringify for JSONB
+      ? JSON.stringify(updateData.nutritional_info_per_serving) // ✅ Stringify for JSONB
       : undefined,
-    nutritional_info_per_serving_definition: updateData.nutritional_info_per_serving_definition,
+    nutritional_info_per_serving_definition:
+      updateData.nutritional_info_per_serving_definition,
     supplement_warning_label: updateData.supplement_warning_label,
     supplement_certifications: updateData.supplement_certifications,
-    supplement_additional_information: updateData.supplement_additional_information,
+    supplement_additional_information:
+      updateData.supplement_additional_information,
     product_source_url: updateData.product_source_url
-      ? (Array.isArray(updateData.product_source_url)
+      ? Array.isArray(updateData.product_source_url)
         ? updateData.product_source_url
-        : [updateData.product_source_url])
-      : undefined,  // TEXT[]: pg handles array conversion
+        : [updateData.product_source_url]
+      : undefined, // TEXT[]: pg handles array conversion
     vector_100g_ingredient: updateData.vector_100g_ingredient
-      ? JSON.stringify(updateData.vector_100g_ingredient)  // ✅ Stringify for pgvector
+      ? JSON.stringify(updateData.vector_100g_ingredient) // ✅ Stringify for pgvector
       : undefined,
     vector_perserving_ingredient: updateData.vector_perserving_ingredient
-      ? JSON.stringify(updateData.vector_perserving_ingredient)  // ✅ Stringify for pgvector
-      : undefined
+      ? JSON.stringify(updateData.vector_perserving_ingredient) // ✅ Stringify for pgvector
+      : undefined,
   };
 
   // Build SET clause dynamically
@@ -443,7 +446,7 @@ export async function updateSupplement(supplementId, updateData) {
 
   const query = `
     UPDATE SSS.Supplement
-    SET ${fields.join(', ')}
+    SET ${fields.join(", ")}
     WHERE id = $${paramCounter}
     RETURNING
       id,
@@ -494,6 +497,7 @@ export async function getBatchesByPage(pageNumber, pageSize = 10) {
       ib.batch_initial_quantity,
       ib.batch_expiration_date,
       ib.batch_price,
+      ib.supplement_id,
       s.supplement_name,
       s.supplement_brand,
       COALESCE(SUM(it.quantity), 0) AS booked,
@@ -505,7 +509,7 @@ export async function getBatchesByPage(pageNumber, pageSize = 10) {
     LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl ON ib.batch_stock_status_id = bssl.id
     WHERE bssl.is_active = true
     GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity, 
-             ib.batch_expiration_date, ib.batch_price, 
+             ib.batch_expiration_date, ib.batch_price, ib.supplement_id,
              s.supplement_name, s.supplement_brand, bssl.batch_stock_status
     ORDER BY ib.id DESC
     LIMIT $1 OFFSET $2
@@ -580,17 +584,17 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
       *,
       CASE
         WHEN ${searchWords
-      .map((_, i) => `batch_number ILIKE $${i + 1}`)
-      .join(" AND ")} THEN 1
+          .map((_, i) => `batch_number ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 1
         WHEN ${searchWords
-      .map((_, i) => `supplement_name ILIKE $${i + 1}`)
-      .join(" AND ")} THEN 2
+          .map((_, i) => `supplement_name ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 2
         WHEN ${searchWords
-      .map((_, i) => `supplement_brand ILIKE $${i + 1}`)
-      .join(" AND ")} THEN 3
+          .map((_, i) => `supplement_brand ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 3
         WHEN ${searchWords
-      .map((_, i) => `batch_status ILIKE $${i + 1}`)
-      .join(" AND ")} THEN 4
+          .map((_, i) => `batch_status ILIKE $${i + 1}`)
+          .join(" AND ")} THEN 4
         ELSE 5
       END AS relevance_order
     FROM batch_data
@@ -675,7 +679,11 @@ export async function getBatchById(batchId) {
  * Use Case: Create Batch
  * Check if batch number already exists for the same supplement
  */
-export async function checkDuplicateBatchNumber(supplementId, batchNumber, excludeId = null) {
+export async function checkDuplicateBatchNumber(
+  supplementId,
+  batchNumber,
+  excludeId = null,
+) {
   let query = `
         SELECT id 
         FROM SSS.Inventory_Batch 
@@ -741,13 +749,13 @@ export async function createBatch(batchData) {
     `;
 
   const values = [
-    batchData.supplement_id,                    // $1
-    batchData.batch_stock_status_id,            // $2 - auto-set by controller
-    batchData.batch_number,                     // $3
-    batchData.batch_initial_quantity,           // $4
-    batchData.batch_price || null,              // $5
-    batchData.batch_expiration_date || null,    // $6
-    batchData.batch_manufacture_date || null    // $7
+    batchData.supplement_id, // $1
+    batchData.batch_stock_status_id, // $2 - auto-set by controller
+    batchData.batch_number, // $3
+    batchData.batch_initial_quantity, // $4
+    batchData.batch_price || null, // $5
+    batchData.batch_expiration_date || null, // $6
+    batchData.batch_manufacture_date || null, // $7
   ];
 
   const result = await pool.query(query, values);
@@ -771,7 +779,7 @@ export async function updateBatch(batchId, updateData) {
     batch_initial_quantity: updateData.batch_initial_quantity,
     batch_price: updateData.batch_price,
     batch_expiration_date: updateData.batch_expiration_date,
-    batch_manufacture_date: updateData.batch_manufacture_date
+    batch_manufacture_date: updateData.batch_manufacture_date,
   };
 
   // Build SET clause dynamically
@@ -793,7 +801,7 @@ export async function updateBatch(batchId, updateData) {
 
   const query = `
         UPDATE SSS.Inventory_Batch 
-        SET ${fields.join(', ')}
+        SET ${fields.join(", ")}
         WHERE id = $${paramCounter}
         RETURNING 
             id,
@@ -941,15 +949,17 @@ export async function updateStagingSupplement(stagingId, updateData) {
     nutritional_info_per_serving: updateData.nutritional_info_per_serving
       ? JSON.stringify(updateData.nutritional_info_per_serving)
       : undefined,
-    nutritional_info_per_serving_definition: updateData.nutritional_info_per_serving_definition,
+    nutritional_info_per_serving_definition:
+      updateData.nutritional_info_per_serving_definition,
     supplement_warning_label: updateData.supplement_warning_label,
     supplement_certifications: updateData.supplement_certifications,
-    supplement_additional_information: updateData.supplement_additional_information,
+    supplement_additional_information:
+      updateData.supplement_additional_information,
     batch_testing_org: updateData.batch_testing_org,
     product_source_url: updateData.product_source_url
-      ? (Array.isArray(updateData.product_source_url)
+      ? Array.isArray(updateData.product_source_url)
         ? updateData.product_source_url
-        : [updateData.product_source_url])
+        : [updateData.product_source_url]
       : undefined,
     scraper_version: updateData.scraper_version,
   };
@@ -973,7 +983,7 @@ export async function updateStagingSupplement(stagingId, updateData) {
 
   const query = `
         UPDATE SSS.Supplement_Staging 
-        SET ${fields.join(', ')}
+        SET ${fields.join(", ")}
         WHERE id = $${paramCounter}
         RETURNING *
     `;
@@ -1011,37 +1021,44 @@ async function generateVectorsForSupplement(supplementData) {
     const per100g = supplementData.nutritional_info_per_100g || {};
 
     // Skip vectorization if no data available
-    if (ingredients.length === 0 && Object.keys(perServing).length === 0 && Object.keys(per100g).length === 0) {
+    if (
+      ingredients.length === 0 &&
+      Object.keys(perServing).length === 0 &&
+      Object.keys(per100g).length === 0
+    ) {
       return {
         success: false,
-        reason: 'No ingredients or nutritional data available',
+        reason: "No ingredients or nutritional data available",
         vector_perserving_ingredient: null,
-        vector_100g_ingredient: null
+        vector_100g_ingredient: null,
       };
     }
 
     // Call Python service
-    const response = await fetch(`${PYTHON_SERVICE_URL}/api/vectorization/generate-product-vectors`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    const response = await fetch(
+      `${PYTHON_SERVICE_URL}/api/vectorization/generate-product-vectors`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ingredients: ingredients,
+          per_serving: perServing,
+          per_100g: per100g,
+        }),
+        timeout: 10000, // 10 second timeout
       },
-      body: JSON.stringify({
-        ingredients: ingredients,
-        per_serving: perServing,
-        per_100g: per100g
-      }),
-      timeout: 10000 // 10 second timeout
-    });
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Python service error:', errorText);
+      console.error("Python service error:", errorText);
       return {
         success: false,
         reason: `Python service returned ${response.status}`,
         vector_perserving_ingredient: null,
-        vector_100g_ingredient: null
+        vector_100g_ingredient: null,
       };
     }
 
@@ -1052,24 +1069,23 @@ async function generateVectorsForSupplement(supplementData) {
         success: true,
         vector_perserving_ingredient: result.vector_perserving_ingredient,
         vector_100g_ingredient: result.vector_100g_ingredient,
-        dimension: result.dimension
+        dimension: result.dimension,
       };
     } else {
       return {
         success: false,
-        reason: 'Python service returned success=false',
+        reason: "Python service returned success=false",
         vector_perserving_ingredient: null,
-        vector_100g_ingredient: null
+        vector_100g_ingredient: null,
       };
     }
-
   } catch (error) {
-    console.error('Vectorization error:', error);
+    console.error("Vectorization error:", error);
     return {
       success: false,
       reason: error.message,
       vector_perserving_ingredient: null,
-      vector_100g_ingredient: null
+      vector_100g_ingredient: null,
     };
   }
 }
@@ -1091,9 +1107,9 @@ export async function approveStagingSupplements(stagingIds) {
         results.push({
           staging_id: stagingId,
           staging_name: null,
-          status: 'failed',
-          reason: 'Staging entry not found',
-          supplement_id: null
+          status: "failed",
+          reason: "Staging entry not found",
+          supplement_id: null,
         });
         continue;
       }
@@ -1101,46 +1117,50 @@ export async function approveStagingSupplements(stagingIds) {
       // 2. Validate required fields for Supplement table
       const missingFields = [];
       if (!staging.supplement_packaging_form_id) {
-        missingFields.push('supplement_packaging_form_id');
+        missingFields.push("supplement_packaging_form_id");
       }
       if (!staging.supplement_status_id) {
-        missingFields.push('supplement_status_id');
+        missingFields.push("supplement_status_id");
       }
 
       if (missingFields.length > 0) {
         results.push({
           staging_id: stagingId,
           staging_name: staging.supplement_name,
-          status: 'failed',
-          reason: `Missing required fields: ${missingFields.join(', ')}`,
-          supplement_id: null
+          status: "failed",
+          reason: `Missing required fields: ${missingFields.join(", ")}`,
+          supplement_id: null,
         });
         continue;
       }
 
       // 3. Apply batch_testing_org logic
       const statusResult = await pool.query(
-        'SELECT supplement_status FROM SSS.Supplement_Status_Lookup WHERE id = $1',
-        [staging.supplement_status_id]
+        "SELECT supplement_status FROM SSS.Supplement_Status_Lookup WHERE id = $1",
+        [staging.supplement_status_id],
       );
       const statusName = statusResult.rows[0]?.supplement_status;
       const normalizedStatus = statusName?.toUpperCase().trim();
 
       let finalBatchTestingOrg = staging.batch_testing_org;
 
-      if (normalizedStatus === 'BATCH TESTED') {
-        if (!finalBatchTestingOrg || finalBatchTestingOrg.trim() === '' || finalBatchTestingOrg === 'NIL') {
+      if (normalizedStatus === "BATCH TESTED") {
+        if (
+          !finalBatchTestingOrg ||
+          finalBatchTestingOrg.trim() === "" ||
+          finalBatchTestingOrg === "NIL"
+        ) {
           results.push({
             staging_id: stagingId,
             staging_name: staging.supplement_name,
-            status: 'failed',
-            reason: 'batch_testing_org is required when status is BATCH TESTED',
-            supplement_id: null
+            status: "failed",
+            reason: "batch_testing_org is required when status is BATCH TESTED",
+            supplement_id: null,
           });
           continue;
         }
-      } else if (normalizedStatus === 'NOT BATCH TESTED') {
-        finalBatchTestingOrg = 'NIL';
+      } else if (normalizedStatus === "NOT BATCH TESTED") {
+        finalBatchTestingOrg = "NIL";
       }
 
       // 4. Create Supplement record
@@ -1162,10 +1182,9 @@ export async function approveStagingSupplements(stagingIds) {
                     product_source_url,
                     scraper_version,
                     supplement_input_type,
-                    approved_by,
-                    supplement_staging_id
+                    approved_by
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
                 )
                 RETURNING *
             `;
@@ -1176,9 +1195,10 @@ export async function approveStagingSupplements(stagingIds) {
         staging.supplement_packaging_form_id,
         staging.supplement_status_id,
         staging.supplement_description || null,
-        staging.supplement_ingredient && staging.supplement_ingredient.length > 0
+        staging.supplement_ingredient &&
+        staging.supplement_ingredient.length > 0
           ? JSON.stringify(staging.supplement_ingredient)
-          : '[]',
+          : "[]",
         staging.nutritional_info_per_100g
           ? JSON.stringify(staging.nutritional_info_per_100g)
           : null,
@@ -1192,9 +1212,8 @@ export async function approveStagingSupplements(stagingIds) {
         finalBatchTestingOrg,
         staging.product_source_url || null,
         staging.scraper_version || null,
-        'Scraper', // supplement_input_type
-        'e9e9f927-40f4-4f0a-bdca-a5503b5974da', // approved_by (hardcoded Dr. Khoo)
-        stagingId // supplement_staging_id
+        "Scraper", // supplement_input_type
+        "e9e9f927-40f4-4f0a-bdca-a5503b5974da", // approved_by (hardcoded Dr. Khoo)
       ];
 
       const supplementResult = await pool.query(insertQuery, insertValues);
@@ -1202,8 +1221,8 @@ export async function approveStagingSupplements(stagingIds) {
 
       // 5. Mark staging as reviewed
       await pool.query(
-        'UPDATE SSS.Supplement_Staging SET is_reviewed = true WHERE id = $1',
-        [stagingId]
+        "UPDATE SSS.Supplement_Staging SET is_reviewed = true WHERE id = $1",
+        [stagingId],
       );
 
       // 6. Generate vectors using Python service
@@ -1228,53 +1247,61 @@ export async function approveStagingSupplements(stagingIds) {
             vectorizationResult.vector_perserving_ingredient
               ? JSON.stringify(vectorizationResult.vector_perserving_ingredient)
               : null,
-            newSupplement.id
+            newSupplement.id,
           ]);
 
-          console.log(`✅ Vectors generated and stored for supplement ${newSupplement.id}`);
+          console.log(
+            `✅ Vectors generated and stored for supplement ${newSupplement.id}`,
+          );
         } catch (updateError) {
-          console.error(`Failed to update vectors for supplement ${newSupplement.id}:`, updateError);
+          console.error(
+            `Failed to update vectors for supplement ${newSupplement.id}:`,
+            updateError,
+          );
           // Don't fail the entire approval - supplement still created
         }
       } else {
-        console.warn(`⚠️ Vectorization failed for supplement ${newSupplement.id}: ${vectorizationResult.reason}`);
+        console.warn(
+          `⚠️ Vectorization failed for supplement ${newSupplement.id}: ${vectorizationResult.reason}`,
+        );
       }
 
       // 8. Build response
       results.push({
         staging_id: stagingId,
         staging_name: staging.supplement_name,
-        status: 'success',
+        status: "success",
         supplement_id: newSupplement.id,
         vectorization: {
-          status: vectorizationResult.success ? 'generated' : 'failed',
-          reason: vectorizationResult.success ? undefined : vectorizationResult.reason,
+          status: vectorizationResult.success ? "generated" : "failed",
+          reason: vectorizationResult.success
+            ? undefined
+            : vectorizationResult.reason,
           vector_100g: vectorizationResult.success
             ? `${vectorizationResult.dimension}d vector generated`
             : null,
           vector_perserving: vectorizationResult.success
             ? `${vectorizationResult.dimension}d vector generated`
-            : null
-        }
+            : null,
+        },
       });
-
     } catch (error) {
       console.error(`Failed to approve staging ${stagingId}:`, error);
       results.push({
         staging_id: stagingId,
         staging_name: null,
-        status: 'failed',
+        status: "failed",
         reason: `Database error: ${error.message}`,
-        supplement_id: null
+        supplement_id: null,
       });
     }
   }
 
   return {
     totalProcessed: results.length,
-    succeeded: results.filter(r => r.status === 'success').length,
-    failed: results.filter(r => r.status === 'failed').length,
-    results: results
+    succeeded: results.filter((r) => r.status === "success").length,
+    failed: results.filter((r) => r.status === "failed").length,
+    results: results,
   };
 }
 
@@ -1286,7 +1313,7 @@ export async function approveStagingSupplements(stagingIds) {
  * Get stock status map for multiple supplements
  * Determines stock availability based on batch statuses
  * Priority: AVAILABLE > LOW STOCK > OUT OF STOCK
- * 
+ *
  * @param {Array<string>} supplementIds - Array of supplement UUIDs
  * @returns {Promise<Object>} Map of supplement_id -> stock_status
  */
@@ -1317,14 +1344,14 @@ export async function getStockStatusMap(supplementIds) {
 
   // Create a map for easy lookup
   const stockMap = {};
-  result.rows.forEach(row => {
+  result.rows.forEach((row) => {
     stockMap[row.supplement_id] = row.stock_status;
   });
 
   // For supplements with no batches, set to "Out of Stock"
-  supplementIds.forEach(id => {
+  supplementIds.forEach((id) => {
     if (!stockMap[id]) {
-      stockMap[id] = 'Out of Stock';
+      stockMap[id] = "Out of Stock";
     }
   });
 
@@ -1335,17 +1362,21 @@ export async function getStockStatusMap(supplementIds) {
  * Get alternative supplements using vector similarity search
  * Uses both vector_100g_ingredient and vector_perserving_ingredient
  * Orders by the higher similarity score
- * 
+ *
  * @param {string} supplementId - UUID of current supplement
  * @param {number} pageNumber - Page number (1-indexed)
  * @param {number} pageSize - Items per page (default 10)
  * @returns {Promise<Object>} Alternative supplements with pagination
  */
-export async function getAlternativeSupplements(supplementId, pageNumber, pageSize = 10) {
+export async function getAlternativeSupplements(
+  supplementId,
+  pageNumber,
+  pageSize = 10,
+) {
   const offset = (pageNumber - 1) * pageSize;
 
   // Import threshold from validation
-  const { SIMILARITY_THRESHOLD } = await import('./validation.js');
+  const { SIMILARITY_THRESHOLD } = await import("./validation.js");
 
   // STEP 1: Get current supplement's vectors
   const currentQuery = `
@@ -1362,14 +1393,17 @@ export async function getAlternativeSupplements(supplementId, pageNumber, pageSi
   const currentResult = await pool.query(currentQuery, [supplementId]);
 
   if (currentResult.rows.length === 0) {
-    return { error: 'SUPPLEMENT_NOT_FOUND' };
+    return { error: "SUPPLEMENT_NOT_FOUND" };
   }
 
   const currentSupplement = currentResult.rows[0];
 
   // STEP 2: Check if vectors exist
-  if (!currentSupplement.vector_100g_ingredient && !currentSupplement.vector_perserving_ingredient) {
-    return { error: 'NO_VECTORS' };
+  if (
+    !currentSupplement.vector_100g_ingredient &&
+    !currentSupplement.vector_perserving_ingredient
+  ) {
+    return { error: "NO_VECTORS" };
   }
 
   // STEP 3: Get DISCONTINUED status ID to exclude
@@ -1384,7 +1418,8 @@ export async function getAlternativeSupplements(supplementId, pageNumber, pageSi
   // STEP 4: Build similarity search query
   // Calculate both similarities, use GREATEST for ordering
   const hasVector100g = currentSupplement.vector_100g_ingredient !== null;
-  const hasVectorPerServing = currentSupplement.vector_perserving_ingredient !== null;
+  const hasVectorPerServing =
+    currentSupplement.vector_perserving_ingredient !== null;
 
   const query = `
         WITH alternative_supplements AS (
@@ -1394,45 +1429,53 @@ export async function getAlternativeSupplements(supplementId, pageNumber, pageSi
                 s.supplement_brand,
                 ssl.supplement_status,
                 s.supplement_status_id,
-                ${hasVector100g
-      ? `1 - (s.vector_100g_ingredient <=> $1::vector) AS similarity_100g,`
-      : 'NULL AS similarity_100g,'}
-                ${hasVectorPerServing
-      ? `1 - (s.vector_perserving_ingredient <=> $2::vector) AS similarity_perserving,`
-      : 'NULL AS similarity_perserving,'}
+                ${
+                  hasVector100g
+                    ? `1 - (s.vector_100g_ingredient <=> $1::vector) AS similarity_100g,`
+                    : "NULL AS similarity_100g,"
+                }
+                ${
+                  hasVectorPerServing
+                    ? `1 - (s.vector_perserving_ingredient <=> $2::vector) AS similarity_perserving,`
+                    : "NULL AS similarity_perserving,"
+                }
                 GREATEST(
-                    ${hasVector100g ? `COALESCE(1 - (s.vector_100g_ingredient <=> $1::vector), 0)` : '0'},
-                    ${hasVectorPerServing ? `COALESCE(1 - (s.vector_perserving_ingredient <=> $2::vector), 0)` : '0'}
+                    ${hasVector100g ? `COALESCE(1 - (s.vector_100g_ingredient <=> $1::vector), 0)` : "0"},
+                    ${hasVectorPerServing ? `COALESCE(1 - (s.vector_perserving_ingredient <=> $2::vector), 0)` : "0"}
                 ) AS max_similarity
             FROM SSS.Supplement s
             LEFT JOIN SSS.Supplement_Status_Lookup ssl 
                 ON s.supplement_status_id = ssl.id
             WHERE s.id != $3
                 AND ssl.is_active = true
-                ${discontinuedStatusId ? `AND s.supplement_status_id != $4` : ''}
+                ${discontinuedStatusId ? `AND s.supplement_status_id != $4` : ""}
                 AND (
-                    ${hasVector100g
-      ? `(s.vector_100g_ingredient IS NOT NULL 
-                           AND 1 - (s.vector_100g_ingredient <=> $1::vector) >= $${discontinuedStatusId ? '5' : '4'})`
-      : 'FALSE'}
-                    ${hasVector100g && hasVectorPerServing ? 'OR' : ''}
-                    ${hasVectorPerServing
-      ? `(s.vector_perserving_ingredient IS NOT NULL 
-                           AND 1 - (s.vector_perserving_ingredient <=> $2::vector) >= $${discontinuedStatusId ? '5' : '4'})`
-      : 'FALSE'}
+                    ${
+                      hasVector100g
+                        ? `(s.vector_100g_ingredient IS NOT NULL 
+                           AND 1 - (s.vector_100g_ingredient <=> $1::vector) >= $${discontinuedStatusId ? "5" : "4"})`
+                        : "FALSE"
+                    }
+                    ${hasVector100g && hasVectorPerServing ? "OR" : ""}
+                    ${
+                      hasVectorPerServing
+                        ? `(s.vector_perserving_ingredient IS NOT NULL 
+                           AND 1 - (s.vector_perserving_ingredient <=> $2::vector) >= $${discontinuedStatusId ? "5" : "4"})`
+                        : "FALSE"
+                    }
                 )
         )
         SELECT * FROM alternative_supplements
         ORDER BY max_similarity DESC
-        LIMIT $${discontinuedStatusId ? '6' : '5'} 
-        OFFSET $${discontinuedStatusId ? '7' : '6'}
+        LIMIT $${discontinuedStatusId ? "6" : "5"} 
+        OFFSET $${discontinuedStatusId ? "7" : "6"}
     `;
 
   // Build parameters array
   const params = [
     hasVector100g ? currentSupplement.vector_100g_ingredient : null,
     hasVectorPerServing ? currentSupplement.vector_perserving_ingredient : null,
-    supplementId
+    supplementId,
   ];
 
   if (discontinuedStatusId) {
@@ -1452,17 +1495,21 @@ export async function getAlternativeSupplements(supplementId, pageNumber, pageSi
             ON s.supplement_status_id = ssl.id
         WHERE s.id != $3
             AND ssl.is_active = true
-            ${discontinuedStatusId ? `AND s.supplement_status_id != $4` : ''}
+            ${discontinuedStatusId ? `AND s.supplement_status_id != $4` : ""}
             AND (
-                ${hasVector100g
-      ? `(s.vector_100g_ingredient IS NOT NULL 
-                       AND 1 - (s.vector_100g_ingredient <=> $1::vector) >= $${discontinuedStatusId ? '5' : '4'})`
-      : 'FALSE'}
-                ${hasVector100g && hasVectorPerServing ? 'OR' : ''}
-                ${hasVectorPerServing
-      ? `(s.vector_perserving_ingredient IS NOT NULL 
-                       AND 1 - (s.vector_perserving_ingredient <=> $2::vector) >= $${discontinuedStatusId ? '5' : '4'})`
-      : 'FALSE'}
+                ${
+                  hasVector100g
+                    ? `(s.vector_100g_ingredient IS NOT NULL 
+                       AND 1 - (s.vector_100g_ingredient <=> $1::vector) >= $${discontinuedStatusId ? "5" : "4"})`
+                    : "FALSE"
+                }
+                ${hasVector100g && hasVectorPerServing ? "OR" : ""}
+                ${
+                  hasVectorPerServing
+                    ? `(s.vector_perserving_ingredient IS NOT NULL 
+                       AND 1 - (s.vector_perserving_ingredient <=> $2::vector) >= $${discontinuedStatusId ? "5" : "4"})`
+                    : "FALSE"
+                }
             )
     `;
 
@@ -1472,10 +1519,10 @@ export async function getAlternativeSupplements(supplementId, pageNumber, pageSi
   return {
     currentSupplement: {
       id: currentSupplement.id,
-      name: currentSupplement.supplement_name
+      name: currentSupplement.supplement_name,
     },
     alternatives: alternatives.rows,
-    totalCount: parseInt(countResult.rows[0].count)
+    totalCount: parseInt(countResult.rows[0].count),
   };
 }
 
@@ -1494,7 +1541,7 @@ export async function getPackagingForms(activeOnly = true) {
             id,
             supplement_packaging_form as label
         FROM SSS.Supplement_Packaging_Form_Lookup
-        ${activeOnly ? 'WHERE is_active = true' : ''}
+        ${activeOnly ? "WHERE is_active = true" : ""}
         ORDER BY supplement_packaging_form ASC
     `;
 
@@ -1512,7 +1559,7 @@ export async function getSupplementStatuses(activeOnly = true) {
             id,
             supplement_status as label
         FROM SSS.Supplement_Status_Lookup
-        ${activeOnly ? 'WHERE is_active = true' : ''}
+        ${activeOnly ? "WHERE is_active = true" : ""}
         ORDER BY supplement_status ASC
     `;
 
@@ -1530,7 +1577,7 @@ export async function getBatchStockStatuses(activeOnly = true) {
             id,
             batch_stock_status as label
         FROM SSS.Batch_Stock_Status_Lookup
-        ${activeOnly ? 'WHERE is_active = true' : ''}
+        ${activeOnly ? "WHERE is_active = true" : ""}
         ORDER BY batch_stock_status ASC
     `;
 
@@ -1548,12 +1595,12 @@ export async function getTicketStatuses(activeOnly = true) {
             id,
             ticket_status as label
         FROM SSS.Ticket_Status_Lookup
-        ${activeOnly ? 'WHERE is_active = true' : ''}
+        ${activeOnly ? "WHERE is_active = true" : ""}
         ORDER BY ticket_status ASC
     `;
 
   return await pool.query(query);
-};
+}
 
 // ============================================================================
 // CATALOG URL MANAGEMENT
@@ -1630,7 +1677,7 @@ export async function createCatalogUrl(catalogUrlData) {
 
   const values = [
     catalogUrlData.product_catalog_website,
-    catalogUrlData.is_active !== undefined ? catalogUrlData.is_active : true
+    catalogUrlData.is_active !== undefined ? catalogUrlData.is_active : true,
   ];
 
   const result = await pool.query(query, values);
@@ -1675,7 +1722,7 @@ export async function updateCatalogUrl(catalogUrlId, updateData) {
 
   const fieldMapping = {
     product_catalog_website: updateData.product_catalog_website,
-    is_active: updateData.is_active
+    is_active: updateData.is_active,
   };
 
   // Build SET clause dynamically
@@ -1695,7 +1742,7 @@ export async function updateCatalogUrl(catalogUrlId, updateData) {
 
   const query = `
         UPDATE SSS.webscraper_catalog_url 
-        SET ${fields.join(', ')}
+        SET ${fields.join(", ")}
         WHERE id = $${paramCounter}
         RETURNING 
             id,
