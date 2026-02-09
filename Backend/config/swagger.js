@@ -71,6 +71,10 @@ const swaggerOptions = {
                 description: "Coach management - CRUD operations for coaches",
             },
             {
+                name: "AMS - Nutritionists",
+                description: "Nutritionist management - CRUD operations for nutritionists",
+            },
+            {
                 name: "AMS - Lookups",
                 description: "AMS lookup tables for dropdowns (sports)",
             },
@@ -1189,6 +1193,7 @@ const swaggerOptions = {
         "./modules/AMS/athlete/routes.js",
         "./modules/AMS/sport/routes.js",
         "./modules/AMS/coach/routes.js",
+        "./modules/AMS/nutritionist/routes.js",
         "./modules/OCR/routes.js",
         "./server.js",
         "./modules/Auth/routes.js",
