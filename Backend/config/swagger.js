@@ -61,6 +61,19 @@ const swaggerOptions = {
                 description: "Athlete profile management (Planned)",
             },
             {
+                name: "AMS - Sports",
+                description: "Sport lookup admin CRUD - create, list, and delete sports",
+            },
+            {
+                name: "AMS - Coaches",
+                description: "Coach management - CRUD operations for coaches",
+            },
+            {
+                name: "AMS - Lookups",
+                description: "AMS lookup tables for dropdowns (sports)",
+            },
+            // ==================== Other ====================
+            {
                 name: "OCR",
                 description: "OCR and text extraction services",
             },
@@ -1154,8 +1167,12 @@ const swaggerOptions = {
     },
     // Paths to files containing OpenAPI annotations
     apis: [
-        "./modules/SSS/routes.js",
-        "./modules/AthleteProfileSystem/routes.js",
+        "./modules/SSS/supplements/routes.js",
+        "./modules/SSS/inventory/routes.js",
+        "./modules/SSS/staging/routes.js",
+        "./modules/AMS/athlete/routes.js",
+        "./modules/AMS/sport/routes.js",
+        "./modules/AMS/coach/routes.js",
         "./modules/OCR/routes.js",
         "./server.js",
     ],
