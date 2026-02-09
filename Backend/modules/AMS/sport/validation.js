@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { bulkDeleteSchema } from '../../SSS/shared/validation.js';
+import { uuidParamSchema, bulkDeleteSchema } from '../../SSS/shared/validation.js';
 
 // ============================================================================
 // CREATE SPORT SCHEMA
@@ -12,5 +12,13 @@ export const createSportSchema = z.object({
         .max(100, 'Sport name must be 100 characters or less'),
 }).strict();
 
+// ============================================================================
+// UPDATE SPORT SCHEMA (toggle is_active)
+// ============================================================================
+
+export const updateSportSchema = z.object({
+    is_active: z.boolean({ required_error: 'is_active is required' }),
+}).strict();
+
 // Re-export shared schemas
-export { bulkDeleteSchema };
+export { uuidParamSchema, bulkDeleteSchema };

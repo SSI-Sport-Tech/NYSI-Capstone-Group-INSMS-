@@ -482,7 +482,7 @@ router.patch('/coaches/:id', controller.updateCoach);
  * @swagger
  * /api/AMS/coaches:
  *   delete:
- *     summary: Delete Coaches (Bulk)
+ *     summary: Delete Coaches (Bulk) [ADMIN ONLY]
  *     description: |
  *       Delete one or more coaches by ID.
  *       Coach-athlete mappings are automatically cleaned up via CASCADE.

@@ -16,7 +16,7 @@ const router = express.Router();
  *       Get a paginated list of athletes with optional search.
  *       Search matches across athlete name, sportsync_id, sport, and gender.
  *
- *       **List columns:** sportsync_id, athlete_name_abbr, sport, gender, date_of_birth, target_event (always null)
+ *       **List columns:** sportsync_id, athlete_name_abbr, sport, gender, date_of_birth
  *     tags: [AMS - Athletes]
  *     parameters:
  *       - $ref: '#/components/parameters/PageParam'
@@ -49,10 +49,6 @@ const router = express.Router();
  *                       date_of_birth:
  *                         type: string
  *                         format: date
- *                       target_event:
- *                         type: string
- *                         nullable: true
- *                         example: null
  *                 currentPage:
  *                   type: integer
  *                 totalPages:
@@ -77,7 +73,7 @@ router.get('/athletes', controller.listAthletes);
  *     description: |
  *       Create a new athlete with registry, medical, coach mappings, and nutritionist mappings
  *       in a single transaction. If any insert fails, the entire transaction is rolled back.
- *       coach_ids and nutritionist_ids are optional (default to empty arrays).
+ *       coach_ids and nutritionist_ids are optional (default to empty arrays). Gender is either MALE, FEMALE or OTHER.
  *     tags: [AMS - Athletes]
  *     requestBody:
  *       required: true
@@ -216,11 +212,12 @@ router.post('/athletes/complete', controller.createCompleteAthlete);
 
 /**
  * @swagger
- * /api/AMS/athletes/{id}:
+ * /api/AMS/athletes/{id}/complete:
  *   get:
- *     summary: Get Athlete Details
+ *     summary: Get Complete Athlete Details
  *     description: |
- *       Get full athlete profile including base info and registry data.
+ *       Get full athlete profile including base info, registry, medical record,
+ *       coach mappings, and nutritionist mappings.
  *     tags: [AMS - Athletes]
  *     parameters:
  *       - name: id
@@ -232,7 +229,7 @@ router.post('/athletes/complete', controller.createCompleteAthlete);
  *           format: uuid
  *     responses:
  *       200:
- *         description: Full athlete profile
+ *         description: Complete athlete profile
  *         content:
  *           application/json:
  *             schema:
@@ -259,10 +256,6 @@ router.post('/athletes/complete', controller.createCompleteAthlete);
  *                     date_of_birth:
  *                       type: string
  *                       format: date
- *                     target_event:
- *                       type: string
- *                       nullable: true
- *                       example: null
  *                 registry:
  *                   type: object
  *                   nullable: true
@@ -292,6 +285,60 @@ router.post('/athletes/complete', controller.createCompleteAthlete);
  *                     approved_end_date:
  *                       type: string
  *                       format: date
+ *                 medical:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     athlete_id:
+ *                       type: string
+ *                       format: uuid
+ *                     medical_condition:
+ *                       type: string
+ *                     food_allergy:
+ *                       type: string
+ *                     drug_allergy:
+ *                       type: string
+ *                     past_injury:
+ *                       type: string
+ *                 coachMappings:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       athlete_id:
+ *                         type: string
+ *                         format: uuid
+ *                       coach_id:
+ *                         type: string
+ *                         format: uuid
+ *                       is_active:
+ *                         type: boolean
+ *                       coach_name:
+ *                         type: string
+ *                 nutritionistMappings:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       athlete_id:
+ *                         type: string
+ *                         format: uuid
+ *                       nutritionist_id:
+ *                         type: string
+ *                         format: uuid
+ *                       is_active:
+ *                         type: boolean
+ *                       nutritionist_name:
+ *                         type: string
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       404:
@@ -299,7 +346,58 @@ router.post('/athletes/complete', controller.createCompleteAthlete);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/athletes/:id', controller.getAthleteDetails);
+router.get('/athletes/:id/complete', controller.getCompleteAthleteDetails);
+
+/**
+ * @swagger
+ * /api/AMS/athletes/{id}:
+ *   get:
+ *     summary: Get Basic Athlete Details
+ *     description: |
+ *       Get athlete base info only (no registry, medical, or mappings).
+ *     tags: [AMS - Athletes]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Athlete UUID
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Basic athlete profile
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   format: uuid
+ *                 sport_id:
+ *                   type: string
+ *                   format: uuid
+ *                 sport_name:
+ *                   type: string
+ *                 sportsync_id:
+ *                   type: string
+ *                 athlete_name_abbr:
+ *                   type: string
+ *                 gender:
+ *                   type: string
+ *                   enum: [MALE, FEMALE, OTHER]
+ *                 date_of_birth:
+ *                   type: string
+ *                   format: date
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get('/athletes/:id', controller.getBasicAthleteDetails);
 
 /**
  * @swagger
@@ -308,7 +406,8 @@ router.get('/athletes/:id', controller.getAthleteDetails);
  *     summary: Create Basic Athlete
  *     description: |
  *       Create a new athlete record with only base fields.
- *       Does not create registry, medical, or assignment records.
+ *       Does not create registry, medical, or assignment records. 
+ *       Gender is either MALE, FEMALE or OTHER.
  *     tags: [AMS - Athletes]
  *     requestBody:
  *       required: true
@@ -432,7 +531,7 @@ router.patch('/athletes/:id', controller.updateAthlete);
  * @swagger
  * /api/AMS/athletes:
  *   delete:
- *     summary: Delete Athletes (Bulk)
+ *     summary: Delete Athletes (Bulk) [ADMIN ONLY]
  *     description: |
  *       Permanently delete one or more athletes.
  *       Registry and medical records are automatically deleted via CASCADE.

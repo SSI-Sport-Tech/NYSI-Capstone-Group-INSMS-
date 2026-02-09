@@ -347,6 +347,48 @@ export async function deleteAthletes(athleteIds) {
 }
 
 // ============================================================================
+// MAPPING SERVICES
+// ============================================================================
+
+/**
+ * Get active coach mappings for an athlete (with coach name)
+ * @param {string} athleteId - UUID of athlete
+ * @returns {Promise<Array>} Array of coach mapping rows
+ */
+export async function getCoachMappingsByAthleteId(athleteId) {
+    const query = `
+        SELECT cam.id, cam.athlete_id, cam.coach_id, cam.is_active,
+               c.name AS coach_name
+        FROM AMS.Coach_Athlete_Mapping cam
+        JOIN AMS.Coach c ON cam.coach_id = c.id
+        WHERE cam.athlete_id = $1
+        ORDER BY c.name ASC
+    `;
+
+    const result = await pool.query(query, [athleteId]);
+    return result.rows;
+}
+
+/**
+ * Get active nutritionist mappings for an athlete (with nutritionist name)
+ * @param {string} athleteId - UUID of athlete
+ * @returns {Promise<Array>} Array of nutritionist mapping rows
+ */
+export async function getNutritionistMappingsByAthleteId(athleteId) {
+    const query = `
+        SELECT nam.id, nam.athlete_id, nam.nutritionist_id, nam.is_active,
+               n.name AS nutritionist_name
+        FROM AMS.Nutritionist_Athlete_Mapping nam
+        JOIN AMS.Nutritionist n ON nam.nutritionist_id = n.id
+        WHERE nam.athlete_id = $1
+        ORDER BY n.name ASC
+    `;
+
+    const result = await pool.query(query, [athleteId]);
+    return result.rows;
+}
+
+// ============================================================================
 // REGISTRY SERVICES
 // ============================================================================
 

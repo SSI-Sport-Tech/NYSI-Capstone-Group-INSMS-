@@ -98,7 +98,7 @@ router.post('/nutritionists', controller.createNutritionist);
  * @swagger
  * /api/AMS/nutritionists:
  *   delete:
- *     summary: Delete Nutritionists (Bulk)
+ *     summary: Delete Nutritionists (Bulk) [ADMIN ONLY]
  *     description: |
  *       Delete one or more nutritionists by ID.
  *     tags: [AMS - Nutritionists]

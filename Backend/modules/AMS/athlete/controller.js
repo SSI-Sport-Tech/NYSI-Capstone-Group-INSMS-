@@ -41,11 +41,7 @@ export async function listAthletes(req, res) {
 
         const totalPages = Math.ceil(totalCount / pageSize);
 
-        // Add target_event: null to each row
-        const data = athletes.rows.map(row => ({
-            ...row,
-            target_event: null,
-        }));
+        const data = athletes.rows;
 
         res.json({
             data,
@@ -71,34 +67,25 @@ export async function listAthletes(req, res) {
 }
 
 // ============================================================================
-// GET ATHLETE DETAILS
+// GET BASIC ATHLETE DETAILS (athlete columns only)
 // ============================================================================
 
-export async function getAthleteDetails(req, res) {
+export async function getBasicAthleteDetails(req, res) {
     try {
         // Step 1: Validate ID
         const { id } = uuidParamSchema.parse(req.params);
 
-        // Step 2: Fetch athlete and registry in parallel
-        console.log(`Step 2: Fetching athlete details for ${id}`);
-        const [athlete, registry] = await Promise.all([
-            services.getAthleteById(id),
-            services.getRegistryByAthleteId(id),
-        ]);
+        // Step 2: Fetch athlete
+        console.log(`Step 2: Fetching basic athlete details for ${id}`);
+        const athlete = await services.getAthleteById(id);
 
         // Step 3: Check if athlete exists
         if (!athlete) {
             return res.status(404).json({ error: 'Athlete not found' });
         }
 
-        // Step 4: Return composite response
-        res.json({
-            athlete: {
-                ...athlete,
-                target_event: null,
-            },
-            registry: registry || null,
-        });
+        // Step 4: Return athlete data
+        res.json(athlete);
 
     } catch (error) {
         if (error.name === 'ZodError') {
@@ -111,6 +98,54 @@ export async function getAthleteDetails(req, res) {
             });
         }
         console.error('Error fetching athlete details:', error);
+        res.status(500).json({ error: 'Failed to fetch athlete details', message: error.message });
+    }
+}
+
+// ============================================================================
+// GET COMPLETE ATHLETE DETAILS (athlete + registry + medical + mappings)
+// ============================================================================
+
+export async function getCompleteAthleteDetails(req, res) {
+    try {
+        // Step 1: Validate ID
+        const { id } = uuidParamSchema.parse(req.params);
+
+        // Step 2: Fetch all related data in parallel
+        console.log(`Step 2: Fetching complete athlete details for ${id}`);
+        const [athlete, registry, medical, coachMappings, nutritionistMappings] = await Promise.all([
+            services.getAthleteById(id),
+            services.getRegistryByAthleteId(id),
+            services.getMedicalByAthleteId(id),
+            services.getCoachMappingsByAthleteId(id),
+            services.getNutritionistMappingsByAthleteId(id),
+        ]);
+
+        // Step 3: Check if athlete exists
+        if (!athlete) {
+            return res.status(404).json({ error: 'Athlete not found' });
+        }
+
+        // Step 4: Return composite response
+        res.json({
+            athlete,
+            registry: registry || null,
+            medical: medical || null,
+            coachMappings,
+            nutritionistMappings,
+        });
+
+    } catch (error) {
+        if (error.name === 'ZodError') {
+            return res.status(400).json({
+                error: 'Invalid athlete ID format',
+                details: error.errors.map(e => ({
+                    field: e.path.join('.'),
+                    message: e.message,
+                })),
+            });
+        }
+        console.error('Error fetching complete athlete details:', error);
         res.status(500).json({ error: 'Failed to fetch athlete details', message: error.message });
     }
 }
