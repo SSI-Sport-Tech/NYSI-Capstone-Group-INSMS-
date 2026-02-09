@@ -81,11 +81,7 @@ CREATE TABLE AMS.Athlete (
 | `sport_id` | UUID | No | FK to Sport_Lookup (current/historical sport) |
 | `sportsyncID` | TEXT | No | External system ID for integration |
 | `athlete_name_abbr` | TEXT | No | Athlete's abbreviated name |
-<<<<<<< HEAD
 | `gender` | TEXT | No | Athlete's gender (CHECK: MALE, FEMALE, OTHER) |
-=======
-| `gender` | TEXT | No | Athlete's gender |
->>>>>>> parent of e16bfa5 (Revert "Merge pull request #14 from Mike-Umali/Web-Portal")
 | `date_of_birth` | DATE | No | Athlete's birth date |
 
 **Business Rules:**
@@ -96,11 +92,7 @@ CREATE TABLE AMS.Athlete (
 **Important Notes:**
 - ✅ **All fields must be provided** during athlete creation
 - ✅ **No validation constraints** on athlete_name_abbr (free text)
-<<<<<<< HEAD
 - ✅ **gender is TEXT** with CHECK constraint: must be `MALE`, `FEMALE`, or `OTHER` (uppercase)
-=======
-- ✅ **gender is TEXT** (not a lookup table)
->>>>>>> parent of e16bfa5 (Revert "Merge pull request #14 from Mike-Umali/Web-Portal")
 
 ---
 
@@ -116,11 +108,7 @@ CREATE TABLE AMS.Athlete_Registry (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     athlete_id UUID NOT NULL UNIQUE,  -- UNIQUE ensures 1:1
     carding_status TEXT NOT NULL,
-<<<<<<< HEAD
     athlete_notified_on DATE NOT NULL,
-=======
-    athlete_mathlid_on DATE NOT NULL,
->>>>>>> parent of e16bfa5 (Revert "Merge pull request #14 from Mike-Umali/Web-Portal")
     carding_start_date DATE NOT NULL,
     carding_end_date DATE NOT NULL,
     medical_clearance BOOLEAN NOT NULL,
@@ -139,11 +127,7 @@ CREATE TABLE AMS.Athlete_Registry (
 | `id` | UUID | No | Primary key |
 | `athlete_id` | UUID | No (UNIQUE) | FK to Athlete (1:1 relationship) |
 | `carding_status` | TEXT | No | Carding status (free text) |
-<<<<<<< HEAD
 | `athlete_notified_on` | DATE | No | Athlete math/ID date (logging) |
-=======
-| `athlete_mathlid_on` | DATE | No | Athlete math/ID date (logging) |
->>>>>>> parent of e16bfa5 (Revert "Merge pull request #14 from Mike-Umali/Web-Portal")
 | `carding_start_date` | DATE | No | Carding period start |
 | `carding_end_date` | DATE | No | Carding period end |
 | `medical_clearance` | BOOLEAN | No | Medical clearance flag |
@@ -621,11 +605,7 @@ RETURNING *;
 INSERT INTO AMS.Athlete_Registry (
     athlete_id,
     carding_status,
-<<<<<<< HEAD
     athlete_notified_on,
-=======
-    athlete_mathlid_on,
->>>>>>> parent of e16bfa5 (Revert "Merge pull request #14 from Mike-Umali/Web-Portal")
     carding_start_date,
     carding_end_date,
     medical_clearance,

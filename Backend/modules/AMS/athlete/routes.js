@@ -45,10 +45,7 @@ const router = express.Router();
  *                         type: string
  *                       gender:
  *                         type: string
-<<<<<<< HEAD
  *                         enum: [MALE, FEMALE, OTHER]
-=======
->>>>>>> parent of e16bfa5 (Revert "Merge pull request #14 from Mike-Umali/Web-Portal")
  *                       date_of_birth:
  *                         type: string
  *                         format: date
@@ -113,10 +110,7 @@ router.get('/athletes', controller.listAthletes);
  *                       type: string
  *                     gender:
  *                       type: string
-<<<<<<< HEAD
  *                       enum: [MALE, FEMALE, OTHER]
-=======
->>>>>>> parent of e16bfa5 (Revert "Merge pull request #14 from Mike-Umali/Web-Portal")
  *                     date_of_birth:
  *                       type: string
  *                       format: date
@@ -136,11 +130,7 @@ router.get('/athletes', controller.listAthletes);
  *                       format: uuid
  *                     carding_status:
  *                       type: string
-<<<<<<< HEAD
  *                     athlete_notified_on:
-=======
- *                     athlete_mathlid_on:
->>>>>>> parent of e16bfa5 (Revert "Merge pull request #14 from Mike-Umali/Web-Portal")
  *                       type: string
  *                       format: date
  *                     carding_start_date:
@@ -189,11 +179,7 @@ router.get('/athletes/:id', controller.getAthleteDetails);
  *               - gender
  *               - date_of_birth
  *               - carding_status
-<<<<<<< HEAD
  *               - athlete_notified_on
-=======
- *               - athlete_mathlid_on
->>>>>>> parent of e16bfa5 (Revert "Merge pull request #14 from Mike-Umali/Web-Portal")
  *               - carding_start_date
  *               - carding_end_date
  *               - medical_clearance
@@ -216,12 +202,8 @@ router.get('/athletes/:id', controller.getAthleteDetails);
  *                 description: Athlete abbreviated name
  *               gender:
  *                 type: string
-<<<<<<< HEAD
  *                 enum: [MALE, FEMALE, OTHER]
  *                 description: Athlete gender (must be MALE, FEMALE, or OTHER)
-=======
- *                 description: Athlete gender
->>>>>>> parent of e16bfa5 (Revert "Merge pull request #14 from Mike-Umali/Web-Portal")
  *               date_of_birth:
  *                 type: string
  *                 format: date
@@ -229,11 +211,7 @@ router.get('/athletes/:id', controller.getAthleteDetails);
  *               carding_status:
  *                 type: string
  *                 description: Carding status
-<<<<<<< HEAD
  *               athlete_notified_on:
-=======
- *               athlete_mathlid_on:
->>>>>>> parent of e16bfa5 (Revert "Merge pull request #14 from Mike-Umali/Web-Portal")
  *                 type: string
  *                 format: date
  *               carding_start_date:
@@ -262,17 +240,10 @@ router.get('/athletes/:id', controller.getAthleteDetails);
  *             sport_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
  *             sportsync_id: "SS-12345"
  *             athlete_name_abbr: "J. Smith"
-<<<<<<< HEAD
  *             gender: "MALE"
  *             date_of_birth: "1998-03-15"
  *             carding_status: "Active"
  *             athlete_notified_on: "2024-01-01"
-=======
- *             gender: "Male"
- *             date_of_birth: "1998-03-15"
- *             carding_status: "Active"
- *             athlete_mathlid_on: "2024-01-01"
->>>>>>> parent of e16bfa5 (Revert "Merge pull request #14 from Mike-Umali/Web-Portal")
  *             carding_start_date: "2024-01-01"
  *             carding_end_date: "2025-12-31"
  *             medical_clearance: true
@@ -344,10 +315,7 @@ router.post('/athletes', controller.createAthlete);
  *                 type: string
  *               gender:
  *                 type: string
-<<<<<<< HEAD
  *                 enum: [MALE, FEMALE, OTHER]
-=======
->>>>>>> parent of e16bfa5 (Revert "Merge pull request #14 from Mike-Umali/Web-Portal")
  *               date_of_birth:
  *                 type: string
  *                 format: date
@@ -454,11 +422,7 @@ router.delete('/athletes', controller.deleteAthletes);
  *             properties:
  *               carding_status:
  *                 type: string
-<<<<<<< HEAD
  *               athlete_notified_on:
-=======
- *               athlete_mathlid_on:
->>>>>>> parent of e16bfa5 (Revert "Merge pull request #14 from Mike-Umali/Web-Portal")
  *                 type: string
  *                 format: date
  *               carding_start_date:
