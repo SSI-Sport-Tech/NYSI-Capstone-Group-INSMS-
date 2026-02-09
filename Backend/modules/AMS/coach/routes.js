@@ -136,6 +136,9 @@ router.post('/coaches', controller.createCoach);
  *                   items:
  *                     type: object
  *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
  *                       athlete_id:
  *                         type: string
  *                         format: uuid
@@ -150,7 +153,8 @@ router.post('/coaches', controller.createCoach);
  *                         type: string
  *             example:
  *               data:
- *                 - athlete_id: "uuid-athlete-1"
+ *                 - id: "uuid-mapping-1"
+ *                   athlete_id: "uuid-athlete-1"
  *                   coach_id: "uuid-coach-1"
  *                   is_active: true
  *                   coach_name: "John Smith"
@@ -190,6 +194,9 @@ router.get('/coaches/mappings', controller.listMappings);
  *                   items:
  *                     type: object
  *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
  *                       athlete_id:
  *                         type: string
  *                         format: uuid
@@ -253,6 +260,9 @@ router.get('/coaches/mappings/athlete/:athleteId', controller.listMappingsByAthl
  *                 data:
  *                   type: object
  *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
  *                     athlete_id:
  *                       type: string
  *                       format: uuid
@@ -316,6 +326,9 @@ router.post('/coaches/mappings', controller.createMapping);
  *                   items:
  *                     type: object
  *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
  *                       athlete_id:
  *                         type: string
  *                         format: uuid
@@ -328,6 +341,77 @@ router.post('/coaches/mappings', controller.createMapping);
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.delete('/coaches/mappings', controller.deleteMappings);
+
+/**
+ * @swagger
+ * /api/AMS/coaches/mappings/{athleteId}/{coachId}:
+ *   patch:
+ *     summary: Update Mapping Status
+ *     description: |
+ *       Update the is_active status of a coach-athlete mapping.
+ *       Use this to activate or deactivate a mapping.
+ *     tags: [AMS - Coaches]
+ *     parameters:
+ *       - name: athleteId
+ *         in: path
+ *         required: true
+ *         description: Athlete UUID
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - name: coachId
+ *         in: path
+ *         required: true
+ *         description: Coach UUID
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [is_active]
+ *             properties:
+ *               is_active:
+ *                 type: boolean
+ *                 description: New active status
+ *           example:
+ *             is_active: false
+ *     responses:
+ *       200:
+ *         description: Mapping updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Mapping updated successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     athlete_id:
+ *                       type: string
+ *                       format: uuid
+ *                     coach_id:
+ *                       type: string
+ *                       format: uuid
+ *                     is_active:
+ *                       type: boolean
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.patch('/coaches/mappings/:athleteId/:coachId', controller.updateMapping);
 
 /**
  * @swagger

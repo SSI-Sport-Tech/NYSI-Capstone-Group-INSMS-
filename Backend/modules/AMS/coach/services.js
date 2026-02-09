@@ -177,12 +177,12 @@ export async function checkAthleteExists(athleteId) {
  */
 export async function getAllMappings() {
     const query = `
-        SELECT cam.athlete_id, cam.coach_id, cam.is_active,
-               c.name AS coach_name, a.name AS athlete_name
+        SELECT cam.id, cam.athlete_id, cam.coach_id, cam.is_active,
+               c.name AS coach_name, a.athlete_name_abbr AS athlete_name
         FROM AMS.Coach_Athlete_Mapping cam
         JOIN AMS.Coach c ON cam.coach_id = c.id
         JOIN AMS.Athlete a ON cam.athlete_id = a.id
-        ORDER BY a.name ASC, c.name ASC
+        ORDER BY a.athlete_name_abbr ASC, c.name ASC
     `;
 
     return await pool.query(query);
@@ -195,8 +195,8 @@ export async function getAllMappings() {
  */
 export async function getMappingsByAthleteId(athleteId) {
     const query = `
-        SELECT cam.athlete_id, cam.coach_id, cam.is_active,
-               c.name AS coach_name, a.name AS athlete_name
+        SELECT cam.id, cam.athlete_id, cam.coach_id, cam.is_active,
+               c.name AS coach_name, a.athlete_name_abbr AS athlete_name
         FROM AMS.Coach_Athlete_Mapping cam
         JOIN AMS.Coach c ON cam.coach_id = c.id
         JOIN AMS.Athlete a ON cam.athlete_id = a.id
@@ -261,9 +261,28 @@ export async function deleteMappings(pairs) {
     const query = `
         DELETE FROM AMS.Coach_Athlete_Mapping
         WHERE (athlete_id, coach_id) IN (${valueClauses.join(', ')})
-        RETURNING athlete_id, coach_id
+        RETURNING id, athlete_id, coach_id
     `;
 
     const result = await pool.query(query, params);
     return result.rows;
+}
+
+/**
+ * Update mapping is_active status
+ * @param {string} athleteId - Athlete UUID
+ * @param {string} coachId - Coach UUID
+ * @param {boolean} isActive - New is_active status
+ * @returns {Promise<Object|null>} Updated mapping or null if not found
+ */
+export async function updateMapping(athleteId, coachId, isActive) {
+    const query = `
+        UPDATE AMS.Coach_Athlete_Mapping
+        SET is_active = $3
+        WHERE athlete_id = $1 AND coach_id = $2
+        RETURNING *
+    `;
+
+    const result = await pool.query(query, [athleteId, coachId, isActive]);
+    return result.rows.length > 0 ? result.rows[0] : null;
 }

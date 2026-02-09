@@ -43,5 +43,9 @@ export const deleteMappingSchema = z.array(
     }).strict()
 ).min(1, 'At least one mapping pair is required');
 
+export const updateMappingSchema = z.object({
+    is_active: z.boolean(),
+}).strict();
+
 // Re-export shared schemas
 export { uuidParamSchema, bulkDeleteSchema };

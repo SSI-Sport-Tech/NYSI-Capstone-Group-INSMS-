@@ -1,5 +1,5 @@
 import * as services from './services.js';
-import { createCoachSchema, updateCoachSchema, uuidParamSchema, bulkDeleteSchema, createMappingSchema, deleteMappingSchema } from './validation.js';
+import { createCoachSchema, updateCoachSchema, uuidParamSchema, bulkDeleteSchema, createMappingSchema, deleteMappingSchema, updateMappingSchema } from './validation.js';
 
 // ============================================================================
 // LIST COACHES
@@ -273,5 +273,57 @@ export async function deleteMappings(req, res) {
         }
         console.error('Error deleting coach-athlete mappings:', error);
         res.status(500).json({ error: 'Failed to delete mappings', message: error.message });
+    }
+}
+
+// ============================================================================
+// UPDATE COACH-ATHLETE MAPPING
+// ============================================================================
+
+export async function updateMapping(req, res) {
+    try {
+        const { athleteId, coachId } = req.params;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+        if (!uuidRegex.test(athleteId)) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: [{ field: 'athleteId', message: 'athleteId must be a valid UUID' }],
+            });
+        }
+
+        if (!uuidRegex.test(coachId)) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: [{ field: 'coachId', message: 'coachId must be a valid UUID' }],
+            });
+        }
+
+        const validated = updateMappingSchema.parse(req.body);
+
+        // Check mapping exists
+        const exists = await services.checkMappingExists(athleteId, coachId);
+        if (!exists) {
+            return res.status(404).json({ error: 'Mapping not found' });
+        }
+
+        const updated = await services.updateMapping(athleteId, coachId, validated.is_active);
+
+        res.json({
+            message: 'Mapping updated successfully',
+            data: updated,
+        });
+    } catch (error) {
+        if (error.name === 'ZodError') {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.errors.map(e => ({
+                    field: e.path.join('.'),
+                    message: e.message,
+                })),
+            });
+        }
+        console.error('Error updating coach-athlete mapping:', error);
+        res.status(500).json({ error: 'Failed to update mapping', message: error.message });
     }
 }
