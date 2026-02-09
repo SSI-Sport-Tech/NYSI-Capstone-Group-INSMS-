@@ -27,13 +27,7 @@ source venv/bin/activate  # On Windows: venv\\Scripts\\activate
 pip install -r requirements.txt
 \`\`\`
 
-3. Install Playwright browsers (required for batch verification):
-\`\`\`bash
-playwright install
-\`\`\`
-> **Note**: This downloads browser binaries (~500MB). For a smaller install, use `playwright install chromium` instead.
-
-4. Configure environment:
+3. Configure environment:
 \`\`\`bash
 cp .env.example .env
 # Edit .env and add your OPENAI_API_KEY
@@ -60,10 +54,7 @@ Once running, visit:
 ## Endpoints
 
 ### OCR
-- `POST /api/ocr/analyze` - Full pipeline: image → OCR → structured data → vectors
-- `POST /api/ocr/analyze-text` - Structure raw text (no image/OCR)
-- `POST /api/ocr/identify` - Extract brand/name only (fast)
-- `POST /api/ocr/ocr-only` - Extract raw text from image (no LLM)
+- `POST /api/ocr/analyze` - Analyze supplement label image
 - `GET /api/ocr/health` - OCR health check
 
 ### Vectorization
@@ -71,18 +62,9 @@ Once running, visit:
 - `POST /api/vectorization/batch-generate` - Generate multiple vectors
 - `GET /api/vectorization/health` - Vectorization health check
 
-### Batch Verification
-- `POST /api/batch-verification/verify` - Verify by brand/product name
-- `POST /api/batch-verification/verify-image` - Verify from product image
-- `POST /api/batch-verification/verify-batch-id` - Verify by batch/lot number
-- `POST /api/batch-verification/verify-combined` - Combined brand + batch ID verification
-- `GET /api/batch-verification/databases` - List supported certification databases
-- `GET /api/batch-verification/health` - Batch verification health check
-
-> **Note**: Batch verification requires Playwright browsers to be installed (see Setup step 3).
-
-### Web Scraper
-- `POST /api/webscraper/*` - Web scraping endpoints
+### Web Scraper (Placeholder)
+- `POST /api/scraper/scrape` - Scrape supplement page
+- `GET /api/scraper/health` - Scraper status
 
 ## Configuration
 
@@ -97,24 +79,18 @@ Environment variables in `.env`:
 
 \`\`\`
 app/
-├── main.py                    # FastAPI app entry point
+├── main.py              # FastAPI app entry point
 ├── config/
-│   └── settings.py            # Configuration management
+│   └── settings.py      # Configuration management
 ├── routers/
-│   ├── ocr.py                 # OCR endpoints
-│   ├── vectorization.py       # Vectorization endpoints
-│   ├── batch_verification.py  # Batch testing verification
-│   └── webscraper.py          # Web scraping endpoints
+│   ├── ocr.py          # OCR endpoints
+│   ├── vectorization.py # Vectorization endpoints
+│   └── scraper.py      # Scraper endpoints
 ├── services/
-│   ├── ocr_engine.py          # PaddleOCR wrapper (lazy-loaded)
-│   ├── llm_structurer.py      # GPT-4o-mini text structuring
-│   ├── vectorizer.py          # Embedding generation
-│   ├── batch_id_extractor.py  # Batch ID extraction from text
-│   ├── certification_searcher.py  # Search 6 certification databases
-│   └── batch_tester.py        # Batch testing search with consensus
+│   ├── nutrition_workflow.py  # OCR workflow
+│   └── vectorizer.py   # Vector generation
 └── schemas/
-    ├── supplement.py          # Supplement Pydantic models
-    └── ocr_schemas.py         # OCR response schemas
+    └── supplement.py   # Pydantic models
 \`\`\`
 
 ## Testing

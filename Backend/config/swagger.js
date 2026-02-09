@@ -32,35 +32,33 @@ const swaggerOptions = {
                 name: "Health",
                 description: "Health check and system status endpoints",
             },
-            // ==================== SSS (Supplement Management) ====================
             {
-                name: "SSS - Supplements",
+                name: "Supplements",
                 description: "Supplement library management - CRUD operations, search, and similarity matching",
             },
             {
-                name: "SSS - Inventory",
+                name: "Inventory",
                 description: "Batch inventory management and stock tracking",
             },
             {
-                name: "SSS - Staging",
+                name: "Staging",
                 description: "Supplement staging area - Web scraper data review and approval",
             },
             {
-                name: "SSS - Catalog URLs",
-                description: "Manage web scraping catalog URLs",
+                name: "Lookups", // ✅ NEW TAG
+                description: "Lookup tables for dropdowns (packaging forms, statuses)",
             },
             {
-                name: "SSS - Scraping",
-                description: "Web scraping operations",
+                name: "Admin - Catalog URLs", // ✅ NEW TAG
+                description: "Manage web scraping catalog URLs (admin only)",
             },
             {
-                name: "SSS - Lookups",
-                description: "SSS lookup tables for dropdowns (packaging forms, statuses)",
+                name: "Admin - Scraping", // ✅ NEW TAG
+                description: "Web scraping operations (admin only)",
             },
-            // ==================== AMS (Athlete Management) ====================
             {
-                name: "AMS - Athletes",
-                description: "Athlete Management System - CRUD, registry, and medical records",
+                name: "Athletes",
+                description: "Athlete profile management (Planned)",
             },
             {
                 name: "AMS - Sports",
@@ -78,10 +76,6 @@ const swaggerOptions = {
             {
                 name: "OCR",
                 description: "OCR and text extraction services",
-            },
-            {
-                name: "Authentication",
-                description: "User authentication, login, logout, and 2FA",
             },
         ],
         components: {
@@ -1059,16 +1053,6 @@ const swaggerOptions = {
                         },
                     },
                 },
-
-            },
-            // ==================== SECURITY SCHEMA ====================
-            securitySchemes: {
-                bearerAuth: {
-                    type: "http",
-                    scheme: "bearer",
-                    bearerFormat: "JWT",
-                    description: "Enter JWT token in the format: Bearer <token>",
-                },
             },
 
             // ==================== REUSABLE PARAMETERS ====================
@@ -1191,7 +1175,6 @@ const swaggerOptions = {
         "./modules/AMS/coach/routes.js",
         "./modules/OCR/routes.js",
         "./server.js",
-        "./modules/Auth/routes.js",
     ],
 };
 
