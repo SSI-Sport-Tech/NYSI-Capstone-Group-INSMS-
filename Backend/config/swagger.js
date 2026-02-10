@@ -78,6 +78,19 @@ const swaggerOptions = {
                 name: "AMS - Lookups",
                 description: "AMS lookup tables for dropdowns (sports)",
             },
+            // ==================== Consultation ====================
+            {
+                name: "Consultation - Sessions",
+                description: "Consultation session management - CRUD operations for consultation sessions",
+            },
+            {
+                name: "Consultation - Consult Types",
+                description: "Consult type lookup management - create, list, toggle, and delete consult types",
+            },
+            {
+                name: "Consultation - Notes",
+                description: "Consultation session notes - CRUD operations",
+            },
             // ==================== Other ====================
             {
                 name: "OCR",
@@ -1194,6 +1207,9 @@ const swaggerOptions = {
         "./modules/AMS/sport/routes.js",
         "./modules/AMS/coach/routes.js",
         "./modules/AMS/nutritionist/routes.js",
+        "./modules/Consultation/session/routes.js",
+        "./modules/Consultation/consulttype/routes.js",
+        "./modules/Consultation/note/routes.js",
         "./modules/OCR/routes.js",
         "./server.js",
         "./modules/Auth/routes.js",
