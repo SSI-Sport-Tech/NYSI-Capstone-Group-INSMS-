@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import DashboardLayout from "@/components/DashboardLayout";
-import ViewTabs from "@/components/ViewTabs";
-import SearchSection from "@/components/SearchSection";
-import BatchTable from "@/components/BatchTable";
+import DashboardLayout from "@/components/SSS/DashboardLayout";
+import ViewTabs from "@/components/SSS/ViewTabs";
+import SearchSection from "@/components/SSS/SearchSection";
+import BatchTable from "@/components/SSS/BatchTable";
 
 interface Batch {
   id: number;

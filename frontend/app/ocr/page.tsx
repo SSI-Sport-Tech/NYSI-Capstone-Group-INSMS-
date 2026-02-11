@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import axios from "axios";
-import DashboardLayout from "@/components/DashboardLayout";
+import DashboardLayout from "@/components/SSS/DashboardLayout";
 
 interface OCRResponse {
   text: string[];
@@ -68,12 +68,16 @@ export default function OCRPage() {
         formData.append("file", blob, selectedImage);
       }
 
-      const ocrResponse = await axios.post<OCRResponse>("/api/ocr/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
+      const ocrResponse = await axios.post<OCRResponse>(
+        "/api/ocr/upload",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          timeout: 120000, // 2 minutes timeout for OCR processing
         },
-        timeout: 120000, // 2 minutes timeout for OCR processing
-      });
+      );
 
       if (ocrResponse.data.error) {
         setError(ocrResponse.data.error);
@@ -92,7 +96,9 @@ export default function OCRPage() {
     <DashboardLayout>
       <div>
         {/* Page Title */}
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Supplement OCR</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">
+          Supplement OCR
+        </h1>
 
         {/* Image Selection */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -137,7 +143,6 @@ export default function OCRPage() {
             </label>
             <input
               type="file"
-              
               accept="image/*"
               onChange={handleFileUpload}
               className="w-full px-4 py-2 border text-gray-700 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
@@ -148,7 +153,9 @@ export default function OCRPage() {
         {/* Image Preview */}
         {previewUrl && (
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Preview</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Preview
+            </h2>
             <div className="flex justify-center">
               <img
                 src={previewUrl}

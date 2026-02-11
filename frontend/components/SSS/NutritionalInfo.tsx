@@ -4,16 +4,7 @@ import React, { useState } from "react";
 
 interface NutritionalInfoProps {
   nutritionalInfoPer100g?: {
-    energy_kcal?: number;
-    protein_g?: number;
-    fat_g?: number;
-    carbohydrate_g?: number;
-    saturated_fat?: number;
-    trans_fat?: number;
-    cholesterol?: number;
-    total_sugars?: number;
-    dietary_fibre?: number;
-    sodium?: number;
+    [key: string]: number;
   };
   nutritionalInfoPerServing?: {
     [key: string]: number;
@@ -29,6 +20,21 @@ const NutritionalInfo: React.FC<NutritionalInfoProps> = ({
   const [activeTab, setActiveTab] = useState<"per100g" | "perServing">(
     "per100g",
   );
+
+  const hasPer100gData =
+    nutritionalInfoPer100g && Object.keys(nutritionalInfoPer100g).length > 0;
+  const hasPerServingData =
+    nutritionalInfoPerServing &&
+    Object.keys(nutritionalInfoPerServing).length > 0;
+
+  // Set default tab based on available data
+  React.useEffect(() => {
+    if (!hasPer100gData && hasPerServingData) {
+      setActiveTab("perServing");
+    } else if (hasPer100gData) {
+      setActiveTab("per100g");
+    }
+  }, [hasPer100gData, hasPerServingData]);
 
   // Format the nutrient name for display
   const formatNutrientName = (key: string): string => {
@@ -54,21 +60,6 @@ const NutritionalInfo: React.FC<NutritionalInfoProps> = ({
     return value.toString();
   };
 
-  const hasPer100gData =
-    nutritionalInfoPer100g && Object.keys(nutritionalInfoPer100g).length > 0;
-  const hasPerServingData =
-    nutritionalInfoPerServing &&
-    Object.keys(nutritionalInfoPerServing).length > 0;
-
-  // Debug logging
-  console.log("NutritionalInfo Debug:", {
-    nutritionalInfoPer100g,
-    nutritionalInfoPerServing,
-    hasPer100gData,
-    hasPerServingData,
-    activeTab,
-  });
-
   if (!hasPer100gData && !hasPerServingData) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
@@ -82,25 +73,6 @@ const NutritionalInfo: React.FC<NutritionalInfoProps> = ({
     );
   }
 
-  // Standard nutritional items for per 100g display
-  const per100gItems = [
-    { key: "energy_kcal", label: "Energy", unit: "kcal" },
-    { key: "protein_g", label: "Protein", unit: "g" },
-    { key: "fat_g", label: "Total Fat", unit: "g" },
-    {
-      key: "saturated_fat",
-      label: "- Saturated Fat",
-      unit: "g",
-      isSubItem: true,
-    },
-    { key: "trans_fat", label: "- Trans Fat", unit: "g", isSubItem: true },
-    { key: "cholesterol", label: "Cholesterol", unit: "mg" },
-    { key: "carbohydrate_g", label: "Carbohydrates", unit: "g" },
-    { key: "total_sugars", label: "Total Sugars", unit: "g" },
-    { key: "dietary_fibre", label: "Dietary Fibre", unit: "g" },
-    { key: "sodium", label: "Sodium", unit: "mg" },
-  ];
-
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
       <div className="flex items-center justify-between mb-4">
@@ -109,25 +81,27 @@ const NutritionalInfo: React.FC<NutritionalInfoProps> = ({
         </h2>
 
         {/* Tab Switcher */}
-        {hasPer100gData && hasPerServingData && (
+        {(hasPer100gData || hasPerServingData) && (
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setActiveTab("per100g")}
+              disabled={!hasPer100gData}
               className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
                 activeTab === "per100g"
                   ? "bg-white text-gray-900 shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
-              }`}
+              } ${!hasPer100gData ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               Per 100g
             </button>
             <button
               onClick={() => setActiveTab("perServing")}
+              disabled={!hasPerServingData}
               className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
                 activeTab === "perServing"
                   ? "bg-white text-gray-900 shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
-              }`}
+              } ${!hasPerServingData ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               Per Serving
             </button>
@@ -144,34 +118,25 @@ const NutritionalInfo: React.FC<NutritionalInfoProps> = ({
         {/* Per 100g Display */}
         {activeTab === "per100g" && hasPer100gData && (
           <>
-            {per100gItems.map((item, index) => {
-              const value =
-                nutritionalInfoPer100g![
-                  item.key as keyof typeof nutritionalInfoPer100g
-                ];
-              if (value === undefined || value === null) return null;
+            {Object.entries(nutritionalInfoPer100g!).map(
+              ([key, value], index) => {
+                if (value === undefined || value === null) return null;
 
-              return (
-                <div
-                  key={item.key}
-                  className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
-                >
-                  <dt
-                    className={`text-sm ${
-                      item.isSubItem
-                        ? "text-gray-600 ml-4"
-                        : "text-gray-900 font-medium"
-                    }`}
+                return (
+                  <div
+                    key={key}
+                    className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
                   >
-                    {item.label}
-                  </dt>
-                  <dd className="text-sm text-gray-900 font-medium">
-                    {value}
-                    {item.unit}
-                  </dd>
-                </div>
-              );
-            })}
+                    <dt className="text-sm text-gray-900 font-medium">
+                      {formatNutrientName(key)}
+                    </dt>
+                    <dd className="text-sm text-gray-900 font-medium">
+                      {formatNutrientValue(key, value)}
+                    </dd>
+                  </div>
+                );
+              },
+            )}
           </>
         )}
 
@@ -195,38 +160,28 @@ const NutritionalInfo: React.FC<NutritionalInfoProps> = ({
             )}
           </>
         )}
-
-        {/* Default to per 100g if only one type exists */}
-        {!hasPer100gData && hasPerServingData && activeTab === "per100g" && (
-          <>
-            {Object.entries(nutritionalInfoPerServing!).map(
-              ([key, value], index) => (
-                <div
-                  key={key}
-                  className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
-                >
-                  <dt className="text-sm text-gray-900 font-medium">
-                    {formatNutrientName(key)}
-                  </dt>
-                  <dd className="text-sm text-gray-900 font-medium">
-                    {formatNutrientValue(key, value)}
-                  </dd>
-                </div>
-              ),
-            )}
-          </>
-        )}
       </div>
 
       {/* Page dots indicator */}
       <div className="flex justify-center mt-6 space-x-2">
-        <div
-          className={`w-2 h-2 rounded-full ${activeTab === "per100g" ? "bg-gray-400" : "bg-gray-200"}`}
-        ></div>
-        <div
-          className={`w-2 h-2 rounded-full ${activeTab === "perServing" ? "bg-gray-400" : "bg-gray-200"}`}
-        ></div>
-        <div className="w-2 h-2 bg-gray-200 rounded-full"></div>
+        {hasPer100gData && (
+          <div
+            className={`w-2 h-2 rounded-full ${
+              activeTab === "per100g" ? "bg-gray-400" : "bg-gray-200"
+            }`}
+          ></div>
+        )}
+        {hasPerServingData && (
+          <div
+            className={`w-2 h-2 rounded-full ${
+              activeTab === "perServing" ? "bg-gray-400" : "bg-gray-200"
+            }`}
+          ></div>
+        )}
+        {/* Third dot only shows if there's potential for more data views */}
+        {hasPer100gData && hasPerServingData && (
+          <div className="w-2 h-2 bg-gray-200 rounded-full"></div>
+        )}
       </div>
     </div>
   );

@@ -338,7 +338,19 @@ const SupplementComparisonGrid: React.FC<SupplementComparisonGridProps> = ({
                       key={supplement.id}
                       className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
                     >
-                      {supplement[field.key as keyof Supplement] || "N/A"}
+                      {(() => {
+                        const value = supplement[field.key as keyof Supplement];
+                        if (typeof value === "string") {
+                          return value;
+                        }
+                        if (Array.isArray(value)) {
+                          return value.join(", ");
+                        }
+                        if (typeof value === "object" && value !== null) {
+                          return JSON.stringify(value);
+                        }
+                        return "N/A";
+                      })()}
                     </td>
                   ))}
                 </tr>

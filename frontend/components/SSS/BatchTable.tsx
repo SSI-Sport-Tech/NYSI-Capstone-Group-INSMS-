@@ -10,7 +10,7 @@ import {
   MoreVertical,
 } from "lucide-react";
 import axios from "axios";
-import AddSupplementModal from "./SSS/AddSupplementModal";
+import AddSupplementModal from "./AddSupplementModal";
 
 interface Batch {
   id: number;

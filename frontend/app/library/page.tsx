@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import DashboardLayout from "@/components/DashboardLayout";
-import SupplementTable from "@/components/SupplementTable";
-import ViewTabs from "@/components/ViewTabs";
+import DashboardLayout from "@/components/SSS/DashboardLayout";
+import SupplementTable from "@/components/SSS/SupplementTable";
+import ViewTabs from "@/components/SSS/ViewTabs";
 import { Search } from "lucide-react";
 
 interface Supplement {
@@ -128,12 +128,12 @@ export default function LibraryPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyPress}
                 placeholder="Search supplements by name, brand, or ingredients..."
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2.5 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <button
               onClick={handleSearch}
-              className="px-8 py-2.5 bg-black text-white rounded-md hover:bg-gray-800 transition-colors font-medium"
+              className="px-8 py-2.5 bg-black text-black rounded-md hover:bg-gray-800 transition-colors font-medium"
             >
               Search
             </button>

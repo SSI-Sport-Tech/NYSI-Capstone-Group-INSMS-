@@ -43,7 +43,7 @@ const SearchSection: React.FC<SearchSectionProps> = ({
             onChange={(e) => onQueryChange(e.target.value)}
             onKeyDown={handleKeyPress}
             placeholder="Type your search here..."
-            className="w-full pl-11 pr-4 py-2.5 text-sm text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-shadow"
+            className="w-full px-10 py-2.5 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={loading}
           />
         </div>

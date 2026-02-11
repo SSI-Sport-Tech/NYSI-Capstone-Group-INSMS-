@@ -375,14 +375,14 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                           searchQuery.trim() && (
                             <div className="px-3 py-4 text-center">
                               <p className="text-sm text-gray-600 mb-2">
-                                No supplements found for "{searchQuery}"
+                                No supplements found for &quot;{searchQuery}&quot;
                               </p>
                               <button
                                 type="button"
                                 onClick={handleNewSupplement}
                                 className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                               >
-                                + Register "{searchQuery}" as new supplement
+                                + Register &quot;{searchQuery}&quot; as new supplement
                               </button>
                             </div>
                           )
