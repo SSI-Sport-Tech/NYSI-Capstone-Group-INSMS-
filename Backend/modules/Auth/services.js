@@ -1,6 +1,7 @@
 /**
  * NYSI Authentication Services
  * Database operations for user authentication and 2FA
+ * UPDATED: Includes AMS nutritionist profile creation
  */
 
 import pool from '../../config/db.js';
@@ -24,6 +25,7 @@ export async function getUserByEmail(email) {
             last_name,
             role,
             is_active,
+            is_email_verified,
             created_at,
             last_login_at
         FROM auth.users
@@ -48,6 +50,7 @@ export async function getUserById(userId) {
             last_name,
             role,
             is_active,
+            is_email_verified,
             created_at,
             last_login_at
         FROM auth.users
@@ -65,7 +68,7 @@ export async function getUserById(userId) {
  * @param {string} userData.password_hash - Hashed password
  * @param {string} userData.first_name - First name
  * @param {string} userData.last_name - Last name
- * @param {string} userData.role - User role (user/admin/manager)
+ * @param {string} userData.role - User role (IT_ADMIN/ADMIN/NUTRITIONIST/COACH/ATHLETE)
  * @returns {Promise<Object>} Created user object
  */
 export async function createUser(userData) {
@@ -77,8 +80,9 @@ export async function createUser(userData) {
             last_name,
             role,
             is_active,
+            is_email_verified,
             created_at
-        ) VALUES ($1, $2, $3, $4, $5, true, NOW())
+        ) VALUES ($1, $2, $3, $4, $5, true, true, NOW())
         RETURNING 
             id,
             email,
@@ -86,6 +90,7 @@ export async function createUser(userData) {
             last_name,
             role,
             is_active,
+            is_email_verified,
             created_at
     `;
 
@@ -99,6 +104,20 @@ export async function createUser(userData) {
 
     const result = await pool.query(query, values);
     return result.rows[0];
+}
+
+/**
+ * Delete user by ID (for rollback scenarios)
+ * @param {string} userId - User UUID
+ * @returns {Promise<void>}
+ */
+export async function deleteUserById(userId) {
+    const query = `
+        DELETE FROM auth.users
+        WHERE id = $1
+    `;
+
+    await pool.query(query, [userId]);
 }
 
 /**
@@ -117,30 +136,127 @@ export async function updateLastLogin(userId) {
 }
 
 // ============================================================================
+// AMS NUTRITIONIST PROFILE SERVICES
+// ============================================================================
+
+/**
+ * Get nutritionist profile by user_id
+ * @param {string} userId - User UUID
+ * @returns {Promise<Object|null>} Nutritionist profile or null if not found
+ */
+export async function getNutritionistByUserId(userId) {
+    const query = `
+        SELECT 
+            id,
+            name,
+            user_id,
+            created_at,
+            updated_at
+        FROM ams.nutritionist
+        WHERE user_id = $1
+    `;
+
+    const result = await pool.query(query, [userId]);
+    return result.rows.length > 0 ? result.rows[0] : null;
+}
+
+/**
+ * Create nutritionist profile and link to user
+ * @param {Object} profileData - Profile data
+ * @param {string} profileData.name - Nutritionist full name
+ * @param {string} profileData.user_id - User UUID to link
+ * @returns {Promise<Object>} Created nutritionist profile
+ */
+export async function createNutritionistProfile(profileData) {
+    const query = `
+        INSERT INTO ams.nutritionist (
+            name,
+            user_id
+        ) VALUES ($1, $2)
+        RETURNING 
+            id,
+            name,
+            user_id
+    `;
+
+    const values = [
+        profileData.name,
+        profileData.user_id,
+    ];
+
+    const result = await pool.query(query, values);
+    return result.rows[0];
+}
+
+/**
+ * Get athlete profile by user_id (for future use)
+ * @param {string} userId - User UUID
+ * @returns {Promise<Object|null>} Athlete profile or null if not found
+ */
+export async function getAthleteByUserId(userId) {
+    const query = `
+        SELECT 
+            id,
+            name,
+            user_id,
+            created_at,
+            updated_at
+        FROM ams.athlete
+        WHERE user_id = $1
+    `;
+
+    const result = await pool.query(query, [userId]);
+    return result.rows.length > 0 ? result.rows[0] : null;
+}
+
+/**
+ * Get coach profile by user_id (for future use)
+ * @param {string} userId - User UUID
+ * @returns {Promise<Object|null>} Coach profile or null if not found
+ */
+export async function getCoachByUserId(userId) {
+    const query = `
+        SELECT 
+            id,
+            name,
+            user_id,
+            created_at,
+            updated_at
+        FROM ams.coach
+        WHERE user_id = $1
+    `;
+
+    const result = await pool.query(query, [userId]);
+    return result.rows.length > 0 ? result.rows[0] : null;
+}
+
+// ============================================================================
 // VERIFICATION CODE SERVICES
 // ============================================================================
 
 /**
- * Get verification code by user ID
+ * Get verification code by user ID and purpose
  * @param {string} userId - User UUID
+ * @param {string} purpose - Code purpose (LOGIN_2FA, PASSWORD_RESET, EMAIL_VERIFY)
  * @returns {Promise<Object|null>} Verification code object or null
  */
-export async function getVerificationCodeByUserId(userId) {
+export async function getVerificationCodeByUserId(userId, purpose = 'LOGIN_2FA') {
     const query = `
         SELECT 
             id,
             user_id,
             code,
+            purpose,
             expires_at,
             attempts,
             created_at
         FROM auth.verification_codes
-        WHERE user_id = $1
+        WHERE user_id = $1 AND purpose = $2
         ORDER BY created_at DESC
         LIMIT 1
     `;
 
-    const result = await pool.query(query, [userId]);
+    const result = await pool.query(query, [userId, purpose]);
     return result.rows.length > 0 ? result.rows[0] : null;
 }
 
@@ -149,6 +265,7 @@ export async function getVerificationCodeByUserId(userId) {
  * @param {Object} codeData - Verification code data
  * @param {string} codeData.user_id - User UUID
  * @param {string} codeData.code - 6-digit code
+ * @param {string} codeData.purpose - Code purpose (LOGIN_2FA, PASSWORD_RESET, EMAIL_VERIFY)
  * @param {Date} codeData.expires_at - Expiration timestamp
  * @param {number} codeData.attempts - Initial attempt count (usually 0)
  * @returns {Promise<Object>} Created verification code object
@@ -158,14 +275,16 @@ export async function createVerificationCode(codeData) {
         INSERT INTO auth.verification_codes (
             user_id,
             code,
+            purpose,
             expires_at,
             attempts,
             created_at
-        ) VALUES ($1, $2, $3, $4, NOW())
+        ) VALUES ($1, $2, $3, $4, $5, NOW())
         RETURNING 
             id,
             user_id,
             code,
+            purpose,
             expires_at,
             attempts,
             created_at
@@ -174,6 +293,7 @@ export async function createVerificationCode(codeData) {
     const values = [
         codeData.user_id,
         codeData.code,
+        codeData.purpose || 'LOGIN_2FA',
         codeData.expires_at,
         codeData.attempts,
     ];
@@ -183,32 +303,41 @@ export async function createVerificationCode(codeData) {
 }
 
 /**
- * Delete all verification codes for a user
+ * Delete all verification codes for a user (optionally filter by purpose)
  * @param {string} userId - User UUID
+ * @param {string} purpose - Optional purpose filter
  * @returns {Promise<void>}
  */
-export async function deleteVerificationCodesByUserId(userId) {
-    const query = `
+export async function deleteVerificationCodesByUserId(userId, purpose = null) {
+    let query = `
         DELETE FROM auth.verification_codes
         WHERE user_id = $1
     `;
 
-    await pool.query(query, [userId]);
+    const values = [userId];
+
+    if (purpose) {
+        query += ` AND purpose = $2`;
+        values.push(purpose);
+    }
+
+    await pool.query(query, values);
 }
 
 /**
  * Increment verification attempts
  * @param {string} userId - User UUID
+ * @param {string} purpose - Code purpose
  * @returns {Promise<void>}
  */
-export async function incrementVerificationAttempts(userId) {
+export async function incrementVerificationAttempts(userId, purpose = 'LOGIN_2FA') {
     const query = `
         UPDATE auth.verification_codes
         SET attempts = attempts + 1
-        WHERE user_id = $1
+        WHERE user_id = $1 AND purpose = $2
     `;
 
-    await pool.query(query, [userId]);
+    await pool.query(query, [userId, purpose]);
 }
 
 /**
@@ -325,75 +454,3 @@ export async function invalidateAllSessions(userId) {
 
     await pool.query(query, [userId]);
 }
-
-// // ============================================================================
-// // AUDIT LOG SERVICES (Optional - for security tracking)
-// // ============================================================================
-
-// /**
-//  * Create audit log entry
-//  * @param {Object} logData - Audit log data
-//  * @param {string} logData.user_id - User UUID (nullable)
-//  * @param {string} logData.action - Action performed
-//  * @param {string} logData.ip_address - IP address
-//  * @param {string} logData.user_agent - User agent string
-//  * @param {boolean} logData.success - Whether action succeeded
-//  * @param {string} logData.error_message - Error message (if failed)
-//  * @returns {Promise<Object>} Created audit log entry
-//  */
-// export async function createAuditLog(logData) {
-//     const query = `
-//         INSERT INTO audit.audit_log (
-//             user_id,
-//             action,
-//             ip_address,
-//             user_agent,
-//             success,
-//             error_message,
-//             created_at
-//         ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
-//         RETURNING
-//             id,
-//             user_id,
-//             action,
-//             success,
-//             created_at
-//     `;
-
-//     const values = [
-//         logData.user_id || null,
-//         logData.action,
-//         logData.ip_address || null,
-//         logData.user_agent || null,
-//         logData.success,
-//         logData.error_message || null,
-//     ];
-
-//     const result = await pool.query(query, values);
-//     return result.rows[0];
-// }
-
-// /**
-//  * Get recent audit logs for a user
-//  * @param {string} userId - User UUID
-//  * @param {number} limit - Number of logs to return (default 50)
-//  * @returns {Promise<Array>} Array of audit log entries
-//  */
-// export async function getUserAuditLogs(userId, limit = 50) {
-//     const query = `
-//         SELECT
-//             id,
-//             action,
-//             ip_address,
-//             success,
-//             error_message,
-//             created_at
-//         FROM auth.audit_log
-//         WHERE user_id = $1
-//         ORDER BY created_at DESC
-//         LIMIT $2
-//     `;
-
-//     const result = await pool.query(query, [userId, limit]);
-//     return result.rows;
-// }

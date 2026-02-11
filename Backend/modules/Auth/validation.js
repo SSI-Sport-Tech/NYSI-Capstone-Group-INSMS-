@@ -1,6 +1,7 @@
 /**
  * NYSI Authentication Validation Schemas
  * Zod schemas for request validation
+ * UPDATED: Aligned with NYSI database roles
  */
 
 import { z } from 'zod';
@@ -37,15 +38,20 @@ const nameSchema = z.string()
     .max(100, 'Name must be less than 100 characters')
     .trim();
 
-// Role validator
-const roleSchema = z.enum(['user', 'admin', 'manager'], {
-    errorMap: () => ({ message: 'Role must be user, admin, or manager' }),
+// UPDATED: Role validator matching database schema
+const roleSchema = z.enum(['IT_ADMIN', 'ADMIN', 'NUTRITIONIST', 'COACH', 'ATHLETE'], {
+    errorMap: () => ({ message: 'Role must be IT_ADMIN, ADMIN, NUTRITIONIST, COACH, or ATHLETE' }),
 });
 
 // 6-digit code validator
 const codeSchema = z.string()
     .regex(/^[0-9]{6}$/, 'Code must be exactly 6 digits')
     .length(6, 'Code must be exactly 6 digits');
+
+// Purpose validator for verification codes
+const purposeSchema = z.enum(['LOGIN_2FA', 'PASSWORD_RESET', 'EMAIL_VERIFY'], {
+    errorMap: () => ({ message: 'Purpose must be LOGIN_2FA, PASSWORD_RESET, or EMAIL_VERIFY' }),
+});
 
 // ============================================================================
 // REGISTRATION SCHEMA
@@ -57,7 +63,7 @@ const codeSchema = z.string()
  */
 export const registerSchema = z.object({
     // ---- REQUIRED FIELDS ----
-    
+
     email: emailSchema
         .describe('User email address (will be converted to lowercase)'),
 
@@ -73,17 +79,19 @@ export const registerSchema = z.object({
     // ---- OPTIONAL FIELDS ----
 
     role: roleSchema
-        .default('user')
+        .default('NUTRITIONIST')  // UPDATED: Default role for new users
         .optional()
-        .describe('User role (default: user)'),
+        .describe('User role (default: NUTRITIONIST)'),
 
     // ---- FIELDS NOT ACCEPTED (handled by system) ----
 
     id: z.never().optional(),
     password_hash: z.never().optional(),
     is_active: z.never().optional(),
+    is_email_verified: z.never().optional(),
     created_at: z.never().optional(),
-    last_login: z.never().optional(),
+    last_login_at: z.never().optional(),
+    updated_at: z.never().optional(),
 
 }).strict();
 
@@ -161,13 +169,15 @@ export const updateProfileSchema = z.object({
     password_hash: z.never().optional(),
     role: z.never().optional(),  // Only admins can change roles
     is_active: z.never().optional(),
+    is_email_verified: z.never().optional(),
     created_at: z.never().optional(),
-    last_login: z.never().optional(),
+    last_login_at: z.never().optional(),
+    updated_at: z.never().optional(),
 
 }).strict()
-.refine(data => Object.keys(data).length > 0, {
-    message: 'At least one field must be provided to update',
-});
+    .refine(data => Object.keys(data).length > 0, {
+        message: 'At least one field must be provided to update',
+    });
 
 // ============================================================================
 // PASSWORD CHANGE SCHEMA (for future use)
@@ -192,14 +202,14 @@ export const changePasswordSchema = z.object({
         .describe('Confirm new password'),
 
 }).strict()
-.refine(data => data.new_password === data.confirm_password, {
-    message: 'Passwords do not match',
-    path: ['confirm_password'],
-})
-.refine(data => data.current_password !== data.new_password, {
-    message: 'New password must be different from current password',
-    path: ['new_password'],
-});
+    .refine(data => data.new_password === data.confirm_password, {
+        message: 'Passwords do not match',
+        path: ['confirm_password'],
+    })
+    .refine(data => data.current_password !== data.new_password, {
+        message: 'New password must be different from current password',
+        path: ['new_password'],
+    });
 
 // ============================================================================
 // PASSWORD RESET SCHEMAS (for future use)
@@ -236,10 +246,10 @@ export const resetPasswordSchema = z.object({
         .describe('Confirm new password'),
 
 }).strict()
-.refine(data => data.new_password === data.confirm_password, {
-    message: 'Passwords do not match',
-    path: ['confirm_password'],
-});
+    .refine(data => data.new_password === data.confirm_password, {
+        message: 'Passwords do not match',
+        path: ['confirm_password'],
+    });
 
 // ============================================================================
 // ADMIN SCHEMAS (for future use)
@@ -268,6 +278,11 @@ export const adminCreateUserSchema = z.object({
         .optional()
         .describe('Whether user account is active'),
 
+    is_email_verified: z.boolean()
+        .default(false)
+        .optional()
+        .describe('Whether email is verified'),
+
 }).strict();
 
 /**
@@ -281,6 +296,7 @@ export const adminUpdateUserSchema = z.object({
     last_name: nameSchema.optional(),
     role: roleSchema.optional(),
     is_active: z.boolean().optional(),
+    is_email_verified: z.boolean().optional(),
 
     // ---- FIELDS NOT ACCEPTED ----
 
@@ -290,9 +306,9 @@ export const adminUpdateUserSchema = z.object({
     password_hash: z.never().optional(),
 
 }).strict()
-.refine(data => Object.keys(data).length > 0, {
-    message: 'At least one field must be provided to update',
-});
+    .refine(data => Object.keys(data).length > 0, {
+        message: 'At least one field must be provided to update',
+    });
 
 // ============================================================================
 // HELPER VALIDATION FUNCTIONS
@@ -323,4 +339,13 @@ export function isValidPassword(password) {
  */
 export function isValidCode(code) {
     return codeSchema.safeParse(code).success;
+}
+
+/**
+ * Validate role
+ * @param {string} role - Role to validate
+ * @returns {boolean} True if valid
+ */
+export function isValidRole(role) {
+    return roleSchema.safeParse(role).success;
 }
