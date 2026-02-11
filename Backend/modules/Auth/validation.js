@@ -257,7 +257,7 @@ export const resetPasswordSchema = z.object({
 
 /**
  * Schema for admin to create user
- * POST /api/auth/admin/users
+ * POST /api/admin/users
  */
 export const adminCreateUserSchema = z.object({
     // ---- REQUIRED FIELDS ----
@@ -287,7 +287,7 @@ export const adminCreateUserSchema = z.object({
 
 /**
  * Schema for admin to update user
- * PATCH /api/auth/admin/users/:id
+ * PATCH /api/admin/users/:id
  */
 export const adminUpdateUserSchema = z.object({
     // ---- OPTIONAL FIELDS (at least one required) ----

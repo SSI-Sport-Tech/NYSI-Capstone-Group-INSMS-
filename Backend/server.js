@@ -7,6 +7,7 @@ import ocrRoutes from "./modules/OCR/routes.js";
 import supplementRoutes from "./modules/SSS/index.js";
 import athleteRoutes from "./modules/AMS/index.js";
 import authRoutes from "./modules/Auth/routes.js"; // ✅ NEW: Authentication routes
+import adminRoutes from './modules/Admin/adminRoutes.js';
 import { verifyEmailConfig } from "./modules/Auth/emailService.js"; // ✅ NEW: Email verification
 
 
@@ -79,6 +80,7 @@ app.get("/docs.json", (req, res) => {
 
 // ✅ NEW: Authentication routes (must be first for security)
 app.use("/api/auth", authRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Existing routes
 app.use("/api/SSS", supplementRoutes);

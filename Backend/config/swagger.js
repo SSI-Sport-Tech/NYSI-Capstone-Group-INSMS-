@@ -83,6 +83,10 @@ const swaggerOptions = {
                 name: "Authentication",
                 description: "User authentication, login, logout, and 2FA",
             },
+            {
+                name: "Admin",
+                description: "Admin user management endpoints (ADMIN and IT_ADMIN only)",
+            },
         ],
         components: {
             schemas: {
@@ -1192,6 +1196,7 @@ const swaggerOptions = {
         "./modules/OCR/routes.js",
         "./server.js",
         "./modules/Auth/routes.js",
+        "./modules/Admin/adminRoutes.js"
     ],
 };
 

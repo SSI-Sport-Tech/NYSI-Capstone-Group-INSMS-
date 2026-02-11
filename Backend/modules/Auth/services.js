@@ -149,9 +149,7 @@ export async function getNutritionistByUserId(userId) {
         SELECT 
             id,
             name,
-            user_id,
-            created_at,
-            updated_at
+            user_id
         FROM ams.nutritionist
         WHERE user_id = $1
     `;
@@ -197,10 +195,8 @@ export async function getAthleteByUserId(userId) {
     const query = `
         SELECT 
             id,
-            name,
+            athlete_name_abbr,
             user_id,
-            created_at,
-            updated_at
         FROM ams.athlete
         WHERE user_id = $1
     `;
@@ -220,8 +216,7 @@ export async function getCoachByUserId(userId) {
             id,
             name,
             user_id,
-            created_at,
-            updated_at
+            sport_id
         FROM ams.coach
         WHERE user_id = $1
     `;
