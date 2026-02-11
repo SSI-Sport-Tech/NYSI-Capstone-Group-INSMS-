@@ -4,21 +4,21 @@ import * as controller from './controller.js';
 const router = express.Router();
 
 // ============================================================================
-// COACH CRUD ROUTES
+// NUTRITIONIST CRUD ROUTES
 // ============================================================================
 
 /**
  * @swagger
- * /api/AMS/coaches:
+ * /api/AMS/nutritionists:
  *   get:
- *     summary: List Coaches
+ *     summary: List Nutritionists
  *     description: |
- *       Get all coaches with their associated sport name.
- *       Returns coaches sorted alphabetically by name.
- *     tags: [AMS - Coaches]
+ *       Get all nutritionists.
+ *       Returns nutritionists sorted alphabetically by name.
+ *     tags: [AMS - Nutritionists]
  *     responses:
  *       200:
- *         description: List of coaches
+ *         description: List of nutritionists
  *         content:
  *           application/json:
  *             schema:
@@ -32,56 +32,43 @@ const router = express.Router();
  *                       id:
  *                         type: string
  *                         format: uuid
- *                       sport_id:
- *                         type: string
- *                         format: uuid
  *                       name:
- *                         type: string
- *                       sport_name:
  *                         type: string
  *             example:
  *               data:
  *                 - id: "uuid-1"
- *                   sport_id: "uuid-sport-1"
- *                   name: "John Smith"
- *                   sport_name: "Swimming"
+ *                   name: "Alice Johnson"
  *                 - id: "uuid-2"
- *                   sport_id: "uuid-sport-2"
- *                   name: "Jane Doe"
- *                   sport_name: "Athletics"
+ *                   name: "Bob Williams"
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/coaches', controller.listCoaches);
+router.get('/nutritionists', controller.listNutritionists);
 
 /**
  * @swagger
- * /api/AMS/coaches:
+ * /api/AMS/nutritionists:
  *   post:
- *     summary: Create Coach
+ *     summary: Create Nutritionist
  *     description: |
- *       Add a new coach. Requires a valid, active sport_id.
- *       Duplicate name + sport combinations (case-insensitive) are rejected with 409.
- *     tags: [AMS - Coaches]
+ *       Add a new nutritionist.
+ *       Duplicate names (case-insensitive) are rejected with 409.
+ *     tags: [AMS - Nutritionists]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [sport_id, name]
+ *             required: [name]
  *             properties:
- *               sport_id:
- *                 type: string
- *                 format: uuid
- *                 description: Sport UUID from Sport_Lookup
  *               name:
  *                 type: string
- *                 description: Coach name
- *                 example: "John Smith"
+ *                 description: Nutritionist name
+ *                 example: "Alice Johnson"
  *     responses:
  *       201:
- *         description: Coach created successfully
+ *         description: Nutritionist created successfully
  *         content:
  *           application/json:
  *             schema:
@@ -89,14 +76,11 @@ router.get('/coaches', controller.listCoaches);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Coach created successfully"
+ *                   example: "Nutritionist created successfully"
  *                 data:
  *                   type: object
  *                   properties:
  *                     id:
- *                       type: string
- *                       format: uuid
- *                     sport_id:
  *                       type: string
  *                       format: uuid
  *                     name:
@@ -108,24 +92,81 @@ router.get('/coaches', controller.listCoaches);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/coaches', controller.createCoach);
+router.post('/nutritionists', controller.createNutritionist);
+
+/**
+ * @swagger
+ * /api/AMS/nutritionists:
+ *   delete:
+ *     summary: Delete Nutritionists (Bulk) [ADMIN ONLY]
+ *     description: |
+ *       Delete one or more nutritionists by ID.
+ *     tags: [AMS - Nutritionists]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [ids]
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 minItems: 1
+ *                 description: Array of nutritionist UUIDs to delete
+ *           example:
+ *             ids: ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]
+ *     responses:
+ *       200:
+ *         description: Nutritionists deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 deletedCount:
+ *                   type: integer
+ *                 deletedIds:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                     format: uuid
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.delete('/nutritionists', controller.deleteNutritionists);
 
 // ============================================================================
-// COACH-ATHLETE MAPPING ROUTES
+// NUTRITIONIST-ATHLETE MAPPING ROUTES
 // ============================================================================
 
 /**
  * @swagger
- * /api/AMS/coaches/mappings:
+ * /api/AMS/nutritionists/mappings:
  *   get:
- *     summary: List Coach-Athlete Mappings
+ *     summary: List Nutritionist-Athlete Mappings
  *     description: |
- *       Get all coach-athlete mappings with coach and athlete names.
- *       Returns mappings sorted by athlete name then coach name.
- *     tags: [AMS - Coaches]
+ *       Get all nutritionist-athlete mappings with nutritionist and athlete names.
+ *       Returns mappings sorted by athlete name then nutritionist name.
+ *       Optionally filter by is_active status.
+ *     tags: [AMS - Nutritionists]
+ *     parameters:
+ *       - name: is_active
+ *         in: query
+ *         required: false
+ *         description: Filter by active status (true or false)
+ *         schema:
+ *           type: boolean
  *     responses:
  *       200:
- *         description: List of coach-athlete mappings
+ *         description: List of nutritionist-athlete mappings
  *         content:
  *           application/json:
  *             schema:
@@ -142,12 +183,12 @@ router.post('/coaches', controller.createCoach);
  *                       athlete_id:
  *                         type: string
  *                         format: uuid
- *                       coach_id:
+ *                       nutritionist_id:
  *                         type: string
  *                         format: uuid
  *                       is_active:
  *                         type: boolean
- *                       coach_name:
+ *                       nutritionist_name:
  *                         type: string
  *                       athlete_name:
  *                         type: string
@@ -155,24 +196,27 @@ router.post('/coaches', controller.createCoach);
  *               data:
  *                 - id: "uuid-mapping-1"
  *                   athlete_id: "uuid-athlete-1"
- *                   coach_id: "uuid-coach-1"
+ *                   nutritionist_id: "uuid-nutritionist-1"
  *                   is_active: true
- *                   coach_name: "John Smith"
+ *                   nutritionist_name: "Alice Johnson"
  *                   athlete_name: "Jane Doe"
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/coaches/mappings', controller.listMappings);
+router.get('/nutritionists/mappings', controller.listMappings);
 
 /**
  * @swagger
- * /api/AMS/coaches/mappings/athlete/{athleteId}:
+ * /api/AMS/nutritionists/mappings/athlete/{athleteId}:
  *   get:
  *     summary: List Mappings by Athlete
  *     description: |
- *       Get all coach-athlete mappings for a specific athlete.
- *       Returns mappings sorted by coach name.
- *     tags: [AMS - Coaches]
+ *       Get all nutritionist-athlete mappings for a specific athlete.
+ *       Returns mappings sorted by nutritionist name.
+ *       Optionally filter by is_active status.
+ *     tags: [AMS - Nutritionists]
  *     parameters:
  *       - name: athleteId
  *         in: path
@@ -181,6 +225,12 @@ router.get('/coaches/mappings', controller.listMappings);
  *         schema:
  *           type: string
  *           format: uuid
+ *       - name: is_active
+ *         in: query
+ *         required: false
+ *         description: Filter by active status (true or false)
+ *         schema:
+ *           type: boolean
  *     responses:
  *       200:
  *         description: List of mappings for the athlete
@@ -200,12 +250,12 @@ router.get('/coaches/mappings', controller.listMappings);
  *                       athlete_id:
  *                         type: string
  *                         format: uuid
- *                       coach_id:
+ *                       nutritionist_id:
  *                         type: string
  *                         format: uuid
  *                       is_active:
  *                         type: boolean
- *                       coach_name:
+ *                       nutritionist_name:
  *                         type: string
  *                       athlete_name:
  *                         type: string
@@ -214,34 +264,34 @@ router.get('/coaches/mappings', controller.listMappings);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/coaches/mappings/athlete/:athleteId', controller.listMappingsByAthlete);
+router.get('/nutritionists/mappings/athlete/:athleteId', controller.listMappingsByAthlete);
 
 /**
  * @swagger
- * /api/AMS/coaches/mappings:
+ * /api/AMS/nutritionists/mappings:
  *   post:
- *     summary: Create Coach-Athlete Mapping
+ *     summary: Create Nutritionist-Athlete Mapping
  *     description: |
- *       Create a new coach-athlete mapping.
- *       Both athlete_id and coach_id must reference existing records.
- *       Duplicate composite key (athlete_id + coach_id) is rejected with 409.
- *     tags: [AMS - Coaches]
+ *       Create a new nutritionist-athlete mapping.
+ *       Both athlete_id and nutritionist_id must reference existing records.
+ *       Duplicate composite key (athlete_id + nutritionist_id) is rejected with 409.
+ *     tags: [AMS - Nutritionists]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [athlete_id, coach_id]
+ *             required: [athlete_id, nutritionist_id]
  *             properties:
  *               athlete_id:
  *                 type: string
  *                 format: uuid
  *                 description: Athlete UUID
- *               coach_id:
+ *               nutritionist_id:
  *                 type: string
  *                 format: uuid
- *                 description: Coach UUID
+ *                 description: Nutritionist UUID
  *               is_active:
  *                 type: boolean
  *                 default: true
@@ -256,7 +306,7 @@ router.get('/coaches/mappings/athlete/:athleteId', controller.listMappingsByAthl
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Coach-athlete mapping created successfully"
+ *                   example: "Nutritionist-athlete mapping created successfully"
  *                 data:
  *                   type: object
  *                   properties:
@@ -266,7 +316,7 @@ router.get('/coaches/mappings/athlete/:athleteId', controller.listMappingsByAthl
  *                     athlete_id:
  *                       type: string
  *                       format: uuid
- *                     coach_id:
+ *                     nutritionist_id:
  *                       type: string
  *                       format: uuid
  *                     is_active:
@@ -278,79 +328,17 @@ router.get('/coaches/mappings/athlete/:athleteId', controller.listMappingsByAthl
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/coaches/mappings', controller.createMapping);
+router.post('/nutritionists/mappings', controller.createMapping);
 
 /**
  * @swagger
- * /api/AMS/coaches/mappings:
- *   delete:
- *     summary: Delete Coach-Athlete Mappings (Bulk)
- *     description: |
- *       Delete one or more coach-athlete mappings by composite key pairs.
- *       Request body is an array of { athlete_id, coach_id } objects.
- *     tags: [AMS - Coaches]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: array
- *             items:
- *               type: object
- *               required: [athlete_id, coach_id]
- *               properties:
- *                 athlete_id:
- *                   type: string
- *                   format: uuid
- *                 coach_id:
- *                   type: string
- *                   format: uuid
- *             minItems: 1
- *           example:
- *             - athlete_id: "uuid-athlete-1"
- *               coach_id: "uuid-coach-1"
- *     responses:
- *       200:
- *         description: Mappings deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 deletedCount:
- *                   type: integer
- *                 deleted:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: string
- *                         format: uuid
- *                       athlete_id:
- *                         type: string
- *                         format: uuid
- *                       coach_id:
- *                         type: string
- *                         format: uuid
- *       400:
- *         $ref: '#/components/responses/BadRequest'
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
- */
-router.delete('/coaches/mappings', controller.deleteMappings);
-
-/**
- * @swagger
- * /api/AMS/coaches/mappings/{athleteId}/{coachId}:
+ * /api/AMS/nutritionists/mappings/{athleteId}/{nutritionistId}:
  *   patch:
  *     summary: Update Mapping Status
  *     description: |
- *       Update the is_active status of a coach-athlete mapping.
+ *       Update the is_active status of a nutritionist-athlete mapping.
  *       Use this to activate or deactivate a mapping.
- *     tags: [AMS - Coaches]
+ *     tags: [AMS - Nutritionists]
  *     parameters:
  *       - name: athleteId
  *         in: path
@@ -359,10 +347,10 @@ router.delete('/coaches/mappings', controller.deleteMappings);
  *         schema:
  *           type: string
  *           format: uuid
- *       - name: coachId
+ *       - name: nutritionistId
  *         in: path
  *         required: true
- *         description: Coach UUID
+ *         description: Nutritionist UUID
  *         schema:
  *           type: string
  *           format: uuid
@@ -399,7 +387,7 @@ router.delete('/coaches/mappings', controller.deleteMappings);
  *                     athlete_id:
  *                       type: string
  *                       format: uuid
- *                     coach_id:
+ *                     nutritionist_id:
  *                       type: string
  *                       format: uuid
  *                     is_active:
@@ -411,102 +399,40 @@ router.delete('/coaches/mappings', controller.deleteMappings);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch('/coaches/mappings/:athleteId/:coachId', controller.updateMapping);
+router.patch('/nutritionists/mappings/:athleteId/:nutritionistId', controller.updateMapping);
 
 /**
  * @swagger
- * /api/AMS/coaches/{id}:
- *   patch:
- *     summary: Update Coach
- *     description: |
- *       Update coach fields (name, sport_id). All fields are optional.
- *       If sport_id is changed, it must reference a valid active sport.
- *       Duplicate name + sport combinations are rejected with 409.
- *     tags: [AMS - Coaches]
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         description: Coach UUID
- *         schema:
- *           type: string
- *           format: uuid
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               sport_id:
- *                 type: string
- *                 format: uuid
- *                 description: New sport UUID
- *               name:
- *                 type: string
- *                 description: New coach name
- *     responses:
- *       200:
- *         description: Coach updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Coach updated successfully"
- *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                       format: uuid
- *                     sport_id:
- *                       type: string
- *                       format: uuid
- *                     name:
- *                       type: string
- *       400:
- *         $ref: '#/components/responses/BadRequest'
- *       404:
- *         $ref: '#/components/responses/NotFound'
- *       409:
- *         $ref: '#/components/responses/Conflict'
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
- */
-router.patch('/coaches/:id', controller.updateCoach);
-
-/**
- * @swagger
- * /api/AMS/coaches:
+ * /api/AMS/nutritionists/mappings:
  *   delete:
- *     summary: Delete Coaches (Bulk) [ADMIN ONLY]
+ *     summary: Delete Nutritionist-Athlete Mappings (Bulk)
  *     description: |
- *       Delete one or more coaches by ID.
- *       Coach-athlete mappings are automatically cleaned up via CASCADE.
- *     tags: [AMS - Coaches]
+ *       Delete one or more nutritionist-athlete mappings by composite key pairs.
+ *       Request body is an array of { athlete_id, nutritionist_id } objects.
+ *     tags: [AMS - Nutritionists]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required: [ids]
- *             properties:
- *               ids:
- *                 type: array
- *                 items:
+ *             type: array
+ *             items:
+ *               type: object
+ *               required: [athlete_id, nutritionist_id]
+ *               properties:
+ *                 athlete_id:
  *                   type: string
  *                   format: uuid
- *                 minItems: 1
- *                 description: Array of coach UUIDs to delete
+ *                 nutritionist_id:
+ *                   type: string
+ *                   format: uuid
+ *             minItems: 1
  *           example:
- *             ids: ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]
+ *             - athlete_id: "uuid-athlete-1"
+ *               nutritionist_id: "uuid-nutritionist-1"
  *     responses:
  *       200:
- *         description: Coaches deleted successfully
+ *         description: Mappings deleted successfully
  *         content:
  *           application/json:
  *             schema:
@@ -516,16 +442,25 @@ router.patch('/coaches/:id', controller.updateCoach);
  *                   type: string
  *                 deletedCount:
  *                   type: integer
- *                 deletedIds:
+ *                 deleted:
  *                   type: array
  *                   items:
- *                     type: string
- *                     format: uuid
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       athlete_id:
+ *                         type: string
+ *                         format: uuid
+ *                       nutritionist_id:
+ *                         type: string
+ *                         format: uuid
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete('/coaches', controller.deleteCoaches);
+router.delete('/nutritionists/mappings', controller.deleteMappings);
 
 export default router;

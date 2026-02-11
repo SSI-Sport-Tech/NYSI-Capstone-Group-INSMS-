@@ -1,0 +1,37 @@
+import { z } from 'zod';
+import { bulkDeleteSchema } from '../../SSS/shared/validation.js';
+
+// ============================================================================
+// CREATE NUTRITIONIST SCHEMA
+// ============================================================================
+
+export const createNutritionistSchema = z.object({
+    name: z.string()
+        .trim()
+        .min(1, 'Nutritionist name is required')
+        .max(255, 'Nutritionist name must be 255 characters or less'),
+}).strict();
+
+// ============================================================================
+// NUTRITIONIST-ATHLETE MAPPING SCHEMAS
+// ============================================================================
+
+export const createMappingSchema = z.object({
+    athlete_id: z.string().uuid('athlete_id must be a valid UUID'),
+    nutritionist_id: z.string().uuid('nutritionist_id must be a valid UUID'),
+    is_active: z.boolean().default(true),
+}).strict();
+
+export const deleteMappingSchema = z.array(
+    z.object({
+        athlete_id: z.string().uuid('athlete_id must be a valid UUID'),
+        nutritionist_id: z.string().uuid('nutritionist_id must be a valid UUID'),
+    }).strict()
+).min(1, 'At least one mapping pair is required');
+
+export const updateMappingSchema = z.object({
+    is_active: z.boolean(),
+}).strict();
+
+// Re-export shared schemas
+export { bulkDeleteSchema };

@@ -170,13 +170,36 @@ export async function checkDuplicateAthlete(sportsync_id, excludeId = null) {
 }
 
 /**
- * Create athlete with registry and medical in a single transaction
+ * Create basic athlete record (no relations)
+ * @param {Object} athleteData - Athlete base fields
+ * @returns {Promise<Object>} Created athlete record
+ */
+export async function createBasicAthlete(athleteData) {
+    const result = await pool.query(`
+        INSERT INTO AMS.Athlete (
+            sport_id, sportsync_id, athlete_name_abbr, gender, date_of_birth
+        ) VALUES ($1, $2, $3, $4, $5)
+        RETURNING *
+    `, [
+        athleteData.sport_id,
+        athleteData.sportsync_id,
+        athleteData.athlete_name_abbr,
+        athleteData.gender,
+        athleteData.date_of_birth,
+    ]);
+    return result.rows[0];
+}
+
+/**
+ * Create athlete with registry, medical, and coach/nutritionist mappings in a single transaction
  * @param {Object} athleteData - Athlete base fields
  * @param {Object} registryData - Registry fields
  * @param {Object} medicalData - Medical fields
- * @returns {Promise<Object>} Created records { athlete, registry, medical }
+ * @param {Array<string>} coachIds - Array of coach UUIDs to map
+ * @param {Array<string>} nutritionistIds - Array of nutritionist UUIDs to map
+ * @returns {Promise<Object>} Created records { athlete, registry, medical, coachMappings, nutritionistMappings }
  */
-export async function createAthleteWithRelations(athleteData, registryData, medicalData) {
+export async function createCompleteAthlete(athleteData, registryData, medicalData, coachIds, nutritionistIds) {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -231,8 +254,30 @@ export async function createAthleteWithRelations(athleteData, registryData, medi
         ]);
         const medical = medicalResult.rows[0];
 
+        // 4. Insert coach mappings
+        const coachMappings = [];
+        for (const coachId of coachIds) {
+            const mappingResult = await client.query(`
+                INSERT INTO AMS.Coach_Athlete_Mapping (athlete_id, coach_id, is_active)
+                VALUES ($1, $2, true)
+                RETURNING *
+            `, [athlete.id, coachId]);
+            coachMappings.push(mappingResult.rows[0]);
+        }
+
+        // 5. Insert nutritionist mappings
+        const nutritionistMappings = [];
+        for (const nutritionistId of nutritionistIds) {
+            const mappingResult = await client.query(`
+                INSERT INTO AMS.Nutritionist_Athlete_Mapping (athlete_id, nutritionist_id, is_active)
+                VALUES ($1, $2, true)
+                RETURNING *
+            `, [athlete.id, nutritionistId]);
+            nutritionistMappings.push(mappingResult.rows[0]);
+        }
+
         await client.query('COMMIT');
-        return { athlete, registry, medical };
+        return { athlete, registry, medical, coachMappings, nutritionistMappings };
     } catch (error) {
         await client.query('ROLLBACK');
         throw error;
@@ -298,6 +343,48 @@ export async function deleteAthletes(athleteIds) {
     `;
 
     const result = await pool.query(query, [athleteIds]);
+    return result.rows;
+}
+
+// ============================================================================
+// MAPPING SERVICES
+// ============================================================================
+
+/**
+ * Get active coach mappings for an athlete (with coach name)
+ * @param {string} athleteId - UUID of athlete
+ * @returns {Promise<Array>} Array of coach mapping rows
+ */
+export async function getCoachMappingsByAthleteId(athleteId) {
+    const query = `
+        SELECT cam.id, cam.athlete_id, cam.coach_id, cam.is_active,
+               c.name AS coach_name
+        FROM AMS.Coach_Athlete_Mapping cam
+        JOIN AMS.Coach c ON cam.coach_id = c.id
+        WHERE cam.athlete_id = $1
+        ORDER BY c.name ASC
+    `;
+
+    const result = await pool.query(query, [athleteId]);
+    return result.rows;
+}
+
+/**
+ * Get active nutritionist mappings for an athlete (with nutritionist name)
+ * @param {string} athleteId - UUID of athlete
+ * @returns {Promise<Array>} Array of nutritionist mapping rows
+ */
+export async function getNutritionistMappingsByAthleteId(athleteId) {
+    const query = `
+        SELECT nam.id, nam.athlete_id, nam.nutritionist_id, nam.is_active,
+               n.name AS nutritionist_name
+        FROM AMS.Nutritionist_Athlete_Mapping nam
+        JOIN AMS.Nutritionist n ON nam.nutritionist_id = n.id
+        WHERE nam.athlete_id = $1
+        ORDER BY n.name ASC
+    `;
+
+    const result = await pool.query(query, [athleteId]);
     return result.rows;
 }
 
@@ -432,22 +519,3 @@ export async function updateMedical(athleteId, updateData) {
     return result.rows.length > 0 ? result.rows[0] : null;
 }
 
-// ============================================================================
-// LOOKUP SERVICES
-// ============================================================================
-
-/**
- * Get sports from lookup table
- * @param {boolean} activeOnly - Filter by is_active (default true)
- * @returns {Promise<Object>} Query result with rows
- */
-export async function getSports(activeOnly = true) {
-    const query = `
-        SELECT id, sport AS label
-        FROM AMS.Sport_Lookup
-        ${activeOnly ? 'WHERE is_active = true' : ''}
-        ORDER BY sport ASC
-    `;
-
-    return await pool.query(query);
-}

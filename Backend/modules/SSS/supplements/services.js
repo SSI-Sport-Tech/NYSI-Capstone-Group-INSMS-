@@ -564,9 +564,43 @@ export async function getAlternativeSupplements(supplementId, pageNumber, pageSi
   const discontinuedResult = await pool.query(discontinuedQuery);
   const discontinuedStatusId = discontinuedResult.rows[0]?.id;
 
-  // STEP 4: Build similarity search query
+  // STEP 4: Build similarity search query with dynamic parameter indices
   const hasVector100g = currentSupplement.vector_100g_ingredient !== null;
   const hasVectorPerServing = currentSupplement.vector_perserving_ingredient !== null;
+
+  // Build params array and track indices dynamically (only include params actually used)
+  const params = [];
+  let paramIdx = 1;
+
+  let v100gIdx = null;
+  if (hasVector100g) {
+    params.push(currentSupplement.vector_100g_ingredient);
+    v100gIdx = paramIdx++;
+  }
+
+  let vServingIdx = null;
+  if (hasVectorPerServing) {
+    params.push(currentSupplement.vector_perserving_ingredient);
+    vServingIdx = paramIdx++;
+  }
+
+  params.push(supplementId);
+  const supplementIdIdx = paramIdx++;
+
+  let discontinuedIdx = null;
+  if (discontinuedStatusId) {
+    params.push(discontinuedStatusId);
+    discontinuedIdx = paramIdx++;
+  }
+
+  params.push(SIMILARITY_THRESHOLD);
+  const thresholdIdx = paramIdx++;
+
+  params.push(pageSize);
+  const limitIdx = paramIdx++;
+
+  params.push(offset);
+  const offsetIdx = paramIdx++;
 
   const query = `
         WITH alternative_supplements AS (
@@ -577,78 +611,67 @@ export async function getAlternativeSupplements(supplementId, pageNumber, pageSi
                 ssl.supplement_status,
                 s.supplement_status_id,
                 ${hasVector100g
-      ? `1 - (s.vector_100g_ingredient <=> $1::vector) AS similarity_100g,`
+      ? `1 - (s.vector_100g_ingredient <=> $${v100gIdx}::vector) AS similarity_100g,`
       : 'NULL AS similarity_100g,'}
                 ${hasVectorPerServing
-      ? `1 - (s.vector_perserving_ingredient <=> $2::vector) AS similarity_perserving,`
+      ? `1 - (s.vector_perserving_ingredient <=> $${vServingIdx}::vector) AS similarity_perserving,`
       : 'NULL AS similarity_perserving,'}
                 GREATEST(
-                    ${hasVector100g ? `COALESCE(1 - (s.vector_100g_ingredient <=> $1::vector), 0)` : '0'},
-                    ${hasVectorPerServing ? `COALESCE(1 - (s.vector_perserving_ingredient <=> $2::vector), 0)` : '0'}
+                    ${hasVector100g ? `COALESCE(1 - (s.vector_100g_ingredient <=> $${v100gIdx}::vector), 0)` : '0'},
+                    ${hasVectorPerServing ? `COALESCE(1 - (s.vector_perserving_ingredient <=> $${vServingIdx}::vector), 0)` : '0'}
                 ) AS max_similarity
             FROM SSS.Supplement s
             LEFT JOIN SSS.Supplement_Status_Lookup ssl
                 ON s.supplement_status_id = ssl.id
-            WHERE s.id != $3
+            WHERE s.id != $${supplementIdIdx}
                 AND ssl.is_active = true
-                ${discontinuedStatusId ? `AND s.supplement_status_id != $4` : ''}
+                ${discontinuedIdx ? `AND s.supplement_status_id != $${discontinuedIdx}` : ''}
                 AND (
                     ${hasVector100g
       ? `(s.vector_100g_ingredient IS NOT NULL
-                           AND 1 - (s.vector_100g_ingredient <=> $1::vector) >= $${discontinuedStatusId ? '5' : '4'})`
+                           AND 1 - (s.vector_100g_ingredient <=> $${v100gIdx}::vector) >= $${thresholdIdx})`
       : 'FALSE'}
-                    ${hasVector100g && hasVectorPerServing ? 'OR' : ''}
+                    OR
                     ${hasVectorPerServing
       ? `(s.vector_perserving_ingredient IS NOT NULL
-                           AND 1 - (s.vector_perserving_ingredient <=> $2::vector) >= $${discontinuedStatusId ? '5' : '4'})`
+                           AND 1 - (s.vector_perserving_ingredient <=> $${vServingIdx}::vector) >= $${thresholdIdx})`
       : 'FALSE'}
                 )
         )
         SELECT * FROM alternative_supplements
         ORDER BY max_similarity DESC
-        LIMIT $${discontinuedStatusId ? '6' : '5'}
-        OFFSET $${discontinuedStatusId ? '7' : '6'}
+        LIMIT $${limitIdx}
+        OFFSET $${offsetIdx}
     `;
-
-  // Build parameters array
-  const params = [
-    hasVector100g ? currentSupplement.vector_100g_ingredient : null,
-    hasVectorPerServing ? currentSupplement.vector_perserving_ingredient : null,
-    supplementId
-  ];
-
-  if (discontinuedStatusId) {
-    params.push(discontinuedStatusId);
-  }
-
-  params.push(SIMILARITY_THRESHOLD, pageSize, offset);
 
   // Execute query
   const alternatives = await pool.query(query, params);
 
-  // STEP 5: Get total count for pagination
+  // STEP 5: Get total count for pagination (reuse params up to threshold)
+  const countParamCount = discontinuedIdx ? discontinuedIdx + 1 : supplementIdIdx + 1;
+  const countParams = params.slice(0, countParamCount);
+
   const countQuery = `
         SELECT COUNT(*) as count
         FROM SSS.Supplement s
         LEFT JOIN SSS.Supplement_Status_Lookup ssl
             ON s.supplement_status_id = ssl.id
-        WHERE s.id != $3
+        WHERE s.id != $${supplementIdIdx}
             AND ssl.is_active = true
-            ${discontinuedStatusId ? `AND s.supplement_status_id != $4` : ''}
+            ${discontinuedIdx ? `AND s.supplement_status_id != $${discontinuedIdx}` : ''}
             AND (
                 ${hasVector100g
       ? `(s.vector_100g_ingredient IS NOT NULL
-                       AND 1 - (s.vector_100g_ingredient <=> $1::vector) >= $${discontinuedStatusId ? '5' : '4'})`
+                       AND 1 - (s.vector_100g_ingredient <=> $${v100gIdx}::vector) >= $${thresholdIdx})`
       : 'FALSE'}
-                ${hasVector100g && hasVectorPerServing ? 'OR' : ''}
+                OR
                 ${hasVectorPerServing
       ? `(s.vector_perserving_ingredient IS NOT NULL
-                       AND 1 - (s.vector_perserving_ingredient <=> $2::vector) >= $${discontinuedStatusId ? '5' : '4'})`
+                       AND 1 - (s.vector_perserving_ingredient <=> $${vServingIdx}::vector) >= $${thresholdIdx})`
       : 'FALSE'}
             )
     `;
 
-  const countParams = params.slice(0, discontinuedStatusId ? 5 : 4);
   const countResult = await pool.query(countQuery, countParams);
 
   return {

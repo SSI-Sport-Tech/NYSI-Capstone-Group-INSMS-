@@ -1,42 +1,42 @@
 import * as services from './services.js';
-import { createSportSchema, updateSportSchema, uuidParamSchema, bulkDeleteSchema } from './validation.js';
+import { createConsultTypeSchema, updateConsultTypeSchema, uuidParamSchema, bulkDeleteSchema } from './validation.js';
 
 // ============================================================================
-// LIST SPORTS
+// LIST CONSULT TYPES
 // ============================================================================
 
-export async function listSports(req, res) {
+export async function listConsultTypes(req, res) {
     try {
         const includeInactive = req.query.includeInactive === 'true';
-        const result = await services.getAllSports(!includeInactive);
+        const result = await services.getAllConsultTypes(!includeInactive);
 
         res.json({ data: result.rows });
     } catch (error) {
-        console.error('Error listing sports:', error);
-        res.status(500).json({ error: 'Failed to fetch sports', message: error.message });
+        console.error('Error listing consult types:', error);
+        res.status(500).json({ error: 'Failed to fetch consult types', message: error.message });
     }
 }
 
 // ============================================================================
-// CREATE SPORT
+// CREATE CONSULT TYPE
 // ============================================================================
 
-export async function createSport(req, res) {
+export async function createConsultType(req, res) {
     try {
-        const validated = createSportSchema.parse(req.body);
+        const validated = createConsultTypeSchema.parse(req.body);
 
-        const isDuplicate = await services.checkDuplicateSport(validated.sport);
+        const isDuplicate = await services.checkDuplicateConsultType(validated.type_of_consult);
         if (isDuplicate) {
             return res.status(409).json({
-                error: 'Duplicate sport',
-                details: [{ field: 'sport', message: `Sport "${validated.sport}" already exists` }],
+                error: 'Duplicate consult type',
+                details: [{ field: 'type_of_consult', message: `Consult type "${validated.type_of_consult}" already exists` }],
             });
         }
 
-        const created = await services.createSport(validated.sport);
+        const created = await services.createConsultType(validated.type_of_consult);
 
         res.status(201).json({
-            message: 'Sport created successfully',
+            message: 'Consult type created successfully',
             data: created,
         });
     } catch (error) {
@@ -49,34 +49,30 @@ export async function createSport(req, res) {
                 })),
             });
         }
-        console.error('Error creating sport:', error);
-        res.status(500).json({ error: 'Failed to create sport', message: error.message });
+        console.error('Error creating consult type:', error);
+        res.status(500).json({ error: 'Failed to create consult type', message: error.message });
     }
 }
 
 // ============================================================================
-// UPDATE SPORT (toggle is_active)
+// UPDATE CONSULT TYPE (toggle is_active)
 // ============================================================================
 
-export async function updateSport(req, res) {
+export async function updateConsultType(req, res) {
     try {
-        // Step 1: Validate ID
         const { id } = uuidParamSchema.parse(req.params);
 
-        // Step 2: Check sport exists
-        const existing = await services.getSportById(id);
+        const existing = await services.getConsultTypeById(id);
         if (!existing) {
-            return res.status(404).json({ error: 'Sport not found' });
+            return res.status(404).json({ error: 'Consult type not found' });
         }
 
-        // Step 3: Validate body
-        const validated = updateSportSchema.parse(req.body);
+        const validated = updateConsultTypeSchema.parse(req.body);
 
-        // Step 4: Update
-        const updated = await services.updateSportStatus(id, validated.is_active);
+        const updated = await services.updateConsultType(id, validated.is_active);
 
         res.json({
-            message: 'Sport updated successfully',
+            message: 'Consult type updated successfully',
             data: updated,
         });
     } catch (error) {
@@ -89,36 +85,35 @@ export async function updateSport(req, res) {
                 })),
             });
         }
-        console.error('Error updating sport:', error);
-        res.status(500).json({ error: 'Failed to update sport', message: error.message });
+        console.error('Error updating consult type:', error);
+        res.status(500).json({ error: 'Failed to update consult type', message: error.message });
     }
 }
 
 // ============================================================================
-// DELETE SPORTS (BULK)
+// DELETE CONSULT TYPES (BULK)
 // ============================================================================
 
-export async function deleteSports(req, res) {
+export async function deleteConsultTypes(req, res) {
     try {
         const { ids } = bulkDeleteSchema.parse(req.body);
 
-        // Check if any are referenced by athletes or coaches
-        const referencedIds = await services.getReferencedSportIds(ids);
+        const referencedIds = await services.getReferencedConsultTypeIds(ids);
         if (referencedIds.length > 0) {
             return res.status(409).json({
-                error: 'Cannot delete referenced sports',
+                error: 'Cannot delete referenced consult types',
                 details: [{
                     field: 'ids',
-                    message: `The following sport IDs are referenced by athletes or coaches and cannot be deleted`,
+                    message: 'The following consult type IDs are referenced by sessions and cannot be deleted',
                     referencedIds,
                 }],
             });
         }
 
-        const deleted = await services.deleteSports(ids);
+        const deleted = await services.deleteConsultTypes(ids);
 
         res.json({
-            message: `Successfully deleted ${deleted.length} sport(s)`,
+            message: `Successfully deleted ${deleted.length} consult type(s)`,
             deletedCount: deleted.length,
             deletedIds: deleted.map(r => r.id),
         });
@@ -132,7 +127,7 @@ export async function deleteSports(req, res) {
                 })),
             });
         }
-        console.error('Error deleting sports:', error);
-        res.status(500).json({ error: 'Failed to delete sports', message: error.message });
+        console.error('Error deleting consult types:', error);
+        res.status(500).json({ error: 'Failed to delete consult types', message: error.message });
     }
 }
