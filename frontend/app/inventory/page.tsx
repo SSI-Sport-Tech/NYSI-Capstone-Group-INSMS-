@@ -6,11 +6,11 @@ import DashboardLayout from "@/components/DashboardLayout";
 import ViewTabs from "@/components/ViewTabs";
 import SearchSection from "@/components/SearchSection";
 import BatchTable from "@/components/BatchTable";
-import { Globe } from "lucide-react";
 
 interface Batch {
   id: number;
   batch_number: string;
+  supplement_id: string;
   supplement_name: string;
   supplement_brand: string;
   batch_status: string;
@@ -76,7 +76,10 @@ export default function InventoryPage() {
 
       const response = await axios.get("/api/SSS/batches", { params });
 
+      console.log("Batch API Response:", response.data); // Debug log
+
       if (response.data && Array.isArray(response.data.data)) {
+        console.log("First batch data:", response.data.data[0]); // Debug log
         setResults(response.data.data);
         setTotal(response.data.totalCount || 0);
         setCurrentPage(response.data.currentPage || 1);
@@ -125,7 +128,7 @@ export default function InventoryPage() {
             <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
               Supplements
             </h1>
-            
+
             {/* TODO: User Profile - Top Right */}
           </div>
 

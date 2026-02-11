@@ -324,6 +324,14 @@ const BatchTable: React.FC<BatchTableProps> = ({
                       <Link
                         href={`/supplements/${batch.supplement_id}`}
                         className="font-medium text-blue-600 underline cursor-pointer hover:text-blue-800"
+                        onClick={() =>
+                          console.log(
+                            "Clicking supplement link with ID:",
+                            batch.supplement_id,
+                            "Full batch:",
+                            batch,
+                          )
+                        }
                       >
                         {batch.supplement_name || "Unknown Supplement"}
                       </Link>

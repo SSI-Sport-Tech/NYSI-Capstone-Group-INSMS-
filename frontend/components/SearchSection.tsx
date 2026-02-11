@@ -35,7 +35,7 @@ const SearchSection: React.FC<SearchSectionProps> = ({
       </div>
 
       <div className="flex gap-3">
-        <div className="flex-1 relative">
+        <div className="flex-1 relative text-black">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-black" />
           <input
             type="text"
@@ -43,7 +43,7 @@ const SearchSection: React.FC<SearchSectionProps> = ({
             onChange={(e) => onQueryChange(e.target.value)}
             onKeyDown={handleKeyPress}
             placeholder="Type your search here..."
-            className="w-full pl-11 pr-4 py-2.5 text-sm text-black border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-shadow"
+            className="w-full pl-11 pr-4 py-2.5 text-sm text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-shadow"
             disabled={loading}
           />
         </div>

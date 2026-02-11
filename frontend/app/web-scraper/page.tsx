@@ -277,32 +277,32 @@ export default function WebScraperPage() {
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                   </th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-900">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
                     <div className="flex items-center">
                       Supplement Name <ChevronDown className="w-4 h-4 ml-1" />
                     </div>
                   </th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-900">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
                     <div className="flex items-center">
                       Brand <ChevronDown className="w-4 h-4 ml-1" />
                     </div>
                   </th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-900">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
                     <div className="flex items-center">
                       Type <ChevronDown className="w-4 h-4 ml-1" />
                     </div>
                   </th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-900">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
                     <div className="flex items-center">
                       Serving Size <ChevronDown className="w-4 h-4 ml-1" />
                     </div>
                   </th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-900">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
                     <div className="flex items-center">
                       Product Link <ChevronDown className="w-4 h-4 ml-1" />
                     </div>
                   </th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-900">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
                     <div className="flex items-center">
                       Price <ChevronDown className="w-4 h-4 ml-1" />
                     </div>
@@ -334,17 +334,17 @@ export default function WebScraperPage() {
                         />
                       </td>
                       <td className="p-4">
-                        <div className="font-medium text-gray-900">
+                        <div className="text-sm font-medium text-gray-900">
                           {supplement.supplement_name}
                         </div>
                       </td>
-                      <td className="p-4 text-gray-900">
+                      <td className="p-4 text-sm font-medium text-gray-900">
                         {supplement.supplement_brand}
                       </td>
-                      <td className="p-4 text-gray-900">
+                      <td className="p-4 text-sm font-medium text-gray-900">
                         {supplement.supplement_packaging_form}
                       </td>
-                      <td className="p-4 text-gray-900">
+                      <td className="p-4 text-sm font-medium text-gray-900">
                         {supplement.serving_size || "-"}
                       </td>
                       <td className="p-4">
@@ -353,7 +353,7 @@ export default function WebScraperPage() {
                             href={supplement.product_source_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 underline flex items-center"
+                            className="text-blue-600 text-sm font-medium hover:text-blue-800 underline flex items-center"
                           >
                             bodybuilding.com
                             <ExternalLink className="w-3 h-3 ml-1" />

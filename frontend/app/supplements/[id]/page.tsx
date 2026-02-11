@@ -16,22 +16,27 @@ interface Supplement {
   supplement_packaging_form: string;
   supplement_status: string;
   batch_testing_org: string | null;
-  product_source_url: string[] | string | null;
+  product_source_url: string | null;
   description?: string;
   serving_size?: string;
   ingredients?: string;
   notes?: string;
-  nutritional_info?: {
-    energy?: string;
-    protein?: string;
-    total_fat?: string;
-    saturated_fat?: string;
-    trans_fat?: string;
-    cholesterol?: string;
-    carbohydrates?: string;
-    total_sugars?: string;
-    dietary_fibre?: string;
-    sodium?: string;
+  warning_label?: string;
+  certifications?: string;
+  nutritional_info_per_100g?: {
+    energy_kcal?: number;
+    protein_g?: number;
+    fat_g?: number;
+    carbohydrate_g?: number;
+    saturated_fat?: number;
+    trans_fat?: number;
+    cholesterol?: number;
+    total_sugars?: number;
+    dietary_fibre?: number;
+    sodium?: number;
+  };
+  nutritional_info_per_serving?: {
+    [key: string]: number; // Dynamic key-value pairs like vitamin_d_iu, vitamin_d_mcg
   };
 }
 
@@ -96,10 +101,12 @@ export default function SupplementDetailPage() {
           ? supplementData.supplement_ingredient.join(", ")
           : supplementData.supplement_ingredient || undefined,
         notes: supplementData.supplement_additional_information || undefined,
-        nutritional_info:
-          supplementData.nutritional_info_per_serving ||
-          supplementData.nutritional_info_per_100g ||
-          undefined,
+        warning_label: supplementData.supplement_warning_label || undefined,
+        certifications: supplementData.supplement_certifications || undefined,
+        nutritional_info_per_100g:
+          supplementData.nutritional_info_per_100g || undefined,
+        nutritional_info_per_serving:
+          supplementData.nutritional_info_per_serving || undefined,
       });
 
       setBatches(batchesData);
@@ -176,7 +183,12 @@ export default function SupplementDetailPage() {
               <Edit className="w-4 h-4" />
               Edit
             </button>
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+            <button
+              onClick={() =>
+                router.push(`/supplements/${params.id}/alternatives`)
+              }
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+            >
               <Search className="w-4 h-4" />
               Check for Alternatives
             </button>
@@ -185,7 +197,13 @@ export default function SupplementDetailPage() {
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <SupplementInfo supplement={supplement} />
-            <NutritionalInfo nutritionalInfo={supplement.nutritional_info} />
+            <NutritionalInfo
+              nutritionalInfoPer100g={supplement.nutritional_info_per_100g}
+              nutritionalInfoPerServing={
+                supplement.nutritional_info_per_serving
+              }
+              servingDefinition={supplement.serving_size}
+            />
           </div>
 
           {/* Inventory Batches */}

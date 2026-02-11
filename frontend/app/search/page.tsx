@@ -11,6 +11,7 @@ import { Globe } from "lucide-react";
 interface Batch {
   id: number;
   batch_number: string;
+  supplement_id: string;
   supplement_name: string;
   supplement_brand: string;
   batch_status: string;
