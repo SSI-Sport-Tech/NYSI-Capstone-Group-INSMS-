@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import DashboardLayout from "@/components/SSS/DashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
 import SupplementTable from "@/components/SSS/SupplementTable";
 import ViewTabs from "@/components/SSS/ViewTabs";
 import { Search } from "lucide-react";

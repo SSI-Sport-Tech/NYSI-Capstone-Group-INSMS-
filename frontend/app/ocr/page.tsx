@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import axios from "axios";
-import DashboardLayout from "@/components/SSS/DashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
 
 interface OCRResponse {
   text: string[];

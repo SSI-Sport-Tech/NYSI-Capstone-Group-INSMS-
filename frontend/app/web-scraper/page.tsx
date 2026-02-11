@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import DashboardLayout from "@/components/SSS/DashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
 import ViewTabs from "@/components/SSS/ViewTabs";
 import UrlSelectionModal from "@/components/SSS/UrlSelectionModal";
 import {

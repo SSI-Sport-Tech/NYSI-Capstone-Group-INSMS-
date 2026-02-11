@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
-import DashboardLayout from "@/components/SSS/DashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
 import SupplementInfo from "@/components/SSS/SupplementInfo";
 import NutritionalInfo from "@/components/SSS/NutritionalInfo";
 import InventoryBatches from "@/components/SSS/InventoryBatches";

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
-import DashboardLayout from "@/components/SSS/DashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
 import SupplementComparisonGrid from "@/components/SSS/SupplementComparisonGrid";
 import { ArrowLeft, Filter, Download, RotateCcw } from "lucide-react";
 

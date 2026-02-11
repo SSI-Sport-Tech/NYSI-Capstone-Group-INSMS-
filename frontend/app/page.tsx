@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import DashboardLayout from "@/components/SSS/DashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
 import {
   Users,
   Calendar,
