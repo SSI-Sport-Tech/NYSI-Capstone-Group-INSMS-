@@ -51,6 +51,24 @@ export async function createNutritionist(name) {
 }
 
 /**
+ * Update an existing nutritionist
+ * @param {string} id - Nutritionist UUID
+ * @param {string} name - New name
+ * @returns {Promise<Object|null>} Updated row or null
+ */
+export async function updateNutritionist(id, name) {
+    const query = `
+        UPDATE AMS.Nutritionist 
+        SET name = $1 
+        WHERE id = $2 
+        RETURNING *
+    `;
+
+    const result = await pool.query(query, [name, id]);
+    return result.rows.length > 0 ? result.rows[0] : null;
+}
+
+/**
  * Delete multiple nutritionists by ID
  * @param {Array<string>} nutritionistIds - Array of UUIDs
  * @returns {Promise<Array>} Array of deleted rows
@@ -99,8 +117,50 @@ export async function checkAthleteExists(athleteId) {
 }
 
 // ============================================================================
-// NUTRITIONIST-ATHLETE MAPPING SERVICES
+// NUTRITIONIST-ATHLETE MAPPING & PINNING SERVICES
 // ============================================================================
+
+/**
+ * Get "My Athletes" for a logged-in nutritionist
+ * Sorts by PINNED status first, then by name.
+ * @param {string} nutritionistId 
+ */
+export async function getAssignedAthletes(nutritionistId) {
+    const query = `
+        SELECT 
+            a.id, 
+            a.athlete_name_abbr, 
+            a.sportsync_id,
+            sl.sport AS sport_name,
+            nam.is_pinned,
+            nam.is_active,
+            nam.start_date
+        FROM AMS.Nutritionist_Athlete_Mapping nam
+        JOIN AMS.Athlete a ON nam.athlete_id = a.id
+        LEFT JOIN AMS.Sport_Lookup sl ON a.sport_id = sl.id
+        WHERE nam.nutritionist_id = $1 AND nam.is_active = TRUE
+        ORDER BY nam.is_pinned DESC, a.athlete_name_abbr ASC
+    `;
+    const result = await pool.query(query, [nutritionistId]);
+    return result.rows;
+}
+
+/**
+ * Toggle the pinned status of an athlete for a nutritionist
+ * @param {string} nutritionistId 
+ * @param {string} athleteId 
+ * @param {boolean} isPinned 
+ */
+export async function toggleAthletePin(nutritionistId, athleteId, isPinned) {
+    const query = `
+        UPDATE AMS.Nutritionist_Athlete_Mapping
+        SET is_pinned = $3
+        WHERE nutritionist_id = $1 AND athlete_id = $2
+        RETURNING is_pinned
+    `;
+    const result = await pool.query(query, [nutritionistId, athleteId, isPinned]);
+    return result.rows[0];
+}
 
 /**
  * Get all nutritionist-athlete mappings with nutritionist and athlete names

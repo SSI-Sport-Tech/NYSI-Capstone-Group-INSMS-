@@ -6,9 +6,9 @@ import swaggerSpecs from "./config/swagger.js";
 import ocrRoutes from "./modules/OCR/routes.js";
 import supplementRoutes from "./modules/SSS/index.js";
 import athleteRoutes from "./modules/AMS/index.js";
-import consultationRoutes from "./modules/Consultation/index.js";
-import authRoutes from "./modules/Auth/routes.js"; // ✅ NEW: Authentication routes
-import { verifyEmailConfig } from "./modules/Auth/emailService.js"; // ✅ NEW: Email verification
+import authRoutes from "./modules/Auth/routes.js"; 
+import consultationRoutes from "./modules/Consultation/index.js"; // ✅ 1. Import Consultation Module
+import { verifyEmailConfig } from "./modules/Auth/emailService.js";
 
 
 // Load environment variables
@@ -79,47 +79,48 @@ app.get("/docs.json", (req, res) => {
 // ==================== API ROUTES ====================
 
 // ✅ NEW: Authentication routes (must be first for security)
+// Authentication routes
 app.use("/api/auth", authRoutes);
 
-// Existing routes
+// App Routes
 app.use("/api/SSS", supplementRoutes);
 app.use("/api/AMS", athleteRoutes);
-app.use("/api/Consultation", consultationRoutes);
 app.use("/api/ocr", ocrRoutes);
+app.use("/api/consultations", consultationRoutes); // ✅ 2. Mount Consultation Routes
 
 // ==================== HEALTH CHECK ENDPOINTS ====================
 
 /**
  * @swagger
  * /:
- *   get:
- *     summary: Health Check
- *     description: Check if the API is running and get basic information
- *     tags: [Health]
- *     responses:
- *       200:
- *         description: API is running successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "NYSI Backend API is running"
- *                 version:
- *                   type: string
- *                   example: "2.1"
- *                 features:
- *                   type: array
- *                   items:
- *                     type: string
- *                 documentation:
- *                   type: string
- *                   example: "http://localhost:8000/docs"
- *                 timestamp:
- *                   type: string
- *                   format: date-time
+ * get:
+ * summary: Health Check
+ * description: Check if the API is running and get basic information
+ * tags: [Health]
+ * responses:
+ * 200:
+ * description: API is running successfully
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * properties:
+ * message:
+ * type: string
+ * example: "NYSI Backend API is running"
+ * version:
+ * type: string
+ * example: "2.1"
+ * features:
+ * type: array
+ * items:
+ * type: string
+ * documentation:
+ * type: string
+ * example: "http://localhost:8000/docs"
+ * timestamp:
+ * type: string
+ * format: date-time
  */
 app.get("/", (req, res) => {
     res.json({
@@ -140,30 +141,30 @@ app.get("/", (req, res) => {
 /**
  * @swagger
  * /api/test:
- *   get:
- *     summary: Test Endpoint
- *     description: Simple test endpoint that doesn't require database connection
- *     tags: [Health]
- *     responses:
- *       200:
- *         description: Test successful
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Backend is working! ✅"
- *                 timestamp:
- *                   type: string
- *                   format: date-time
- *                 note:
- *                   type: string
- *                   example: "This endpoint doesn't require database"
+ * get:
+ * summary: Test Endpoint
+ * description: Simple test endpoint that doesn't require database connection
+ * tags: [Health]
+ * responses:
+ * 200:
+ * description: Test successful
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * properties:
+ * success:
+ * type: boolean
+ * example: true
+ * message:
+ * type: string
+ * example: "Backend is working! ✅"
+ * timestamp:
+ * type: string
+ * format: date-time
+ * note:
+ * type: string
+ * example: "This endpoint doesn't require database"
  */
 app.get("/api/test", (req, res) => {
     res.json({
@@ -177,48 +178,48 @@ app.get("/api/test", (req, res) => {
 /**
  * @swagger
  * /api/health:
- *   get:
- *     summary: Detailed Health Check
- *     description: Check database connection and service status
- *     tags: [Health]
- *     responses:
- *       200:
- *         description: All services are healthy
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: "healthy"
- *                 services:
- *                   type: object
- *                   properties:
- *                     api:
- *                       type: string
- *                       example: "running"
- *                     database:
- *                       type: string
- *                       example: "connected"
- *                     email:
- *                       type: string
- *                       example: "configured"
- *                 timestamp:
- *                   type: string
- *                   format: date-time
- *       503:
- *         description: Service unavailable
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: "unhealthy"
- *                 error:
- *                   type: string
+ * get:
+ * summary: Detailed Health Check
+ * description: Check database connection and service status
+ * tags: [Health]
+ * responses:
+ * 200:
+ * description: All services are healthy
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * properties:
+ * status:
+ * type: string
+ * example: "healthy"
+ * services:
+ * type: object
+ * properties:
+ * api:
+ * type: string
+ * example: "running"
+ * database:
+ * type: string
+ * example: "connected"
+ * email:
+ * type: string
+ * example: "configured"
+ * timestamp:
+ * type: string
+ * format: date-time
+ * 503:
+ * description: Service unavailable
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * properties:
+ * status:
+ * type: string
+ * example: "unhealthy"
+ * error:
+ * type: string
  */
 app.get("/api/health", async (req, res) => {
     try {
