@@ -1,9 +1,10 @@
 /**
  * NYSI Authentication Controller
  * Handles user registration, 2FA login flow, and token verification
+ * UPDATED: Automatically creates AMS nutritionist profile for ADMIN/NUTRITIONIST roles
  * 
  * Business Logic Flow:
- * 1. Register: Create user with hashed password
+ * 1. Register: Create user with hashed password → Create AMS profile if ADMIN/NUTRITIONIST
  * 2. Login Step 1: Verify credentials → Send 6-digit code via email
  * 3. Login Step 2: Verify code → Issue JWT token
  * 4. Protected routes: Verify JWT token
@@ -23,10 +24,10 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 
 // Configuration
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_EXPIRY = process.env.JWT_EXPIRY || '24h';
-const CODE_EXPIRY_MINUTES = parseInt(process.env.CODE_EXPIRY_MINUTES || '10');
-const MAX_VERIFICATION_ATTEMPTS = parseInt(process.env.MAX_VERIFICATION_ATTEMPTS || '3');
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRY = process.env.JWT_EXPIRY;
+const CODE_EXPIRY_MINUTES = parseInt(process.env.CODE_EXPIRY_MINUTES);
+const MAX_VERIFICATION_ATTEMPTS = parseInt(process.env.MAX_VERIFICATION_ATTEMPTS);
 
 // ============================================================================
 // USER REGISTRATION
@@ -37,6 +38,7 @@ const MAX_VERIFICATION_ATTEMPTS = parseInt(process.env.MAX_VERIFICATION_ATTEMPTS
  * POST /api/auth/register
  * 
  * Creates a new user account with hashed password
+ * If role is ADMIN or NUTRITIONIST, also creates AMS nutritionist profile
  */
 export async function register(req, res) {
     try {
@@ -73,11 +75,41 @@ export async function register(req, res) {
             password_hash: hashedPassword,
             first_name: validatedData.first_name,
             last_name: validatedData.last_name,
-            role: validatedData.role || 'user',
+            role: validatedData.role || 'NUTRITIONIST',
         });
         console.log('User created with ID:', newUser.id);
 
-        // STEP 5: Return success response
+        // STEP 5: Create AMS profile if ADMIN or NUTRITIONIST
+        const nutritionistRoles = ['ADMIN', 'NUTRITIONIST'];
+        if (nutritionistRoles.includes(newUser.role)) {
+            console.log('Step 5: Creating AMS nutritionist profile...');
+
+            try {
+                const nutritionistName = `${validatedData.first_name} ${validatedData.last_name}`;
+                const amsProfile = await services.createNutritionistProfile({
+                    name: nutritionistName,
+                    user_id: newUser.id,
+                });
+
+                console.log('AMS nutritionist profile created with ID:', amsProfile.id);
+                console.log('✅ User and AMS profile successfully linked');
+            } catch (amsError) {
+                console.error('❌ Failed to create AMS profile:', amsError);
+                // Important: Rollback user creation if AMS profile creation fails
+                console.log('Rolling back user creation...');
+                await services.deleteUserById(newUser.id);
+
+                return res.status(500).json({
+                    error: 'Registration failed',
+                    message: 'Failed to create nutritionist profile. Please try again.',
+                    details: process.env.NODE_ENV === 'development' ? amsError.message : undefined,
+                });
+            }
+        } else {
+            console.log('Step 5: Skipping AMS profile creation (role is not ADMIN/NUTRITIONIST)');
+        }
+
+        // STEP 6: Return success response
         res.status(201).json({
             message: 'User registered successfully',
             user: {
@@ -186,6 +218,7 @@ export async function login(req, res) {
         await services.createVerificationCode({
             user_id: user.id,
             code: verificationCode,
+            purpose: 'LOGIN_2FA',
             expires_at: expiresAt,
             attempts: 0,
         });
@@ -266,7 +299,7 @@ export async function verifyCode(req, res) {
             });
         }
 
-        const verification = await services.getVerificationCodeByUserId(user.id);
+        const verification = await services.getVerificationCodeByUserId(user.id, 'LOGIN_2FA');
 
         if (!verification) {
             console.log('No verification code found');
@@ -432,6 +465,7 @@ export async function resendCode(req, res) {
         await services.createVerificationCode({
             user_id: user.id,
             code: verificationCode,
+            purpose: 'LOGIN_2FA',
             expires_at: expiresAt,
             attempts: 0,
         });
@@ -508,8 +542,10 @@ export async function getCurrentUser(req, res) {
                 first_name: user.first_name,
                 last_name: user.last_name,
                 role: user.role,
+                is_active: user.is_active,
+                is_email_verified: user.is_email_verified,
                 created_at: user.created_at,
-                last_login: user.last_login,
+                last_login_at: user.last_login_at,
             },
         });
 
