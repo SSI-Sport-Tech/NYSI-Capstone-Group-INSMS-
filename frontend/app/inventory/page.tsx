@@ -3,14 +3,14 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import DashboardLayout from "@/components/DashboardLayout";
-import ViewTabs from "@/components/ViewTabs";
-import SearchSection from "@/components/SearchSection";
-import BatchTable from "@/components/BatchTable";
-import { Globe } from "lucide-react";
+import ViewTabs from "@/components/SSS/ViewTabs";
+import SearchSection from "@/components/SSS/SearchSection";
+import BatchTable from "@/components/SSS/BatchTable";
 
 interface Batch {
   id: number;
   batch_number: string;
+  supplement_id: string;
   supplement_name: string;
   supplement_brand: string;
   batch_status: string;
@@ -42,13 +42,13 @@ export default function InventoryPage() {
     {
       id: "inventory",
       label: "Current Inventory View",
-      icon: "globe",
+      icon: "inventory",
       href: "/inventory",
     },
     {
       id: "scraper",
       label: "Web Scraper View",
-      icon: "search",
+      icon: "scraper",
       href: "/web-scraper",
     },
     {
@@ -76,7 +76,10 @@ export default function InventoryPage() {
 
       const response = await axios.get("/api/SSS/batches", { params });
 
+      console.log("Batch API Response:", response.data); // Debug log
+
       if (response.data && Array.isArray(response.data.data)) {
+        console.log("First batch data:", response.data.data[0]); // Debug log
         setResults(response.data.data);
         setTotal(response.data.totalCount || 0);
         setCurrentPage(response.data.currentPage || 1);
@@ -125,25 +128,8 @@ export default function InventoryPage() {
             <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
               Supplements
             </h1>
-            
-            {/* User Profile - Top Right */}
-            <div className="flex items-center gap-4">
-              <button className="relative p-2 text-gray-400 hover:text-gray-600">
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  3
-                </span>
-              </button>
-              
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <div className="text-sm font-medium text-gray-900">Amy Tan</div>
-                  <div className="text-xs text-gray-500">Nutritionist</div>
-                </div>
-                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-medium text-sm">AT</span>
-                </div>
-              </div>
-            </div>
+
+            {/* TODO: User Profile - Top Right */}
           </div>
 
           {/* Tabs */}

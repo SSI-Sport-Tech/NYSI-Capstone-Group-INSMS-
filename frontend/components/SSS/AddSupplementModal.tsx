@@ -200,32 +200,50 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
     setLoading(true);
 
     try {
-      const submitData = {
-        // If new supplement, include supplement data
-        ...(isNewSupplement && {
-          supplement: {
-            name: formData.name,
-            brand: formData.brand,
-            type: formData.type,
-            servingSize: formData.servingSize,
-            description: formData.description,
-            additionalNotes: formData.additionalNotes,
-          },
-        }),
-        // If existing supplement, just include ID
-        ...(!isNewSupplement && { supplementId: formData.supplementId }),
-        // Batch information
-        batch: {
-          batchNumber: formData.batchNumber,
-          quantity: formData.quantity,
-          price: formData.price,
-          expirationDate: formData.expirationDate,
-          testingOrganisation: formData.testingOrganisation,
-          classification: formData.classification,
-        },
-      };
+      if (isNewSupplement) {
+        // First create the supplement, then create the batch
+        const supplementData = {
+          supplement_name: formData.name,
+          supplement_brand: formData.brand,
+          supplement_packaging_form: formData.type,
+          serving_size: formData.servingSize || null,
+          description: formData.description || null,
+          notes: formData.additionalNotes || null,
+          // Set default required fields for new supplements
+          supplement_status: "Active",
+          batch_testing_org: formData.testingOrganisation || null,
+          product_source_url: null,
+        };
 
-      await axios.post("/api/inventory/add-supplement", submitData);
+        const supplementResponse = await axios.post(
+          "/api/SSS/supplements",
+          supplementData,
+        );
+        const newSupplementId = supplementResponse.data.id;
+
+        // Create batch for the new supplement
+        const batchData = {
+          supplement_id: newSupplementId,
+          batch_number: formData.batchNumber,
+          batch_initial_quantity: formData.quantity,
+          batch_price: formData.price || null,
+          batch_expiration_date: formData.expirationDate || null,
+        };
+
+        await axios.post("/api/SSS/batches", batchData);
+      } else {
+        // Just create batch for existing supplement
+        const batchData = {
+          supplement_id: formData.supplementId,
+          batch_number: formData.batchNumber,
+          batch_initial_quantity: formData.quantity,
+          batch_price: formData.price || null,
+          batch_expiration_date: formData.expirationDate || null,
+        };
+
+        await axios.post("/api/SSS/batches", batchData);
+      }
+
       onSuccess();
       onClose();
     } catch (error) {
@@ -291,85 +309,87 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                         <Search className="w-4 h-4 text-gray-400" />
                       )}
                     </div>
-                  </div>
 
-                  {/* Search Results */}
-                  {showResults && (
-                    <div className="absolute z-20 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
-                      {searchLoading ? (
-                        <div className="px-3 py-4 text-center">
-                          <Loader2 className="w-5 h-5 text-blue-500 animate-spin mx-auto mb-2" />
-                          <p className="text-sm text-gray-600">
-                            Searching supplements...
-                          </p>
-                        </div>
-                      ) : searchResults.length > 0 ? (
-                        <>
-                          {searchResults.map((supplement) => (
-                            <button
-                              key={supplement.id}
-                              type="button"
-                              onClick={() => handleSupplementSelect(supplement)}
-                              className="w-full text-left px-3 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition-colors"
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <div className="text-sm font-medium text-gray-900">
-                                    {supplement.supplement_name}
-                                  </div>
-                                  <div className="text-xs text-gray-600 mt-1">
-                                    {supplement.supplement_brand} •{" "}
-                                    {supplement.supplement_packaging_form}
-                                  </div>
-                                </div>
-                                <div className="ml-2">
-                                  <span
-                                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                      supplement.supplement_status ===
-                                        "Active" ||
-                                      supplement.supplement_status ===
-                                        "Available"
-                                        ? "bg-green-100 text-green-800"
-                                        : supplement.supplement_status ===
-                                            "Pending"
-                                          ? "bg-yellow-100 text-yellow-800"
-                                          : "bg-gray-100 text-gray-800"
-                                    }`}
-                                  >
-                                    {supplement.supplement_status}
-                                  </span>
-                                </div>
-                              </div>
-                            </button>
-                          ))}
-                          <div className="px-3 py-2 bg-gray-50 border-t border-gray-100">
-                            <button
-                              type="button"
-                              onClick={handleNewSupplement}
-                              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                            >
-                              + Register new supplement instead
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        searchQuery.trim() && (
+                    {/* Search Results */}
+                    {showResults && (
+                      <div className="absolute z-20 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
+                        {searchLoading ? (
                           <div className="px-3 py-4 text-center">
-                            <p className="text-sm text-gray-600 mb-2">
-                              No supplements found for "{searchQuery}"
+                            <Loader2 className="w-5 h-5 text-blue-500 animate-spin mx-auto mb-2" />
+                            <p className="text-sm text-gray-600">
+                              Searching supplements...
                             </p>
-                            <button
-                              type="button"
-                              onClick={handleNewSupplement}
-                              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                            >
-                              + Register "{searchQuery}" as new supplement
-                            </button>
                           </div>
-                        )
-                      )}
-                    </div>
-                  )}
+                        ) : searchResults.length > 0 ? (
+                          <>
+                            {searchResults.map((supplement) => (
+                              <button
+                                key={supplement.id}
+                                type="button"
+                                onClick={() =>
+                                  handleSupplementSelect(supplement)
+                                }
+                                className="w-full text-left px-3 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1">
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {supplement.supplement_name}
+                                    </div>
+                                    <div className="text-xs text-gray-600 mt-1">
+                                      {supplement.supplement_brand} •{" "}
+                                      {supplement.supplement_packaging_form}
+                                    </div>
+                                  </div>
+                                  <div className="ml-2">
+                                    <span
+                                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                        supplement.supplement_status ===
+                                          "Active" ||
+                                        supplement.supplement_status ===
+                                          "Available"
+                                          ? "bg-green-100 text-green-800"
+                                          : supplement.supplement_status ===
+                                              "Pending"
+                                            ? "bg-yellow-100 text-yellow-800"
+                                            : "bg-gray-100 text-gray-800"
+                                      }`}
+                                    >
+                                      {supplement.supplement_status}
+                                    </span>
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                            <div className="px-3 py-2 bg-gray-50 border-t border-gray-100">
+                              <button
+                                type="button"
+                                onClick={handleNewSupplement}
+                                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                              >
+                                + Register new supplement instead
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          searchQuery.trim() && (
+                            <div className="px-3 py-4 text-center">
+                              <p className="text-sm text-gray-600 mb-2">
+                                No supplements found for &quot;{searchQuery}&quot;
+                              </p>
+                              <button
+                                type="button"
+                                onClick={handleNewSupplement}
+                                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                              >
+                                + Register &quot;{searchQuery}&quot; as new supplement
+                              </button>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Autofilled message or new supplement option */}

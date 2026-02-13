@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
 import DashboardLayout from "@/components/DashboardLayout";
-import SupplementInfo from "@/components/SupplementInfo";
-import NutritionalInfo from "@/components/NutritionalInfo";
-import InventoryBatches from "@/components/InventoryBatches";
+import SupplementInfo from "@/components/SSS/SupplementInfo";
+import NutritionalInfo from "@/components/SSS/NutritionalInfo";
+import InventoryBatches from "@/components/SSS/InventoryBatches";
 import { ArrowLeft, Edit, Search } from "lucide-react";
 
 interface Supplement {
@@ -16,22 +16,27 @@ interface Supplement {
   supplement_packaging_form: string;
   supplement_status: string;
   batch_testing_org: string | null;
-  product_source_url: string[] | string | null;
+  product_source_url: string | null;
   description?: string;
   serving_size?: string;
   ingredients?: string;
   notes?: string;
-  nutritional_info?: {
-    energy?: string;
-    protein?: string;
-    total_fat?: string;
-    saturated_fat?: string;
-    trans_fat?: string;
-    cholesterol?: string;
-    carbohydrates?: string;
-    total_sugars?: string;
-    dietary_fibre?: string;
-    sodium?: string;
+  warning_label?: string;
+  certifications?: string;
+  nutritional_info_per_100g?: {
+    energy_kcal?: number;
+    protein_g?: number;
+    fat_g?: number;
+    carbohydrate_g?: number;
+    saturated_fat?: number;
+    trans_fat?: number;
+    cholesterol?: number;
+    total_sugars?: number;
+    dietary_fibre?: number;
+    sodium?: number;
+  };
+  nutritional_info_per_serving?: {
+    [key: string]: number; // Dynamic key-value pairs like vitamin_d_iu, vitamin_d_mcg
   };
 }
 
@@ -96,10 +101,12 @@ export default function SupplementDetailPage() {
           ? supplementData.supplement_ingredient.join(", ")
           : supplementData.supplement_ingredient || undefined,
         notes: supplementData.supplement_additional_information || undefined,
-        nutritional_info:
-          supplementData.nutritional_info_per_serving ||
-          supplementData.nutritional_info_per_100g ||
-          undefined,
+        warning_label: supplementData.supplement_warning_label || undefined,
+        certifications: supplementData.supplement_certifications || undefined,
+        nutritional_info_per_100g:
+          supplementData.nutritional_info_per_100g || undefined,
+        nutritional_info_per_serving:
+          supplementData.nutritional_info_per_serving || undefined,
       });
 
       setBatches(batchesData);
@@ -157,39 +164,7 @@ export default function SupplementDetailPage() {
               </button>
             </div>
 
-            {/* User Profile - Top Right */}
-            <div className="flex items-center gap-4">
-              <button className="relative p-2 text-gray-400 hover:text-gray-600">
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 17h5l-5 5V2a5 5 0 00-10 0v15l5-5z"
-                  />
-                </svg>
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  3
-                </span>
-              </button>
-
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <div className="text-sm font-medium text-gray-900">
-                    Amy Tan
-                  </div>
-                  <div className="text-xs text-gray-500">Nutritionist</div>
-                </div>
-                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-medium text-sm">AT</span>
-                </div>
-              </div>
-            </div>
+            {/* TO DO: User Profile - Top Right */}
           </div>
 
           {/* Supplement Title */}
@@ -208,7 +183,12 @@ export default function SupplementDetailPage() {
               <Edit className="w-4 h-4" />
               Edit
             </button>
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+            <button
+              onClick={() =>
+                router.push(`/supplements/${params.id}/alternatives`)
+              }
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+            >
               <Search className="w-4 h-4" />
               Check for Alternatives
             </button>
@@ -217,7 +197,13 @@ export default function SupplementDetailPage() {
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <SupplementInfo supplement={supplement} />
-            <NutritionalInfo nutritionalInfo={supplement.nutritional_info} />
+            <NutritionalInfo
+              nutritionalInfoPer100g={supplement.nutritional_info_per_100g}
+              nutritionalInfoPerServing={
+                supplement.nutritional_info_per_serving
+              }
+              servingDefinition={supplement.serving_size}
+            />
           </div>
 
           {/* Inventory Batches */}

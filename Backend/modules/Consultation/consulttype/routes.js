@@ -4,30 +4,30 @@ import * as controller from './controller.js';
 const router = express.Router();
 
 // ============================================================================
-// SPORT CRUD ROUTES
+// CONSULT TYPE LOOKUP CRUD ROUTES
 // ============================================================================
 
 /**
  * @swagger
- * /api/AMS/sports:
+ * /api/Consultation/lookups/consult-types:
  *   get:
- *     summary: List Sports
+ *     summary: List Consult Types
  *     description: |
- *       Get all sports from the Sport_Lookup table.
- *       By default returns only active sports.
- *       Pass `includeInactive=true` to include inactive sports.
- *     tags: [AMS - Sports]
+ *       Get all consult types from the type_of_consult_lookup table.
+ *       By default returns only active consult types.
+ *       Pass `includeInactive=true` to include inactive types.
+ *     tags: [Consultation - Consult Types]
  *     parameters:
  *       - name: includeInactive
  *         in: query
  *         required: false
- *         description: Include inactive sports
+ *         description: Include inactive consult types
  *         schema:
  *           type: boolean
  *           default: false
  *     responses:
  *       200:
- *         description: List of sports
+ *         description: List of consult types
  *         content:
  *           application/json:
  *             schema:
@@ -41,47 +41,47 @@ const router = express.Router();
  *                       id:
  *                         type: string
  *                         format: uuid
- *                       sport:
+ *                       type_of_consult:
  *                         type: string
  *                       is_active:
  *                         type: boolean
  *             example:
  *               data:
  *                 - id: "uuid-1"
- *                   sport: "Swimming"
+ *                   type_of_consult: "Initial Consultation"
  *                   is_active: true
  *                 - id: "uuid-2"
- *                   sport: "Athletics"
+ *                   type_of_consult: "Follow-Up"
  *                   is_active: true
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/sports', controller.listSports);
+router.get('/lookups/consult-types', controller.listConsultTypes);
 
 /**
  * @swagger
- * /api/AMS/sports:
+ * /api/Consultation/lookups/consult-types:
  *   post:
- *     summary: Create Sport
+ *     summary: Create Consult Type
  *     description: |
- *       Add a new sport to the Sport_Lookup table.
- *       Duplicate sport names (case-insensitive) are rejected with 409.
- *     tags: [AMS - Sports]
+ *       Add a new consult type to the lookup table.
+ *       Duplicate names (case-insensitive) are rejected with 409.
+ *     tags: [Consultation - Consult Types]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [sport]
+ *             required: [type_of_consult]
  *             properties:
- *               sport:
+ *               type_of_consult:
  *                 type: string
- *                 description: Sport name (must be unique)
- *                 example: "Badminton"
+ *                 description: Consult type name (must be unique)
+ *                 example: "Initial Consultation"
  *     responses:
  *       201:
- *         description: Sport created successfully
+ *         description: Consult type created successfully
  *         content:
  *           application/json:
  *             schema:
@@ -89,14 +89,14 @@ router.get('/sports', controller.listSports);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Sport created successfully"
+ *                   example: "Consult type created successfully"
  *                 data:
  *                   type: object
  *                   properties:
  *                     id:
  *                       type: string
  *                       format: uuid
- *                     sport:
+ *                     type_of_consult:
  *                       type: string
  *                     is_active:
  *                       type: boolean
@@ -107,21 +107,21 @@ router.get('/sports', controller.listSports);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/sports', controller.createSport);
+router.post('/lookups/consult-types', controller.createConsultType);
 
 /**
  * @swagger
- * /api/AMS/sports/{id}:
+ * /api/Consultation/lookups/consult-types/{id}:
  *   patch:
- *     summary: Update Sport Status [ADMIN ONLY]
+ *     summary: Update Consult Type Status
  *     description: |
- *       Toggle the is_active status of a sport.
- *     tags: [AMS - Sports]
+ *       Toggle the is_active status of a consult type.
+ *     tags: [Consultation - Consult Types]
  *     parameters:
  *       - name: id
  *         in: path
  *         required: true
- *         description: Sport UUID
+ *         description: Consult type UUID
  *         schema:
  *           type: string
  *           format: uuid
@@ -140,7 +140,7 @@ router.post('/sports', controller.createSport);
  *             is_active: false
  *     responses:
  *       200:
- *         description: Sport updated successfully
+ *         description: Consult type updated successfully
  *         content:
  *           application/json:
  *             schema:
@@ -148,14 +148,14 @@ router.post('/sports', controller.createSport);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Sport updated successfully"
+ *                   example: "Consult type updated successfully"
  *                 data:
  *                   type: object
  *                   properties:
  *                     id:
  *                       type: string
  *                       format: uuid
- *                     sport:
+ *                     type_of_consult:
  *                       type: string
  *                     is_active:
  *                       type: boolean
@@ -166,17 +166,17 @@ router.post('/sports', controller.createSport);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch('/sports/:id', controller.updateSport);
+router.patch('/lookups/consult-types/:id', controller.updateConsultType);
 
 /**
  * @swagger
- * /api/AMS/sports:
+ * /api/Consultation/lookups/consult-types:
  *   delete:
- *     summary: Delete Sports (Bulk) [ADMIN ONLY]
+ *     summary: Delete Consult Types (Bulk)
  *     description: |
- *       Delete one or more sports from the Sport_Lookup table.
- *       Sports that are referenced by athletes or coaches cannot be deleted (409).
- *     tags: [AMS - Sports]
+ *       Delete one or more consult types from the lookup table.
+ *       Consult types that are referenced by sessions cannot be deleted (409).
+ *     tags: [Consultation - Consult Types]
  *     requestBody:
  *       required: true
  *       content:
@@ -191,12 +191,12 @@ router.patch('/sports/:id', controller.updateSport);
  *                   type: string
  *                   format: uuid
  *                 minItems: 1
- *                 description: Array of sport UUIDs to delete
+ *                 description: Array of consult type UUIDs to delete
  *           example:
  *             ids: ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]
  *     responses:
  *       200:
- *         description: Sports deleted successfully
+ *         description: Consult types deleted successfully
  *         content:
  *           application/json:
  *             schema:
@@ -218,6 +218,6 @@ router.patch('/sports/:id', controller.updateSport);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete('/sports', controller.deleteSports);
+router.delete('/lookups/consult-types', controller.deleteConsultTypes);
 
 export default router;

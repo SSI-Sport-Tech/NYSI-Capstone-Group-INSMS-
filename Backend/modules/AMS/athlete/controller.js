@@ -1,6 +1,7 @@
 import * as services from './services.js';
 import {
-    createAthleteSchema,
+    createBasicAthleteSchema,
+    createCompleteAthleteSchema,
     updateAthleteSchema,
     updateRegistrySchema,
     updateMedicalSchema,
@@ -40,11 +41,7 @@ export async function listAthletes(req, res) {
 
         const totalPages = Math.ceil(totalCount / pageSize);
 
-        // Add target_event: null to each row
-        const data = athletes.rows.map(row => ({
-            ...row,
-            target_event: null,
-        }));
+        const data = athletes.rows;
 
         res.json({
             data,
@@ -70,34 +67,25 @@ export async function listAthletes(req, res) {
 }
 
 // ============================================================================
-// GET ATHLETE DETAILS
+// GET BASIC ATHLETE DETAILS (athlete columns only)
 // ============================================================================
 
-export async function getAthleteDetails(req, res) {
+export async function getBasicAthleteDetails(req, res) {
     try {
         // Step 1: Validate ID
         const { id } = uuidParamSchema.parse(req.params);
 
-        // Step 2: Fetch athlete and registry in parallel
-        console.log(`Step 2: Fetching athlete details for ${id}`);
-        const [athlete, registry] = await Promise.all([
-            services.getAthleteById(id),
-            services.getRegistryByAthleteId(id),
-        ]);
+        // Step 2: Fetch athlete
+        console.log(`Step 2: Fetching basic athlete details for ${id}`);
+        const athlete = await services.getAthleteById(id);
 
         // Step 3: Check if athlete exists
         if (!athlete) {
             return res.status(404).json({ error: 'Athlete not found' });
         }
 
-        // Step 4: Return composite response
-        res.json({
-            athlete: {
-                ...athlete,
-                target_event: null,
-            },
-            registry: registry || null,
-        });
+        // Step 4: Return athlete data
+        res.json(athlete);
 
     } catch (error) {
         if (error.name === 'ZodError') {
@@ -115,14 +103,62 @@ export async function getAthleteDetails(req, res) {
 }
 
 // ============================================================================
-// CREATE ATHLETE (with registry + medical)
+// GET COMPLETE ATHLETE DETAILS (athlete + registry + medical + mappings)
 // ============================================================================
 
-export async function createAthlete(req, res) {
+export async function getCompleteAthleteDetails(req, res) {
+    try {
+        // Step 1: Validate ID
+        const { id } = uuidParamSchema.parse(req.params);
+
+        // Step 2: Fetch all related data in parallel
+        console.log(`Step 2: Fetching complete athlete details for ${id}`);
+        const [athlete, registry, medical, coachMappings, nutritionistMappings] = await Promise.all([
+            services.getAthleteById(id),
+            services.getRegistryByAthleteId(id),
+            services.getMedicalByAthleteId(id),
+            services.getCoachMappingsByAthleteId(id),
+            services.getNutritionistMappingsByAthleteId(id),
+        ]);
+
+        // Step 3: Check if athlete exists
+        if (!athlete) {
+            return res.status(404).json({ error: 'Athlete not found' });
+        }
+
+        // Step 4: Return composite response
+        res.json({
+            athlete,
+            registry: registry || null,
+            medical: medical || null,
+            coachMappings,
+            nutritionistMappings,
+        });
+
+    } catch (error) {
+        if (error.name === 'ZodError') {
+            return res.status(400).json({
+                error: 'Invalid athlete ID format',
+                details: error.errors.map(e => ({
+                    field: e.path.join('.'),
+                    message: e.message,
+                })),
+            });
+        }
+        console.error('Error fetching complete athlete details:', error);
+        res.status(500).json({ error: 'Failed to fetch athlete details', message: error.message });
+    }
+}
+
+// ============================================================================
+// CREATE BASIC ATHLETE (athlete record only)
+// ============================================================================
+
+export async function createBasicAthlete(req, res) {
     try {
         // Step 1: Validate request body
         console.log('Step 1: Validating request body');
-        const validated = createAthleteSchema.parse(req.body);
+        const validated = createBasicAthleteSchema.parse(req.body);
 
         // Step 2: Validate sport_id exists in Sport_Lookup
         console.log('Step 2: Validating sport_id');
@@ -147,8 +183,101 @@ export async function createAthlete(req, res) {
             });
         }
 
-        // Step 4: Separate data into athlete, registry, and medical
-        console.log('Step 4: Creating athlete with registry and medical');
+        // Step 4: Create athlete
+        console.log('Step 4: Creating basic athlete');
+        const athlete = await services.createBasicAthlete(validated);
+
+        console.log(`Step 5: Athlete ${athlete.id} created successfully`);
+
+        res.status(201).json({
+            message: 'Athlete created successfully',
+            data: athlete,
+        });
+
+    } catch (error) {
+        if (error.name === 'ZodError') {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.errors.map(e => ({
+                    field: e.path.join('.'),
+                    message: e.message,
+                })),
+            });
+        }
+        console.error('Error creating athlete:', error);
+        res.status(500).json({ error: 'Failed to create athlete', message: error.message });
+    }
+}
+
+// ============================================================================
+// CREATE COMPLETE ATHLETE (athlete + registry + medical + assignments)
+// ============================================================================
+
+export async function createCompleteAthlete(req, res) {
+    try {
+        // Step 1: Validate request body
+        console.log('Step 1: Validating request body');
+        const validated = createCompleteAthleteSchema.parse(req.body);
+
+        // Step 2: Validate sport_id exists in Sport_Lookup
+        console.log('Step 2: Validating sport_id');
+        const sportCheck = await pool.query(
+            'SELECT id FROM AMS.Sport_Lookup WHERE id = $1 AND is_active = true',
+            [validated.sport_id]
+        );
+        if (sportCheck.rows.length === 0) {
+            return res.status(400).json({
+                error: 'Invalid sport_id',
+                details: [{ field: 'sport_id', message: 'Sport not found or inactive' }],
+            });
+        }
+
+        // Step 3: Check for duplicate sportsync_id
+        console.log('Step 3: Checking for duplicate sportsync_id');
+        const isDuplicate = await services.checkDuplicateAthlete(validated.sportsync_id);
+        if (isDuplicate) {
+            return res.status(409).json({
+                error: 'Duplicate athlete',
+                details: [{ field: 'sportsync_id', message: `Athlete with sportsync_id "${validated.sportsync_id}" already exists` }],
+            });
+        }
+
+        // Step 4: Validate coach IDs exist
+        if (validated.coach_ids.length > 0) {
+            console.log('Step 4a: Validating coach IDs');
+            const coachCheck = await pool.query(
+                'SELECT id FROM AMS.Coach WHERE id = ANY($1::uuid[])',
+                [validated.coach_ids]
+            );
+            if (coachCheck.rows.length !== validated.coach_ids.length) {
+                const foundIds = coachCheck.rows.map(r => r.id);
+                const invalidIds = validated.coach_ids.filter(id => !foundIds.includes(id));
+                return res.status(400).json({
+                    error: 'Invalid coach_ids',
+                    details: [{ field: 'coach_ids', message: `Coach(es) not found: ${invalidIds.join(', ')}` }],
+                });
+            }
+        }
+
+        // Step 5: Validate nutritionist IDs exist
+        if (validated.nutritionist_ids.length > 0) {
+            console.log('Step 4b: Validating nutritionist IDs');
+            const nutritionistCheck = await pool.query(
+                'SELECT id FROM AMS.Nutritionist WHERE id = ANY($1::uuid[])',
+                [validated.nutritionist_ids]
+            );
+            if (nutritionistCheck.rows.length !== validated.nutritionist_ids.length) {
+                const foundIds = nutritionistCheck.rows.map(r => r.id);
+                const invalidIds = validated.nutritionist_ids.filter(id => !foundIds.includes(id));
+                return res.status(400).json({
+                    error: 'Invalid nutritionist_ids',
+                    details: [{ field: 'nutritionist_ids', message: `Nutritionist(s) not found: ${invalidIds.join(', ')}` }],
+                });
+            }
+        }
+
+        // Step 6: Separate data
+        console.log('Step 5: Creating complete athlete with relations');
         const athleteData = {
             sport_id: validated.sport_id,
             sportsync_id: validated.sportsync_id,
@@ -174,13 +303,16 @@ export async function createAthlete(req, res) {
             past_injury: validated.past_injury,
         };
 
-        // Step 5: Create in transaction
-        const result = await services.createAthleteWithRelations(athleteData, registryData, medicalData);
+        // Step 7: Create in transaction
+        const result = await services.createCompleteAthlete(
+            athleteData, registryData, medicalData,
+            validated.coach_ids, validated.nutritionist_ids
+        );
 
-        console.log(`Step 5: Athlete ${result.athlete.id} created successfully`);
+        console.log(`Step 6: Athlete ${result.athlete.id} created successfully with all relations`);
 
         res.status(201).json({
-            message: 'Athlete created successfully',
+            message: 'Athlete created successfully with all relations',
             data: result,
         });
 
@@ -194,7 +326,7 @@ export async function createAthlete(req, res) {
                 })),
             });
         }
-        console.error('Error creating athlete:', error);
+        console.error('Error creating complete athlete:', error);
         res.status(500).json({ error: 'Failed to create athlete', message: error.message });
     }
 }
@@ -427,17 +559,3 @@ export async function updateMedicalController(req, res) {
     }
 }
 
-// ============================================================================
-// SPORTS LOOKUP
-// ============================================================================
-
-export async function getSportsController(req, res) {
-    try {
-        const includeInactive = req.query.includeInactive === 'true';
-        const result = await services.getSports(!includeInactive);
-        res.json({ data: result.rows });
-    } catch (error) {
-        console.error('Error fetching sports:', error);
-        res.status(500).json({ error: 'Failed to fetch sports', message: error.message });
-    }
-}

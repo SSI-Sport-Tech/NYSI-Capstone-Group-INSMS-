@@ -6,6 +6,7 @@ import swaggerSpecs from "./config/swagger.js";
 import ocrRoutes from "./modules/OCR/routes.js";
 import supplementRoutes from "./modules/SSS/index.js";
 import athleteRoutes from "./modules/AMS/index.js";
+import consultationRoutes from "./modules/Consultation/index.js";
 import authRoutes from "./modules/Auth/routes.js"; // ✅ NEW: Authentication routes
 import adminRoutes from './modules/Admin/adminRoutes.js';
 import { verifyEmailConfig } from "./modules/Auth/emailService.js"; // ✅ NEW: Email verification
@@ -85,6 +86,7 @@ app.use('/api/admin', adminRoutes);
 // Existing routes
 app.use("/api/SSS", supplementRoutes);
 app.use("/api/AMS", athleteRoutes);
+app.use("/api/Consultation", consultationRoutes);
 app.use("/api/ocr", ocrRoutes);
 
 // ==================== HEALTH CHECK ENDPOINTS ====================
