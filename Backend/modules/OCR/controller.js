@@ -109,12 +109,22 @@ export async function analyzeLabel(req, res) {
 
     } catch (error) {
         console.error('[OCR] Analyze error:', error.message);
+        console.error('[OCR] Error code:', error.code);
+        console.error('[OCR] Error stack:', error.stack);
+
+        // Handle connection reset
+        if (error.code === 'ECONNRESET') {
+            return res.status(503).json({
+                success: false,
+                error: 'Connection to OCR service was reset. The service may be overloaded. Please try again.'
+            });
+        }
 
         // Handle timeout
-        if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT' || error.message.includes('timeout')) {
             return res.status(504).json({
                 success: false,
-                error: 'OCR service timeout. Please try again.'
+                error: 'OCR service timeout. Please try again with a smaller image or wait a moment.'
             });
         }
 
@@ -123,6 +133,14 @@ export async function analyzeLabel(req, res) {
             return res.status(503).json({
                 success: false,
                 error: 'OCR service unavailable. Please ensure Python service is running.'
+            });
+        }
+
+        // Handle specific Python service errors
+        if (error.message.includes('Python OCR service')) {
+            return res.status(502).json({
+                success: false,
+                error: error.message
             });
         }
 

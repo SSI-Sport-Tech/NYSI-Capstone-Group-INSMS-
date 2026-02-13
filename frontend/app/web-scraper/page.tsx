@@ -307,7 +307,7 @@ export default function WebScraperPage() {
                       Price <ChevronDown className="w-4 h-4 ml-1" />
                     </div>
                   </th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-900">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
                     <div className="flex items-center">
                       Actions <ChevronDown className="w-4 h-4 ml-1" />
                     </div>
