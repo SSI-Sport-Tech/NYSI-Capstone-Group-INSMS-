@@ -180,7 +180,7 @@ export const sendVerificationEmail = async (email, code, firstName = "User") => 
                             © ${new Date().getFullYear()} New York Sports Institute. All rights reserved.
                         </p>
                         <p>
-                            Need help? <a href="mailto:${process.env.SUPPORT_EMAIL || 'support@nysi.com'}">Contact Support</a>
+                            Need help? <a href="mailto:${process.env.SUPPORT_EMAIL}">Contact Support</a>
                         </p>
                     </div>
                 </div>
