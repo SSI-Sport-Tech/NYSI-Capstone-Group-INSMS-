@@ -226,4 +226,8 @@ CREATE TRIGGER audit_intervention_status_lookup_changes
 AFTER INSERT OR UPDATE OR DELETE ON consultation.intervention_status_lookup
 FOR EACH ROW EXECUTE FUNCTION audit.audit_trigger_func();
 
+CREATE TRIGGER audit_diagnosis_lookup_changes 
+AFTER INSERT OR UPDATE OR DELETE ON consultation.nutrition_diagnosis_lookup 
+FOR EACH ROW EXECUTE FUNCTION audit.audit_trigger_func();
+
 COMMIT;
