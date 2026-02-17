@@ -60,14 +60,16 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
     return await getBatchesByPage(pageNumber, pageSize);
   }
 
+    // Build WHERE conditions - each word must match in at least one field
+  // Note: These reference table aliases inside the CTE
   const whereConditions = searchWords
     .map((_, index) => {
       const paramIndex = index + 1;
       return `(
-      batch_number ILIKE $${paramIndex} OR
-      supplement_name ILIKE $${paramIndex} OR
-      supplement_brand ILIKE $${paramIndex} OR
-      batch_status ILIKE $${paramIndex}
+      ib.batch_number ILIKE $${paramIndex} OR
+      s.supplement_name ILIKE $${paramIndex} OR
+      s.supplement_brand ILIKE $${paramIndex} OR
+      bssl.batch_stock_status ILIKE $${paramIndex}
     )`;
     })
     .join(" AND ");
