@@ -57,7 +57,33 @@ export async function getAthleteById(athleteId) {
 
     return profile;
 }
+// ADD THIS FUNCTION after getAthleteById (around line 60)
 
+/**
+ * Get paginated list of athletes with sport name
+ * @param {number} pageNumber - Page number (1-indexed)
+ * @param {number} pageSize - Items per page
+ * @returns {Promise<Object>} Query result with rows
+ */
+export async function getAthletesByPage(pageNumber, pageSize = 10) {
+    const offset = (pageNumber - 1) * pageSize;
+
+    const query = `
+        SELECT
+            a.id,
+            a.sportsync_id,
+            a.athlete_name_abbr,
+            sl.sport AS sport_name,
+            a.gender,
+            a.date_of_birth
+        FROM AMS.Athlete a
+        LEFT JOIN AMS.Sport_Lookup sl ON a.sport_id = sl.id
+        ORDER BY a.athlete_name_abbr ASC
+        LIMIT $1 OFFSET $2
+    `;
+
+    return await pool.query(query, [pageSize, offset]);
+}
 /**
  * Search athletes across name, sportsync_id, sport, and gender
  * @param {string} searchQuery - Search string
@@ -521,3 +547,10 @@ export async function updateMedical(athleteId, updateData) {
     const result = await pool.query(query, values);
     return result.rows.length > 0 ? result.rows[0] : null;
 }
+
+/**
+ * Get paginated list of athletes with sport name
+ * @param {number} pageNumber - Page number (1-indexed)
+ * @param {number} pageSize - Items per page
+ * @returns {Promise<Object>} Query result with rows
+ */

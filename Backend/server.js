@@ -7,8 +7,7 @@ import ocrRoutes from "./modules/OCR/routes.js";
 import supplementRoutes from "./modules/SSS/index.js";
 import athleteRoutes from "./modules/AMS/index.js";
 import authRoutes from "./modules/Auth/routes.js";
-import adminRoutes from "./modules/Admin/routes.js"; // ✅ ADD THIS IMPORT
-import consultationRoutes from "./modules/Consultation/index.js"; // ✅ ADD THIS IMPORT
+import consultationRoutes from "./modules/Consultation/index.js";
 import { verifyEmailConfig } from "./modules/Auth/emailService.js";
 
 // Load environment variables
@@ -80,7 +79,6 @@ app.get("/docs.json", (req, res) => {
 
 // Authentication routes (must be first for security)
 app.use("/api/auth", authRoutes);
-app.use('/api/admin', adminRoutes);
 
 // App Routes
 app.use("/api/SSS", supplementRoutes);

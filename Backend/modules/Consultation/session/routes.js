@@ -13,7 +13,7 @@ const router = express.Router();
  * /api/Consultation/sessions/{sessionId}/training:
  *   patch:
  *     summary: Update Training Schedule (Target Event)
- *     description: Update the training schedule details for a specific session. This includes the Target Event (upcoming_major_competitions). This performs an UPSERT.
+ *     description: Update the training schedule details for a specific session. This includes the Target Event (upcoming_major_competitions). This performs an UPSERT (creates the record if it doesn't exist).
  *     tags: [Consultation - Sessions]
  *     security:
  *       - bearerAuth: []
@@ -71,7 +71,7 @@ router.patch('/sessions/:sessionId/training', authenticateToken, controller.upda
  * /api/Consultation/sessions:
  *   get:
  *     summary: List Sessions
- *     description: Get all consultation sessions with pagination and optional search.
+ *     description: Get all consultation sessions with pagination and optional search. Search matches across athlete name, nutritionist name, and consult type.
  *     tags: [Consultation - Sessions]
  *     parameters:
  *       - $ref: '#/components/parameters/PageParam'
@@ -197,7 +197,7 @@ router.get('/sessions/:id', controller.getSession);
  * /api/Consultation/sessions:
  *   post:
  *     summary: Create Session
- *     description: Create a new consultation session.
+ *     description: Create a new consultation session. Validates that nutritionist_id, athlete_id, and type_of_consult_id exist. type_of_consult_id must reference an active consult type.
  *     tags: [Consultation - Sessions]
  *     security:
  *       - bearerAuth: []
@@ -258,7 +258,7 @@ router.post('/sessions', authenticateToken, controller.createSession);
  * /api/Consultation/sessions/{id}:
  *   patch:
  *     summary: Update Session
- *     description: Partially update a consultation session.
+ *     description: Partially update a consultation session. Only provided fields will be updated. FK fields are validated if provided.
  *     tags: [Consultation - Sessions]
  *     security:
  *       - bearerAuth: []
