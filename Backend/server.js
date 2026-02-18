@@ -6,11 +6,9 @@ import swaggerSpecs from "./config/swagger.js";
 import ocrRoutes from "./modules/OCR/routes.js";
 import supplementRoutes from "./modules/SSS/index.js";
 import athleteRoutes from "./modules/AMS/index.js";
+import authRoutes from "./modules/Auth/routes.js";
 import consultationRoutes from "./modules/Consultation/index.js";
-import authRoutes from "./modules/Auth/routes.js"; // ✅ NEW: Authentication routes
-import adminRoutes from './modules/Admin/adminRoutes.js';
-import { verifyEmailConfig } from "./modules/Auth/emailService.js"; // ✅ NEW: Email verification
-
+import { verifyEmailConfig } from "./modules/Auth/emailService.js";
 
 // Load environment variables
 dotenv.config();
@@ -79,15 +77,14 @@ app.get("/docs.json", (req, res) => {
 
 // ==================== API ROUTES ====================
 
-// ✅ NEW: Authentication routes (must be first for security)
+// Authentication routes (must be first for security)
 app.use("/api/auth", authRoutes);
-app.use('/api/admin', adminRoutes);
 
-// Existing routes
+// App Routes
 app.use("/api/SSS", supplementRoutes);
 app.use("/api/AMS", athleteRoutes);
-app.use("/api/Consultation", consultationRoutes);
 app.use("/api/ocr", ocrRoutes);
+app.use("/api/Consultation", consultationRoutes);
 
 // ==================== HEALTH CHECK ENDPOINTS ====================
 
@@ -108,7 +105,7 @@ app.use("/api/ocr", ocrRoutes);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "NYSI Backend API is running"
+ *                   example: NYSI Backend API is running
  *                 version:
  *                   type: string
  *                   example: "2.1"
@@ -118,7 +115,7 @@ app.use("/api/ocr", ocrRoutes);
  *                     type: string
  *                 documentation:
  *                   type: string
- *                   example: "http://localhost:8000/docs"
+ *                   example: http://localhost:8000/docs
  *                 timestamp:
  *                   type: string
  *                   format: date-time
@@ -159,13 +156,13 @@ app.get("/", (req, res) => {
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Backend is working! ✅"
+ *                   example: Backend is working!
  *                 timestamp:
  *                   type: string
  *                   format: date-time
  *                 note:
  *                   type: string
- *                   example: "This endpoint doesn't require database"
+ *                   example: This endpoint doesn't require database
  */
 app.get("/api/test", (req, res) => {
     res.json({
@@ -193,19 +190,19 @@ app.get("/api/test", (req, res) => {
  *               properties:
  *                 status:
  *                   type: string
- *                   example: "healthy"
+ *                   example: healthy
  *                 services:
  *                   type: object
  *                   properties:
  *                     api:
  *                       type: string
- *                       example: "running"
+ *                       example: running
  *                     database:
  *                       type: string
- *                       example: "connected"
+ *                       example: connected
  *                     email:
  *                       type: string
- *                       example: "configured"
+ *                       example: configured
  *                 timestamp:
  *                   type: string
  *                   format: date-time
@@ -218,7 +215,7 @@ app.get("/api/test", (req, res) => {
  *               properties:
  *                 status:
  *                   type: string
- *                   example: "unhealthy"
+ *                   example: unhealthy
  *                 error:
  *                   type: string
  */
@@ -293,7 +290,7 @@ const server = app.listen(PORT, async () => {
     console.log("📧 Email Service:     Checking configuration...");
     console.log("=".repeat(60) + "\n");
 
-    // ✅ NEW: Verify email configuration on startup
+    // Verify email configuration on startup
     await verifyEmailConfig();
 });
 

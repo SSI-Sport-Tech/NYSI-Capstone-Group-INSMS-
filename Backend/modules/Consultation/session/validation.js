@@ -35,5 +35,17 @@ export const updateSessionSchema = z.object({
         .nullable(),
 }).strict();
 
+// ============================================================================
+// TRAINING SCHEDULE SCHEMA (Target Event) - ✅ NEW
+// ============================================================================
+
+export const updateTrainingScheduleSchema = z.object({
+    upcoming_major_competitions: z.string().optional(), // ✅ Target Event
+    upcoming_local_competitions: z.string().optional(),
+    current_performance: z.string().optional(),
+    total_training_hours: z.number().optional(),
+    other_remarks: z.string().optional()
+}).strict();
+
 // Re-export shared schemas
 export { paginationSchema, uuidParamSchema, bulkDeleteSchema };

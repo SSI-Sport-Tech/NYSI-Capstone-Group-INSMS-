@@ -260,3 +260,52 @@ export async function deleteSessions(ids) {
     const result = await pool.query(query, [ids]);
     return result.rows;
 }
+
+// ============================================================================
+// TRAINING SCHEDULE / TARGET EVENT SERVICES - ✅ NEW
+// ============================================================================
+
+/**
+ * UPSERT Training Schedule info (Target Event)
+ * @param {string} sessionId - UUID of the session
+ * @param {Object} data - fields from updateTrainingScheduleSchema
+ */
+export async function upsertTrainingSchedule(sessionId, data) {
+    // 1. Check if a record exists for this session
+    const checkQuery = `SELECT id FROM consultation.session_training_schedule WHERE sessions_id = $1`;
+    const check = await pool.query(checkQuery, [sessionId]);
+    
+    if (check.rows.length > 0) {
+        // 2. UPDATE existing
+        const updateQuery = `
+            UPDATE consultation.session_training_schedule
+            SET upcoming_major_competitions = COALESCE($2, upcoming_major_competitions),
+                upcoming_local_competitions = COALESCE($3, upcoming_local_competitions),
+                other_remarks = COALESCE($4, other_remarks)
+            WHERE sessions_id = $1
+            RETURNING *
+        `;
+        const res = await pool.query(updateQuery, [
+            sessionId, 
+            data.upcoming_major_competitions, 
+            data.upcoming_local_competitions, 
+            data.other_remarks
+        ]);
+        return res.rows[0];
+    } else {
+        // 3. INSERT new
+        const insertQuery = `
+            INSERT INTO consultation.session_training_schedule
+            (sessions_id, upcoming_major_competitions, upcoming_local_competitions, other_remarks)
+            VALUES ($1, $2, $3, $4)
+            RETURNING *
+        `;
+        const res = await pool.query(insertQuery, [
+            sessionId, 
+            data.upcoming_major_competitions, 
+            data.upcoming_local_competitions, 
+            data.other_remarks
+        ]);
+        return res.rows[0];
+    }
+}

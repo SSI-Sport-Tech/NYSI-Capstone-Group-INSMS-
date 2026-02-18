@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { bulkDeleteSchema } from '../../SSS/shared/validation.js';
+import { bulkDeleteSchema, uuidParamSchema } from '../../SSS/shared/validation.js';
 
 // ============================================================================
-// CREATE NUTRITIONIST SCHEMA
+// NUTRITIONIST CRUD SCHEMAS
 // ============================================================================
 
 export const createNutritionistSchema = z.object({
@@ -12,9 +12,20 @@ export const createNutritionistSchema = z.object({
         .max(255, 'Nutritionist name must be 255 characters or less'),
 }).strict();
 
+// ✅ NEW: Added for Update logic
+export const updateNutritionistSchema = z.object({
+    name: z.string().trim().min(1).max(255).optional(),
+}).strict();
+
 // ============================================================================
-// NUTRITIONIST-ATHLETE MAPPING SCHEMAS
+// NUTRITIONIST-ATHLETE MAPPING & PINNING
 // ============================================================================
+
+// ✅ NEW: Added for Pinning logic
+export const togglePinSchema = z.object({
+    athlete_id: z.string().uuid('athlete_id must be a valid UUID'),
+    is_pinned: z.boolean()
+}).strict();
 
 export const createMappingSchema = z.object({
     athlete_id: z.string().uuid('athlete_id must be a valid UUID'),
@@ -34,4 +45,4 @@ export const updateMappingSchema = z.object({
 }).strict();
 
 // Re-export shared schemas
-export { bulkDeleteSchema };
+export { bulkDeleteSchema, uuidParamSchema };

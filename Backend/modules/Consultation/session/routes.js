@@ -1,7 +1,66 @@
 import express from 'express';
 import * as controller from './controller.js';
+import { authenticateToken } from '../../Auth/authMiddleware.js';
 
 const router = express.Router();
+
+// ============================================================================
+// TRAINING SCHEDULE ROUTES (Target Event)
+// ============================================================================
+
+/**
+ * @swagger
+ * /api/Consultation/sessions/{sessionId}/training:
+ *   patch:
+ *     summary: Update Training Schedule (Target Event)
+ *     description: Update the training schedule details for a specific session. This includes the Target Event (upcoming_major_competitions). This performs an UPSERT (creates the record if it doesn't exist).
+ *     tags: [Consultation - Sessions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: sessionId
+ *         in: path
+ *         required: true
+ *         description: UUID of the session
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               upcoming_major_competitions:
+ *                 type: string
+ *                 description: The primary target event
+ *               upcoming_local_competitions:
+ *                 type: string
+ *               current_performance:
+ *                 type: string
+ *               total_training_hours:
+ *                 type: number
+ *               other_remarks:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Training schedule updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.patch('/sessions/:sessionId/training', authenticateToken, controller.updateTrainingSchedule);
 
 // ============================================================================
 // SESSION CRUD ROUTES
@@ -12,9 +71,7 @@ const router = express.Router();
  * /api/Consultation/sessions:
  *   get:
  *     summary: List Sessions
- *     description: |
- *       Get all consultation sessions with pagination and optional search.
- *       Search matches across athlete name, nutritionist name, and consult type.
+ *     description: Get all consultation sessions with pagination and optional search. Search matches across athlete name, nutritionist name, and consult type.
  *     tags: [Consultation - Sessions]
  *     parameters:
  *       - $ref: '#/components/parameters/PageParam'
@@ -83,8 +140,7 @@ router.get('/sessions', controller.listSessions);
  * /api/Consultation/sessions/{id}:
  *   get:
  *     summary: Get Session Detail
- *     description: |
- *       Get a single consultation session by ID with joined names.
+ *     description: Get a single consultation session by ID with joined names.
  *     tags: [Consultation - Sessions]
  *     parameters:
  *       - name: id
@@ -141,18 +197,20 @@ router.get('/sessions/:id', controller.getSession);
  * /api/Consultation/sessions:
  *   post:
  *     summary: Create Session
- *     description: |
- *       Create a new consultation session.
- *       Validates that nutritionist_id, athlete_id, and type_of_consult_id exist.
- *       type_of_consult_id must reference an active consult type.
+ *     description: Create a new consultation session. Validates that nutritionist_id, athlete_id, and type_of_consult_id exist. type_of_consult_id must reference an active consult type.
  *     tags: [Consultation - Sessions]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [nutritionist_id, athlete_id, type_of_consult_id]
+ *             required:
+ *               - nutritionist_id
+ *               - athlete_id
+ *               - type_of_consult_id
  *             properties:
  *               nutritionist_id:
  *                 type: string
@@ -185,7 +243,7 @@ router.get('/sessions/:id', controller.getSession);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Session created successfully"
+ *                   example: Session created successfully
  *                 data:
  *                   type: object
  *       400:
@@ -193,18 +251,17 @@ router.get('/sessions/:id', controller.getSession);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/sessions', controller.createSession);
+router.post('/sessions', authenticateToken, controller.createSession);
 
 /**
  * @swagger
  * /api/Consultation/sessions/{id}:
  *   patch:
  *     summary: Update Session
- *     description: |
- *       Partially update a consultation session.
- *       Only provided fields will be updated.
- *       FK fields are validated if provided.
+ *     description: Partially update a consultation session. Only provided fields will be updated. FK fields are validated if provided.
  *     tags: [Consultation - Sessions]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - name: id
  *         in: path
@@ -246,7 +303,7 @@ router.post('/sessions', controller.createSession);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Session updated successfully"
+ *                   example: Session updated successfully
  *                 data:
  *                   type: object
  *       400:
@@ -256,23 +313,25 @@ router.post('/sessions', controller.createSession);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch('/sessions/:id', controller.updateSession);
+router.patch('/sessions/:id', authenticateToken, controller.updateSession);
 
 /**
  * @swagger
  * /api/Consultation/sessions:
  *   delete:
  *     summary: Delete Sessions (Bulk)
- *     description: |
- *       Delete one or more consultation sessions.
+ *     description: Delete one or more consultation sessions.
  *     tags: [Consultation - Sessions]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [ids]
+ *             required:
+ *               - ids
  *             properties:
  *               ids:
  *                 type: array
@@ -281,8 +340,6 @@ router.patch('/sessions/:id', controller.updateSession);
  *                   format: uuid
  *                 minItems: 1
  *                 description: Array of session UUIDs to delete
- *           example:
- *             ids: ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]
  *     responses:
  *       200:
  *         description: Sessions deleted successfully
@@ -305,6 +362,6 @@ router.patch('/sessions/:id', controller.updateSession);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete('/sessions', controller.deleteSessions);
+router.delete('/sessions', authenticateToken, controller.deleteSessions);
 
 export default router;
