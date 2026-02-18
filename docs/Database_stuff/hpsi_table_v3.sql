@@ -247,7 +247,8 @@ CREATE TABLE consultation.session_anthropometry (
   sum_of_8_skinfold NUMERIC(5,2),
   mother_height NUMERIC(5,2),
   father_height NUMERIC(5,2),
-  other_remarks TEXT
+  other_remarks TEXT,
+  CONSTRAINT chk_anthro_bmi CHECK (bmi_category IN ('Normal', 'Underweight', 'Overweight'))
 );
 
 CREATE TABLE consultation.session_training_schedule (
@@ -290,14 +291,32 @@ CREATE TABLE consultation.session_meal_log (
 );
 
 CREATE TABLE consultation.session_note (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+  id UUID PRIMARY KEY DEFAULT public.uuid_generate_v7(),
   sessions_id UUID NOT NULL,
   consultation_objective TEXT,
   main_nutrition_diagnosis TEXT,
+  -- This allows your frontend to say: "Select all diagnoses where category = 'IRON'" to populate the Iron dropdown etc
+  carbohydrates_review_id UUID,
+  protein_review_id       UUID,
+  fat_review_id           UUID,
+  fibre_review_id         UUID,
+  iron_review_id          UUID,
+  calcium_review_id       UUID,
+  micronutrients_review_id UUID,
+  other_review TEXT, 
   follow_up_note TEXT,
   intervention_note TEXT,
   medical_remarks TEXT,
   other_remarks TEXT
+);
+
+CREATE TABLE consultation.nutrition_diagnosis_lookup (
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v7(),
+    category TEXT NOT NULL, -- 'CARB', 'PROTEIN', 'IRON'
+    diagnosis TEXT NOT NULL, -- The dropdown text
+    is_active BOOLEAN DEFAULT TRUE,
+    -- Prevent duplicate text within a category
+    CONSTRAINT uq_diagnosis_category UNIQUE (category, diagnosis)
 );
 
 CREATE TABLE consultation.session_nutrition_review (

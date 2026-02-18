@@ -15,6 +15,7 @@ import AddSupplementModal from "./AddSupplementModal";
 interface Batch {
   id: number;
   batch_number: string;
+  supplement_id: string;
   supplement_name: string;
   supplement_brand: string;
   batch_status: string;
@@ -321,10 +322,18 @@ const BatchTable: React.FC<BatchTableProps> = ({
                     </td>
                     <td className="px-3 py-4 text-sm text-gray-900">
                       <Link
-                        href={`/supplements/${batch.id}`}
+                        href={`/supplements/${batch.supplement_id}`}
                         className="font-medium text-blue-600 underline cursor-pointer hover:text-blue-800"
+                        onClick={() =>
+                          console.log(
+                            "Clicking supplement link with ID:",
+                            batch.supplement_id,
+                            "Full batch:",
+                            batch,
+                          )
+                        }
                       >
-                        Bold text column
+                        {batch.supplement_name || "Unknown Supplement"}
                       </Link>
                     </td>
                     <td className="px-3 py-4 text-sm text-gray-900">

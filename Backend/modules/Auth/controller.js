@@ -24,10 +24,10 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 
 // Configuration
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_EXPIRY = process.env.JWT_EXPIRY || '24h';
-const CODE_EXPIRY_MINUTES = parseInt(process.env.CODE_EXPIRY_MINUTES || '10');
-const MAX_VERIFICATION_ATTEMPTS = parseInt(process.env.MAX_VERIFICATION_ATTEMPTS || '3');
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRY = process.env.JWT_EXPIRY;
+const CODE_EXPIRY_MINUTES = parseInt(process.env.CODE_EXPIRY_MINUTES);
+const MAX_VERIFICATION_ATTEMPTS = parseInt(process.env.MAX_VERIFICATION_ATTEMPTS);
 
 // ============================================================================
 // USER REGISTRATION

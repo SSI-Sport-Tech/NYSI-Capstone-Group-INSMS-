@@ -15,6 +15,7 @@ export async function getBatchesByPage(pageNumber, pageSize = 10) {
       ib.batch_initial_quantity,
       ib.batch_expiration_date,
       ib.batch_price,
+      ib.supplement_id,
       s.supplement_name,
       s.supplement_brand,
       COALESCE(SUM(it.quantity), 0) AS booked,
@@ -26,7 +27,7 @@ export async function getBatchesByPage(pageNumber, pageSize = 10) {
     LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl ON ib.batch_stock_status_id = bssl.id
     WHERE bssl.is_active = true
     GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity,
-             ib.batch_expiration_date, ib.batch_price,
+             ib.batch_expiration_date, ib.batch_price, ib.supplement_id,
              s.supplement_name, s.supplement_brand, bssl.batch_stock_status
     ORDER BY ib.id DESC
     LIMIT $1 OFFSET $2
@@ -84,6 +85,7 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
         ib.batch_initial_quantity,
         ib.batch_expiration_date,
         ib.batch_price,
+        ib.supplement_id,
         s.supplement_name,
         s.supplement_brand,
         COALESCE(SUM(it.quantity), 0) AS booked,
@@ -95,7 +97,7 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
       LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl ON ib.batch_stock_status_id = bssl.id
       WHERE bssl.is_active = true
       GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity,
-               ib.batch_expiration_date, ib.batch_price,
+               ib.batch_expiration_date, ib.batch_price, ib.supplement_id,
                s.supplement_name, s.supplement_brand, bssl.batch_stock_status
     )
     SELECT

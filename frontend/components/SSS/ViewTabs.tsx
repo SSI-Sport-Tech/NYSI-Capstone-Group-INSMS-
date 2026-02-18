@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Globe, Search as SearchIcon, BookOpen } from "lucide-react";
+import { Globe, Archive, BookOpenText } from "lucide-react";
 
 interface Tab {
   id: string;
@@ -19,12 +19,12 @@ const ViewTabs: React.FC<ViewTabsProps> = ({ tabs }) => {
 
   const getIcon = (iconName?: string) => {
     switch (iconName) {
-      case "globe":
+      case "inventory":
+        return <Archive className="w-4 h-4" />;
+      case "scraper":
         return <Globe className="w-4 h-4" />;
-      case "search":
-        return <SearchIcon className="w-4 h-4" />;
       case "library":
-        return <BookOpen className="w-4 h-4" />;
+        return <BookOpenText className="w-4 h-4" />;
       default:
         return null;
     }
