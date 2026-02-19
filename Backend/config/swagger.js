@@ -87,6 +87,14 @@ const swaggerOptions = {
                 name: "Consultation - Open Items",
                 description: "Open Items card — follow-up action items for a consultation session",
             },
+            {
+                name: "Consultation - Lookups",
+                description: "Consultation lookup tables for dropdowns (consult types, nutrition diagnoses)",
+            },
+            {
+                name: "Consultation - Consultation Details",
+                description: "Consultation Details card — session-level notes, nutrition diagnosis reviews, and remarks",
+            },
             // ==================== Other ====================
             {
                 name: "OCR",
@@ -1209,6 +1217,8 @@ const swaggerOptions = {
         "./modules/AMS/nutritionist/routes.js",
         "./modules/Consultation/consultation-update/routes.js",
         "./modules/Consultation/open-items/routes.js",
+        "./modules/Consultation/consultation-lookups/routes.js",
+        "./modules/Consultation/consultation-details/routes.js",
         "./modules/OCR/routes.js",
         "./server.js",
         "./modules/Auth/routes.js",
