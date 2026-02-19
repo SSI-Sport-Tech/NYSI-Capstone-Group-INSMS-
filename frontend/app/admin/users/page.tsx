@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { UserPlus } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import UserSearchSection from "@/components/Admin/UserSearchSection";
 import UserTable from "@/components/Admin/UserTable";
@@ -11,6 +12,7 @@ import UserDetailsModal from "@/components/Admin/UserDetailsModal";
 import EditUserModal from "@/components/Admin/EditUserModal";
 import ChangePasswordModal from "@/components/Admin/ChangePasswordModal";
 import ChangeEmailModal from "@/components/Admin/ChangeEmailModal";
+import CreateUserModal from "@/components/Admin/CreateUserModal";
 
 interface User {
     id: string;
@@ -49,6 +51,10 @@ export default function AdminUsersPage() {
     const [showEditModal, setShowEditModal] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [showEmailModal, setShowEmailModal] = useState(false);
+    const [showCreateModal, setShowCreateModal] = useState(false);
+
+    const isITAdmin = currentUser?.role === "IT_ADMIN";
+    const isAdmin = currentUser?.role === "ADMIN";
 
     // Check authorization
     useEffect(() => {
@@ -57,17 +63,28 @@ export default function AdminUsersPage() {
             return;
         }
 
-        console.log("Current User:", currentUser);
-
-
-        // // Only ADMIN and IT_ADMIN can access this page
-        // if (currentUser?.role !== "ADMIN" && currentUser?.role !== "IT_ADMIN") {
-        //     router.push("/unauthorized");
-        //     return;
-        // }
+        // Only ADMIN and IT_ADMIN can access this page
+        if (!isITAdmin && !isAdmin) {
+            router.push("/unauthorized");
+            return;
+        }
 
         loadUsers();
     }, [isAuthenticated, currentUser, router]);
+
+    // Check if current user can modify target user
+    const canModifyUser = (targetUser: User): boolean => {
+        // IT_ADMIN can modify anyone
+        if (isITAdmin) return true;
+
+        // ADMIN cannot modify IT_ADMIN or other ADMINs
+        if (targetUser.role === "IT_ADMIN" || targetUser.role === "ADMIN") {
+            return false;
+        }
+
+        // ADMIN can modify NUTRITIONIST, COACH, ATHLETE
+        return true;
+    };
 
     const loadUsers = async (searchQuery = "", role = "", status = "") => {
         setLoading(true);
@@ -88,7 +105,6 @@ export default function AdminUsersPage() {
 
             const token = localStorage.getItem("token");
 
-            // Use your actual API base URL
             const response = await axios.get<UsersResponse>(
                 "http://localhost:8000/api/admin/users",
                 {
@@ -154,21 +170,46 @@ export default function AdminUsersPage() {
     };
 
     const handleEditUser = (user: User) => {
+        // Check permission before opening modal
+        if (!canModifyUser(user)) {
+            setError("You don't have permission to edit this user");
+            setTimeout(() => setError(""), 3000);
+            return;
+        }
         setSelectedUser(user);
         setShowEditModal(true);
     };
 
     const handleChangePassword = (user: User) => {
+        // Check permission before opening modal
+        if (!canModifyUser(user)) {
+            setError("You don't have permission to change this user's password");
+            setTimeout(() => setError(""), 3000);
+            return;
+        }
         setSelectedUser(user);
         setShowPasswordModal(true);
     };
 
     const handleChangeEmail = (user: User) => {
+        // Check permission before opening modal
+        if (!canModifyUser(user)) {
+            setError("You don't have permission to change this user's email");
+            setTimeout(() => setError(""), 3000);
+            return;
+        }
         setSelectedUser(user);
         setShowEmailModal(true);
     };
 
     const handleToggleActive = async (user: User) => {
+        // Check permission
+        if (!canModifyUser(user)) {
+            setError("You don't have permission to modify this user's status");
+            setTimeout(() => setError(""), 3000);
+            return;
+        }
+
         try {
             const token = localStorage.getItem("token");
             await axios.patch(
@@ -186,15 +227,22 @@ export default function AdminUsersPage() {
             );
             await loadUsers(query, roleFilter, statusFilter);
 
-            // Clear success message after 3 seconds
             setTimeout(() => setSuccess(""), 3000);
         } catch (err: any) {
             setError(err.response?.data?.message || "Failed to update user status");
+            setTimeout(() => setError(""), 3000);
             console.error(err);
         }
     };
 
     const handleDeleteUser = async (user: User) => {
+        // Check permission
+        if (!canModifyUser(user)) {
+            setError("You don't have permission to delete this user");
+            setTimeout(() => setError(""), 3000);
+            return;
+        }
+
         if (
             !confirm(
                 `Are you sure you want to delete ${user.first_name} ${user.last_name}? This action cannot be undone.`
@@ -217,22 +265,23 @@ export default function AdminUsersPage() {
             setSuccess("User deleted successfully");
             await loadUsers(query, roleFilter, statusFilter);
 
-            // Clear success message after 3 seconds
             setTimeout(() => setSuccess(""), 3000);
         } catch (err: any) {
             setError(err.response?.data?.message || "Failed to delete user");
+            setTimeout(() => setError(""), 3000);
             console.error(err);
         }
     };
 
-    const handleModalSuccess = async () => {
+    const handleModalSuccess = async (message?: string) => {
         await loadUsers(query, roleFilter, statusFilter);
         setShowDetailsModal(false);
         setShowEditModal(false);
         setShowPasswordModal(false);
         setShowEmailModal(false);
+        setShowCreateModal(false);
         setSelectedUser(null);
-        setSuccess("Changes saved successfully");
+        setSuccess(message || "Changes saved successfully");
         setTimeout(() => setSuccess(""), 3000);
     };
 
@@ -247,18 +296,29 @@ export default function AdminUsersPage() {
                                 User Management
                             </h1>
                             <p className="text-gray-500 mt-1">
-                                Manage user accounts, roles, and permissions
+                                {isITAdmin
+                                    ? "Manage all user accounts, roles, and permissions"
+                                    : "Manage nutritionists, coaches, and athletes"}
                             </p>
                         </div>
 
-                        {/* Stats */}
-                        <div className="flex gap-4">
+                        {/* Stats & Actions */}
+                        <div className="flex gap-4 items-center">
                             <div className="bg-white px-6 py-3 rounded-lg border border-gray-200 shadow-sm">
                                 <div className="text-2xl font-bold text-gray-900">{total}</div>
                                 <div className="text-xs text-gray-500 uppercase">
                                     Total Users
                                 </div>
                             </div>
+
+                            {/* Create User Button */}
+                            <button
+                                onClick={() => setShowCreateModal(true)}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors shadow-sm"
+                            >
+                                <UserPlus className="w-4 h-4" />
+                                <span>Create User</span>
+                            </button>
                         </div>
                     </div>
 
@@ -315,6 +375,7 @@ export default function AdminUsersPage() {
                     <UserTable
                         users={users}
                         loading={loading}
+                        currentUserRole={currentUser?.role as "IT_ADMIN" | "ADMIN"}
                         onViewDetails={handleViewDetails}
                         onEdit={handleEditUser}
                         onChangePassword={handleChangePassword}
@@ -326,6 +387,14 @@ export default function AdminUsersPage() {
             </div>
 
             {/* Modals */}
+            {showCreateModal && (
+                <CreateUserModal
+                    currentUserRole={currentUser?.role as "IT_ADMIN" | "ADMIN"}
+                    onClose={() => setShowCreateModal(false)}
+                    onSuccess={() => handleModalSuccess("User created successfully")}
+                />
+            )}
+
             {showDetailsModal && selectedUser && (
                 <UserDetailsModal
                     user={selectedUser}
@@ -336,6 +405,7 @@ export default function AdminUsersPage() {
             {showEditModal && selectedUser && (
                 <EditUserModal
                     user={selectedUser}
+                    currentUserRole={currentUser?.role as "IT_ADMIN" | "ADMIN"}
                     onClose={() => setShowEditModal(false)}
                     onSuccess={handleModalSuccess}
                 />

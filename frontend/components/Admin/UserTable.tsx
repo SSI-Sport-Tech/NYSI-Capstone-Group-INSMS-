@@ -10,6 +10,7 @@ import {
     Shield,
     ShieldCheck,
     Users,
+    Lock,
 } from "lucide-react";
 
 interface User {
@@ -28,6 +29,7 @@ interface User {
 interface UserTableProps {
     users: User[];
     loading: boolean;
+    currentUserRole: "IT_ADMIN" | "ADMIN";
     onViewDetails: (user: User) => void;
     onEdit: (user: User) => void;
     onChangePassword: (user: User) => void;
@@ -39,6 +41,7 @@ interface UserTableProps {
 const UserTable: React.FC<UserTableProps> = ({
     users,
     loading,
+    currentUserRole,
     onViewDetails,
     onEdit,
     onChangePassword,
@@ -46,6 +49,22 @@ const UserTable: React.FC<UserTableProps> = ({
     onToggleActive,
     onDelete,
 }) => {
+    const isITAdmin = currentUserRole === "IT_ADMIN";
+
+    // Check if current user can modify target user
+    const canModify = (targetUser: User): boolean => {
+        // IT_ADMIN can modify anyone
+        if (isITAdmin) return true;
+
+        // ADMIN cannot modify IT_ADMIN or other ADMINs
+        if (targetUser.role === "IT_ADMIN" || targetUser.role === "ADMIN") {
+            return false;
+        }
+
+        // ADMIN can modify NUTRITIONIST, COACH, ATHLETE
+        return true;
+    };
+
     const getRoleBadge = (role: string) => {
         const colors = {
             IT_ADMIN: "bg-purple-100 text-purple-800 border-purple-200",
@@ -144,121 +163,148 @@ const UserTable: React.FC<UserTableProps> = ({
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {users.map((user) => (
-                            <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                                {/* User Info */}
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="flex items-center">
-                                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-                                            {user.first_name[0]}
-                                            {user.last_name[0]}
-                                        </div>
-                                        <div className="ml-4">
-                                            <div className="text-sm font-medium text-gray-900">
-                                                {user.first_name} {user.last_name}
+                        {users.map((user) => {
+                            const userCanModify = canModify(user);
+
+                            return (
+                                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                                    {/* User Info */}
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="flex items-center">
+                                            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                                                {user.first_name[0]}
+                                                {user.last_name[0]}
                                             </div>
-                                            <div className="text-sm text-gray-500">{user.email}</div>
+                                            <div className="ml-4">
+                                                <div className="text-sm font-medium text-gray-900">
+                                                    {user.first_name} {user.last_name}
+                                                </div>
+                                                <div className="text-sm text-gray-500">{user.email}</div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </td>
+                                    </td>
 
-                                {/* Role */}
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <span
-                                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadge(
-                                            user.role
-                                        )}`}
-                                    >
-                                        {getRoleIcon(user.role)}
-                                        {user.role.replace("_", " ")}
-                                    </span>
-                                </td>
-
-                                {/* Status */}
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="flex flex-col gap-1">
+                                    {/* Role */}
+                                    <td className="px-6 py-4 whitespace-nowrap">
                                         <span
-                                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.is_active
-                                                    ? "bg-green-100 text-green-800"
-                                                    : "bg-red-100 text-red-800"
-                                                }`}
+                                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadge(
+                                                user.role
+                                            )}`}
                                         >
-                                            {user.is_active ? "✓ Active" : "✗ Inactive"}
+                                            {getRoleIcon(user.role)}
+                                            {user.role.replace("_", " ")}
                                         </span>
-                                        {user.has_nutritionist_profile && (
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                AMS Profile
+                                    </td>
+
+                                    {/* Status */}
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="flex flex-col gap-1">
+                                            <span
+                                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.is_active
+                                                        ? "bg-green-100 text-green-800"
+                                                        : "bg-red-100 text-red-800"
+                                                    }`}
+                                            >
+                                                {user.is_active ? "✓ Active" : "✗ Inactive"}
                                             </span>
-                                        )}
-                                    </div>
-                                </td>
-
-                                {/* Last Login */}
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {formatDate(user.last_login_at)}
-                                </td>
-
-                                {/* Created */}
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {formatDate(user.created_at)}
-                                </td>
-
-                                {/* Actions */}
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <div className="flex items-center justify-end gap-2">
-                                        <button
-                                            onClick={() => onViewDetails(user)}
-                                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                            title="View Details"
-                                        >
-                                            <Eye className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => onEdit(user)}
-                                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                                            title="Edit User"
-                                        >
-                                            <Edit className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => onChangePassword(user)}
-                                            className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                                            title="Change Password"
-                                        >
-                                            <Key className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => onChangeEmail(user)}
-                                            className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
-                                            title="Change Email"
-                                        >
-                                            <Mail className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => onToggleActive(user)}
-                                            className={`p-1.5 rounded-lg transition-colors ${user.is_active
-                                                    ? "text-orange-600 hover:bg-orange-50"
-                                                    : "text-green-600 hover:bg-green-50"
-                                                }`}
-                                            title={user.is_active ? "Deactivate" : "Activate"}
-                                        >
-                                            {user.is_active ? (
-                                                <UserX className="w-4 h-4" />
-                                            ) : (
-                                                <UserCheck className="w-4 h-4" />
+                                            {user.has_nutritionist_profile && (
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                    AMS Profile
+                                                </span>
                                             )}
-                                        </button>
-                                        <button
-                                            onClick={() => onDelete(user)}
-                                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                            title="Delete User"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
+                                        </div>
+                                    </td>
+
+                                    {/* Last Login */}
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {formatDate(user.last_login_at)}
+                                    </td>
+
+                                    {/* Created */}
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {formatDate(user.created_at)}
+                                    </td>
+
+                                    {/* Actions */}
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <div className="flex items-center justify-end gap-2">
+                                            {/* View Details - Always available */}
+                                            <button
+                                                onClick={() => onViewDetails(user)}
+                                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                title="View Details"
+                                            >
+                                                <Eye className="w-4 h-4" />
+                                            </button>
+
+                                            {userCanModify ? (
+                                                <>
+                                                    {/* Edit User */}
+                                                    <button
+                                                        onClick={() => onEdit(user)}
+                                                        className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                        title="Edit User"
+                                                    >
+                                                        <Edit className="w-4 h-4" />
+                                                    </button>
+
+                                                    {/* Change Password */}
+                                                    <button
+                                                        onClick={() => onChangePassword(user)}
+                                                        className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                                                        title="Change Password"
+                                                    >
+                                                        <Key className="w-4 h-4" />
+                                                    </button>
+
+                                                    {/* Change Email */}
+                                                    <button
+                                                        onClick={() => onChangeEmail(user)}
+                                                        className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                                                        title="Change Email"
+                                                    >
+                                                        <Mail className="w-4 h-4" />
+                                                    </button>
+
+                                                    {/* Toggle Active */}
+                                                    <button
+                                                        onClick={() => onToggleActive(user)}
+                                                        className={`p-1.5 rounded-lg transition-colors ${user.is_active
+                                                                ? "text-orange-600 hover:bg-orange-50"
+                                                                : "text-green-600 hover:bg-green-50"
+                                                            }`}
+                                                        title={user.is_active ? "Deactivate" : "Activate"}
+                                                    >
+                                                        {user.is_active ? (
+                                                            <UserX className="w-4 h-4" />
+                                                        ) : (
+                                                            <UserCheck className="w-4 h-4" />
+                                                        )}
+                                                    </button>
+
+                                                    {/* Delete User */}
+                                                    <button
+                                                        onClick={() => onDelete(user)}
+                                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Delete User"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                // Show locked icon for users that cannot be modified
+                                                <div className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-lg">
+                                                    <Lock className="w-3 h-3 text-gray-400" />
+                                                    <span className="text-xs text-gray-500">
+                                                        Restricted
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>

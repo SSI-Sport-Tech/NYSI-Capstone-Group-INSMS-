@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Edit, AlertCircle } from "lucide-react";
+import { X, Edit, AlertCircle, Shield } from "lucide-react";
 import axios from "axios";
 
 interface User {
@@ -14,12 +14,14 @@ interface User {
 
 interface EditUserModalProps {
     user: User;
+    currentUserRole: "IT_ADMIN" | "ADMIN";
     onClose: () => void;
     onSuccess: () => void;
 }
 
 const EditUserModal: React.FC<EditUserModalProps> = ({
     user,
+    currentUserRole,
     onClose,
     onSuccess,
 }) => {
@@ -31,6 +33,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
+    const isITAdmin = currentUserRole === "IT_ADMIN";
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
@@ -38,6 +42,12 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
         // Validation
         if (!firstName.trim() || !lastName.trim()) {
             setError("First name and last name are required");
+            return;
+        }
+
+        // Permission check: ADMINs cannot change role to IT_ADMIN or ADMIN
+        if (!isITAdmin && (role === "IT_ADMIN" || role === "ADMIN")) {
+            setError("You don't have permission to assign this role");
             return;
         }
 
@@ -55,11 +65,15 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
             if (isEmailVerified !== user.is_email_verified)
                 updates.is_email_verified = isEmailVerified;
 
-            await axios.patch(`/api/admin/users/${user.id}`, updates, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+            await axios.patch(
+                `http://localhost:8000/api/admin/users/${user.id}`,
+                updates,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
 
             onSuccess();
         } catch (err: any) {
@@ -114,6 +128,18 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                                 </div>
                             )}
 
+                            {/* Permission Warning */}
+                            {!isITAdmin && (
+                                <div className="mb-5 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                    <div className="flex items-start gap-2">
+                                        <Shield className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                                        <p className="text-sm text-amber-800">
+                                            <strong>Your permissions:</strong> You can modify Nutritionists, Coaches, and Athletes. Only IT Admins can modify Admin roles.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* First Name */}
                             <div className="mb-4">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -154,16 +180,22 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                                     onChange={(e) => setRole(e.target.value as any)}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                 >
-                                    <option value="IT_ADMIN">IT Admin</option>
-                                    <option value="ADMIN">Admin (Senior Nutritionist)</option>
                                     <option value="NUTRITIONIST">Nutritionist</option>
+                                    {isITAdmin && (
+                                        <option value="ADMIN">Admin (Senior Nutritionist)</option>
+                                    )}
+                                    {isITAdmin && (
+                                        <option value="IT_ADMIN">IT Admin</option>
+                                    )}
                                     <option value="COACH">Coach</option>
                                     <option value="ATHLETE">Athlete</option>
                                 </select>
                                 <p className="mt-1 text-xs text-gray-500">
                                     {role === "ADMIN" || role === "NUTRITIONIST"
                                         ? "AMS profile will be created automatically if needed"
-                                        : ""}
+                                        : role === "IT_ADMIN"
+                                            ? "⚠️ Full system access - use with caution"
+                                            : ""}
                                 </p>
                             </div>
 
