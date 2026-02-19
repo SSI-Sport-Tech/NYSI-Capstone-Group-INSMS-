@@ -87,10 +87,6 @@ const swaggerOptions = {
                 name: "Consultation - Open Items",
                 description: "Open Items card — follow-up action items for a consultation session",
             },
-            {
-                name: "DEPRECATED - Consultation",
-                description: "Deprecated consultation routes (sessions, notes, consult types). Kept for reference — will be replaced by card-based endpoints.",
-            },
             // ==================== Other ====================
             {
                 name: "OCR",
@@ -1213,9 +1209,6 @@ const swaggerOptions = {
         "./modules/AMS/nutritionist/routes.js",
         "./modules/Consultation/consultation-update/routes.js",
         "./modules/Consultation/open-items/routes.js",
-        "./modules/Consultation/session/routes.js",
-        "./modules/Consultation/consulttype/routes.js",
-        "./modules/Consultation/note/routes.js",
         "./modules/OCR/routes.js",
         "./server.js",
         "./modules/Auth/routes.js",
