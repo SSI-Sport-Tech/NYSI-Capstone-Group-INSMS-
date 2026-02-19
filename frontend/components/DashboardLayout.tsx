@@ -60,8 +60,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <Link
             href="/"
             className={`flex items-center space-x-3 px-4 py-2 rounded-lg ${pathname === "/"
-                ? "bg-gray-100 text-gray-900"
-                : "text-gray-600 hover:bg-gray-50"
+              ? "bg-gray-100 text-gray-900"
+              : "text-gray-600 hover:bg-gray-50"
               }`}
           >
             <span className="font-medium">Dashboard</span>
@@ -86,8 +86,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <Link
                   href="/inventory"
                   className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/inventory"
-                      ? "bg-gray-100 text-gray-900 font-medium"
-                      : "text-gray-600 hover:bg-gray-50"
+                    ? "bg-gray-100 text-gray-900 font-medium"
+                    : "text-gray-600 hover:bg-gray-50"
                     }`}
                 >
                   <Archive className="w-4 h-4" />
@@ -96,8 +96,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <Link
                   href="/web-scraper"
                   className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/web-scraper"
-                      ? "bg-gray-100 text-gray-900 font-medium"
-                      : "text-gray-600 hover:bg-gray-50"
+                    ? "bg-gray-100 text-gray-900 font-medium"
+                    : "text-gray-600 hover:bg-gray-50"
                     }`}
                 >
                   <Globe className="w-4 h-4" />
@@ -106,8 +106,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <Link
                   href="/library"
                   className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/library"
-                      ? "bg-gray-100 text-gray-900 font-medium"
-                      : "text-gray-600 hover:bg-gray-50"
+                    ? "bg-gray-100 text-gray-900 font-medium"
+                    : "text-gray-600 hover:bg-gray-50"
                     }`}
                 >
                   <BookOpenText className="w-4 h-4" />
@@ -135,8 +135,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <Link
                   href="/athlete-management"
                   className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/athlete-management"
-                      ? "bg-gray-100 text-gray-900 font-medium"
-                      : "text-gray-600 hover:bg-gray-50"
+                    ? "bg-gray-100 text-gray-900 font-medium"
+                    : "text-gray-600 hover:bg-gray-50"
                     }`}
                 >
                   <Users className="w-4 h-4" />
@@ -167,27 +167,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <Link
                     href="/admin/users"
                     className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/admin/users"
-                        ? "bg-indigo-100 text-indigo-900 font-medium"
-                        : "text-gray-600 hover:bg-gray-50"
+                      ? "bg-indigo-100 text-indigo-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
                       }`}
                   >
                     <UserCog className="w-4 h-4" />
                     <span>User Management</span>
                   </Link>
-                  {/* You can add more admin links here */}
-                  {/* Example:
                   <Link
-                    href="/admin/settings"
-                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                      pathname === "/admin/settings"
-                        ? "bg-indigo-100 text-indigo-900 font-medium"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
+                    href="/admin/sports-coaches"
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/admin/sports-coaches"
+                      ? "bg-indigo-100 text-indigo-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                      }`}
                   >
-                    <Settings className="w-4 h-4" />
-                    <span>System Settings</span>
+                    <UserCog className="w-4 h-4" />
+                    <span>Sports & Coaches</span>
                   </Link>
-                  */}
                 </div>
               )}
             </div>
