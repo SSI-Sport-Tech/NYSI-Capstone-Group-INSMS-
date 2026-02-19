@@ -5,9 +5,64 @@ import pool from "../../../config/db.js";
 // ============================================================================
 
 /**
+ * Get single athlete by ID with sport name AND latest target event
+ * @param {string} athleteId - UUID of athlete
+ * @returns {Promise<Object|null>} Athlete object or null
+ */
+export async function getAthleteById(athleteId) {
+    // 1. Fetch Basic Profile
+    const profileQuery = `
+        SELECT
+            a.id,
+            a.sport_id,
+            a.sportsync_id,
+            a.athlete_name_abbr,
+            a.gender,
+            a.date_of_birth,
+            sl.sport AS sport_name
+        FROM AMS.Athlete a
+        LEFT JOIN AMS.Sport_Lookup sl ON a.sport_id = sl.id
+        WHERE a.id = $1
+    `;
+
+    // 2. Fetch Target Event from Latest Consultation
+    // Joins Sessions -> Training Schedule to get 'upcoming_major_competitions'
+    const targetEventQuery = `
+        SELECT ts.upcoming_major_competitions AS target_event, s.date_of_consult
+        FROM consultation.sessions s
+        JOIN consultation.session_training_schedule ts ON s.id = ts.sessions_id
+        WHERE s.athlete_id = $1
+        ORDER BY s.date_of_consult DESC
+        LIMIT 1
+    `;
+
+    // Run both queries in parallel for efficiency
+    const [profileRes, eventRes] = await Promise.all([
+        pool.query(profileQuery, [athleteId]),
+        pool.query(targetEventQuery, [athleteId])
+    ]);
+
+    if (profileRes.rows.length === 0) return null;
+
+    const profile = profileRes.rows[0];
+
+    // Attach the dynamic target event data if a consultation exists
+    if (eventRes.rows.length > 0) {
+        profile.latest_target_event = eventRes.rows[0].target_event;
+        profile.latest_consult_date = eventRes.rows[0].date_of_consult;
+    } else {
+        profile.latest_target_event = null;
+        profile.latest_consult_date = null;
+    }
+
+    return profile;
+}
+// ADD THIS FUNCTION after getAthleteById (around line 60)
+
+/**
  * Get paginated list of athletes with sport name
  * @param {number} pageNumber - Page number (1-indexed)
- * @param {number} pageSize - Items per page (default 10)
+ * @param {number} pageSize - Items per page
  * @returns {Promise<Object>} Query result with rows
  */
 export async function getAthletesByPage(pageNumber, pageSize = 10) {
@@ -29,7 +84,6 @@ export async function getAthletesByPage(pageNumber, pageSize = 10) {
 
     return await pool.query(query, [pageSize, offset]);
 }
-
 /**
  * Search athletes across name, sportsync_id, sport, and gender
  * @param {string} searchQuery - Search string
@@ -45,7 +99,6 @@ export async function searchAthletes(searchQuery, pageNumber, pageSize = 10) {
         return getAthletesByPage(pageNumber, pageSize);
     }
 
-    // Each word must match at least one field (AND across words)
     const conditions = words.map((_, i) => {
         const paramIdx = i + 1;
         return `(
@@ -122,30 +175,6 @@ export async function getSearchAthleteCount(searchQuery) {
     const params = words.map(w => `%${w}%`);
     const result = await pool.query(query, params);
     return parseInt(result.rows[0].count);
-}
-
-/**
- * Get single athlete by ID with sport name
- * @param {string} athleteId - UUID of athlete
- * @returns {Promise<Object|null>} Athlete object or null
- */
-export async function getAthleteById(athleteId) {
-    const query = `
-        SELECT
-            a.id,
-            a.sport_id,
-            a.sportsync_id,
-            a.athlete_name_abbr,
-            a.gender,
-            a.date_of_birth,
-            sl.sport AS sport_name
-        FROM AMS.Athlete a
-        LEFT JOIN AMS.Sport_Lookup sl ON a.sport_id = sl.id
-        WHERE a.id = $1
-    `;
-
-    const result = await pool.query(query, [athleteId]);
-    return result.rows.length > 0 ? result.rows[0] : null;
 }
 
 /**
@@ -519,3 +548,9 @@ export async function updateMedical(athleteId, updateData) {
     return result.rows.length > 0 ? result.rows[0] : null;
 }
 
+/**
+ * Get paginated list of athletes with sport name
+ * @param {number} pageNumber - Page number (1-indexed)
+ * @param {number} pageSize - Items per page
+ * @returns {Promise<Object>} Query result with rows
+ */

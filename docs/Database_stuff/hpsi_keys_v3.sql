@@ -189,4 +189,13 @@ ALTER TABLE consultation.session_puberty ADD CONSTRAINT fk_puberty_session FOREI
 ALTER TABLE consultation.session_bowel_movement ADD CONSTRAINT fk_bowel_session FOREIGN KEY (sessions_id) REFERENCES consultation.sessions(id) ON DELETE CASCADE;
 ALTER TABLE consultation.session_hydration ADD CONSTRAINT fk_hydration_session FOREIGN KEY (sessions_id) REFERENCES consultation.sessions(id) ON DELETE CASCADE;
 
+-- Session Note -> Nutrition Diagnosis Lookups (7 Links)
+ALTER TABLE consultation.session_note
+    ADD CONSTRAINT fk_note_carbs FOREIGN KEY (carbohydrates_review_id) REFERENCES consultation.nutrition_diagnosis_lookup(id),
+    ADD CONSTRAINT fk_note_protein FOREIGN KEY (protein_review_id) REFERENCES consultation.nutrition_diagnosis_lookup(id),
+    ADD CONSTRAINT fk_note_fat FOREIGN KEY (fat_review_id) REFERENCES consultation.nutrition_diagnosis_lookup(id),
+    ADD CONSTRAINT fk_note_fibre FOREIGN KEY (fibre_review_id) REFERENCES consultation.nutrition_diagnosis_lookup(id),
+    ADD CONSTRAINT fk_note_iron FOREIGN KEY (iron_review_id) REFERENCES consultation.nutrition_diagnosis_lookup(id),
+    ADD CONSTRAINT fk_note_calcium FOREIGN KEY (calcium_review_id) REFERENCES consultation.nutrition_diagnosis_lookup(id),
+    ADD CONSTRAINT fk_note_micro FOREIGN KEY (micronutrients_review_id) REFERENCES consultation.nutrition_diagnosis_lookup(id);
 COMMIT;

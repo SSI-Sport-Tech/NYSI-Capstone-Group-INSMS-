@@ -2,6 +2,7 @@ import * as services from './services.js';
 import {
     createSessionSchema,
     updateSessionSchema,
+    updateTrainingScheduleSchema, // ✅ NEW: Import schema
     paginationSchema,
     uuidParamSchema,
     bulkDeleteSchema,
@@ -150,7 +151,7 @@ export async function createSession(req, res) {
 }
 
 // ============================================================================
-// UPDATE SESSION
+// UPDATE SESSION (Basic Info)
 // ============================================================================
 
 export async function updateSession(req, res) {
@@ -172,45 +173,32 @@ export async function updateSession(req, res) {
             });
         }
 
-        // FK validation: nutritionist exists (if changed)
+        // FK validation checks (only if fields are present in update)
         if (validated.nutritionist_id) {
             const nutritionistCheck = await pool.query(
                 'SELECT id FROM ams.nutritionist WHERE id = $1',
                 [validated.nutritionist_id]
             );
             if (nutritionistCheck.rows.length === 0) {
-                return res.status(400).json({
-                    error: 'Invalid nutritionist_id',
-                    details: [{ field: 'nutritionist_id', message: 'Nutritionist not found' }],
-                });
+                return res.status(400).json({ error: 'Nutritionist not found' });
             }
         }
-
-        // FK validation: athlete exists (if changed)
         if (validated.athlete_id) {
             const athleteCheck = await pool.query(
                 'SELECT id FROM ams.athlete WHERE id = $1',
                 [validated.athlete_id]
             );
             if (athleteCheck.rows.length === 0) {
-                return res.status(400).json({
-                    error: 'Invalid athlete_id',
-                    details: [{ field: 'athlete_id', message: 'Athlete not found' }],
-                });
+                return res.status(400).json({ error: 'Athlete not found' });
             }
         }
-
-        // FK validation: consult type exists and is active (if changed)
         if (validated.type_of_consult_id) {
             const consultTypeCheck = await pool.query(
                 'SELECT id FROM consultation.type_of_consult_lookup WHERE id = $1 AND is_active = true',
                 [validated.type_of_consult_id]
             );
             if (consultTypeCheck.rows.length === 0) {
-                return res.status(400).json({
-                    error: 'Invalid type_of_consult_id',
-                    details: [{ field: 'type_of_consult_id', message: 'Consult type not found or inactive' }],
-                });
+                return res.status(400).json({ error: 'Consult type not found' });
             }
         }
 
@@ -232,6 +220,32 @@ export async function updateSession(req, res) {
         }
         console.error('Error updating session:', error);
         res.status(500).json({ error: 'Failed to update session', message: error.message });
+    }
+}
+
+// ============================================================================
+// UPDATE TRAINING SCHEDULE (Target Event) - ✅ NEW
+// ============================================================================
+
+export async function updateTrainingSchedule(req, res) {
+    try {
+        // We reuse the session ID param, validation is already handled by uuidParamSchema inside the try block
+        const { sessionId } = req.params; 
+        
+        // Zod validation for body
+        const validated = updateTrainingScheduleSchema.parse(req.body);
+        
+        const result = await services.upsertTrainingSchedule(sessionId, validated);
+        res.json({ message: 'Training schedule updated successfully', data: result });
+    } catch (error) {
+        if (error.name === 'ZodError') {
+            return res.status(400).json({ 
+                error: 'Validation failed', 
+                details: error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
+            });
+        }
+        console.error('Error updating training schedule:', error);
+        res.status(500).json({ error: 'Failed to update training schedule' });
     }
 }
 

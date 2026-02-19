@@ -1,7 +1,61 @@
 import express from 'express';
 import * as controller from './controller.js';
+import { authenticateToken } from '../../Auth/authMiddleware.js';
 
 const router = express.Router();
+
+// ============================================================================
+// NUTRITIONIST PERSONAL ROUTES (For Logged-in User)
+// ============================================================================
+
+/**
+ * @swagger
+ * /api/AMS/nutritionists/my-athletes:
+ *   get:
+ *     summary: Get My Assigned Athletes (Sorted by Pin)
+ *     description: Returns a list of athletes assigned to the logged-in nutritionist. Athletes with 'is_pinned = true' appear at the top.
+ *     tags: [AMS - Nutritionists]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of assigned athletes
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.get('/my-athletes', authenticateToken, controller.getMyAthletes);
+
+/**
+ * @swagger
+ * /api/AMS/nutritionists/pin:
+ *   patch:
+ *     summary: Pin/Unpin an Athlete
+ *     description: Toggles the pinned status of an athlete for the logged-in nutritionist.
+ *     tags: [AMS - Nutritionists]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - athlete_id
+ *               - is_pinned
+ *             properties:
+ *               athlete_id:
+ *                 type: string
+ *                 format: uuid
+ *               is_pinned:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Pin status updated
+ *       404:
+ *         description: Mapping not found
+ */
+router.patch('/pin', authenticateToken, controller.togglePin);
 
 // ============================================================================
 // NUTRITIONIST CRUD ROUTES
@@ -12,9 +66,7 @@ const router = express.Router();
  * /api/AMS/nutritionists:
  *   get:
  *     summary: List Nutritionists
- *     description: |
- *       Get all nutritionists.
- *       Returns nutritionists sorted alphabetically by name.
+ *     description: Get all nutritionists. Returns nutritionists sorted alphabetically by name.
  *     tags: [AMS - Nutritionists]
  *     responses:
  *       200:
@@ -34,12 +86,6 @@ const router = express.Router();
  *                         format: uuid
  *                       name:
  *                         type: string
- *             example:
- *               data:
- *                 - id: "uuid-1"
- *                   name: "Alice Johnson"
- *                 - id: "uuid-2"
- *                   name: "Bob Williams"
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
@@ -50,9 +96,7 @@ router.get('/nutritionists', controller.listNutritionists);
  * /api/AMS/nutritionists:
  *   post:
  *     summary: Create Nutritionist
- *     description: |
- *       Add a new nutritionist.
- *       Duplicate names (case-insensitive) are rejected with 409.
+ *     description: Add a new nutritionist. Duplicate names (case-insensitive) are rejected with 409.
  *     tags: [AMS - Nutritionists]
  *     requestBody:
  *       required: true
@@ -60,12 +104,13 @@ router.get('/nutritionists', controller.listNutritionists);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [name]
+ *             required:
+ *               - name
  *             properties:
  *               name:
  *                 type: string
  *                 description: Nutritionist name
- *                 example: "Alice Johnson"
+ *                 example: Alice Johnson
  *     responses:
  *       201:
  *         description: Nutritionist created successfully
@@ -76,7 +121,7 @@ router.get('/nutritionists', controller.listNutritionists);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Nutritionist created successfully"
+ *                   example: Nutritionist created successfully
  *                 data:
  *                   type: object
  *                   properties:
@@ -96,11 +141,43 @@ router.post('/nutritionists', controller.createNutritionist);
 
 /**
  * @swagger
+ * /api/AMS/nutritionists/{id}:
+ *   patch:
+ *     summary: Update Nutritionist (Rename)
+ *     description: Update an existing nutritionist's name.
+ *     tags: [AMS - Nutritionists]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Nutritionist updated
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.patch('/nutritionists/:id', controller.updateNutritionist);
+
+/**
+ * @swagger
  * /api/AMS/nutritionists:
  *   delete:
- *     summary: Delete Nutritionists (Bulk) [ADMIN ONLY]
- *     description: |
- *       Delete one or more nutritionists by ID.
+ *     summary: Delete Nutritionists (Bulk)
+ *     description: Delete one or more nutritionists by ID.
  *     tags: [AMS - Nutritionists]
  *     requestBody:
  *       required: true
@@ -108,7 +185,8 @@ router.post('/nutritionists', controller.createNutritionist);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [ids]
+ *             required:
+ *               - ids
  *             properties:
  *               ids:
  *                 type: array
@@ -117,8 +195,6 @@ router.post('/nutritionists', controller.createNutritionist);
  *                   format: uuid
  *                 minItems: 1
  *                 description: Array of nutritionist UUIDs to delete
- *           example:
- *             ids: ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]
  *     responses:
  *       200:
  *         description: Nutritionists deleted successfully
@@ -152,10 +228,7 @@ router.delete('/nutritionists', controller.deleteNutritionists);
  * /api/AMS/nutritionists/mappings:
  *   get:
  *     summary: List Nutritionist-Athlete Mappings
- *     description: |
- *       Get all nutritionist-athlete mappings with nutritionist and athlete names.
- *       Returns mappings sorted by athlete name then nutritionist name.
- *       Optionally filter by is_active status.
+ *     description: Get all nutritionist-athlete mappings with nutritionist and athlete names.
  *     tags: [AMS - Nutritionists]
  *     parameters:
  *       - name: is_active
@@ -192,14 +265,6 @@ router.delete('/nutritionists', controller.deleteNutritionists);
  *                         type: string
  *                       athlete_name:
  *                         type: string
- *             example:
- *               data:
- *                 - id: "uuid-mapping-1"
- *                   athlete_id: "uuid-athlete-1"
- *                   nutritionist_id: "uuid-nutritionist-1"
- *                   is_active: true
- *                   nutritionist_name: "Alice Johnson"
- *                   athlete_name: "Jane Doe"
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       500:
@@ -212,10 +277,7 @@ router.get('/nutritionists/mappings', controller.listMappings);
  * /api/AMS/nutritionists/mappings/athlete/{athleteId}:
  *   get:
  *     summary: List Mappings by Athlete
- *     description: |
- *       Get all nutritionist-athlete mappings for a specific athlete.
- *       Returns mappings sorted by nutritionist name.
- *       Optionally filter by is_active status.
+ *     description: Get all nutritionist-athlete mappings for a specific athlete.
  *     tags: [AMS - Nutritionists]
  *     parameters:
  *       - name: athleteId
@@ -271,10 +333,7 @@ router.get('/nutritionists/mappings/athlete/:athleteId', controller.listMappings
  * /api/AMS/nutritionists/mappings:
  *   post:
  *     summary: Create Nutritionist-Athlete Mapping
- *     description: |
- *       Create a new nutritionist-athlete mapping.
- *       Both athlete_id and nutritionist_id must reference existing records.
- *       Duplicate composite key (athlete_id + nutritionist_id) is rejected with 409.
+ *     description: Create a new nutritionist-athlete mapping.
  *     tags: [AMS - Nutritionists]
  *     requestBody:
  *       required: true
@@ -282,7 +341,9 @@ router.get('/nutritionists/mappings/athlete/:athleteId', controller.listMappings
  *         application/json:
  *           schema:
  *             type: object
- *             required: [athlete_id, nutritionist_id]
+ *             required:
+ *               - athlete_id
+ *               - nutritionist_id
  *             properties:
  *               athlete_id:
  *                 type: string
@@ -306,7 +367,7 @@ router.get('/nutritionists/mappings/athlete/:athleteId', controller.listMappings
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Nutritionist-athlete mapping created successfully"
+ *                   example: Nutritionist-athlete mapping created successfully
  *                 data:
  *                   type: object
  *                   properties:
@@ -335,9 +396,7 @@ router.post('/nutritionists/mappings', controller.createMapping);
  * /api/AMS/nutritionists/mappings/{athleteId}/{nutritionistId}:
  *   patch:
  *     summary: Update Mapping Status
- *     description: |
- *       Update the is_active status of a nutritionist-athlete mapping.
- *       Use this to activate or deactivate a mapping.
+ *     description: Update the is_active status of a nutritionist-athlete mapping.
  *     tags: [AMS - Nutritionists]
  *     parameters:
  *       - name: athleteId
@@ -360,13 +419,12 @@ router.post('/nutritionists/mappings', controller.createMapping);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [is_active]
+ *             required:
+ *               - is_active
  *             properties:
  *               is_active:
  *                 type: boolean
  *                 description: New active status
- *           example:
- *             is_active: false
  *     responses:
  *       200:
  *         description: Mapping updated successfully
@@ -377,7 +435,7 @@ router.post('/nutritionists/mappings', controller.createMapping);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Mapping updated successfully"
+ *                   example: Mapping updated successfully
  *                 data:
  *                   type: object
  *                   properties:
@@ -406,9 +464,7 @@ router.patch('/nutritionists/mappings/:athleteId/:nutritionistId', controller.up
  * /api/AMS/nutritionists/mappings:
  *   delete:
  *     summary: Delete Nutritionist-Athlete Mappings (Bulk)
- *     description: |
- *       Delete one or more nutritionist-athlete mappings by composite key pairs.
- *       Request body is an array of { athlete_id, nutritionist_id } objects.
+ *     description: Delete one or more nutritionist-athlete mappings by composite key pairs.
  *     tags: [AMS - Nutritionists]
  *     requestBody:
  *       required: true
@@ -418,7 +474,9 @@ router.patch('/nutritionists/mappings/:athleteId/:nutritionistId', controller.up
  *             type: array
  *             items:
  *               type: object
- *               required: [athlete_id, nutritionist_id]
+ *               required:
+ *                 - athlete_id
+ *                 - nutritionist_id
  *               properties:
  *                 athlete_id:
  *                   type: string
@@ -427,9 +485,6 @@ router.patch('/nutritionists/mappings/:athleteId/:nutritionistId', controller.up
  *                   type: string
  *                   format: uuid
  *             minItems: 1
- *           example:
- *             - athlete_id: "uuid-athlete-1"
- *               nutritionist_id: "uuid-nutritionist-1"
  *     responses:
  *       200:
  *         description: Mappings deleted successfully

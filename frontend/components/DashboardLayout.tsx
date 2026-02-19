@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ChevronDown, Archive, BookOpenText, Globe } from "lucide-react";
+import { usePathname, redirect } from "next/navigation";
+import { ChevronDown, Archive, BookOpenText, Globe, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -13,6 +14,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const [supplementOpen, setSupplementOpen] = useState(true);
   const [amsOpen, setAmsOpen] = useState(true);
+  const { isAuthenticated, loading, user, logout } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    redirect("/login");
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -121,6 +135,25 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             )}
           </div>
         </nav>
+
+        {/* User info + Logout */}
+        <div className="p-4 border-t border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="text-sm truncate">
+              <p className="font-medium text-gray-900 truncate">
+                {user?.first_name} {user?.last_name}
+              </p>
+              <p className="text-gray-500 text-xs truncate">{user?.role}</p>
+            </div>
+            <button
+              onClick={logout}
+              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition"
+              title="Log out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden">

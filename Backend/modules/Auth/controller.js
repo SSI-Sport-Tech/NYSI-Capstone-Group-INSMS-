@@ -202,6 +202,28 @@ export async function login(req, res) {
         }
         console.log('Password verified successfully');
 
+        // SKIP 2FA: If SKIP_2FA env var is set, return token directly (dev only)
+        if (process.env.SKIP_2FA === 'true') {
+            console.log('⚠️ SKIP_2FA enabled - bypassing 2FA verification');
+            await services.updateLastLogin(user.id);
+            const token = jwt.sign(
+                { userId: user.id, email: user.email, role: user.role },
+                JWT_SECRET,
+                { expiresIn: JWT_EXPIRY }
+            );
+            return res.json({
+                message: 'Login successful (2FA skipped)',
+                token,
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    role: user.role,
+                },
+            });
+        }
+
         // STEP 5: Generate 6-digit verification code
         console.log('Step 5: Generating verification code...');
         const verificationCode = crypto.randomInt(100000, 999999).toString();
