@@ -15,7 +15,7 @@ const router = express.Router();
  *     description: |
  *       Get all session notes with pagination and optional search.
  *       Search matches across all text note fields, athlete name, and nutritionist name.
- *     tags: [Consultation - Notes]
+ *     tags: [DEPRECATED - Consultation]
  *     parameters:
  *       - $ref: '#/components/parameters/PageParam'
  *       - name: search
@@ -103,7 +103,7 @@ router.get('/notes', controller.listNotes);
  *     summary: Get Note Detail
  *     description: |
  *       Get a single session note by ID with joined session, athlete, and nutritionist info.
- *     tags: [Consultation - Notes]
+ *     tags: [DEPRECATED - Consultation]
  *     parameters:
  *       - name: id
  *         in: path
@@ -180,7 +180,7 @@ router.get('/notes/:id', controller.getNote);
  *     description: |
  *       Create a new session note.
  *       Validates that sessions_id references an existing session.
- *     tags: [Consultation - Notes]
+ *     tags: [DEPRECATED - Consultation]
  *     requestBody:
  *       required: true
  *       content:
@@ -240,7 +240,7 @@ router.post('/notes', controller.createNote);
  *       Partially update a session note.
  *       Only provided fields will be updated.
  *       sessions_id cannot be changed.
- *     tags: [Consultation - Notes]
+ *     tags: [DEPRECATED - Consultation]
  *     parameters:
  *       - name: id
  *         in: path
@@ -303,7 +303,7 @@ router.patch('/notes/:id', controller.updateNote);
  *     summary: Delete Notes (Bulk)
  *     description: |
  *       Delete one or more session notes.
- *     tags: [Consultation - Notes]
+ *     tags: [DEPRECATED - Consultation]
  *     requestBody:
  *       required: true
  *       content:

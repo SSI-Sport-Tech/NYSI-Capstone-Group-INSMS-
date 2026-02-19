@@ -16,7 +16,7 @@ const router = express.Router();
  *       Get all consult types from the type_of_consult_lookup table.
  *       By default returns only active consult types.
  *       Pass `includeInactive=true` to include inactive types.
- *     tags: [Consultation - Consult Types]
+ *     tags: [DEPRECATED - Consultation]
  *     parameters:
  *       - name: includeInactive
  *         in: query
@@ -66,7 +66,7 @@ router.get('/lookups/consult-types', controller.listConsultTypes);
  *     description: |
  *       Add a new consult type to the lookup table.
  *       Duplicate names (case-insensitive) are rejected with 409.
- *     tags: [Consultation - Consult Types]
+ *     tags: [DEPRECATED - Consultation]
  *     requestBody:
  *       required: true
  *       content:
@@ -116,7 +116,7 @@ router.post('/lookups/consult-types', controller.createConsultType);
  *     summary: Update Consult Type Status
  *     description: |
  *       Toggle the is_active status of a consult type.
- *     tags: [Consultation - Consult Types]
+ *     tags: [DEPRECATED - Consultation]
  *     parameters:
  *       - name: id
  *         in: path
@@ -176,7 +176,7 @@ router.patch('/lookups/consult-types/:id', controller.updateConsultType);
  *     description: |
  *       Delete one or more consult types from the lookup table.
  *       Consult types that are referenced by sessions cannot be deleted (409).
- *     tags: [Consultation - Consult Types]
+ *     tags: [DEPRECATED - Consultation]
  *     requestBody:
  *       required: true
  *       content:

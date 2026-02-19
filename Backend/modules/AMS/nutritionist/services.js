@@ -117,6 +117,23 @@ export async function checkAthleteExists(athleteId) {
 }
 
 // ============================================================================
+// USER-NUTRITIONIST LOOKUP
+// ============================================================================
+
+/**
+ * Get nutritionist ID by auth user ID (via user_id column on AMS.Nutritionist)
+ * @param {string} userId - UUID from auth.users
+ * @returns {Promise<string|null>} Nutritionist UUID or null
+ */
+export async function getNutritionistIdByUserId(userId) {
+    const result = await pool.query(
+        `SELECT id FROM AMS.Nutritionist WHERE user_id = $1`,
+        [userId]
+    );
+    return result.rows.length > 0 ? result.rows[0].id : null;
+}
+
+// ============================================================================
 // NUTRITIONIST-ATHLETE MAPPING & PINNING SERVICES
 // ============================================================================
 

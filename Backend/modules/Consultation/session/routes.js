@@ -14,7 +14,7 @@ const router = express.Router();
  *   patch:
  *     summary: Update Training Schedule (Target Event)
  *     description: Update the training schedule details for a specific session. This includes the Target Event (upcoming_major_competitions). This performs an UPSERT (creates the record if it doesn't exist).
- *     tags: [Consultation - Sessions]
+ *     tags: [DEPRECATED - Consultation]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -72,7 +72,7 @@ router.patch('/sessions/:sessionId/training', authenticateToken, controller.upda
  *   get:
  *     summary: List Sessions
  *     description: Get all consultation sessions with pagination and optional search. Search matches across athlete name, nutritionist name, and consult type.
- *     tags: [Consultation - Sessions]
+ *     tags: [DEPRECATED - Consultation]
  *     parameters:
  *       - $ref: '#/components/parameters/PageParam'
  *       - name: search
@@ -141,7 +141,7 @@ router.get('/sessions', controller.listSessions);
  *   get:
  *     summary: Get Session Detail
  *     description: Get a single consultation session by ID with joined names.
- *     tags: [Consultation - Sessions]
+ *     tags: [DEPRECATED - Consultation]
  *     parameters:
  *       - name: id
  *         in: path
@@ -198,7 +198,7 @@ router.get('/sessions/:id', controller.getSession);
  *   post:
  *     summary: Create Session
  *     description: Create a new consultation session. Validates that nutritionist_id, athlete_id, and type_of_consult_id exist. type_of_consult_id must reference an active consult type.
- *     tags: [Consultation - Sessions]
+ *     tags: [DEPRECATED - Consultation]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -259,7 +259,7 @@ router.post('/sessions', authenticateToken, controller.createSession);
  *   patch:
  *     summary: Update Session
  *     description: Partially update a consultation session. Only provided fields will be updated. FK fields are validated if provided.
- *     tags: [Consultation - Sessions]
+ *     tags: [DEPRECATED - Consultation]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -321,7 +321,7 @@ router.patch('/sessions/:id', authenticateToken, controller.updateSession);
  *   delete:
  *     summary: Delete Sessions (Bulk)
  *     description: Delete one or more consultation sessions.
- *     tags: [Consultation - Sessions]
+ *     tags: [DEPRECATED - Consultation]
  *     security:
  *       - bearerAuth: []
  *     requestBody:

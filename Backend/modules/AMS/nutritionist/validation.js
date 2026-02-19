@@ -24,7 +24,8 @@ export const updateNutritionistSchema = z.object({
 // ✅ NEW: Added for Pinning logic
 export const togglePinSchema = z.object({
     athlete_id: z.string().uuid('athlete_id must be a valid UUID'),
-    is_pinned: z.boolean()
+    is_pinned: z.boolean(),
+    nutritionist_id: z.string().uuid('nutritionist_id must be a valid UUID').optional(),
 }).strict();
 
 export const createMappingSchema = z.object({

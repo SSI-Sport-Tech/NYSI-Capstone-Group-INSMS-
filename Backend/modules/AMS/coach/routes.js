@@ -118,7 +118,7 @@ router.post('/coaches', controller.createCoach);
  * @swagger
  * /api/AMS/coaches/mappings:
  *   get:
- *     summary: List Coach-Athlete Mappings
+ *     summary: List Coach-Athlete Mappings [DEV ONLY]
  *     description: |
  *       Get all coach-athlete mappings with coach and athlete names.
  *       Returns mappings sorted by athlete name then coach name.
@@ -284,7 +284,7 @@ router.post('/coaches/mappings', controller.createMapping);
  * @swagger
  * /api/AMS/coaches/mappings:
  *   delete:
- *     summary: Delete Coach-Athlete Mappings (Bulk)
+ *     summary: Delete Coach-Athlete Mappings (Bulk) [DEV ONLY]
  *     description: |
  *       Delete one or more coach-athlete mappings by composite key pairs.
  *       Request body is an array of { athlete_id, coach_id } objects.
@@ -344,148 +344,12 @@ router.delete('/coaches/mappings', controller.deleteMappings);
 
 /**
  * @swagger
- * /api/AMS/coaches/mappings/{athleteId}/{coachId}:
- *   patch:
- *     summary: Update Mapping Status
- *     description: |
- *       Update the is_active status of a coach-athlete mapping.
- *       Use this to activate or deactivate a mapping.
- *     tags: [AMS - Coaches]
- *     parameters:
- *       - name: athleteId
- *         in: path
- *         required: true
- *         description: Athlete UUID
- *         schema:
- *           type: string
- *           format: uuid
- *       - name: coachId
- *         in: path
- *         required: true
- *         description: Coach UUID
- *         schema:
- *           type: string
- *           format: uuid
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [is_active]
- *             properties:
- *               is_active:
- *                 type: boolean
- *                 description: New active status
- *           example:
- *             is_active: false
- *     responses:
- *       200:
- *         description: Mapping updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Mapping updated successfully"
- *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                       format: uuid
- *                     athlete_id:
- *                       type: string
- *                       format: uuid
- *                     coach_id:
- *                       type: string
- *                       format: uuid
- *                     is_active:
- *                       type: boolean
- *       400:
- *         $ref: '#/components/responses/BadRequest'
- *       404:
- *         $ref: '#/components/responses/NotFound'
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
- */
-router.patch('/coaches/mappings/:athleteId/:coachId', controller.updateMapping);
-
-/**
- * @swagger
- * /api/AMS/coaches/{id}:
- *   patch:
- *     summary: Update Coach
- *     description: |
- *       Update coach fields (name, sport_id). All fields are optional.
- *       If sport_id is changed, it must reference a valid active sport.
- *       Duplicate name + sport combinations are rejected with 409.
- *     tags: [AMS - Coaches]
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         description: Coach UUID
- *         schema:
- *           type: string
- *           format: uuid
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               sport_id:
- *                 type: string
- *                 format: uuid
- *                 description: New sport UUID
- *               name:
- *                 type: string
- *                 description: New coach name
- *     responses:
- *       200:
- *         description: Coach updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Coach updated successfully"
- *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                       format: uuid
- *                     sport_id:
- *                       type: string
- *                       format: uuid
- *                     name:
- *                       type: string
- *       400:
- *         $ref: '#/components/responses/BadRequest'
- *       404:
- *         $ref: '#/components/responses/NotFound'
- *       409:
- *         $ref: '#/components/responses/Conflict'
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
- */
-router.patch('/coaches/:id', controller.updateCoach);
-
-/**
- * @swagger
  * /api/AMS/coaches:
  *   delete:
  *     summary: Delete Coaches (Bulk) [ADMIN ONLY]
  *     description: |
  *       Delete one or more coaches by ID.
- *       Coach-athlete mappings are automatically cleaned up via CASCADE.
+ *       Coaches that have athlete mappings cannot be deleted (409).
  *     tags: [AMS - Coaches]
  *     requestBody:
  *       required: true
@@ -523,6 +387,8 @@ router.patch('/coaches/:id', controller.updateCoach);
  *                     format: uuid
  *       400:
  *         $ref: '#/components/responses/BadRequest'
+ *       409:
+ *         $ref: '#/components/responses/Conflict'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
