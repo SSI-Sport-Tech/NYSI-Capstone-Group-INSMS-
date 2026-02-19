@@ -3,7 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, redirect } from "next/navigation";
-import { ChevronDown, Archive, BookOpenText, Globe, LogOut } from "lucide-react";
+import {
+  ChevronDown,
+  Archive,
+  BookOpenText,
+  Globe,
+  LogOut,
+  Shield,
+  Users,
+  UserCog,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface DashboardLayoutProps {
@@ -14,6 +23,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const [supplementOpen, setSupplementOpen] = useState(true);
   const [amsOpen, setAmsOpen] = useState(true);
+  const [adminOpen, setAdminOpen] = useState(true); // NEW: Admin section state
   const { isAuthenticated, loading, user, logout } = useAuth();
 
   if (loading) {
@@ -27,6 +37,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   if (!isAuthenticated) {
     redirect("/login");
   }
+
+  // NEW: Check if user is admin
+  const isAdmin = user?.role === "ADMIN" || user?.role === "IT_ADMIN";
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -43,18 +56,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           <Link
             href="/"
-            className={`flex items-center space-x-3 px-4 py-2 rounded-lg ${
-              pathname === "/"
+            className={`flex items-center space-x-3 px-4 py-2 rounded-lg ${pathname === "/"
                 ? "bg-gray-100 text-gray-900"
                 : "text-gray-600 hover:bg-gray-50"
-            }`}
+              }`}
           >
             <span className="font-medium">Dashboard</span>
           </Link>
 
+          {/* Supplement Support Section */}
           <div>
             <button
               onClick={() => setSupplementOpen(!supplementOpen)}
@@ -72,33 +85,30 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className="mt-2 space-y-1">
                 <Link
                   href="/inventory"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                    pathname === "/inventory"
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/inventory"
                       ? "bg-gray-100 text-gray-900 font-medium"
                       : "text-gray-600 hover:bg-gray-50"
-                  }`}
+                    }`}
                 >
                   <Archive className="w-4 h-4" />
                   <span>Inventory</span>
                 </Link>
                 <Link
                   href="/web-scraper"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                    pathname === "/web-scraper"
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/web-scraper"
                       ? "bg-gray-100 text-gray-900 font-medium"
                       : "text-gray-600 hover:bg-gray-50"
-                  }`}
+                    }`}
                 >
                   <Globe className="w-4 h-4" />
                   <span>Web Scraper</span>
                 </Link>
                 <Link
                   href="/library"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                    pathname === "/library"
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/library"
                       ? "bg-gray-100 text-gray-900 font-medium"
                       : "text-gray-600 hover:bg-gray-50"
-                  }`}
+                    }`}
                 >
                   <BookOpenText className="w-4 h-4" />
                   <span>Library</span>
@@ -106,6 +116,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             )}
           </div>
+
+          {/* Athlete Management Section */}
           <div>
             <button
               onClick={() => setAmsOpen(!amsOpen)}
@@ -122,18 +134,64 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className="mt-2 space-y-1">
                 <Link
                   href="/athlete-management"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                    pathname === "/athlete-management"
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/athlete-management"
                       ? "bg-gray-100 text-gray-900 font-medium"
                       : "text-gray-600 hover:bg-gray-50"
-                  }`}
+                    }`}
                 >
-                  <Archive className="w-4 h-4" />
+                  <Users className="w-4 h-4" />
                   <span>Athletes</span>
                 </Link>
               </div>
             )}
           </div>
+
+          {/* NEW: Admin Section (Only for ADMIN and IT_ADMIN) */}
+          {isAdmin && (
+            <div>
+              <button
+                onClick={() => setAdminOpen(!adminOpen)}
+                className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50"
+              >
+                <div className="flex items-center space-x-3">
+                  <Shield className="w-4 h-4" />
+                  <span className="font-medium">Administration</span>
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform ${adminOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {adminOpen && (
+                <div className="mt-2 space-y-1">
+                  <Link
+                    href="/admin/users"
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/admin/users"
+                        ? "bg-indigo-100 text-indigo-900 font-medium"
+                        : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                  >
+                    <UserCog className="w-4 h-4" />
+                    <span>User Management</span>
+                  </Link>
+                  {/* You can add more admin links here */}
+                  {/* Example:
+                  <Link
+                    href="/admin/settings"
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
+                      pathname === "/admin/settings"
+                        ? "bg-indigo-100 text-indigo-900 font-medium"
+                        : "text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span>System Settings</span>
+                  </Link>
+                  */}
+                </div>
+              )}
+            </div>
+          )}
         </nav>
 
         {/* User info + Logout */}
@@ -143,7 +201,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <p className="font-medium text-gray-900 truncate">
                 {user?.first_name} {user?.last_name}
               </p>
-              <p className="text-gray-500 text-xs truncate">{user?.role}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-gray-500 text-xs truncate">{user?.role}</p>
+                {/* NEW: Admin badge */}
+                {isAdmin && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                    <Shield className="w-2.5 h-2.5 mr-0.5" />
+                    Admin
+                  </span>
+                )}
+              </div>
             </div>
             <button
               onClick={logout}
