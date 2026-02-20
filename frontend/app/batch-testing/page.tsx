@@ -113,26 +113,69 @@ export default function BatchTesting() {
 
       try {
         const startTime = Date.now();
-        const formData = new FormData();
-        formData.append("file", file);
 
-        const response = await axios.post("/api/ocr/analyze", formData, {
+        // Step 1: Extract supplement information from the image
+        const formData = new FormData();
+        formData.append("brand_image", file);
+
+        const extractResponse = await axios.post("/api/ocr/extract", formData, {
           headers: {
             "Content-Type": "multipart/form-data",
           },
           timeout: 120000,
         });
 
+        if (
+          !extractResponse.data?.success ||
+          !extractResponse.data?.extracted
+        ) {
+          const processingTime = Date.now() - startTime;
+          setTestResults((prev) =>
+            prev.map((result) =>
+              result.id === resultId
+                ? {
+                    ...result,
+                    status: "failed" as const,
+                    error: "Failed to extract supplement information",
+                    processingTime,
+                  }
+                : result,
+            ),
+          );
+          continue;
+        }
+
+        const extractedData = extractResponse.data.extracted;
+
+        // Step 2: Verify batch testing status with extracted information
+        const verifyResponse = await axios.post(
+          "/api/ocr/verify",
+          {
+            supplement_brand: extractedData.supplement_brand || "Unknown",
+            supplement_name: extractedData.supplement_name || "Unknown",
+            batch_id: extractedData.batch_id || "",
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+            timeout: 30000,
+          },
+        );
+
         const processingTime = Date.now() - startTime;
 
-        if (response.data?.success && response.data?.extracted) {
+        if (verifyResponse.data?.success) {
           setTestResults((prev) =>
             prev.map((result) =>
               result.id === resultId
                 ? {
                     ...result,
                     status: "completed" as const,
-                    result: response.data.extracted,
+                    result: {
+                      ...extractedData,
+                      verification_result: verifyResponse.data,
+                    },
                     processingTime,
                   }
                 : result,
@@ -145,7 +188,7 @@ export default function BatchTesting() {
                 ? {
                     ...result,
                     status: "failed" as const,
-                    error: "Failed to analyze OCR data",
+                    error: "Failed to verify batch testing status",
                     processingTime,
                   }
                 : result,
