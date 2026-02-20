@@ -56,13 +56,27 @@ const router = express.Router();
  *                       format: uuid
  *                     type_of_consult:
  *                       type: string
+ *                     title_description:
+ *                       type: string
+ *                       nullable: true
+ *                     venue:
+ *                       type: string
+ *                       nullable: true
  *                     date_of_consult:
  *                       type: string
  *                       format: date
  *                       nullable: true
+ *                     time_of_consult:
+ *                       type: string
+ *                       example: "09:00"
+ *                       nullable: true
  *                     date_of_next_follow_up:
  *                       type: string
  *                       format: date
+ *                       nullable: true
+ *                     time_of_next_follow_up:
+ *                       type: string
+ *                       example: "10:00"
  *                       nullable: true
  *                     consultation_objective:
  *                       type: string
@@ -122,12 +136,26 @@ router.get('/consultation-update/athlete/:athleteId/latest', controller.getLates
  *                       format: uuid
  *                     type_of_consult:
  *                       type: string
+ *                     title_description:
+ *                       type: string
+ *                       nullable: true
+ *                     venue:
+ *                       type: string
+ *                       nullable: true
  *                     date_of_consult:
  *                       type: string
  *                       format: date
+ *                     time_of_consult:
+ *                       type: string
+ *                       example: "09:00"
+ *                       nullable: true
  *                     date_of_next_follow_up:
  *                       type: string
  *                       format: date
+ *                       nullable: true
+ *                     time_of_next_follow_up:
+ *                       type: string
+ *                       example: "10:00"
  *                       nullable: true
  *                     consultation_objective:
  *                       type: string
@@ -178,15 +206,29 @@ router.get('/consultation-update/:id', controller.getConsultationUpdate);
  *                 type: string
  *                 format: uuid
  *                 description: Consult type UUID (must be active)
+ *               title_description:
+ *                 type: string
+ *                 description: Title or description for the booking (optional)
+ *               venue:
+ *                 type: string
+ *                 description: Venue of the consultation (optional)
  *               date_of_consult:
  *                 type: string
  *                 format: date
- *                 description: Date of consultation (defaults to today)
+ *                 description: Date of consultation (optional)
+ *               time_of_consult:
+ *                 type: string
+ *                 example: "09:00"
+ *                 description: Time of consultation in HH:MM or HH:MM:SS (optional)
  *               date_of_next_follow_up:
  *                 type: string
  *                 format: date
  *                 nullable: true
  *                 description: Date of next follow-up (optional)
+ *               time_of_next_follow_up:
+ *                 type: string
+ *                 example: "10:00"
+ *                 description: Time of next follow-up in HH:MM or HH:MM:SS (optional)
  *               consultation_objective:
  *                 type: string
  *                 description: Consultation objective (optional, stored in session_note)
@@ -194,8 +236,12 @@ router.get('/consultation-update/:id', controller.getConsultationUpdate);
  *             athlete_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
  *             nutritionist_id: "c3d4e5f6-a7b8-9012-cdef-123456789012"
  *             type_of_consult_id: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+ *             title_description: "Initial Nutrition Assessment"
+ *             venue: "Room 3, NYSI"
  *             date_of_consult: "2026-02-20"
+ *             time_of_consult: "09:00"
  *             date_of_next_follow_up: "2026-03-06"
+ *             time_of_next_follow_up: "10:00"
  *             consultation_objective: "To gain more muscles and strength. Ensure athlete is hydrated."
  *     responses:
  *       201:
@@ -223,12 +269,24 @@ router.get('/consultation-update/:id', controller.getConsultationUpdate);
  *                     type_of_consult_id:
  *                       type: string
  *                       format: uuid
+ *                     title_description:
+ *                       type: string
+ *                       nullable: true
+ *                     venue:
+ *                       type: string
+ *                       nullable: true
  *                     date_of_consult:
  *                       type: string
  *                       format: date
+ *                     time_of_consult:
+ *                       type: string
+ *                       nullable: true
  *                     date_of_next_follow_up:
  *                       type: string
  *                       format: date
+ *                       nullable: true
+ *                     time_of_next_follow_up:
+ *                       type: string
  *                       nullable: true
  *                     consultation_objective:
  *                       type: string
@@ -271,18 +329,35 @@ router.post('/consultation-update', authenticateToken, controller.createConsulta
  *                 type: string
  *                 format: uuid
  *                 description: Consult type UUID (must be active)
+ *               title_description:
+ *                 type: string
+ *                 description: Title or description for the booking
+ *               venue:
+ *                 type: string
+ *                 description: Venue of the consultation
  *               date_of_consult:
  *                 type: string
  *                 format: date
+ *               time_of_consult:
+ *                 type: string
+ *                 example: "09:00"
+ *                 description: Time of consultation in HH:MM or HH:MM:SS
  *               date_of_next_follow_up:
  *                 type: string
  *                 format: date
  *                 nullable: true
+ *               time_of_next_follow_up:
+ *                 type: string
+ *                 example: "10:00"
+ *                 description: Time of next follow-up in HH:MM or HH:MM:SS
  *               consultation_objective:
  *                 type: string
  *                 description: Consultation objective (upserts into session_note)
  *           example:
+ *             title_description: "Follow-up Session"
+ *             venue: "Room 3, NYSI"
  *             date_of_next_follow_up: "2026-03-01"
+ *             time_of_next_follow_up: "10:00"
  *             consultation_objective: "To gain more muscles and strength."
  *     responses:
  *       200:

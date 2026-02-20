@@ -6,9 +6,77 @@ const router = express.Router();
 
 // ============================================================================
 // MEDICAL HISTORY CARD ROUTES
-// NOTE: athlete/:athleteId/eligibility MUST be registered before /:sessionId
+// NOTE: athlete/:athleteId/* routes MUST be registered before /:sessionId
 //       to prevent Express matching "athlete" as a sessionId.
 // ============================================================================
+
+/**
+ * @swagger
+ * /api/Consultation/medical-history/athlete/{athleteId}/general:
+ *   get:
+ *     summary: Get Athlete General Medical Data
+ *     description: |
+ *       Returns the general medical record for an athlete from ams.athlete_medical.
+ *       If the athlete exists but has no medical record yet, all fields are returned as null.
+ *     tags: [Consultation - Medical History]
+ *     parameters:
+ *       - name: athleteId
+ *         in: path
+ *         required: true
+ *         description: Athlete UUID
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Athlete general medical data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                       nullable: true
+ *                     athlete_id:
+ *                       type: string
+ *                       format: uuid
+ *                     medical_condition:
+ *                       type: string
+ *                       nullable: true
+ *                     food_allergy:
+ *                       type: string
+ *                       nullable: true
+ *                     drug_allergy:
+ *                       type: string
+ *                       nullable: true
+ *                     past_injury:
+ *                       type: string
+ *                       nullable: true
+ *                     medical_remarks:
+ *                       type: string
+ *                       nullable: true
+ *             example:
+ *               data:
+ *                 id: "c1d2e3f4-a5b6-7890-cdef-012345678901"
+ *                 athlete_id: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+ *                 medical_condition: "Asthma"
+ *                 food_allergy: "Peanuts"
+ *                 drug_allergy: null
+ *                 past_injury: null
+ *                 medical_remarks: null
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get('/medical-history/athlete/:athleteId/general', controller.getAthleteGeneralMedical);
 
 /**
  * @swagger

@@ -47,6 +47,42 @@ const PERIOD_FIELDS = [
 // ============================================================================
 
 /**
+ * Get general medical data for an athlete from ams.athlete_medical
+ * Returns null fields if no row exists yet for this athlete.
+ * @param {string} athleteId - Athlete UUID
+ * @returns {Promise<Object|null>} Medical data or null if athlete not found
+ */
+export async function getAthleteGeneralMedical(athleteId) {
+    // Verify athlete exists
+    const athleteCheck = await pool.query(
+        'SELECT id FROM ams.athlete WHERE id = $1',
+        [athleteId]
+    );
+    if (athleteCheck.rows.length === 0) return null;
+
+    const result = await pool.query(
+        `SELECT id, medical_condition, food_allergy, drug_allergy, past_injury, medical_remarks
+         FROM ams.athlete_medical
+         WHERE athlete_id = $1`,
+        [athleteId]
+    );
+
+    if (result.rows.length === 0) {
+        return {
+            id: null,
+            athlete_id: athleteId,
+            medical_condition: null,
+            food_allergy: null,
+            drug_allergy: null,
+            past_injury: null,
+            medical_remarks: null,
+        };
+    }
+
+    return { ...result.rows[0], athlete_id: athleteId };
+}
+
+/**
  * Get athlete_id from a session
  * @param {string} sessionId - UUID of session
  * @returns {Promise<string|null>} Athlete UUID or null if session not found

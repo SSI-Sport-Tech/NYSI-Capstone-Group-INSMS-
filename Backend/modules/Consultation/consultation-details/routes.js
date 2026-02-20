@@ -105,9 +105,6 @@ const router = express.Router();
  *                     intervention_note:
  *                       type: string
  *                       nullable: true
- *                     medical_remarks:
- *                       type: string
- *                       nullable: true
  *                     other_remarks:
  *                       type: string
  *                       nullable: true
@@ -133,7 +130,6 @@ const router = express.Router();
  *                 other_review: "Supplement Intake"
  *                 follow_up_note: "Adding a digestive enzyme prior to largest meal of the day to assist with protein absorption."
  *                 intervention_note: "The initial dosage of Magnesium caused minor GI distress. Patient transitioned to a glycinate form with much better tolerance."
- *                 medical_remarks: null
  *                 other_remarks: null
  *       400:
  *         $ref: '#/components/responses/BadRequest'
@@ -208,8 +204,6 @@ router.get('/consultation-details/:sessionId', controller.getConsultationDetails
  *                 type: string
  *               intervention_note:
  *                 type: string
- *               medical_remarks:
- *                 type: string
  *               other_remarks:
  *                 type: string
  *           example:
@@ -225,7 +219,6 @@ router.get('/consultation-details/:sessionId', controller.getConsultationDetails
  *             other_review: "No other concerns"
  *             follow_up_note: "Review in 2 weeks"
  *             intervention_note: "Increase carb intake by 50g/day"
- *             medical_remarks: "No medical issues"
  *             other_remarks: "Athlete is motivated"
  *     responses:
  *       201:
@@ -256,7 +249,6 @@ router.get('/consultation-details/:sessionId', controller.getConsultationDetails
  *                 other_review: "Supplement Intake"
  *                 follow_up_note: "Adding a digestive enzyme prior to largest meal of the day to assist with protein absorption."
  *                 intervention_note: "The initial dosage of Magnesium caused minor GI distress. Patient transitioned to a glycinate form with much better tolerance."
- *                 medical_remarks: null
  *                 other_remarks: null
  *       400:
  *         $ref: '#/components/responses/BadRequest'
@@ -331,8 +323,6 @@ router.post('/consultation-details', authenticateToken, controller.createConsult
  *                 type: string
  *               intervention_note:
  *                 type: string
- *               medical_remarks:
- *                 type: string
  *               other_remarks:
  *                 type: string
  *           example:
@@ -347,7 +337,6 @@ router.post('/consultation-details', authenticateToken, controller.createConsult
  *             other_review: "Supplement Intake"
  *             follow_up_note: "Adding a digestive enzyme prior to largest meal of the day to assist with protein absorption."
  *             intervention_note: "The initial dosage of Magnesium caused minor GI distress. Patient transitioned to a glycinate form with much better tolerance."
- *             medical_remarks: null
  *             other_remarks: null
  *     responses:
  *       200:
@@ -378,7 +367,6 @@ router.post('/consultation-details', authenticateToken, controller.createConsult
  *                 other_review: "Supplement Intake"
  *                 follow_up_note: "Adding a digestive enzyme prior to largest meal of the day to assist with protein absorption."
  *                 intervention_note: "The initial dosage of Magnesium caused minor GI distress. Patient transitioned to a glycinate form with much better tolerance."
- *                 medical_remarks: null
  *                 other_remarks: null
  *       400:
  *         $ref: '#/components/responses/BadRequest'

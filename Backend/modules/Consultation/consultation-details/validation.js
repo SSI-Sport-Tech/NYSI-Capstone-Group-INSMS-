@@ -26,7 +26,6 @@ export const createDetailsSchema = z.object({
     other_review: z.string().trim().optional(),
     follow_up_note: z.string().trim().optional(),
     intervention_note: z.string().trim().optional(),
-    medical_remarks: z.string().trim().optional(),
     other_remarks: z.string().trim().optional(),
 }).strict();
 
@@ -46,7 +45,6 @@ export const updateDetailsSchema = z.object({
     other_review: z.string().trim().optional(),
     follow_up_note: z.string().trim().optional(),
     intervention_note: z.string().trim().optional(),
-    medical_remarks: z.string().trim().optional(),
     other_remarks: z.string().trim().optional(),
 
     // Reject immutable fields

@@ -241,6 +241,8 @@ router.get('/athletes/:id/profile', controller.getAthleteProfile);
  *                 type: string
  *               past_injury:
  *                 type: string
+ *               medical_remarks:
+ *                 type: string
  *               coach_ids:
  *                 type: array
  *                 items:
@@ -358,6 +360,8 @@ router.patch('/athletes/:id/profile', authenticateToken, controller.updateAthlet
  *               drug_allergy:
  *                 type: string
  *               past_injury:
+ *                 type: string
+ *               medical_remarks:
  *                 type: string
  *               coach_ids:
  *                 type: array
@@ -501,6 +505,9 @@ router.patch('/athletes/:id/profile/admin', authenticateToken, requireAdmin, con
  *               past_injury:
  *                 type: string
  *                 description: Optional (defaults to empty string)
+ *               medical_remarks:
+ *                 type: string
+ *                 description: Optional (defaults to empty string)
  *               coach_ids:
  *                 type: array
  *                 items:
@@ -642,6 +649,9 @@ router.post('/athletes/complete', authenticateToken, controller.createCompleteAt
  *                 type: string
  *                 description: Optional (defaults to empty string)
  *               past_injury:
+ *                 type: string
+ *                 description: Optional (defaults to empty string)
+ *               medical_remarks:
  *                 type: string
  *                 description: Optional (defaults to empty string)
  *               coach_ids:

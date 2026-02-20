@@ -135,8 +135,12 @@ export async function createConsultationSession(req, res) {
             nutritionist_id: nutritionistId,
             athlete_id: validated.athlete_id,
             type_of_consult_id: validated.type_of_consult_id,
+            title_description: validated.title_description,
+            venue: validated.venue,
             date_of_consult: validated.date_of_consult,
+            time_of_consult: validated.time_of_consult,
             date_of_next_follow_up: validated.date_of_next_follow_up,
+            time_of_next_follow_up: validated.time_of_next_follow_up,
             consultation_objective: validated.consultation_objective,
         });
 

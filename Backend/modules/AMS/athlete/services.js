@@ -271,8 +271,8 @@ export async function createCompleteAthlete(athleteData, registryData, medicalDa
         // 3. Insert medical
         const medicalResult = await client.query(`
             INSERT INTO AMS.Athlete_Medical (
-                athlete_id, medical_condition, food_allergy, drug_allergy, past_injury
-            ) VALUES ($1, $2, $3, $4, $5)
+                athlete_id, medical_condition, food_allergy, drug_allergy, past_injury, medical_remarks
+            ) VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
         `, [
             athlete.id,
@@ -280,6 +280,7 @@ export async function createCompleteAthlete(athleteData, registryData, medicalDa
             medicalData.food_allergy,
             medicalData.drug_allergy,
             medicalData.past_injury,
+            medicalData.medical_remarks,
         ]);
         const medical = medicalResult.rows[0];
 
@@ -578,7 +579,7 @@ export async function updateRegistry(athleteId, updateData) {
  */
 export async function getMedicalByAthleteId(athleteId) {
     const query = `
-        SELECT id, athlete_id, medical_condition, food_allergy, drug_allergy, past_injury
+        SELECT id, athlete_id, medical_condition, food_allergy, drug_allergy, past_injury, medical_remarks
         FROM AMS.Athlete_Medical
         WHERE athlete_id = $1
     `;
@@ -603,6 +604,7 @@ export async function updateMedical(athleteId, updateData) {
         food_allergy: updateData.food_allergy,
         drug_allergy: updateData.drug_allergy,
         past_injury: updateData.past_injury,
+        medical_remarks: updateData.medical_remarks,
     };
 
     for (const [field, value] of Object.entries(fieldMapping)) {
@@ -726,6 +728,7 @@ export async function updateAthleteProfile(athleteId, data, options = {}) {
             food_allergy: data.food_allergy,
             drug_allergy: data.drug_allergy,
             past_injury: data.past_injury,
+            medical_remarks: data.medical_remarks,
         };
 
         const medicalSetClauses = [];

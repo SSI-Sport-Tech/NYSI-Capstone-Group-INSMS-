@@ -2,12 +2,17 @@ import { z } from 'zod';
 import { uuidSchema, uuidParamSchema } from '../../SSS/shared/validation.js';
 
 // ============================================================================
-// REUSABLE DATE VALIDATOR
+// REUSABLE DATE / TIME VALIDATORS
 // ============================================================================
 
 const optionalDateSchema = z.string()
     .trim()
     .refine(val => !isNaN(Date.parse(val)), { message: 'Must be a valid date (YYYY-MM-DD)' })
+    .optional();
+
+const optionalTimeSchema = z.string()
+    .trim()
+    .regex(/^\d{2}:\d{2}(:\d{2})?$/, { message: 'Must be a valid time (HH:MM or HH:MM:SS)' })
     .optional();
 
 // ============================================================================
@@ -17,10 +22,14 @@ const optionalDateSchema = z.string()
 export const createSessionSchema = z.object({
     athlete_id: uuidSchema.describe('Athlete UUID'),
     type_of_consult_id: uuidSchema.describe('Consult type UUID (must be active)'),
+    title_description: z.string().trim().optional(),
+    venue: z.string().trim().optional(),
     date_of_consult: z.string().trim()
         .refine(val => !isNaN(Date.parse(val)), { message: 'Must be a valid date (YYYY-MM-DD)' })
         .optional(),
+    time_of_consult: optionalTimeSchema,
     date_of_next_follow_up: optionalDateSchema,
+    time_of_next_follow_up: optionalTimeSchema,
     consultation_objective: z.string().trim().optional(),
 
     // --- Optional: override nutritionist (falls back to logged-in user if omitted) ---
@@ -36,8 +45,12 @@ export const createSessionSchema = z.object({
 
 export const updateSessionSchema = z.object({
     type_of_consult_id: uuidSchema.optional(),
+    title_description: z.string().trim().optional(),
+    venue: z.string().trim().optional(),
     date_of_consult: optionalDateSchema,
+    time_of_consult: optionalTimeSchema,
     date_of_next_follow_up: optionalDateSchema,
+    time_of_next_follow_up: optionalTimeSchema,
     consultation_objective: z.string().trim().optional(),
 
     // --- Reject immutable fields ---

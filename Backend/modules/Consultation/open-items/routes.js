@@ -121,6 +121,8 @@ router.get('/open-items/session/:sessionId', controller.getOpenItems);
  *     description: |
  *       Create a new open item for a consultation session.
  *       Validates that sessions_id exists and open_item_status_id is active.
+ *       The `owner` field is automatically set to the logged-in nutritionist's name.
+ *       For testing in Swagger, supply `nutritionist_id` to override the logged-in user lookup.
  *     tags: [Consultation - Open Items]
  *     security:
  *       - bearerAuth: []
@@ -142,15 +144,16 @@ router.get('/open-items/session/:sessionId', controller.getOpenItems);
  *                 type: string
  *                 format: uuid
  *                 description: Status UUID from open_item_status_lookup (must be active)
+ *               nutritionist_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: "Nutritionist UUID (optional — for testing only; defaults to the logged-in user's nutritionist)"
  *               description:
  *                 type: string
  *                 description: Description of the action item
  *               open_item:
  *                 type: string
  *                 description: The follow-up action to take
- *               owner:
- *                 type: string
- *                 description: Person responsible for the item
  *               due_date:
  *                 type: string
  *                 format: date
@@ -161,9 +164,9 @@ router.get('/open-items/session/:sessionId', controller.getOpenItems);
  *           example:
  *             sessions_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
  *             open_item_status_id: "019c765b-583a-7932-855b-5314c39aa72d"
+ *             nutritionist_id: "c3d4e5f6-a7b8-9012-cdef-123456789012"
  *             description: "Athlete complains of fatigue, suspect low iron"
  *             open_item: "Get a full blood count to check for low iron"
- *             owner: "Amy Tan"
  *             due_date: "2026-03-31"
  *     responses:
  *       201:

@@ -242,6 +242,7 @@ export async function createCompleteAthlete(req, res) {
             food_allergy: validated.food_allergy,
             drug_allergy: validated.drug_allergy,
             past_injury: validated.past_injury,
+            medical_remarks: validated.medical_remarks,
         };
 
         // Step 7: Create in transaction
@@ -360,6 +361,7 @@ export async function adminCreateCompleteAthlete(req, res) {
             food_allergy: validated.food_allergy,
             drug_allergy: validated.drug_allergy,
             past_injury: validated.past_injury,
+            medical_remarks: validated.medical_remarks,
         };
 
         // Step 7: Create in transaction

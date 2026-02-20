@@ -119,6 +119,36 @@ export async function updateMedicalHistory(req, res) {
 }
 
 // ============================================================================
+// GET ATHLETE GENERAL MEDICAL (ams.athlete_medical)
+// ============================================================================
+
+export async function getAthleteGeneralMedical(req, res) {
+    try {
+        const { athleteId } = athleteIdParamSchema.parse(req.params);
+
+        const data = await services.getAthleteGeneralMedical(athleteId);
+
+        if (!data) {
+            return res.status(404).json({ error: 'Athlete not found' });
+        }
+
+        res.json({ data });
+    } catch (error) {
+        if (error.name === 'ZodError') {
+            return res.status(400).json({
+                error: 'Invalid athlete ID format',
+                details: error.errors.map(e => ({
+                    field: e.path.join('.'),
+                    message: e.message,
+                })),
+            });
+        }
+        console.error('Error fetching athlete general medical:', error);
+        res.status(500).json({ error: 'Failed to fetch athlete general medical', message: error.message });
+    }
+}
+
+// ============================================================================
 // GET ATHLETE ELIGIBILITY (DOB + gender)
 // ============================================================================
 
