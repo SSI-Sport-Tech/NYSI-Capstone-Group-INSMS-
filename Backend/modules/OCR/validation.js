@@ -18,7 +18,7 @@ export const DEFAULT_PAGE_SIZE = 10;
 /**
  * Timeout for Python service calls (ms)
  */
-export const PYTHON_TIMEOUT = 60000;
+export const PYTHON_TIMEOUT = 120000;
 
 /**
  * Maximum file size for image uploads (bytes)

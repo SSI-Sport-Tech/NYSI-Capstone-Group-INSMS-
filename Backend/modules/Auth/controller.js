@@ -26,7 +26,7 @@ import crypto from 'crypto';
 // Configuration
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRY = process.env.JWT_EXPIRY;
-const CODE_EXPIRY_MINUTES = parseInt(process.env.CODE_EXPIRY_MINUTES);
+const CODE_EXPIRY_MINUTES = parseInt(process.env.VERIFICATION_CODE_EXPIRY) || 15;
 const MAX_VERIFICATION_ATTEMPTS = parseInt(process.env.MAX_VERIFICATION_ATTEMPTS);
 
 // ============================================================================

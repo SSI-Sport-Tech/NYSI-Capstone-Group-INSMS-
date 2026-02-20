@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Globe, Archive, BookOpenText } from "lucide-react";
+import { Globe, Archive, BookOpenText, TestTube } from "lucide-react";
 
 interface Tab {
   id: string;
@@ -25,6 +25,8 @@ const ViewTabs: React.FC<ViewTabsProps> = ({ tabs }) => {
         return <Globe className="w-4 h-4" />;
       case "library":
         return <BookOpenText className="w-4 h-4" />;
+      case "batch":
+        return <TestTube className="w-4 h-4" />;
       default:
         return null;
     }

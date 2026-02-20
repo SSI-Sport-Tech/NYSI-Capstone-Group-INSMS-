@@ -1,7 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Check, X, Star, ExternalLink, Package } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  Check,
+  X,
+  Star,
+  ExternalLink,
+  Package,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
 
 interface Supplement {
   id: string;
@@ -58,6 +67,7 @@ const SupplementComparisonGrid: React.FC<SupplementComparisonGridProps> = ({
 }) => {
   const [sortBy, setSortBy] = useState<string>("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const router = useRouter();
 
   const allSupplements = original ? [original, ...alternatives] : alternatives;
   const selectedSupplementsData = allSupplements.filter((sup) =>
@@ -103,165 +113,149 @@ const SupplementComparisonGrid: React.FC<SupplementComparisonGridProps> = ({
     }
   };
 
+  // Helper function to get similarity score color
+  const getSimilarityColor = (score: string): string => {
+    const numScore = parseFloat(score);
+    if (numScore >= 95) return "text-green-600";
+    if (numScore >= 90) return "text-blue-600";
+    return "text-gray-600";
+  };
+
+  // Helper function to create circular progress SVG
+  const CircularProgress: React.FC<{ score: string; size?: number }> = ({
+    score,
+    size = 80,
+  }) => {
+    const numScore = parseFloat(score);
+    const circumference = 2 * Math.PI * 30; // radius = 30
+    const strokeDashoffset = circumference - (numScore / 100) * circumference;
+
+    let strokeColor = "#10b981"; // green
+    if (numScore < 95) strokeColor = "#3b82f6"; // blue
+    if (numScore < 90) strokeColor = "#6b7280"; // gray
+
+    return (
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg className="transform -rotate-90" width={size} height={size}>
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r="30"
+            stroke="#e5e7eb"
+            strokeWidth="6"
+            fill="transparent"
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r="30"
+            stroke={strokeColor}
+            strokeWidth="6"
+            fill="transparent"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-lg font-bold" style={{ color: strokeColor }}>
+            {Math.round(numScore)}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   const SupplementCard: React.FC<{
     supplement: Supplement;
     isOriginal?: boolean;
   }> = ({ supplement, isOriginal = false }) => {
     const isSelected = selectedSupplements.includes(supplement.id);
+    const similarityScore =
+      supplement.similarity_score_perserving ||
+      supplement.similarity_score_100g;
+
+    const handleCardClick = () => {
+      router.push(`/supplements/${supplement.id}`);
+    };
 
     return (
       <div
-        className={`bg-white rounded-lg border-2 transition-all cursor-pointer hover:shadow-lg ${
-          isSelected ? "border-blue-500 bg-blue-50" : "border-gray-200"
-        } ${isOriginal ? "ring-2 ring-yellow-300" : ""}`}
-        onClick={() => handleSupplementToggle(supplement)}
+        className={`bg-white rounded-lg border transition-all cursor-pointer hover:shadow-md relative ${
+          isSelected ? "border-blue-500 shadow-lg" : "border-gray-200"
+        }`}
+        onClick={handleCardClick}
       >
         <div className="p-6">
-          {/* Header with selection indicator */}
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              {isSelected && (
-                <div className="flex items-center justify-center w-6 h-6 bg-blue-500 rounded-full">
-                  <Check className="w-4 h-4 text-white" />
-                </div>
-              )}
-              {isOriginal && (
-                <Star className="w-5 h-5 text-yellow-500 fill-current" />
-              )}
+          {/* Current supplement badge - positioned at top right to not overlap */}
+          {isOriginal && (
+            <div className="absolute top-4 right-4 flex items-center gap-1 bg-yellow-100 text-yellow-800 px-2 py-1 rounded-md text-xs font-medium">
+              <Star className="w-3 h-3 fill-current" />
+              CURRENT
             </div>
-            <div className="flex flex-col gap-1 items-end">
-              <span
-                className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(supplement.supplement_status)}`}
-              >
-                {supplement.supplement_status}
+          )}
+
+          {/* Header with name, brand and similarity score */}
+          <div className="flex items-start justify-between mb-4">
+            <div className={`flex-1 ${isOriginal ? "pr-20" : "pr-4"}`}>
+              <h3 className="font-semibold text-gray-900 mb-1 leading-tight">
+                {supplement.supplement_name}
+              </h3>
+              <p className="text-sm text-gray-600">
+                {supplement.supplement_brand}
+              </p>
+            </div>
+
+            {/* Similarity Score Circle */}
+            {similarityScore && (
+              <div className="flex-shrink-0 flex flex-col items-center">
+                <CircularProgress score={similarityScore} />
+                <span className="text-xs text-gray-500 mt-1">Similarity</span>
+              </div>
+            )}
+          </div>
+
+          {/* Status Badges */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {/* Batch Testing Status - Check supplement_status field */}
+            {supplement.supplement_status
+              ?.toUpperCase()
+              .includes("BATCH TESTED") ? (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
+                <CheckCircle className="w-3 h-3" />
+                Batch Tested
               </span>
-              {supplement.stock_status && (
-                <span
-                  className={`px-2 py-1 text-xs font-medium rounded-full ${getStockStatusColor(supplement.stock_status)}`}
-                >
+            ) : supplement.supplement_status
+                ?.toUpperCase()
+                .includes("NOT BATCH TESTED") ? (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded">
+                <XCircle className="w-3 h-3" />
+                Not Batch Tested
+              </span>
+            ) : null}
+
+            {/* Stock Status */}
+            {supplement.stock_status &&
+            supplement.stock_status.toLowerCase() === "out of stock" ? (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded">
+                <XCircle className="w-3 h-3" />
+                Out of Stock
+              </span>
+            ) : (
+              supplement.stock_status && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
+                  <CheckCircle className="w-3 h-3" />
                   {supplement.stock_status}
                 </span>
-              )}
-            </div>
-          </div>
-
-          {/* Similarity Scores */}
-          {(supplement.similarity_score_100g ||
-            supplement.similarity_score_perserving) && (
-            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-              <div className="text-xs font-medium text-blue-800 mb-2">
-                Similarity Scores
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {supplement.similarity_score_100g && (
-                  <div>
-                    <span className="text-blue-600">Per 100g: </span>
-                    <span className="font-semibold text-blue-800">
-                      {supplement.similarity_score_100g}
-                    </span>
-                  </div>
-                )}
-                {supplement.similarity_score_perserving && (
-                  <div>
-                    <span className="text-blue-600">Per Serving: </span>
-                    <span className="font-semibold text-blue-800">
-                      {supplement.similarity_score_perserving}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Title */}
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            {supplement.supplement_name}
-          </h3>
-          <p className="text-sm text-gray-600 mb-4">
-            {supplement.supplement_brand}
-          </p>
-
-          {/* Key Details */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm">
-              <Package className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-600">Form:</span>
-              <span className="font-medium">
-                {supplement.supplement_packaging_form || "N/A"}
-              </span>
-            </div>
-
-            {supplement.serving_size && (
-              <div className="text-sm">
-                <span className="text-gray-600">Serving Size: </span>
-                <span className="font-medium">{supplement.serving_size}</span>
-              </div>
-            )}
-
-            {supplement.batch_testing_org && (
-              <div className="text-sm">
-                <span className="text-gray-600">Testing Org: </span>
-                <span className="font-medium">
-                  {supplement.batch_testing_org}
-                </span>
-              </div>
+              )
             )}
           </div>
 
-          {/* Nutritional Info Preview */}
-          {supplement.nutritional_info && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">
-                Key Nutrients
-              </h4>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {supplement.nutritional_info.protein && (
-                  <div>
-                    <span className="text-gray-500">Protein: </span>
-                    <span className="font-medium">
-                      {supplement.nutritional_info.protein}
-                    </span>
-                  </div>
-                )}
-                {supplement.nutritional_info.energy && (
-                  <div>
-                    <span className="text-gray-500">Energy: </span>
-                    <span className="font-medium">
-                      {supplement.nutritional_info.energy}
-                    </span>
-                  </div>
-                )}
-                {supplement.nutritional_info.carbohydrates && (
-                  <div>
-                    <span className="text-gray-500">Carbs: </span>
-                    <span className="font-medium">
-                      {supplement.nutritional_info.carbohydrates}
-                    </span>
-                  </div>
-                )}
-                {supplement.nutritional_info.total_fat && (
-                  <div>
-                    <span className="text-gray-500">Fat: </span>
-                    <span className="font-medium">
-                      {supplement.nutritional_info.total_fat}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Source Links */}
-          {supplement.product_source_url && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <div className="flex items-center gap-2">
-                <ExternalLink className="w-4 h-4 text-gray-400" />
-                <span className="text-xs text-gray-500">
-                  Product Source Available
-                </span>
-              </div>
-            </div>
-          )}
+          {/* Form Information */}
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Package className="w-4 h-4" />
+            <span>Form: {supplement.supplement_packaging_form || "N/A"}</span>
+          </div>
         </div>
       </div>
     );
@@ -413,7 +407,7 @@ const SupplementComparisonGrid: React.FC<SupplementComparisonGridProps> = ({
       )}
 
       {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Current/Original supplement first */}
         {original && <SupplementCard supplement={original} isOriginal={true} />}
 

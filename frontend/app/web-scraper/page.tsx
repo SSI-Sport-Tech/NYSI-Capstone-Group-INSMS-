@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import ViewTabs from "@/components/SSS/ViewTabs";
+import PageHeader from "@/components/PageHeader";
 import UrlSelectionModal from "@/components/SSS/UrlSelectionModal";
 import {
   Play,
@@ -52,6 +53,12 @@ const tabs = [
     label: "Supplement Library",
     icon: "library",
     href: "/library",
+  },
+  {
+    id: "batch-testing",
+    label: "Batch OCR Testing",
+    icon: "batch",
+    href: "/batch-testing",
   },
 ];
 
@@ -198,7 +205,7 @@ export default function WebScraperPage() {
     <DashboardLayout>
       <div className="min-h-screen bg-gray-50 p-6">
         {/* Page Title */}
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Supplements</h1>
+        <PageHeader title="Supplements" />
 
         {/* Tabs */}
         <ViewTabs tabs={tabs} />
@@ -307,7 +314,7 @@ export default function WebScraperPage() {
                       Price <ChevronDown className="w-4 h-4 ml-1" />
                     </div>
                   </th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-900">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
                     <div className="flex items-center">
                       Actions <ChevronDown className="w-4 h-4 ml-1" />
                     </div>
