@@ -197,7 +197,7 @@ const SupplementComparisonGrid: React.FC<SupplementComparisonGridProps> = ({
 
           {/* Header with name, brand and similarity score */}
           <div className="flex items-start justify-between mb-4">
-            <div className={`flex-1 ${isOriginal ? 'pr-20' : 'pr-4'}`}>
+            <div className={`flex-1 ${isOriginal ? "pr-20" : "pr-4"}`}>
               <h3 className="font-semibold text-gray-900 mb-1 leading-tight">
                 {supplement.supplement_name}
               </h3>
@@ -218,12 +218,16 @@ const SupplementComparisonGrid: React.FC<SupplementComparisonGridProps> = ({
           {/* Status Badges */}
           <div className="flex flex-wrap gap-2 mb-4">
             {/* Batch Testing Status - Check supplement_status field */}
-            {supplement.supplement_status?.toUpperCase().includes("BATCH TESTED") ? (
+            {supplement.supplement_status
+              ?.toUpperCase()
+              .includes("BATCH TESTED") ? (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
                 <CheckCircle className="w-3 h-3" />
                 Batch Tested
               </span>
-            ) : supplement.supplement_status?.toUpperCase().includes("NOT BATCH TESTED") ? (
+            ) : supplement.supplement_status
+                ?.toUpperCase()
+                .includes("NOT BATCH TESTED") ? (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded">
                 <XCircle className="w-3 h-3" />
                 Not Batch Tested
