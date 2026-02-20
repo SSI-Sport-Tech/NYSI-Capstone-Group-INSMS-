@@ -5,6 +5,7 @@ import axios from "axios";
 import AthleteTable from "@/components/AMS/AthleteTable";
 import AthleteSearchSection from "@/components/AMS/AthleteSearchSection";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
 
 interface Athlete {
   id: string;
@@ -74,12 +75,7 @@ export default function AthleteManagementPage() {
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-[1600px] mx-auto px-6 py-8">
           {/* Page Header */}
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-              Athlete Management
-            </h1>
-          </div>
-
+          <PageHeader title="Athlete Management" />
           {/* Error Message */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-5 py-4 rounded-xl mb-6 flex items-start gap-3">

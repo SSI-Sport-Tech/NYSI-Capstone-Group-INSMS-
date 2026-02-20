@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserPlus } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
 import UserSearchSection from "@/components/Admin/UserSearchSection";
 import UserTable from "@/components/Admin/UserTable";
 import UserDetailsModal from "@/components/Admin/UserDetailsModal";
@@ -290,36 +291,23 @@ export default function AdminUsersPage() {
             <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
                 <div className="max-w-[1600px] mx-auto px-6 py-8">
                     {/* Page Header */}
-                    <div className="mb-5 flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                                User Management
-                            </h1>
-                            <p className="text-gray-500 mt-1">
-                                {isITAdmin
-                                    ? "Manage all user accounts, roles, and permissions"
-                                    : "Manage nutritionists, coaches, and athletes"}
-                            </p>
-                        </div>
-
-                        {/* Stats & Actions */}
-                        <div className="flex gap-4 items-center">
-                            <div className="bg-white px-6 py-3 rounded-lg border border-gray-200 shadow-sm">
-                                <div className="text-2xl font-bold text-gray-900">{total}</div>
-                                <div className="text-xs text-gray-500 uppercase">
-                                    Total Users
-                                </div>
+                    <PageHeader title="User Management" />
+                    {/* Stats & Actions */}
+                    <div className="flex w-full items-center justify-between">
+                        <div className="px-6 py-3 rounded-lg">
+                            <div className="text-2xl font-bold text-gray-900">{total}</div>
+                            <div className="text-xs text-gray-500 uppercase">
+                                Total Users
                             </div>
-
-                            {/* Create User Button */}
-                            <button
-                                onClick={() => setShowCreateModal(true)}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors shadow-sm"
-                            >
-                                <UserPlus className="w-4 h-4" />
-                                <span>Create User</span>
-                            </button>
                         </div>
+
+                        <button
+                            onClick={() => setShowCreateModal(true)}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors shadow-sm"
+                        >
+                            <UserPlus className="w-4 h-4" />
+                            <span>Create User</span>
+                        </button>
                     </div>
 
                     {/* Success Message */}

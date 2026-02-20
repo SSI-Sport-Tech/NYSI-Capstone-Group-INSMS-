@@ -3,6 +3,7 @@
 import { useState } from "react";
 import axios from "axios";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
 
 interface OCRResponse {
   text: string[];
@@ -96,9 +97,7 @@ export default function OCRPage() {
     <DashboardLayout>
       <div>
         {/* Page Title */}
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">
-          Supplement OCR
-        </h1>
+        <PageHeader title="Supplement OCR" />
 
         {/* Image Selection */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
