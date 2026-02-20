@@ -21,6 +21,8 @@ export async function getUserByEmail(email) {
             id,
             email,
             password_hash,
+            first_name,
+            last_name,
             role,
             is_active,
             is_email_verified,
@@ -44,11 +46,8 @@ export async function getUserById(userId) {
         SELECT 
             id,
             email,
-            role,
-            is_active,
-            is_email_verified,
-            created_at,
-            last_login_at
+            first_name,
+            last_name,
         FROM auth.users
         WHERE id = $1
     `;
@@ -62,6 +61,8 @@ export async function getUserById(userId) {
  * @param {Object} userData - User data
  * @param {string} userData.email - Email address
  * @param {string} userData.password_hash - Hashed password
+ * @param {string} userData.first_name - First name
+ * @param {string} userData.last_name - Last name
  * @param {string} userData.role - User role (IT_ADMIN/ADMIN/NUTRITIONIST/COACH/ATHLETE)
  * @returns {Promise<Object>} Created user object
  */
@@ -70,14 +71,18 @@ export async function createUser(userData) {
         INSERT INTO auth.users (
             email,
             password_hash,
+            first_name,
+            last_name,
             role,
             is_active,
             is_email_verified,
             created_at
-        ) VALUES ($1, $2, $3, true, true, NOW())
+        ) VALUES ($1, $2, $3, $4, $5, true, true, NOW())
         RETURNING 
             id,
             email,
+            first_name,
+            last_name,
             role,
             is_active,
             is_email_verified,
@@ -87,6 +92,8 @@ export async function createUser(userData) {
   const values = [
     userData.email.toLowerCase(),
     userData.password_hash,
+    userData.first_name,
+    userData.last_name,
     userData.role,
   ];
 
