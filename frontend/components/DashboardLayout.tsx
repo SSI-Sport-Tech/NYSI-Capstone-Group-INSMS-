@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, redirect } from "next/navigation";
+import { usePathname, redirect, useSearchParams } from "next/navigation";
+import axios from "axios";
 import {
   ChevronDown,
   Archive,
@@ -22,10 +23,62 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
-  const [supplementOpen, setSupplementOpen] = useState(true);
-  const [amsOpen, setAmsOpen] = useState(true);
-  const [adminOpen, setAdminOpen] = useState(true); // NEW: Admin section state
+  const searchParams = useSearchParams();
+
+  // Check if we're on an athlete profile page
+  const isAthleteProfilePage =
+    pathname.includes("/AMS/athlete-management/") &&
+    pathname.split("/").length > 3;
+  const athleteId = isAthleteProfilePage ? pathname.split("/").pop() : null;
+
+  // Auto-manage section states based on current page
+  const [supplementOpen, setSupplementOpen] = useState(
+    pathname.startsWith("/SSS"),
+  );
+  const [amsOpen, setAmsOpen] = useState(
+    pathname.startsWith("/AMS") && !isAthleteProfilePage,
+  );
+  const [adminOpen, setAdminOpen] = useState(pathname.startsWith("/admin"));
+  const [athleteProfileOpen, setAthleteProfileOpen] =
+    useState(isAthleteProfilePage);
+  const [athleteName, setAthleteName] = useState<string>("");
   const { isAuthenticated, loading, user, logout } = useAuth();
+
+  // Get current tab from URL parameters
+  const currentTab = searchParams.get("tab") || "profile";
+
+  // Update section states when pathname changes
+  useEffect(() => {
+    setSupplementOpen(pathname.startsWith("/SSS"));
+    setAmsOpen(pathname.startsWith("/AMS") && !isAthleteProfilePage);
+    setAdminOpen(pathname.startsWith("/admin"));
+    setAthleteProfileOpen(isAthleteProfilePage);
+  }, [pathname, isAthleteProfilePage]);
+
+  // Fetch athlete name when on athlete profile page
+  useEffect(() => {
+    if (isAthleteProfilePage && athleteId) {
+      fetchAthleteName(athleteId);
+    } else {
+      setAthleteName("");
+    }
+  }, [isAthleteProfilePage, athleteId]);
+
+  const fetchAthleteName = async (id: string) => {
+    try {
+      const backendUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+      const response = await axios.get(
+        `${backendUrl}/api/AMS/athletes/${id}/profile`,
+      );
+      if (response.data?.athlete?.athlete_name_abbr) {
+        setAthleteName(response.data.athlete.athlete_name_abbr);
+      }
+    } catch (error) {
+      console.error("Error fetching athlete name:", error);
+      setAthleteName("Athlete");
+    }
+  };
 
   if (loading) {
     return (
@@ -86,9 +139,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             {supplementOpen && (
               <div className="mt-2 space-y-1">
                 <Link
-                  href="/inventory"
+                  href="/SSS/inventory"
                   className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                    pathname === "/inventory"
+                    pathname === "/SSS/inventory"
                       ? "bg-gray-100 text-gray-900 font-medium"
                       : "text-gray-600 hover:bg-gray-50"
                   }`}
@@ -97,9 +150,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <span>Inventory</span>
                 </Link>
                 <Link
-                  href="/web-scraper"
+                  href="/SSS/web-scraper"
                   className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                    pathname === "/web-scraper"
+                    pathname === "/SSS/web-scraper"
                       ? "bg-gray-100 text-gray-900 font-medium"
                       : "text-gray-600 hover:bg-gray-50"
                   }`}
@@ -108,9 +161,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <span>Web Scraper</span>
                 </Link>
                 <Link
-                  href="/library"
+                  href="/SSS/library"
                   className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                    pathname === "/library"
+                    pathname === "/SSS/library"
                       ? "bg-gray-100 text-gray-900 font-medium"
                       : "text-gray-600 hover:bg-gray-50"
                   }`}
@@ -119,9 +172,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <span>Library</span>
                 </Link>
                 <Link
-                  href="/batch-testing"
+                  href="/SSS/batch-testing"
                   className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                    pathname === "/batch-testing"
+                    pathname === "/SSS/batch-testing"
                       ? "bg-gray-100 text-gray-900 font-medium"
                       : "text-gray-600 hover:bg-gray-50"
                   }`}
@@ -149,9 +202,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             {amsOpen && (
               <div className="mt-2 space-y-1">
                 <Link
-                  href="/athlete-management"
+                  href="/AMS/athlete-management"
                   className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                    pathname === "/athlete-management"
+                    pathname === "/AMS/athlete-management"
                       ? "bg-gray-100 text-gray-900 font-medium"
                       : "text-gray-600 hover:bg-gray-50"
                   }`}
@@ -162,6 +215,63 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             )}
           </div>
+
+          {/* Athlete Profile Section (Only when viewing athlete profile) */}
+          {isAthleteProfilePage && (
+            <div>
+              <button
+                onClick={() => setAthleteProfileOpen(!athleteProfileOpen)}
+                className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50"
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="font-medium">
+                    {athleteName ? `${athleteName} Profile` : "Athlete Profile"}
+                  </span>
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform ${athleteProfileOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {athleteProfileOpen && (
+                <div className="mt-2 space-y-1">
+                  <Link
+                    href={`/AMS/athlete-management/${athleteId}?tab=profile`}
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
+                      isAthleteProfilePage && currentTab === "profile"
+                        ? "bg-blue-100 text-blue-900 font-medium"
+                        : "text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    <UserCog className="w-4 h-4" />
+                    <span>Current Profile</span>
+                  </Link>
+                  <Link
+                    href={`/AMS/athlete-management/${athleteId}?tab=consultation`}
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
+                      isAthleteProfilePage && currentTab === "consultation"
+                        ? "bg-blue-100 text-blue-900 font-medium"
+                        : "text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    <BookOpenText className="w-4 h-4" />
+                    <span>Consultation</span>
+                  </Link>
+                  <Link
+                    href={`/AMS/athlete-management/${athleteId}?tab=history`}
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
+                      isAthleteProfilePage && currentTab === "history"
+                        ? "bg-blue-100 text-blue-900 font-medium"
+                        : "text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    <Archive className="w-4 h-4" />
+                    <span>History</span>
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* NEW: Admin Section (Only for ADMIN and IT_ADMIN) */}
           {isAdmin && (

@@ -37,9 +37,14 @@ export default function AthleteManagementPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get<SearchResponse>("/api/AMS/athletes", {
-        params: { page, search: searchQuery },
-      });
+      const backendUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+      const response = await axios.get<SearchResponse>(
+        `${backendUrl}/api/AMS/athletes`,
+        {
+          params: { page, search: searchQuery },
+        },
+      );
       setAthletes(response.data.data);
       setCurrentPage(response.data.currentPage);
       setTotalPages(response.data.totalPages);

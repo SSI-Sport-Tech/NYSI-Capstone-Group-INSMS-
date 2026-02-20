@@ -93,10 +93,10 @@ export default function Home() {
                   Quick Actions
                 </div>
                 <div className="space-y-2">
-                  <button className="w-full flex items-center space-x-2 px-3 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 text-sm">
+                  <Link href="/AMS/athlete-management" className="w-full flex items-center space-x-2 px-3 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 text-sm">
                     <Users className="w-4 h-4" />
                     <span>Athlete Management</span>
-                  </button>
+                  </Link>
                   <button className="w-full flex items-center space-x-2 px-3 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 text-sm">
                     <Calendar className="w-4 h-4" />
                     <span>Schedule Session</span>
