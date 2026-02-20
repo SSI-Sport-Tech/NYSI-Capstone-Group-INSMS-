@@ -233,91 +233,121 @@ export default function BatchTesting() {
           <ViewTabs tabs={tabs} />
 
           {/* Upload Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Upload Images for Batch Testing
-            </h2>
-
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-blue-400 transition-colors mb-4">
-              <label className="flex flex-col items-center cursor-pointer">
-                <Upload className="w-12 h-12 text-gray-400 mb-4" />
-                <span className="text-lg font-medium text-gray-700">
-                  Click to upload multiple images
-                </span>
-                <span className="text-sm text-gray-500 mt-1">
-                  PNG, JPG, GIF up to 10MB each
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-              </label>
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mb-6">
+            {/* Header with icon and title */}
+            <div className="flex items-center gap-3 p-6 pb-4">
+              <div className="bg-blue-100 rounded-xl p-2.5">
+                <Upload className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Upload Images for Batch Testing
+                </h2>
+                <p className="text-gray-500 text-sm">
+                  Select multiple supplement label images to analyze with OCR
+                </p>
+              </div>
             </div>
 
-            {/* Uploaded Files List */}
-            {uploadedFiles.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    Uploaded Files ({uploadedFiles.length})
-                  </h3>
-                  <button
-                    onClick={clearAll}
-                    className="text-red-600 hover:text-red-800 text-sm font-medium"
-                  >
-                    Clear All
-                  </button>
-                </div>
-
-                <div className="max-h-40 overflow-y-auto space-y-1">
-                  {uploadedFiles.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2"
-                    >
-                      <span className="text-sm text-gray-700 truncate flex-1">
-                        {file.name}
-                      </span>
-                      <button
-                        onClick={() => removeFile(index)}
-                        className="ml-2 text-gray-400 hover:text-red-600"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+            {/* Main upload area */}
+            <div className="px-6 pb-6">
+              <div className="border-2 border-dashed border-gray-200 rounded-xl p-16 hover:border-blue-300 hover:bg-blue-50/30 transition-all duration-200">
+                <label className="flex flex-col items-center cursor-pointer">
+                  <div className="bg-gray-100 rounded-full p-4 mb-6">
+                    <Upload className="w-8 h-8 text-gray-500" />
+                  </div>
+                  <span className="text-lg font-medium text-gray-900 mb-2">
+                    Drop images here or click to browse
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    PNG, JPG, GIF up to 10MB each
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
               </div>
-            )}
 
-            {/* Control Buttons */}
-            <div className="flex gap-3 mt-4">
+              {/* Uploaded Files List */}
+              {uploadedFiles.length > 0 && (
+                <div className="mt-6 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-medium text-gray-900">
+                      Uploaded Files ({uploadedFiles.length})
+                    </h3>
+                    <button
+                      onClick={clearAll}
+                      className="text-red-600 hover:text-red-800 text-sm font-medium"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+
+                  <div className="max-h-32 overflow-y-auto space-y-2">
+                    {uploadedFiles.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2"
+                      >
+                        <span className="text-sm text-gray-700 truncate flex-1">
+                          {file.name}
+                        </span>
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="ml-2 text-gray-400 hover:text-red-600"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom section with status and button */}
+            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-100">
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-gray-600">
+                  {uploadedFiles.length === 0
+                    ? "No files selected"
+                    : `${uploadedFiles.length} files selected`}
+                </span>
+                {testResults.length > 0 && (
+                  <button
+                    onClick={downloadResults}
+                    className="text-sm text-green-600 hover:text-green-700 font-medium flex items-center gap-1"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Results
+                  </button>
+                )}
+              </div>
+
               <button
                 onClick={runBatchTest}
                 disabled={uploadedFiles.length === 0 || isProcessing}
-                className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 shadow-sm"
               >
-                {isProcessing ? "Processing..." : "Run Batch Test"}
+                {isProcessing ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "Run Batch Test"
+                )}
               </button>
-
-              {testResults.length > 0 && (
-                <button
-                  onClick={downloadResults}
-                  className="px-6 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  Download Results
-                </button>
-              )}
             </div>
 
             {/* Progress Bar */}
             {isProcessing && (
-              <div className="mt-4">
-                <div className="flex justify-between text-sm text-gray-600 mb-1">
+              <div className="px-6 pb-4">
+                <div className="flex justify-between text-sm text-gray-600 mb-2">
                   <span>Processing images...</span>
                   <span>{Math.round(processingProgress)}%</span>
                 </div>
