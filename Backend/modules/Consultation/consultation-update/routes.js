@@ -10,6 +10,74 @@ const router = express.Router();
 
 /**
  * @swagger
+ * /api/Consultation/consultation-update/athlete/{athleteId}/latest:
+ *   get:
+ *     summary: Get Latest Consultation Session for an Athlete
+ *     description: |
+ *       Returns the most recent consultation session for a given athlete,
+ *       ordered by date_of_consult DESC. Includes joined nutritionist name,
+ *       athlete name, consult type, and consultation objective.
+ *       Returns 404 if the athlete has no sessions yet.
+ *     tags: [Consultation - Consultation Update]
+ *     parameters:
+ *       - name: athleteId
+ *         in: path
+ *         required: true
+ *         description: Athlete UUID
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Latest consultation session
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     nutritionist_id:
+ *                       type: string
+ *                       format: uuid
+ *                     nutritionist_name:
+ *                       type: string
+ *                     athlete_id:
+ *                       type: string
+ *                       format: uuid
+ *                     athlete_name_abbr:
+ *                       type: string
+ *                     type_of_consult_id:
+ *                       type: string
+ *                       format: uuid
+ *                     type_of_consult:
+ *                       type: string
+ *                     date_of_consult:
+ *                       type: string
+ *                       format: date
+ *                       nullable: true
+ *                     date_of_next_follow_up:
+ *                       type: string
+ *                       format: date
+ *                       nullable: true
+ *                     consultation_objective:
+ *                       type: string
+ *                       nullable: true
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get('/consultation-update/athlete/:athleteId/latest', controller.getLatestConsultationSession);
+
+/**
+ * @swagger
  * /api/Consultation/consultation-update/{id}:
  *   get:
  *     summary: Get Consultation Update Card
@@ -80,8 +148,9 @@ router.get('/consultation-update/:id', controller.getConsultationUpdate);
  *   post:
  *     summary: Create Consultation Session
  *     description: |
- *       Create a new consultation session. The logged-in nutritionist is automatically
- *       assigned as the consulted-by nutritionist.
+ *       Create a new consultation session.
+ *       The logged-in nutritionist is automatically assigned unless nutritionist_id is explicitly provided
+ *       (useful for Swagger testing when not authenticated as a nutritionist).
  *       Validates that athlete_id exists and type_of_consult_id is active.
  *       date_of_consult defaults to today if not provided.
  *     tags: [Consultation - Consultation Update]
@@ -101,6 +170,10 @@ router.get('/consultation-update/:id', controller.getConsultationUpdate);
  *                 type: string
  *                 format: uuid
  *                 description: Athlete UUID
+ *               nutritionist_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Nutritionist UUID (optional — defaults to the logged-in user's nutritionist)
  *               type_of_consult_id:
  *                 type: string
  *                 format: uuid
@@ -119,9 +192,10 @@ router.get('/consultation-update/:id', controller.getConsultationUpdate);
  *                 description: Consultation objective (optional, stored in session_note)
  *           example:
  *             athlete_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+ *             nutritionist_id: "c3d4e5f6-a7b8-9012-cdef-123456789012"
  *             type_of_consult_id: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
- *             date_of_consult: "2026-01-31"
- *             date_of_next_follow_up: "2026-02-15"
+ *             date_of_consult: "2026-02-20"
+ *             date_of_next_follow_up: "2026-03-06"
  *             consultation_objective: "To gain more muscles and strength. Ensure athlete is hydrated."
  *     responses:
  *       201:

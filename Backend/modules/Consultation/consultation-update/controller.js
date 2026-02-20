@@ -1,5 +1,5 @@
 import * as services from './services.js';
-import { createSessionSchema, updateSessionSchema, uuidParamSchema } from './validation.js';
+import { createSessionSchema, updateSessionSchema, uuidParamSchema, athleteIdParamSchema } from './validation.js';
 import pool from '../../../config/db.js';
 
 // ============================================================================
@@ -34,6 +34,46 @@ export async function getConsultationUpdate(req, res) {
 }
 
 // ============================================================================
+// GET LATEST CONSULTATION SESSION FOR AN ATHLETE
+// ============================================================================
+
+export async function getLatestConsultationSession(req, res) {
+    try {
+        const { athleteId } = athleteIdParamSchema.parse(req.params);
+
+        // Verify athlete exists
+        const athleteCheck = await pool.query(
+            'SELECT id FROM ams.athlete WHERE id = $1',
+            [athleteId]
+        );
+        if (athleteCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Athlete not found' });
+        }
+
+        const session = await services.getLatestConsultationSession(athleteId);
+
+        if (!session) {
+            return res.status(404).json({ error: 'No consultation sessions found for this athlete' });
+        }
+
+        res.json({ data: session });
+
+    } catch (error) {
+        if (error.name === 'ZodError') {
+            return res.status(400).json({
+                error: 'Invalid athlete ID format',
+                details: error.errors.map(e => ({
+                    field: e.path.join('.'),
+                    message: e.message,
+                })),
+            });
+        }
+        console.error('Error fetching latest consultation session:', error);
+        res.status(500).json({ error: 'Failed to fetch latest consultation session', message: error.message });
+    }
+}
+
+// ============================================================================
 // CREATE CONSULTATION SESSION
 // ============================================================================
 
@@ -41,13 +81,30 @@ export async function createConsultationSession(req, res) {
     try {
         const validated = createSessionSchema.parse(req.body);
 
-        // Look up nutritionist from logged-in user
-        const nutritionistId = await services.getNutritionistIdByUserId(req.user.userId);
+        // Use provided nutritionist_id, or fall back to the logged-in user's nutritionist
+        let nutritionistId = validated.nutritionist_id;
         if (!nutritionistId) {
-            return res.status(400).json({
-                error: 'Nutritionist not linked',
-                details: [{ field: 'user', message: 'Your account is not linked to a nutritionist profile' }],
-            });
+            nutritionistId = await services.getNutritionistIdByUserId(req.user.userId);
+            if (!nutritionistId) {
+                return res.status(400).json({
+                    error: 'Nutritionist not linked',
+                    details: [{ field: 'user', message: 'Your account is not linked to a nutritionist profile' }],
+                });
+            }
+        }
+
+        // Validate provided nutritionist_id exists in ams.nutritionist
+        if (validated.nutritionist_id) {
+            const nutritionistCheck = await pool.query(
+                'SELECT id FROM ams.nutritionist WHERE id = $1',
+                [nutritionistId]
+            );
+            if (nutritionistCheck.rows.length === 0) {
+                return res.status(400).json({
+                    error: 'Invalid nutritionist_id',
+                    details: [{ field: 'nutritionist_id', message: 'Nutritionist not found' }],
+                });
+            }
         }
 
         // Validate athlete_id exists

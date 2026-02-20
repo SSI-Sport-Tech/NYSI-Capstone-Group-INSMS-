@@ -23,8 +23,8 @@ export const createSessionSchema = z.object({
     date_of_next_follow_up: optionalDateSchema,
     consultation_objective: z.string().trim().optional(),
 
-    // --- Reject client-supplied nutritionist_id (auto-assigned from logged-in user) ---
-    nutritionist_id: z.never().optional(),
+    // --- Optional: override nutritionist (falls back to logged-in user if omitted) ---
+    nutritionist_id: uuidSchema.optional(),
 
     // --- Reject system-managed fields ---
     id: z.never().optional(),
@@ -45,6 +45,11 @@ export const updateSessionSchema = z.object({
     athlete_id: z.never().optional(),
     nutritionist_id: z.never().optional(),
 }).strict();
+
+// Athlete ID path param (for latest-session route)
+export const athleteIdParamSchema = z.object({
+    athleteId: uuidSchema,
+});
 
 // Re-export shared schemas
 export { uuidParamSchema };
