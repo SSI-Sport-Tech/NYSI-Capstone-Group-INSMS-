@@ -12,6 +12,7 @@ import {
   Shield,
   Users,
   UserCog,
+  TestTube,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -59,10 +60,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           <Link
             href="/"
-            className={`flex items-center space-x-3 px-4 py-2 rounded-lg ${pathname === "/"
-              ? "bg-gray-100 text-gray-900"
-              : "text-gray-600 hover:bg-gray-50"
-              }`}
+            className={`flex items-center space-x-3 px-4 py-2 rounded-lg ${
+              pathname === "/"
+                ? "bg-gray-100 text-gray-900"
+                : "text-gray-600 hover:bg-gray-50"
+            }`}
           >
             <span className="font-medium">Dashboard</span>
           </Link>
@@ -85,33 +87,47 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className="mt-2 space-y-1">
                 <Link
                   href="/inventory"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/inventory"
-                    ? "bg-gray-100 text-gray-900 font-medium"
-                    : "text-gray-600 hover:bg-gray-50"
-                    }`}
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
+                    pathname === "/inventory"
+                      ? "bg-gray-100 text-gray-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
                 >
                   <Archive className="w-4 h-4" />
                   <span>Inventory</span>
                 </Link>
                 <Link
                   href="/web-scraper"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/web-scraper"
-                    ? "bg-gray-100 text-gray-900 font-medium"
-                    : "text-gray-600 hover:bg-gray-50"
-                    }`}
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
+                    pathname === "/web-scraper"
+                      ? "bg-gray-100 text-gray-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
                 >
                   <Globe className="w-4 h-4" />
                   <span>Web Scraper</span>
                 </Link>
                 <Link
                   href="/library"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/library"
-                    ? "bg-gray-100 text-gray-900 font-medium"
-                    : "text-gray-600 hover:bg-gray-50"
-                    }`}
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
+                    pathname === "/library"
+                      ? "bg-gray-100 text-gray-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
                 >
                   <BookOpenText className="w-4 h-4" />
                   <span>Library</span>
+                </Link>
+                <Link
+                  href="/batch-testing"
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
+                    pathname === "/batch-testing"
+                      ? "bg-gray-100 text-gray-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <TestTube className="w-4 h-4" />
+                  <span>Batch Testing</span>
                 </Link>
               </div>
             )}
@@ -134,10 +150,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className="mt-2 space-y-1">
                 <Link
                   href="/athlete-management"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/athlete-management"
-                    ? "bg-gray-100 text-gray-900 font-medium"
-                    : "text-gray-600 hover:bg-gray-50"
-                    }`}
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
+                    pathname === "/athlete-management"
+                      ? "bg-gray-100 text-gray-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
                 >
                   <Users className="w-4 h-4" />
                   <span>Athletes</span>
@@ -166,20 +183,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <div className="mt-2 space-y-1">
                   <Link
                     href="/admin/users"
-                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/admin/users"
-                      ? "bg-indigo-100 text-indigo-900 font-medium"
-                      : "text-gray-600 hover:bg-gray-50"
-                      }`}
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
+                      pathname === "/admin/users"
+                        ? "bg-indigo-100 text-indigo-900 font-medium"
+                        : "text-gray-600 hover:bg-gray-50"
+                    }`}
                   >
                     <UserCog className="w-4 h-4" />
                     <span>User Management</span>
                   </Link>
                   <Link
                     href="/admin/sports-coaches"
-                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/admin/sports-coaches"
-                      ? "bg-indigo-100 text-indigo-900 font-medium"
-                      : "text-gray-600 hover:bg-gray-50"
-                      }`}
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
+                      pathname === "/admin/sports-coaches"
+                        ? "bg-indigo-100 text-indigo-900 font-medium"
+                        : "text-gray-600 hover:bg-gray-50"
+                    }`}
                   >
                     <UserCog className="w-4 h-4" />
                     <span>Sports & Coaches</span>
