@@ -66,15 +66,16 @@ export default function InventoryPage() {
     string[]
   >([]);
   const [ocrModalOpen, setOcrModalOpen] = useState(false);
+  const [searchPerformed, setSearchPerformed] = useState(false);
 
   // Load all batches on component mount
   useEffect(() => {
     loadBatches();
   }, []);
 
-  // Set selected supplement when results change
+  // Set selected supplement when results change and search was performed
   useEffect(() => {
-    if (results.length > 0 && !selectedSupplement) {
+    if (results.length > 0 && searchPerformed) {
       const firstBatch = results[0];
       setSelectedSupplement({
         id: firstBatch.supplement_id,
@@ -82,7 +83,7 @@ export default function InventoryPage() {
         supplement_brand: firstBatch.supplement_brand,
       });
     }
-  }, [results]);
+  }, [results, searchPerformed]);
 
   const loadBatches = async (searchQuery = "", page = 1) => {
     setLoading(true);
@@ -126,11 +127,16 @@ export default function InventoryPage() {
   };
 
   const handleSearch = async () => {
+    setSearchPerformed(true);
     await loadBatches(query, 1);
   };
 
   const handleClearSearch = async () => {
     setQuery("");
+    setSearchPerformed(false);
+    setSelectedSupplement(null);
+    setShowAlternativesOnly(false);
+    setAlternativeSupplementIds([]);
     await loadBatches("", 1);
   };
 
@@ -155,6 +161,7 @@ export default function InventoryPage() {
   };
 
   const handleOCRComplete = (data: any) => {
+    setSearchPerformed(true);
     if (data.supplement_name) {
       setQuery(data.supplement_name);
       loadBatches(data.supplement_name, 1);
@@ -208,7 +215,7 @@ export default function InventoryPage() {
           />
 
           {/* Alternatives Carousel */}
-          {selectedSupplement && (
+          {selectedSupplement && searchPerformed && (
             <AlternativesCarousel
               supplementId={selectedSupplement.id}
               supplementName={selectedSupplement.supplement_name}

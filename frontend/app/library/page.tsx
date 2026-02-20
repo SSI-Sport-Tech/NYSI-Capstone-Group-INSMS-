@@ -53,6 +53,7 @@ export default function LibraryPage() {
   const [showAlternativesOnly, setShowAlternativesOnly] = useState(false);
   const [alternativeIds, setAlternativeIds] = useState<string[]>([]);
   const [ocrModalOpen, setOcrModalOpen] = useState(false);
+  const [searchPerformed, setSearchPerformed] = useState(false);
 
   useEffect(() => {
     loadSupplements();
@@ -78,7 +79,7 @@ export default function LibraryPage() {
         setShowAlternativesOnly(false);
         setAlternativeIds([]);
 
-        if (response.data.data.length > 0) {
+        if (response.data.data.length > 0 && searchPerformed) {
           setSelectedSupplement(response.data.data[0]);
         }
       } else {
@@ -102,11 +103,16 @@ export default function LibraryPage() {
   };
 
   const handleSearch = () => {
+    setSearchPerformed(true);
     loadSupplements(searchQuery, 1);
   };
 
   const handleClearSearch = () => {
     setSearchQuery("");
+    setSearchPerformed(false);
+    setSelectedSupplement(null);
+    setShowAlternativesOnly(false);
+    setAlternativeIds([]);
     loadSupplements("", 1);
   };
 
@@ -130,6 +136,7 @@ export default function LibraryPage() {
   };
 
   const handleOCRComplete = (data: any) => {
+    setSearchPerformed(true);
     if (data.supplement_name) {
       setSearchQuery(data.supplement_name);
       loadSupplements(data.supplement_name, 1);
@@ -183,7 +190,7 @@ export default function LibraryPage() {
           />
 
           {/* Alternatives Carousel */}
-          {selectedSupplement && (
+          {selectedSupplement && searchPerformed && (
             <AlternativesCarousel
               supplementId={selectedSupplement.id}
               supplementName={selectedSupplement.supplement_name}
