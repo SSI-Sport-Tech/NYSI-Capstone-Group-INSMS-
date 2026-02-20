@@ -51,13 +51,6 @@ const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, children }) =>
                 {/* Optional children (like stats or action buttons) */}
                 {children}
 
-                {/* Notification Bell */}
-                <button className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                    <Bell className="w-5 h-5" />
-                    {/* Notification badge */}
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                </button>
-
                 {/* User Profile */}
                 <div className="flex items-center gap-3 pl-3 border-l border-gray-200">
                     {/* User Avatar */}
