@@ -38,6 +38,12 @@ const tabs = [
     icon: "library",
     href: "/library",
   },
+  {
+    id: "batch-testing",
+    label: "Batch OCR Testing",
+    icon: "batch",
+    href: "/batch-testing",
+  },
 ];
 
 export default function LibraryPage() {

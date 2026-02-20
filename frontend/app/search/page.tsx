@@ -58,6 +58,12 @@ export default function InventoryPage() {
       icon: "library",
       href: "/library",
     },
+    {
+      id: "batch-testing",
+      label: "Batch OCR Testing",
+      icon: "batch",
+      href: "/batch-testing",
+    },
   ];
 
   // Load all batches on component mount
