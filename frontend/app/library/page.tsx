@@ -6,6 +6,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import SupplementTable from "@/components/SSS/SupplementTable";
 import ViewTabs from "@/components/SSS/ViewTabs";
 import { Search } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 interface Supplement {
   id: string;
@@ -107,7 +108,7 @@ export default function LibraryPage() {
     <DashboardLayout>
       <div className="min-h-screen bg-gray-50 p-6">
         {/* Page Title */}
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Supplements</h1>
+        <PageHeader title="Supplements" />
 
         {/* Tabs */}
         <ViewTabs tabs={tabs} />

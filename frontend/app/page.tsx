@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageHeader from "@/components/PageHeader";
 import {
   Users,
   Calendar,
@@ -63,7 +64,7 @@ export default function Home() {
     <DashboardLayout>
       <div>
         {/* Page Title */}
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Dashboard</h1>
+        <PageHeader title="Dashboard" />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Section - Stats and Sessions */}
@@ -310,13 +311,12 @@ export default function Home() {
                 {days.map((day, index) => (
                   <div
                     key={index}
-                    className={`py-2 rounded-lg ${
-                      day === null
+                    className={`py-2 rounded-lg ${day === null
                         ? ""
                         : day === today
                           ? "bg-red-500 text-white font-bold"
                           : "text-gray-700 hover:bg-gray-100 cursor-pointer"
-                    }`}
+                      }`}
                   >
                     {day || ""}
                   </div>

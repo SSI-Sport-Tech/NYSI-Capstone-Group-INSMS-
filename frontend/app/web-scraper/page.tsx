@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import ViewTabs from "@/components/SSS/ViewTabs";
+import PageHeader from "@/components/PageHeader";
 import UrlSelectionModal from "@/components/SSS/UrlSelectionModal";
 import {
   Play,
@@ -198,7 +199,7 @@ export default function WebScraperPage() {
     <DashboardLayout>
       <div className="min-h-screen bg-gray-50 p-6">
         {/* Page Title */}
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Supplements</h1>
+        <PageHeader title="Supplements" />
 
         {/* Tabs */}
         <ViewTabs tabs={tabs} />

@@ -6,6 +6,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import ViewTabs from "@/components/SSS/ViewTabs";
 import SearchSection from "@/components/SSS/SearchSection";
 import BatchTable from "@/components/SSS/BatchTable";
+import PageHeader from "@/components/PageHeader";
 
 interface Batch {
   id: number;
@@ -124,14 +125,7 @@ export default function InventoryPage() {
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-[1600px] mx-auto px-6 py-8">
           {/* Page Header with User Profile */}
-          <div className="mb-5 flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-              Supplements
-            </h1>
-
-            {/* TODO: User Profile - Top Right */}
-          </div>
-
+          <PageHeader title="Supplements" />
           {/* Tabs */}
           <ViewTabs tabs={tabs} />
 
