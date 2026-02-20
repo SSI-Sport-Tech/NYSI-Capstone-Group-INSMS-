@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
 import DashboardLayout from "@/components/DashboardLayout";
 import SupplementComparisonGrid from "@/components/SSS/SupplementComparisonGrid";
-import { ArrowLeft, Filter, Download, RotateCcw } from "lucide-react";
+import { ArrowLeft, Filter, Download } from "lucide-react";
 
 interface Supplement {
   id: string;
@@ -56,10 +56,6 @@ export default function SupplementAlternativesPage() {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selectedSupplements, setSelectedSupplements] = useState<string[]>([]);
-  const [comparisonMode, setComparisonMode] = useState<"grid" | "detailed">(
-    "grid",
-  );
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -102,31 +98,12 @@ export default function SupplementAlternativesPage() {
         threshold: data.threshold || 0.6,
       });
       setCurrentPage(data.currentPage || 1);
-
-      // Auto-select the current supplement
-      setSelectedSupplements([data.currentSupplementId]);
     } catch (err) {
       setError("Failed to load supplement alternatives");
       console.error(err);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSupplementSelect = (supplementId: string, selected: boolean) => {
-    if (selected) {
-      setSelectedSupplements((prev) => [...prev, supplementId]);
-    } else {
-      setSelectedSupplements((prev) =>
-        prev.filter((id) => id !== supplementId),
-      );
-    }
-  };
-
-  const clearComparison = () => {
-    setSelectedSupplements(
-      alternativesData ? [alternativesData.currentSupplementId] : [],
-    );
   };
 
   const handlePageChange = (newPage: number) => {
@@ -211,45 +188,8 @@ export default function SupplementAlternativesPage() {
           </div>
 
           {/* Controls */}
-          <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
+          <div className="mb-8 flex items-center justify-end flex-wrap gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex bg-white border border-gray-300 rounded-lg">
-                <button
-                  onClick={() => setComparisonMode("grid")}
-                  className={`px-4 py-2 text-sm font-medium rounded-l-lg transition-colors ${
-                    comparisonMode === "grid"
-                      ? "bg-gray-900 text-white"
-                      : "bg-white text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  Grid View
-                </button>
-                <button
-                  onClick={() => setComparisonMode("detailed")}
-                  className={`px-4 py-2 text-sm font-medium rounded-r-lg transition-colors ${
-                    comparisonMode === "detailed"
-                      ? "bg-gray-900 text-white"
-                      : "bg-white text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  Detailed View
-                </button>
-              </div>
-
-              <button
-                onClick={clearComparison}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Clear Selection
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600">
-                {selectedSupplements.length} supplements selected
-              </span>
-
               <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
                 <Filter className="w-4 h-4" />
                 Filter
@@ -257,14 +197,25 @@ export default function SupplementAlternativesPage() {
 
               <button className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors">
                 <Download className="w-4 h-4" />
-                Export Comparison
+                Export Results
               </button>
             </div>
           </div>
 
-          {/* Pagination Controls */}
+          {/* Alternatives Grid */}
+          <SupplementComparisonGrid
+            original={currentSupplement}
+            alternatives={alternativesData.alternatives}
+            selectedSupplements={[]}
+            onSupplementSelect={() => {}}
+            comparisonMode="grid"
+            comparisonCriteria={[]}
+            alternativesData={alternativesData}
+          />
+
+          {/* Pagination Controls at Bottom */}
           {alternativesData.totalPages > 1 && (
-            <div className="mb-6 flex items-center justify-center gap-2">
+            <div className="mt-8 flex items-center justify-center gap-2">
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
@@ -301,17 +252,6 @@ export default function SupplementAlternativesPage() {
               </button>
             </div>
           )}
-
-          {/* Comparison Grid */}
-          <SupplementComparisonGrid
-            original={currentSupplement}
-            alternatives={alternativesData.alternatives}
-            selectedSupplements={selectedSupplements}
-            onSupplementSelect={handleSupplementSelect}
-            comparisonMode={comparisonMode}
-            comparisonCriteria={[]}
-            alternativesData={alternativesData}
-          />
         </div>
       </div>
     </DashboardLayout>

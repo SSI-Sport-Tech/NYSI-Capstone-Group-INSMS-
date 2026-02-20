@@ -243,10 +243,10 @@ const AlternativesCarousel: React.FC<AlternativesCarouselProps> = ({
                   )}
                 </div>
 
-                {/* Per Serving Similarity (if available) */}
+                {/* Similarity Score (if available) */}
                 {alternative.similarity_score_perserving && (
                   <div className="text-xs text-gray-600 pt-2 border-t border-gray-200">
-                    <span className="font-medium">Per Serving:</span>{" "}
+                    <span className="font-medium">Similarity:</span>{" "}
                     {alternative.similarity_score_perserving}
                   </div>
                 )}

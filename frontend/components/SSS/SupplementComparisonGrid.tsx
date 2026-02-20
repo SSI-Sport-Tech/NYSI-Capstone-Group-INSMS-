@@ -117,76 +117,73 @@ const SupplementComparisonGrid: React.FC<SupplementComparisonGridProps> = ({
         onClick={() => handleSupplementToggle(supplement)}
       >
         <div className="p-6">
-          {/* Header with selection indicator */}
+          {/* Header with title on left and similarity score on right */}
           <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              {isSelected && (
-                <div className="flex items-center justify-center w-6 h-6 bg-blue-500 rounded-full">
-                  <Check className="w-4 h-4 text-white" />
+            <div className="flex items-start gap-3 flex-1 mr-4">
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {isSelected && (
+                  <div className="flex items-center justify-center w-6 h-6 bg-blue-500 rounded-full">
+                    <Check className="w-4 h-4 text-white" />
+                  </div>
+                )}
+                {isOriginal && (
+                  <Star className="w-5 h-5 text-yellow-500 fill-current" />
+                )}
+              </div>
+              {/* Title and Brand in top left */}
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-semibold text-gray-900 mb-1 line-clamp-2">
+                  {supplement.supplement_name}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {supplement.supplement_brand}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 items-end flex-shrink-0">
+              {/* Similarity Score - Prominent in top right */}
+              {(supplement.similarity_score_perserving ||
+                supplement.similarity_score_100g) && (
+                <div className="text-right">
+                  <div className="text-xs font-medium text-blue-600 mb-1">
+                    Similarity Score
+                  </div>
+                  <div className="text-2xl font-bold text-blue-800">
+                    {supplement.similarity_score_perserving ||
+                      supplement.similarity_score_100g}
+                  </div>
                 </div>
               )}
-              {isOriginal && (
-                <Star className="w-5 h-5 text-yellow-500 fill-current" />
-              )}
-            </div>
-            <div className="flex flex-col gap-1 items-end">
-              <span
-                className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(supplement.supplement_status)}`}
-              >
-                {supplement.supplement_status}
-              </span>
-              {supplement.stock_status && (
+              {/* Status badges below similarity score */}
+              <div className="flex flex-col gap-1 items-end">
                 <span
-                  className={`px-2 py-1 text-xs font-medium rounded-full ${getStockStatusColor(supplement.stock_status)}`}
+                  className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(supplement.supplement_status)}`}
                 >
-                  {supplement.stock_status}
+                  {supplement.supplement_status}
                 </span>
-              )}
+                {supplement.stock_status && (
+                  <span
+                    className={`px-2 py-1 text-xs font-medium rounded-full ${getStockStatusColor(supplement.stock_status)}`}
+                  >
+                    {supplement.stock_status}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-
-          {/* Similarity Scores */}
-          {(supplement.similarity_score_100g ||
-            supplement.similarity_score_perserving) && (
-            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-              <div className="text-xs font-medium text-blue-800 mb-2">
-                Similarity Scores
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {supplement.similarity_score_100g && (
-                  <div>
-                    <span className="text-blue-600">Per 100g: </span>
-                    <span className="font-semibold text-blue-800">
-                      {supplement.similarity_score_100g}
-                    </span>
-                  </div>
-                )}
-                {supplement.similarity_score_perserving && (
-                  <div>
-                    <span className="text-blue-600">Per Serving: </span>
-                    <span className="font-semibold text-blue-800">
-                      {supplement.similarity_score_perserving}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Title */}
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            {supplement.supplement_name}
-          </h3>
-          <p className="text-sm text-gray-600 mb-4">
-            {supplement.supplement_brand}
-          </p>
 
           {/* Key Details */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm">
               <Package className="w-4 h-4 text-gray-400" />
               <span className="text-gray-600">Form:</span>
-              <span className="font-medium">
+              <span
+                className={`font-medium ${
+                  supplement.supplement_packaging_form
+                    ? "text-gray-900"
+                    : "text-gray-700"
+                }`}
+              >
                 {supplement.supplement_packaging_form || "N/A"}
               </span>
             </div>

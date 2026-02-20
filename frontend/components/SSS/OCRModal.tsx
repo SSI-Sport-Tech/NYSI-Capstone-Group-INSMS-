@@ -47,7 +47,7 @@ const OCRModal: React.FC<OCRModalProps> = ({
     }
   };
 
-  const handleAnalyzeOCR = async () => {
+  const handleSearch = async () => {
     if (!uploadedFile) {
       setError("Please upload an image first!");
       return;
@@ -86,46 +86,6 @@ const OCRModal: React.FC<OCRModalProps> = ({
     }
   };
 
-  const handleExtractData = async () => {
-    if (!uploadedFile) {
-      setError("Please upload an image first!");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-    setStep("processing");
-
-    try {
-      const formData = new FormData();
-      formData.append("file", uploadedFile);
-
-      const response = await axios.post("/api/ocr/extract", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        timeout: 120000,
-      });
-
-      if (response.data?.success && response.data?.extracted) {
-        setAnalysisResult(response.data.extracted);
-        setStep("result");
-        onAnalysisComplete?.(response.data.extracted);
-      } else {
-        setError("Failed to extract data from image");
-        setStep("upload");
-      }
-    } catch (err: any) {
-      setError(
-        err?.response?.data?.error ||
-          "Data extraction failed. Please try again.",
-      );
-      setStep("upload");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleReset = () => {
     setUploadedFile(null);
     setPreviewUrl("");
@@ -148,8 +108,8 @@ const OCRModal: React.FC<OCRModalProps> = ({
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-900">
             {step === "upload" && "Upload Supplement Label"}
-            {step === "processing" && "Analyzing Image..."}
-            {step === "result" && "Analysis Results"}
+            {step === "processing" && "Searching..."}
+            {step === "result" && "Search Results"}
           </h2>
           <button
             onClick={handleClose}
@@ -208,16 +168,10 @@ const OCRModal: React.FC<OCRModalProps> = ({
               {uploadedFile && (
                 <div className="space-y-2">
                   <button
-                    onClick={handleAnalyzeOCR}
+                    onClick={handleSearch}
                     className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    Analyze Nutrition Label
-                  </button>
-                  <button
-                    onClick={handleExtractData}
-                    className="w-full px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    Extract Brand & Batch ID
+                    Search
                   </button>
                   <button
                     onClick={handleReset}
@@ -235,7 +189,7 @@ const OCRModal: React.FC<OCRModalProps> = ({
             <div className="flex flex-col items-center justify-center py-12">
               <Loader className="w-12 h-12 text-blue-600 animate-spin mb-4" />
               <p className="text-gray-600 font-medium">
-                Analyzing your supplement label...
+                Searching supplement database...
               </p>
               <p className="text-gray-500 text-sm mt-2">
                 This may take a minute or two
@@ -322,7 +276,7 @@ const OCRModal: React.FC<OCRModalProps> = ({
                   onClick={handleReset}
                   className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Analyze Another Image
+                  Search Another Image
                 </button>
                 <button
                   onClick={handleClose}
