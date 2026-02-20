@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import DashboardLayout from "@/components/DashboardLayout";
-import ViewTabs from "@/components/SSS/ViewTabs";
-import SearchSection from "@/components/SSS/SearchSection";
-import BatchTable from "@/components/SSS/BatchTable";
+import ViewTabs from "@/components/ViewTabs";
+import SearchSection from "@/components/SearchSection";
+import BatchTable from "@/components/BatchTable";
 import { Globe } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 interface Batch {
   id: number;
@@ -57,6 +58,12 @@ export default function InventoryPage() {
       label: "Supplement Library",
       icon: "library",
       href: "/library",
+    },
+    {
+      id: "batch-testing",
+      label: "Batch OCR Testing",
+      icon: "batch",
+      href: "/batch-testing",
     },
   ];
 
@@ -121,7 +128,7 @@ export default function InventoryPage() {
     <DashboardLayout>
       <div className="min-h-screen bg-gray-50 p-6">
         {/* Page Title */}
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Supplements</h1>
+        <PageHeader title="Supplements" />
 
         {/* Tabs */}
         <ViewTabs tabs={tabs} />

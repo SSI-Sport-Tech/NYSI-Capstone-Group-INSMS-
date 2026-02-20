@@ -61,8 +61,7 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
     return await getBatchesByPage(pageNumber, pageSize);
   }
 
-    // Build WHERE conditions - each word must match in at least one field
-  // Note: These reference table aliases inside the CTE
+  // Build WHERE conditions - each word must match in at least one field
   const whereConditions = searchWords
     .map((_, index) => {
       const paramIndex = index + 1;
@@ -78,48 +77,27 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
   const searchParams = searchWords.map((word) => `%${word}%`);
 
   const query = `
-    WITH batch_data AS (
-      SELECT
-        ib.id,
-        ib.batch_number,
-        ib.batch_initial_quantity,
-        ib.batch_expiration_date,
-        ib.batch_price,
-        ib.supplement_id,
-        s.supplement_name,
-        s.supplement_brand,
-        COALESCE(SUM(it.quantity), 0) AS booked,
-        ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available,
-        bssl.batch_stock_status AS batch_status
-      FROM SSS.Inventory_Batch ib
-      INNER JOIN SSS.Supplement s ON ib.supplement_id = s.id
-      LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.inventory_batch_id
-      LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl ON ib.batch_stock_status_id = bssl.id
-      WHERE bssl.is_active = true
-      GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity,
-               ib.batch_expiration_date, ib.batch_price, ib.supplement_id,
-               s.supplement_name, s.supplement_brand, bssl.batch_stock_status
-    )
     SELECT
-      *,
-      CASE
-        WHEN ${searchWords
-      .map((_, i) => `batch_number ILIKE $${i + 1}`)
-      .join(" AND ")} THEN 1
-        WHEN ${searchWords
-      .map((_, i) => `supplement_name ILIKE $${i + 1}`)
-      .join(" AND ")} THEN 2
-        WHEN ${searchWords
-      .map((_, i) => `supplement_brand ILIKE $${i + 1}`)
-      .join(" AND ")} THEN 3
-        WHEN ${searchWords
-      .map((_, i) => `batch_status ILIKE $${i + 1}`)
-      .join(" AND ")} THEN 4
-        ELSE 5
-      END AS relevance_order
-    FROM batch_data
-    WHERE ${whereConditions}
-    ORDER BY relevance_order, id DESC
+      ib.id,
+      ib.batch_number,
+      ib.batch_initial_quantity,
+      ib.batch_expiration_date,
+      ib.batch_price,
+      ib.supplement_id,
+      s.supplement_name,
+      s.supplement_brand,
+      COALESCE(SUM(it.quantity), 0) AS booked,
+      ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available,
+      bssl.batch_stock_status AS batch_status
+    FROM SSS.Inventory_Batch ib
+    INNER JOIN SSS.Supplement s ON ib.supplement_id = s.id
+    LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.inventory_batch_id
+    LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl ON ib.batch_stock_status_id = bssl.id
+    WHERE bssl.is_active = true AND (${whereConditions})
+    GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity,
+             ib.batch_expiration_date, ib.batch_price, ib.supplement_id,
+             s.supplement_name, s.supplement_brand, bssl.batch_stock_status
+    ORDER BY ib.id DESC
     LIMIT $${searchWords.length + 1} OFFSET $${searchWords.length + 2}
   `;
 
@@ -197,7 +175,11 @@ export async function getBatchById(batchId) {
 /**
  * Check if batch number already exists for the same supplement
  */
-export async function checkDuplicateBatchNumber(supplementId, batchNumber, excludeId = null) {
+export async function checkDuplicateBatchNumber(
+  supplementId,
+  batchNumber,
+  excludeId = null,
+) {
   let query = `
         SELECT id
         FROM SSS.Inventory_Batch
@@ -266,7 +248,7 @@ export async function createBatch(batchData) {
     batchData.batch_initial_quantity,
     batchData.batch_price || null,
     batchData.batch_expiration_date || null,
-    batchData.batch_manufacture_date || null
+    batchData.batch_manufacture_date || null,
   ];
 
   const result = await pool.query(query, values);
@@ -287,7 +269,7 @@ export async function updateBatch(batchId, updateData) {
     batch_initial_quantity: updateData.batch_initial_quantity,
     batch_price: updateData.batch_price,
     batch_expiration_date: updateData.batch_expiration_date,
-    batch_manufacture_date: updateData.batch_manufacture_date
+    batch_manufacture_date: updateData.batch_manufacture_date,
   };
 
   for (const [field, value] of Object.entries(fieldMapping)) {
@@ -306,7 +288,7 @@ export async function updateBatch(batchId, updateData) {
 
   const query = `
         UPDATE SSS.Inventory_Batch
-        SET ${fields.join(', ')}
+        SET ${fields.join(", ")}
         WHERE id = $${paramCounter}
         RETURNING
             id,
