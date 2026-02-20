@@ -73,8 +73,6 @@ export async function register(req, res) {
         const newUser = await services.createUser({
             email: validatedData.email,
             password_hash: hashedPassword,
-            first_name: validatedData.first_name,
-            last_name: validatedData.last_name,
             role: validatedData.role || 'NUTRITIONIST',
         });
         console.log('User created with ID:', newUser.id);
@@ -85,7 +83,7 @@ export async function register(req, res) {
             console.log('Step 5: Creating AMS nutritionist profile...');
 
             try {
-                const nutritionistName = `${validatedData.first_name} ${validatedData.last_name}`;
+                const nutritionistName = validatedData.email.split('@')[0]; // Use email prefix as name
                 const amsProfile = await services.createNutritionistProfile({
                     name: nutritionistName,
                     user_id: newUser.id,
@@ -115,8 +113,6 @@ export async function register(req, res) {
             user: {
                 id: newUser.id,
                 email: newUser.email,
-                first_name: newUser.first_name,
-                last_name: newUser.last_name,
                 role: newUser.role,
             },
         });
@@ -217,8 +213,6 @@ export async function login(req, res) {
                 user: {
                     id: user.id,
                     email: user.email,
-                    first_name: user.first_name,
-                    last_name: user.last_name,
                     role: user.role,
                 },
             });
@@ -248,7 +242,7 @@ export async function login(req, res) {
 
         // STEP 8: Send email (async - don't wait)
         console.log('Step 8: Sending verification email...');
-        sendVerificationEmail(user.email, verificationCode, user.first_name)
+        sendVerificationEmail(user.email, verificationCode, user.email.split('@')[0])
             .then(() => console.log('✅ Email sent successfully'))
             .catch(err => console.error('❌ Email sending error:', err));
 
