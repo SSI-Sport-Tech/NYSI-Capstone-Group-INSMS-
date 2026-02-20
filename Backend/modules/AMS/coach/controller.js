@@ -1,5 +1,5 @@
 import * as services from './services.js';
-import { createCoachSchema, updateCoachSchema, uuidParamSchema, bulkDeleteSchema, createMappingSchema, deleteMappingSchema, updateMappingSchema } from './validation.js';
+import { createCoachSchema, bulkDeleteSchema, createMappingSchema, deleteMappingSchema } from './validation.js';
 
 // ============================================================================
 // LIST COACHES
@@ -63,73 +63,25 @@ export async function createCoach(req, res) {
 }
 
 // ============================================================================
-// UPDATE COACH
-// ============================================================================
-
-export async function updateCoach(req, res) {
-    try {
-        const { id } = uuidParamSchema.parse(req.params);
-        const validated = updateCoachSchema.parse(req.body);
-
-        // Check coach exists
-        const existing = await services.getCoachById(id);
-        if (!existing) {
-            return res.status(404).json({ error: 'Coach not found' });
-        }
-
-        // If sport_id is being changed, validate it exists and is active
-        if (validated.sport_id) {
-            const sportExists = await services.checkSportExists(validated.sport_id);
-            if (!sportExists) {
-                return res.status(400).json({
-                    error: 'Validation failed',
-                    details: [{ field: 'sport_id', message: 'Sport not found or inactive' }],
-                });
-            }
-        }
-
-        // Check duplicate name + sport combo (use new values or fall back to existing)
-        const checkName = validated.name || existing.name;
-        const checkSportId = validated.sport_id || existing.sport_id;
-        const isDuplicate = await services.checkDuplicateCoach(checkName, checkSportId, id);
-        if (isDuplicate) {
-            return res.status(409).json({
-                error: 'Duplicate coach',
-                details: [{ field: 'name', message: `Coach "${checkName}" already exists for this sport` }],
-            });
-        }
-
-        const updated = await services.updateCoach(id, validated);
-        if (!updated) {
-            return res.status(400).json({ error: 'No fields to update' });
-        }
-
-        res.json({
-            message: 'Coach updated successfully',
-            data: updated,
-        });
-    } catch (error) {
-        if (error.name === 'ZodError') {
-            return res.status(400).json({
-                error: 'Validation failed',
-                details: error.errors.map(e => ({
-                    field: e.path.join('.'),
-                    message: e.message,
-                })),
-            });
-        }
-        console.error('Error updating coach:', error);
-        res.status(500).json({ error: 'Failed to update coach', message: error.message });
-    }
-}
-
-// ============================================================================
 // DELETE COACHES (BULK)
 // ============================================================================
 
 export async function deleteCoaches(req, res) {
     try {
         const { ids } = bulkDeleteSchema.parse(req.body);
+
+        // Check if any coaches are referenced by athlete mappings
+        const referencedIds = await services.getReferencedCoachIds(ids);
+        if (referencedIds.length > 0) {
+            return res.status(409).json({
+                error: 'Cannot delete referenced coaches',
+                details: [{
+                    field: 'ids',
+                    message: 'The following coaches have athlete mappings and cannot be deleted',
+                    referencedIds,
+                }],
+            });
+        }
 
         const deleted = await services.deleteCoaches(ids);
 
@@ -276,54 +228,3 @@ export async function deleteMappings(req, res) {
     }
 }
 
-// ============================================================================
-// UPDATE COACH-ATHLETE MAPPING
-// ============================================================================
-
-export async function updateMapping(req, res) {
-    try {
-        const { athleteId, coachId } = req.params;
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-        if (!uuidRegex.test(athleteId)) {
-            return res.status(400).json({
-                error: 'Validation failed',
-                details: [{ field: 'athleteId', message: 'athleteId must be a valid UUID' }],
-            });
-        }
-
-        if (!uuidRegex.test(coachId)) {
-            return res.status(400).json({
-                error: 'Validation failed',
-                details: [{ field: 'coachId', message: 'coachId must be a valid UUID' }],
-            });
-        }
-
-        const validated = updateMappingSchema.parse(req.body);
-
-        // Check mapping exists
-        const exists = await services.checkMappingExists(athleteId, coachId);
-        if (!exists) {
-            return res.status(404).json({ error: 'Mapping not found' });
-        }
-
-        const updated = await services.updateMapping(athleteId, coachId, validated.is_active);
-
-        res.json({
-            message: 'Mapping updated successfully',
-            data: updated,
-        });
-    } catch (error) {
-        if (error.name === 'ZodError') {
-            return res.status(400).json({
-                error: 'Validation failed',
-                details: error.errors.map(e => ({
-                    field: e.path.join('.'),
-                    message: e.message,
-                })),
-            });
-        }
-        console.error('Error updating coach-athlete mapping:', error);
-        res.status(500).json({ error: 'Failed to update mapping', message: error.message });
-    }
-}

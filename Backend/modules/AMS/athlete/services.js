@@ -294,12 +294,12 @@ export async function createCompleteAthlete(athleteData, registryData, medicalDa
             coachMappings.push(mappingResult.rows[0]);
         }
 
-        // 5. Insert nutritionist mappings
+        // 5. Insert nutritionist mappings (pinned by default on creation)
         const nutritionistMappings = [];
         for (const nutritionistId of nutritionistIds) {
             const mappingResult = await client.query(`
-                INSERT INTO AMS.Nutritionist_Athlete_Mapping (athlete_id, nutritionist_id, is_active)
-                VALUES ($1, $2, true)
+                INSERT INTO AMS.Nutritionist_Athlete_Mapping (athlete_id, nutritionist_id, is_active, is_pinned)
+                VALUES ($1, $2, true, true)
                 RETURNING *
             `, [athlete.id, nutritionistId]);
             nutritionistMappings.push(mappingResult.rows[0]);
@@ -373,6 +373,88 @@ export async function deleteAthletes(athleteIds) {
 
     const result = await pool.query(query, [athleteIds]);
     return result.rows;
+}
+
+// ============================================================================
+// ATHLETE PROFILE (for detail page)
+// ============================================================================
+
+/**
+ * Get athlete profile card data: base info + registry + coach/nutritionist mappings
+ * @param {string} athleteId - UUID of athlete
+ * @returns {Promise<Object|null>} Profile object or null if athlete not found
+ */
+export async function getAthleteProfile(athleteId) {
+    const profileQuery = `
+        SELECT
+            a.id,
+            a.sport_id,
+            a.sportsync_id,
+            a.athlete_name_abbr,
+            a.gender,
+            a.date_of_birth,
+            sl.sport AS sport_name
+        FROM AMS.Athlete a
+        LEFT JOIN AMS.Sport_Lookup sl ON a.sport_id = sl.id
+        WHERE a.id = $1
+    `;
+
+    const registryQuery = `
+        SELECT id, athlete_id, carding_status, athlete_notified_on,
+               carding_start_date, carding_end_date, medical_clearance,
+               approved_start_date, approved_end_date
+        FROM AMS.Athlete_Registry
+        WHERE athlete_id = $1
+    `;
+
+    const coachQuery = `
+        SELECT cam.coach_id, cam.is_active, c.name AS coach_name
+        FROM AMS.Coach_Athlete_Mapping cam
+        JOIN AMS.Coach c ON cam.coach_id = c.id
+        WHERE cam.athlete_id = $1 AND cam.is_active = true
+        ORDER BY c.name ASC
+    `;
+
+    const nutritionistQuery = `
+        SELECT nam.nutritionist_id, nam.is_active, n.name AS nutritionist_name
+        FROM AMS.Nutritionist_Athlete_Mapping nam
+        JOIN AMS.Nutritionist n ON nam.nutritionist_id = n.id
+        WHERE nam.athlete_id = $1 AND nam.is_active = true
+        ORDER BY n.name ASC
+    `;
+
+    const [profileRes, registryRes, coachRes, nutritionistRes] = await Promise.all([
+        pool.query(profileQuery, [athleteId]),
+        pool.query(registryQuery, [athleteId]),
+        pool.query(coachQuery, [athleteId]),
+        pool.query(nutritionistQuery, [athleteId]),
+    ]);
+
+    if (profileRes.rows.length === 0) return null;
+
+    return {
+        athlete: profileRes.rows[0],
+        registry: registryRes.rows.length > 0 ? registryRes.rows[0] : null,
+        coaches: coachRes.rows,
+        nutritionists: nutritionistRes.rows,
+    };
+}
+
+// ============================================================================
+// USER-NUTRITIONIST LOOKUP
+// ============================================================================
+
+/**
+ * Get nutritionist ID by auth user ID (via user_id column on AMS.Nutritionist)
+ * @param {string} userId - UUID from auth.users
+ * @returns {Promise<string|null>} Nutritionist UUID or null
+ */
+export async function getNutritionistIdByUserId(userId) {
+    const result = await pool.query(
+        `SELECT id FROM AMS.Nutritionist WHERE user_id = $1`,
+        [userId]
+    );
+    return result.rows.length > 0 ? result.rows[0].id : null;
 }
 
 // ============================================================================
@@ -548,9 +630,187 @@ export async function updateMedical(athleteId, updateData) {
     return result.rows.length > 0 ? result.rows[0] : null;
 }
 
+// ============================================================================
+// UPDATE ATHLETE PROFILE (transaction)
+// ============================================================================
+
 /**
- * Get paginated list of athletes with sport name
- * @param {number} pageNumber - Page number (1-indexed)
- * @param {number} pageSize - Items per page
- * @returns {Promise<Object>} Query result with rows
+ * Update athlete profile in a single transaction.
+ * Updates athlete base fields, registry, medical, and optionally replaces coach/nutritionist mappings.
+ * Only provided fields are updated; undefined fields are left unchanged.
+ *
+ * For mappings: if coach_ids / nutritionist_ids is provided, all current active mappings
+ * are deactivated and new ones are inserted (or reactivated via ON CONFLICT).
+ *
+ * @param {string} athleteId - UUID of athlete
+ * @param {Object} data - Validated update data
+ * @param {Object} options - { updateNutritionists: boolean }
+ * @returns {Promise<Object>} Updated profile
  */
+export async function updateAthleteProfile(athleteId, data, options = {}) {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // 1. Update athlete base fields
+        const athleteFields = {
+            sport_id: data.sport_id,
+            sportsync_id: data.sportsync_id,
+            athlete_name_abbr: data.athlete_name_abbr,
+            gender: data.gender,
+            date_of_birth: data.date_of_birth,
+        };
+
+        const athleteSetClauses = [];
+        const athleteValues = [];
+        let paramCounter = 1;
+
+        for (const [field, value] of Object.entries(athleteFields)) {
+            if (value !== undefined) {
+                athleteSetClauses.push(`${field} = $${paramCounter}`);
+                athleteValues.push(value);
+                paramCounter++;
+            }
+        }
+
+        let athlete;
+        if (athleteSetClauses.length > 0) {
+            athleteValues.push(athleteId);
+            const athleteResult = await client.query(`
+                UPDATE AMS.Athlete
+                SET ${athleteSetClauses.join(', ')}
+                WHERE id = $${paramCounter}
+                RETURNING *
+            `, athleteValues);
+            athlete = athleteResult.rows[0];
+        }
+
+        // 2. Update registry fields
+        const registryFields = {
+            carding_status: data.carding_status,
+            athlete_notified_on: data.athlete_notified_on,
+            carding_start_date: data.carding_start_date,
+            carding_end_date: data.carding_end_date,
+            medical_clearance: data.medical_clearance,
+            approved_start_date: data.approved_start_date,
+            approved_end_date: data.approved_end_date,
+        };
+
+        const registrySetClauses = [];
+        const registryValues = [];
+        paramCounter = 1;
+
+        for (const [field, value] of Object.entries(registryFields)) {
+            if (value !== undefined) {
+                registrySetClauses.push(`${field} = $${paramCounter}`);
+                registryValues.push(value);
+                paramCounter++;
+            }
+        }
+
+        let registry;
+        if (registrySetClauses.length > 0) {
+            registryValues.push(athleteId);
+            const registryResult = await client.query(`
+                UPDATE AMS.Athlete_Registry
+                SET ${registrySetClauses.join(', ')}
+                WHERE athlete_id = $${paramCounter}
+                RETURNING *
+            `, registryValues);
+            registry = registryResult.rows[0];
+        }
+
+        // 3. Update medical fields
+        const medicalFields = {
+            medical_condition: data.medical_condition,
+            food_allergy: data.food_allergy,
+            drug_allergy: data.drug_allergy,
+            past_injury: data.past_injury,
+        };
+
+        const medicalSetClauses = [];
+        const medicalValues = [];
+        paramCounter = 1;
+
+        for (const [field, value] of Object.entries(medicalFields)) {
+            if (value !== undefined) {
+                medicalSetClauses.push(`${field} = $${paramCounter}`);
+                medicalValues.push(value);
+                paramCounter++;
+            }
+        }
+
+        let medical;
+        if (medicalSetClauses.length > 0) {
+            medicalValues.push(athleteId);
+            const medicalResult = await client.query(`
+                UPDATE AMS.Athlete_Medical
+                SET ${medicalSetClauses.join(', ')}
+                WHERE athlete_id = $${paramCounter}
+                RETURNING *
+            `, medicalValues);
+            medical = medicalResult.rows[0];
+        }
+
+        // 4. Replace coach mappings (if coach_ids provided)
+        let coachMappings;
+        if (data.coach_ids !== undefined) {
+            // Deactivate all current active coach mappings
+            await client.query(`
+                UPDATE AMS.Coach_Athlete_Mapping
+                SET is_active = false
+                WHERE athlete_id = $1 AND is_active = true
+            `, [athleteId]);
+
+            // Insert or reactivate new coach mappings
+            coachMappings = [];
+            for (const coachId of data.coach_ids) {
+                const result = await client.query(`
+                    INSERT INTO AMS.Coach_Athlete_Mapping (athlete_id, coach_id, is_active)
+                    VALUES ($1, $2, true)
+                    ON CONFLICT (athlete_id, coach_id) DO UPDATE SET is_active = true
+                    RETURNING *
+                `, [athleteId, coachId]);
+                coachMappings.push(result.rows[0]);
+            }
+        }
+
+        // 5. Replace nutritionist mappings (if nutritionist_ids provided and allowed)
+        let nutritionistMappings;
+        if (options.updateNutritionists && data.nutritionist_ids !== undefined) {
+            // Deactivate all current active nutritionist mappings
+            await client.query(`
+                UPDATE AMS.Nutritionist_Athlete_Mapping
+                SET is_active = false
+                WHERE athlete_id = $1 AND is_active = true
+            `, [athleteId]);
+
+            // Insert or reactivate new nutritionist mappings
+            nutritionistMappings = [];
+            for (const nutritionistId of data.nutritionist_ids) {
+                const result = await client.query(`
+                    INSERT INTO AMS.Nutritionist_Athlete_Mapping (athlete_id, nutritionist_id, is_active)
+                    VALUES ($1, $2, true)
+                    ON CONFLICT (athlete_id, nutritionist_id) DO UPDATE SET is_active = true
+                    RETURNING *
+                `, [athleteId, nutritionistId]);
+                nutritionistMappings.push(result.rows[0]);
+            }
+        }
+
+        await client.query('COMMIT');
+
+        return {
+            athlete: athlete || null,
+            registry: registry || null,
+            medical: medical || null,
+            coachMappings: coachMappings || null,
+            nutritionistMappings: nutritionistMappings || null,
+        };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+}

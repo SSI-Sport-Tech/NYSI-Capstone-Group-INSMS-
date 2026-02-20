@@ -136,7 +136,23 @@ export async function updateCoach(coachId, updateData) {
 }
 
 /**
- * Delete multiple coaches by ID (CASCADE handles mapping cleanup)
+ * Check if any of the given coach IDs are referenced by athlete mappings
+ * @param {Array<string>} coachIds - Array of UUIDs
+ * @returns {Promise<Array<string>>} Array of coach IDs that have active mappings
+ */
+export async function getReferencedCoachIds(coachIds) {
+    const query = `
+        SELECT DISTINCT coach_id AS id
+        FROM AMS.Coach_Athlete_Mapping
+        WHERE coach_id = ANY($1::uuid[])
+    `;
+
+    const result = await pool.query(query, [coachIds]);
+    return result.rows.map(r => r.id);
+}
+
+/**
+ * Delete multiple coaches by ID
  * @param {Array<string>} coachIds - Array of UUIDs
  * @returns {Promise<Array>} Array of deleted rows
  */

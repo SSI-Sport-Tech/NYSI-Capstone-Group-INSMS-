@@ -1,13 +1,11 @@
 import * as services from './services.js';
-import { 
-    createNutritionistSchema, 
-    updateNutritionistSchema, // ✅ Added
-    bulkDeleteSchema, 
-    createMappingSchema, 
-    deleteMappingSchema, 
-    updateMappingSchema,
-    togglePinSchema,          // ✅ Added
-    uuidParamSchema           // ✅ Added
+import {
+    createNutritionistSchema,
+    bulkDeleteSchema,
+    createMappingSchema,
+    deleteMappingSchema,
+    togglePinSchema,
+    uuidParamSchema
 } from './validation.js';
 
 // ============================================================================
@@ -58,40 +56,6 @@ export async function createNutritionist(req, res) {
     }
 }
 
-// ✅ NEW: Update Nutritionist (Rename)
-export async function updateNutritionist(req, res) {
-    try {
-        const { id } = uuidParamSchema.parse(req.params);
-        const validated = updateNutritionistSchema.parse(req.body);
-
-        if (!validated.name) return res.status(400).json({ error: 'No fields to update' });
-
-        // Check duplicate name if changing name
-        const isDuplicate = await services.checkDuplicateNutritionist(validated.name);
-        if (isDuplicate) {
-            return res.status(409).json({
-                error: 'Duplicate nutritionist',
-                details: [{ field: 'name', message: `Nutritionist "${validated.name}" already exists` }],
-            });
-        }
-
-        const updated = await services.updateNutritionist(id, validated.name);
-        
-        if (!updated) return res.status(404).json({ error: 'Nutritionist not found' });
-
-        res.json({ message: 'Nutritionist updated successfully', data: updated });
-    } catch (error) {
-        if (error.name === 'ZodError') {
-            return res.status(400).json({ 
-                error: 'Validation failed', 
-                details: error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
-            });
-        }
-        console.error('Error updating nutritionist:', error);
-        res.status(500).json({ error: 'Failed to update nutritionist' });
-    }
-}
-
 export async function deleteNutritionists(req, res) {
     try {
         const { ids } = bulkDeleteSchema.parse(req.body);
@@ -122,12 +86,21 @@ export async function deleteNutritionists(req, res) {
 // NUTRITIONIST PERSONAL ROUTES (Pinning & My List)
 // ============================================================================
 
-// ✅ NEW: Get "My Athletes"
 export async function getMyAthletes(req, res) {
     try {
-        // IMPORTANT: Ensure your authMiddleware populates req.user.nutritionist_id or req.user.id
-        const nutritionistId = req.user.nutritionist_id || req.user.id; 
-        
+        // Allow override via query param for testing, otherwise look up from JWT
+        let nutritionistId = req.query.nutritionist_id || null;
+
+        if (!nutritionistId) {
+            nutritionistId = await services.getNutritionistIdByUserId(req.user.userId);
+            if (!nutritionistId) {
+                return res.status(400).json({
+                    error: 'Nutritionist not linked',
+                    details: [{ field: 'user', message: 'Your account is not linked to a nutritionist profile' }],
+                });
+            }
+        }
+
         const athletes = await services.getAssignedAthletes(nutritionistId);
         res.json({ data: athletes });
     } catch (error) {
@@ -136,11 +109,22 @@ export async function getMyAthletes(req, res) {
     }
 }
 
-// ✅ NEW: Toggle Pin
 export async function togglePin(req, res) {
     try {
-        const nutritionistId = req.user.nutritionist_id || req.user.id;
-        const { athlete_id, is_pinned } = togglePinSchema.parse(req.body);
+        const { athlete_id, is_pinned, nutritionist_id: overrideId } = togglePinSchema.parse(req.body);
+
+        // Allow override via body param for testing, otherwise look up from JWT
+        let nutritionistId = overrideId || null;
+
+        if (!nutritionistId) {
+            nutritionistId = await services.getNutritionistIdByUserId(req.user.userId);
+            if (!nutritionistId) {
+                return res.status(400).json({
+                    error: 'Nutritionist not linked',
+                    details: [{ field: 'user', message: 'Your account is not linked to a nutritionist profile' }],
+                });
+            }
+        }
 
         const result = await services.toggleAthletePin(nutritionistId, athlete_id, is_pinned);
         
@@ -275,54 +259,6 @@ export async function createMapping(req, res) {
         }
         console.error('Error creating nutritionist-athlete mapping:', error);
         res.status(500).json({ error: 'Failed to create mapping', message: error.message });
-    }
-}
-
-export async function updateMapping(req, res) {
-    try {
-        const { athleteId, nutritionistId } = req.params;
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-        if (!uuidRegex.test(athleteId)) {
-            return res.status(400).json({
-                error: 'Validation failed',
-                details: [{ field: 'athleteId', message: 'athleteId must be a valid UUID' }],
-            });
-        }
-
-        if (!uuidRegex.test(nutritionistId)) {
-            return res.status(400).json({
-                error: 'Validation failed',
-                details: [{ field: 'nutritionistId', message: 'nutritionistId must be a valid UUID' }],
-            });
-        }
-
-        const validated = updateMappingSchema.parse(req.body);
-
-        // Check mapping exists
-        const exists = await services.checkMappingExists(athleteId, nutritionistId);
-        if (!exists) {
-            return res.status(404).json({ error: 'Mapping not found' });
-        }
-
-        const updated = await services.updateMapping(athleteId, nutritionistId, validated.is_active);
-
-        res.json({
-            message: 'Mapping updated successfully',
-            data: updated,
-        });
-    } catch (error) {
-        if (error.name === 'ZodError') {
-            return res.status(400).json({
-                error: 'Validation failed',
-                details: error.errors.map(e => ({
-                    field: e.path.join('.'),
-                    message: e.message,
-                })),
-            });
-        }
-        console.error('Error updating nutritionist-athlete mapping:', error);
-        res.status(500).json({ error: 'Failed to update mapping', message: error.message });
     }
 }
 

@@ -13,15 +13,56 @@ const router = express.Router();
  * /api/AMS/nutritionists/my-athletes:
  *   get:
  *     summary: Get My Assigned Athletes (Sorted by Pin)
- *     description: Returns a list of athletes assigned to the logged-in nutritionist. Athletes with 'is_pinned = true' appear at the top.
+ *     description: |
+ *       Returns a list of athletes assigned to the logged-in nutritionist.
+ *       Athletes with 'is_pinned = true' appear at the top, followed by alphabetical order.
+ *       Optionally pass nutritionist_id as a query param to override the JWT lookup (for testing).
  *     tags: [AMS - Nutritionists]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - name: nutritionist_id
+ *         in: query
+ *         required: false
+ *         description: Override nutritionist UUID (for testing)
+ *         schema:
+ *           type: string
+ *           format: uuid
  *     responses:
  *       200:
  *         description: List of assigned athletes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       athlete_name_abbr:
+ *                         type: string
+ *                       sportsync_id:
+ *                         type: string
+ *                       sport_name:
+ *                         type: string
+ *                       is_pinned:
+ *                         type: boolean
+ *                       is_active:
+ *                         type: boolean
+ *                       start_date:
+ *                         type: string
+ *                         format: date
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.get('/my-athletes', authenticateToken, controller.getMyAthletes);
 
@@ -30,7 +71,9 @@ router.get('/my-athletes', authenticateToken, controller.getMyAthletes);
  * /api/AMS/nutritionists/pin:
  *   patch:
  *     summary: Pin/Unpin an Athlete
- *     description: Toggles the pinned status of an athlete for the logged-in nutritionist.
+ *     description: |
+ *       Toggles the pinned status of an athlete for the logged-in nutritionist.
+ *       Optionally pass nutritionist_id in the request body to override the JWT lookup (for testing).
  *     tags: [AMS - Nutritionists]
  *     security:
  *       - bearerAuth: []
@@ -49,11 +92,31 @@ router.get('/my-athletes', authenticateToken, controller.getMyAthletes);
  *                 format: uuid
  *               is_pinned:
  *                 type: boolean
+ *               nutritionist_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Override nutritionist UUID (for testing)
  *     responses:
  *       200:
  *         description: Pin status updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     is_pinned:
+ *                       type: boolean
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
  *       404:
- *         description: Mapping not found
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.patch('/pin', authenticateToken, controller.togglePin);
 
@@ -95,7 +158,7 @@ router.get('/nutritionists', controller.listNutritionists);
  * @swagger
  * /api/AMS/nutritionists:
  *   post:
- *     summary: Create Nutritionist
+ *     summary: Create Nutritionist [DEV ONLY]
  *     description: Add a new nutritionist. Duplicate names (case-insensitive) are rejected with 409.
  *     tags: [AMS - Nutritionists]
  *     requestBody:
@@ -141,42 +204,9 @@ router.post('/nutritionists', controller.createNutritionist);
 
 /**
  * @swagger
- * /api/AMS/nutritionists/{id}:
- *   patch:
- *     summary: Update Nutritionist (Rename)
- *     description: Update an existing nutritionist's name.
- *     tags: [AMS - Nutritionists]
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *     responses:
- *       200:
- *         description: Nutritionist updated
- *       400:
- *         $ref: '#/components/responses/BadRequest'
- *       404:
- *         $ref: '#/components/responses/NotFound'
- */
-router.patch('/nutritionists/:id', controller.updateNutritionist);
-
-/**
- * @swagger
  * /api/AMS/nutritionists:
  *   delete:
- *     summary: Delete Nutritionists (Bulk)
+ *     summary: Delete Nutritionists (Bulk) [DEV ONLY]
  *     description: Delete one or more nutritionists by ID.
  *     tags: [AMS - Nutritionists]
  *     requestBody:
@@ -227,7 +257,7 @@ router.delete('/nutritionists', controller.deleteNutritionists);
  * @swagger
  * /api/AMS/nutritionists/mappings:
  *   get:
- *     summary: List Nutritionist-Athlete Mappings
+ *     summary: List Nutritionist-Athlete Mappings [DEV ONLY]
  *     description: Get all nutritionist-athlete mappings with nutritionist and athlete names.
  *     tags: [AMS - Nutritionists]
  *     parameters:
@@ -393,77 +423,9 @@ router.post('/nutritionists/mappings', controller.createMapping);
 
 /**
  * @swagger
- * /api/AMS/nutritionists/mappings/{athleteId}/{nutritionistId}:
- *   patch:
- *     summary: Update Mapping Status
- *     description: Update the is_active status of a nutritionist-athlete mapping.
- *     tags: [AMS - Nutritionists]
- *     parameters:
- *       - name: athleteId
- *         in: path
- *         required: true
- *         description: Athlete UUID
- *         schema:
- *           type: string
- *           format: uuid
- *       - name: nutritionistId
- *         in: path
- *         required: true
- *         description: Nutritionist UUID
- *         schema:
- *           type: string
- *           format: uuid
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - is_active
- *             properties:
- *               is_active:
- *                 type: boolean
- *                 description: New active status
- *     responses:
- *       200:
- *         description: Mapping updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Mapping updated successfully
- *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                       format: uuid
- *                     athlete_id:
- *                       type: string
- *                       format: uuid
- *                     nutritionist_id:
- *                       type: string
- *                       format: uuid
- *                     is_active:
- *                       type: boolean
- *       400:
- *         $ref: '#/components/responses/BadRequest'
- *       404:
- *         $ref: '#/components/responses/NotFound'
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
- */
-router.patch('/nutritionists/mappings/:athleteId/:nutritionistId', controller.updateMapping);
-
-/**
- * @swagger
  * /api/AMS/nutritionists/mappings:
  *   delete:
- *     summary: Delete Nutritionist-Athlete Mappings (Bulk)
+ *     summary: Delete Nutritionist-Athlete Mappings (Bulk) [DEV ONLY]
  *     description: Delete one or more nutritionist-athlete mappings by composite key pairs.
  *     tags: [AMS - Nutritionists]
  *     requestBody:
