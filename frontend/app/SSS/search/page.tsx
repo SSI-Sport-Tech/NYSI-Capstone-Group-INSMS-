@@ -45,25 +45,25 @@ export default function InventoryPage() {
       id: "inventory",
       label: "Current Inventory View",
       icon: "globe",
-      href: "/inventory",
+      href: "/SSS/inventory",
     },
     {
       id: "scraper",
       label: "Web Scraper View",
       icon: "search",
-      href: "/web-scraper",
+      href: "/SSS/web-scraper",
     },
     {
       id: "library",
       label: "Supplement Library",
       icon: "library",
-      href: "/library",
+      href: "/SSS/library",
     },
     {
       id: "batch-testing",
       label: "Batch OCR Testing",
       icon: "batch",
-      href: "/batch-testing",
+      href: "/SSS/batch-testing",
     },
   ];
 

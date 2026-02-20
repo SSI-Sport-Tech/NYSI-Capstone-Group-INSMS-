@@ -39,7 +39,7 @@ const ViewTabs: React.FC<ViewTabsProps> = ({ tabs }) => {
           const isActive =
             pathname === tab.href ||
             (tab.id === "inventory" &&
-              (pathname === "/search" || pathname === "/inventory")); // Handle both legacy search and new inventory routes
+              (pathname === "/SSS/inventory"));
 
           return (
             <Link

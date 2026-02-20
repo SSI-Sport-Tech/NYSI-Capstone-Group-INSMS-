@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowUpDown,
   Trash2,
@@ -6,6 +7,7 @@ import {
   Upload,
   Plus,
   MoreVertical,
+  Eye,
 } from "lucide-react";
 import axios from "axios";
 
@@ -39,10 +41,16 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
   totalPages = 1,
   onPageChange,
 }) => {
+  const router = useRouter();
   const [selectedAthletes, setSelectedAthletes] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  // Handle navigation to athlete detail page
+  const handleViewAthlete = (athleteId: string) => {
+    router.push(`/AMS/athlete-management/${athleteId}`);
+  };
 
   // Handle checkbox selection
   const handleSelectAll = (checked: boolean) => {
@@ -260,8 +268,13 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                     </td>
-                    <td className="px-3 py-4 text-sm font-medium text-gray-900">
-                      {athlete.athlete_name_abbr}
+                    <td className="px-3 py-4 text-sm font-medium">
+                      <button
+                        onClick={() => handleViewAthlete(athlete.id)}
+                        className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                      >
+                        {athlete.athlete_name_abbr}
+                      </button>
                     </td>
                     <td className="px-3 py-4 text-sm text-gray-900">
                       {athlete.sport_name}
@@ -280,9 +293,15 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                       {athlete.sportsync_id}
                     </td>
                     <td className="px-3 py-4 text-center">
-                      <button className="text-gray-400 hover:text-gray-600 p-1">
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
+                      <div className="relative inline-block text-left">
+                        <button
+                          onClick={() => handleViewAthlete(athlete.id)}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                        >
+                          <Eye className="w-3 h-3" />
+                          View
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
