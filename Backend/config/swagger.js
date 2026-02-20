@@ -80,16 +80,20 @@ const swaggerOptions = {
             },
             // ==================== Consultation ====================
             {
-                name: "Consultation - Sessions",
-                description: "Consultation session management - CRUD operations for consultation sessions",
+                name: "Consultation - Consultation Update",
+                description: "Consultation Update card — session-level fields (consult date, follow-up date, nutritionist, consult type)",
             },
             {
-                name: "Consultation - Consult Types",
-                description: "Consult type lookup management - create, list, toggle, and delete consult types",
+                name: "Consultation - Open Items",
+                description: "Open Items card — follow-up action items for a consultation session",
             },
             {
-                name: "Consultation - Notes",
-                description: "Consultation session notes - CRUD operations",
+                name: "Consultation - Lookups",
+                description: "Consultation lookup tables for dropdowns (consult types, nutrition diagnoses)",
+            },
+            {
+                name: "Consultation - Consultation Details",
+                description: "Consultation Details card — session-level notes, nutrition diagnosis reviews, and remarks",
             },
             // ==================== Other ====================
             {
@@ -1211,9 +1215,10 @@ const swaggerOptions = {
         "./modules/AMS/sport/routes.js",
         "./modules/AMS/coach/routes.js",
         "./modules/AMS/nutritionist/routes.js",
-        "./modules/Consultation/session/routes.js",
-        "./modules/Consultation/consulttype/routes.js",
-        "./modules/Consultation/note/routes.js",
+        "./modules/Consultation/consultation-update/routes.js",
+        "./modules/Consultation/open-items/routes.js",
+        "./modules/Consultation/consultation-lookups/routes.js",
+        "./modules/Consultation/consultation-details/routes.js",
         "./modules/OCR/routes.js",
         "./server.js",
         "./modules/Auth/routes.js",

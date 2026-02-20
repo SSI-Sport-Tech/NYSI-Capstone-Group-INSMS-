@@ -1,11 +1,15 @@
 import express from 'express';
-import sessionRoutes from './session/routes.js';
-import lookupRoutes from './consulttype/routes.js';
-import noteRoutes from './note/routes.js';
+import consultationUpdateRoutes from './consultation-update/routes.js';
+import openItemsRoutes from './open-items/routes.js';
+import consultationLookupsRoutes from './consultation-lookups/routes.js';
+import consultationDetailsRoutes from './consultation-details/routes.js';
 
 const router = express.Router();
-router.use(sessionRoutes);
-router.use(lookupRoutes);
-router.use(noteRoutes);
+
+// Card-based routes
+router.use(consultationUpdateRoutes);
+router.use(openItemsRoutes);
+router.use(consultationLookupsRoutes);
+router.use(consultationDetailsRoutes);
 
 export default router;
