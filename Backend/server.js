@@ -37,21 +37,22 @@ app.use(express.urlencoded({ extended: true }));
 
 // ==================== API DOCUMENTATION ====================
 
-// Update Swagger with security scheme for JWT
+// Update Swagger with security scheme for JWT (SAFE MERGE)
 const swaggerOptions = {
     ...swaggerSpecs,
     components: {
-        ...swaggerSpecs.components,
-        securitySchemes: {
-            bearerAuth: {
-                type: "http",
-                scheme: "bearer",
-                bearerFormat: "JWT",
-                description: "Enter your JWT token from /api/auth/verify-code",
-            },
+      ...(swaggerSpecs.components || {}),
+      securitySchemes: {
+        ...(swaggerSpecs.components?.securitySchemes || {}),
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+          description: "Enter your JWT token from /api/auth/verify-code",
         },
+      },
     },
-};
+  };
 
 // Swagger UI setup
 app.use(
@@ -87,6 +88,7 @@ app.use("/api/AMS", athleteRoutes);
 app.use("/api/ocr", ocrRoutes);
 app.use('/api/admin', adminRoutes);
 app.use("/api/Consultation", consultationRoutes);
+
 
 // ==================== HEALTH CHECK ENDPOINTS ====================
 

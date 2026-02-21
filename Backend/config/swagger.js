@@ -95,6 +95,11 @@ const swaggerOptions = {
                 name: "Consultation - Consultation Details",
                 description: "Consultation Details card — session-level notes, nutrition diagnosis reviews, and remarks",
             },
+
+            {
+                name: "Consultation - Training Schedule",
+                description: "Manage athlete daily training schedules, RPE, and performance details for a session",
+            },
             // ==================== Other ====================
             {
                 name: "OCR",
@@ -111,6 +116,121 @@ const swaggerOptions = {
         ],
         components: {
             schemas: {
+                // ==================== TRAINING SCHEDULE SCHEMAS ====================
+                TrainingScheduleDay: {
+                  type: "object",
+                  properties: {
+                    am: {
+                      type: "string",
+                      nullable: true,
+                      maxLength: 4000,
+                      description: "Morning training notes/routine",
+                    },
+                    pm: {
+                      type: "string",
+                      nullable: true,
+                      maxLength: 4000,
+                      description: "Afternoon/Evening training notes/routine",
+                    },
+                    trainingHours: {
+                      type: "number",
+                      format: "float",
+                      nullable: true,
+                      minimum: 0,
+                      maximum: 24,
+                      description: "Total hours trained",
+                    },
+                    rpe: {
+                      type: "number",
+                      format: "float",
+                      nullable: true,
+                      minimum: 0,
+                      maximum: 10,
+                      description: "Rating of Perceived Exertion (0-10)",
+                    },
+                  },
+                },
+        
+                TrainingDetails: {
+                  type: "object",
+                  properties: {
+                    upcomingMajorCompetitions: {
+                      type: "string",
+                      nullable: true,
+                      maxLength: 4000,
+                    },
+                    upcomingLocalCompetitions: {
+                      type: "string",
+                      nullable: true,
+                      maxLength: 4000,
+                    },
+                  },
+                },
+        
+                PerformanceDetails: {
+                  type: "object",
+                  properties: {
+                    currentPerformance: { type: "string", nullable: true, maxLength: 4000 },
+                    coachPerformanceGoals: { type: "string", nullable: true, maxLength: 4000 },
+                    athletePerformanceGoals: { type: "string", nullable: true, maxLength: 4000 },
+                    otherRemarks: { type: "string", nullable: true, maxLength: 4000 },
+                  },
+                },
+        
+                TrainingSchedulePayload: {
+                  type: "object",
+                  required: ["days"],
+                  properties: {
+                    days: {
+                      type: "object",
+                      required: [
+                        "monday",
+                        "tuesday",
+                        "wednesday",
+                        "thursday",
+                        "friday",
+                        "saturday",
+                        "sunday",
+                      ],
+                      properties: {
+                        monday: { $ref: "#/components/schemas/TrainingScheduleDay" },
+                        tuesday: { $ref: "#/components/schemas/TrainingScheduleDay" },
+                        wednesday: { $ref: "#/components/schemas/TrainingScheduleDay" },
+                        thursday: { $ref: "#/components/schemas/TrainingScheduleDay" },
+                        friday: { $ref: "#/components/schemas/TrainingScheduleDay" },
+                        saturday: { $ref: "#/components/schemas/TrainingScheduleDay" },
+                        sunday: { $ref: "#/components/schemas/TrainingScheduleDay" },
+                      },
+                    },
+                    trainingDetails: { $ref: "#/components/schemas/TrainingDetails" },
+                    performanceDetails: { $ref: "#/components/schemas/PerformanceDetails" },
+                    pal: {
+                      type: "number",
+                      format: "float",
+                      nullable: true,
+                      description: "Physical Activity Level (saves to nutrition review)",
+                    },
+                  },
+                },
+        
+                TrainingScheduleResponse: {
+                  allOf: [
+                    {
+                      type: "object",
+                      properties: {
+                        id: { type: "string", format: "uuid", nullable: true },
+                        sessionId: { type: "string", format: "uuid" },
+                        totalTrainingHours: {
+                          type: "number",
+                          format: "float",
+                          description: "Database generated sum of weekly training hours",
+                        },
+                      },
+                    },
+                    { $ref: "#/components/schemas/TrainingSchedulePayload" },
+                  ],
+                },
+        
                 // ==================== SUPPLEMENT SCHEMAS ====================
 
                 // Full Supplement Schema (for detailed view)
@@ -1222,6 +1342,7 @@ const swaggerOptions = {
         "./modules/OCR/routes.js",
         "./server.js",
         "./modules/Auth/routes.js",
+        "./modules/Consultation/trainingSchedule/routes.js",
         "./modules/Admin/adminRoutes.js"
     ],
 };
