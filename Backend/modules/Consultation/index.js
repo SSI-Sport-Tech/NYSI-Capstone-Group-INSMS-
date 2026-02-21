@@ -4,6 +4,7 @@ import openItemsRoutes from './open-items/routes.js';
 import consultationLookupsRoutes from './consultation-lookups/routes.js';
 import consultationDetailsRoutes from './consultation-details/routes.js';
 import medicalHistoryRoutes from './medical-history/routes.js';
+import prescriptionRoutes from './prescription/routes.js';
 
 const router = express.Router();
 
@@ -13,5 +14,6 @@ router.use(openItemsRoutes);
 router.use(consultationLookupsRoutes);
 router.use(consultationDetailsRoutes);
 router.use(medicalHistoryRoutes);
+router.use(prescriptionRoutes);
 
 export default router;

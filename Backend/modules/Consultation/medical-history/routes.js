@@ -113,10 +113,15 @@ router.get('/medical-history/athlete/:athleteId/general', controller.getAthleteG
  *                     gender:
  *                       type: string
  *                       nullable: true
+ *                     age:
+ *                       type: integer
+ *                       nullable: true
+ *                       description: Athlete's current age in years, calculated from date_of_birth
  *             example:
  *               data:
  *                 date_of_birth: "2000-06-15"
  *                 gender: "Female"
+ *                 age: 25
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       404:
@@ -410,14 +415,33 @@ router.get('/medical-history/:sessionId', controller.getMedicalHistory);
  *                     type: string
  *           example:
  *             sessions_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
- *             medical_condition: "Asthma"
- *             food_allergy: "Peanuts"
+ *             medical_condition: "Asthma, mild exercise-induced bronchospasm"
+ *             food_allergy: "Peanuts, tree nuts"
+ *             drug_allergy: "Penicillin"
+ *             past_injury: "Left ACL tear (2022), right ankle sprain (2023)"
+ *             medical_remarks: "Currently on Ventolin inhaler as needed"
+ *             puberty:
+ *               period_of_growth_spurt: "Age 13-15"
+ *               other_remarks: "Growth plates closed, confirmed by X-ray"
  *             bowel_movement:
  *               regular_bowel_movement: true
  *               frequency_of_bowel_movement: "Once daily"
+ *               stool_visual: "Type 4 (Bristol Stool Scale)"
+ *               other_remarks: "No issues reported"
  *             hydration:
  *               water_intake_per_day: 2.5
  *               urine_colour: "Pale yellow"
+ *               hydration_status: "Well hydrated"
+ *               other_remarks: "Increases intake on training days"
+ *             period:
+ *               date_of_first_period: "2016-03-10"
+ *               age_of_menarchy: 12
+ *               regularity_of_period: 28
+ *               length_of_typical_menstrual_cycle: 28
+ *               length_of_period: 5
+ *               heaviness_of_menstrual_bleeding: 3
+ *               any_signs_and_symptoms: "Mild cramping on day 1-2"
+ *               other_remarks: "No hormonal contraceptives"
  *     responses:
  *       201:
  *         description: Medical history saved successfully

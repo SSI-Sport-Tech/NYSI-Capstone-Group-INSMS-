@@ -152,7 +152,7 @@ export async function getMedicalHistory(sessionId) {
         LEFT JOIN consultation.session_puberty p         ON p.sessions_id  = s.sid
         LEFT JOIN consultation.session_bowel_movement bm ON bm.sessions_id = s.sid
         LEFT JOIN consultation.session_hydration h       ON h.sessions_id  = s.sid
-        LEFT JOIN consultation.nutrition_review nr       ON nr.sessions_id = s.sid
+        LEFT JOIN consultation.session_nutrition_review nr ON nr.sessions_id = s.sid
         LEFT JOIN consultation.session_period per        ON per.sessions_id = s.sid
     `;
 

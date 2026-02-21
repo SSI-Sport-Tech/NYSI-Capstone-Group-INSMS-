@@ -157,7 +157,9 @@ export async function getAthleteEligibility(req, res) {
         const { athleteId } = athleteIdParamSchema.parse(req.params);
 
         const result = await pool.query(
-            'SELECT date_of_birth, gender FROM ams.athlete WHERE id = $1',
+            `SELECT date_of_birth, gender,
+                    EXTRACT(YEAR FROM AGE(NOW(), date_of_birth))::INT AS age
+             FROM ams.athlete WHERE id = $1`,
             [athleteId]
         );
 
