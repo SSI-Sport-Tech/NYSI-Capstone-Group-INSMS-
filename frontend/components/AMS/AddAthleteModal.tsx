@@ -16,6 +16,11 @@ interface Coach {
   sport_name: string;
 }
 
+interface Nutritionist {
+  id: string;
+  name: string;
+}
+
 interface AddAthleteModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -50,6 +55,9 @@ interface AthleteFormData {
   // Target Event (custom field)
   target_event: string;
 
+  // Nutritionist assignment (admin only)
+  nutritionist_id: string;
+
   // Coach assignment
   coach_ids: string[];
 }
@@ -64,6 +72,11 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [sports, setSports] = useState<Sport[]>([]);
   const [coaches, setCoaches] = useState<Coach[]>([]);
+  const [nutritionists, setNutritionists] = useState<Nutritionist[]>([]);
+
+  // Check if current user is admin
+  const isAdmin = user?.role === "ADMIN" || user?.role === "IT_ADMIN";
+
   const [formData, setFormData] = useState<AthleteFormData>({
     sport_id: "",
     sportsync_id: "",
@@ -83,6 +96,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
     past_injury: "",
     medical_remarks: "",
     target_event: "",
+    nutritionist_id: "",
     coach_ids: [],
   });
 
@@ -91,8 +105,13 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
     if (isOpen) {
       loadSports();
       loadCoaches();
+
+      // Only load nutritionists for admin users
+      if (isAdmin) {
+        loadNutritionists();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, isAdmin]);
 
   const loadSports = async () => {
     try {
@@ -121,6 +140,21 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
       setCoaches(response.data.data);
     } catch (error) {
       console.error("Error loading coaches:", error);
+    }
+  };
+
+  const loadNutritionists = async () => {
+    try {
+      const token = localStorage.getItem("nysi_auth_token");
+      const response = await axios.get<{ data: Nutritionist[] }>(
+        "http://localhost:8000/api/AMS/nutritionists/nutritionists",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      setNutritionists(response.data.data);
+    } catch (error) {
+      console.error("Error loading nutritionists:", error);
     }
   };
 
@@ -187,11 +221,14 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
         // Coach assignments
         coach_ids: formData.coach_ids,
 
-        // Note: nutritionist_id is auto-assigned on backend based on logged-in user
+        // Nutritionist assignment (for admin users only)
+        ...(isAdmin &&
+          formData.nutritionist_id && {
+            nutritionist_id: formData.nutritionist_id,
+          }),
       };
 
       // Choose the correct endpoint based on user role
-      const isAdmin = user?.role === "ADMIN" || user?.role === "IT_ADMIN";
       const endpoint = isAdmin
         ? "http://localhost:8000/api/AMS/athletes/complete/admin"
         : "http://localhost:8000/api/AMS/athletes/complete";
@@ -245,6 +282,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
       past_injury: "",
       medical_remarks: "",
       target_event: "",
+      nutritionist_id: "",
       coach_ids: [],
     });
   };
@@ -366,6 +404,38 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                     ))}
                   </select>
                 </div>
+
+                {/* Nutritionist Assignment - Only show for admins */}
+                {isAdmin && (
+                  <div>
+                    <label className="block text-sm font-medium text-black mb-2">
+                      Assign Nutritionist
+                    </label>
+                    <select
+                      name="nutritionist_id"
+                      value={formData.nutritionist_id}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 text-gray-400 valid:text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Select Nutritionist (Optional)</option>
+                      {nutritionists.map((nutritionist) => (
+                        <option key={nutritionist.id} value={nutritionist.id}>
+                          {nutritionist.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Auto-assignment info for nutritionists */}
+                {!isAdmin && (
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      💡 This athlete will be automatically assigned to you as
+                      their nutritionist.
+                    </p>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-black mb-2">

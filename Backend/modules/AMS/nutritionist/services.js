@@ -278,6 +278,30 @@ export async function createMapping(athleteId, nutritionistId, isActive) {
     `;
 
   const result = await pool.query(query, [athleteId, nutritionistId, isActive]);
+  
+  // Auto-pin the athlete for the nutritionist when assignment is created
+  if (result.rows.length > 0 && isActive) {
+    try {
+      // Get the user_id for this nutritionist
+      const nutritionistUserQuery = `
+        SELECT user_id FROM AMS.Nutritionist WHERE id = $1
+      `;
+      const userResult = await pool.query(nutritionistUserQuery, [nutritionistId]);
+      
+      if (userResult.rows.length > 0 && userResult.rows[0].user_id) {
+        const userId = userResult.rows[0].user_id;
+        
+        // Auto-pin the athlete for this user
+        await toggleAthletePin(userId, athleteId, true);
+        
+        console.log(`Auto-pinned athlete ${athleteId} for nutritionist ${nutritionistId} (user ${userId})`);
+      }
+    } catch (error) {
+      // Log error but don't fail the assignment creation
+      console.error('Error auto-pinning athlete during assignment creation:', error);
+    }
+  }
+  
   return result.rows[0];
 }
 
@@ -297,6 +321,30 @@ export async function updateMapping(athleteId, nutritionistId, isActive) {
     `;
 
   const result = await pool.query(query, [athleteId, nutritionistId, isActive]);
+  
+  // Auto-pin the athlete when assignment is reactivated
+  if (result.rows.length > 0 && isActive) {
+    try {
+      // Get the user_id for this nutritionist
+      const nutritionistUserQuery = `
+        SELECT user_id FROM AMS.Nutritionist WHERE id = $1
+      `;
+      const userResult = await pool.query(nutritionistUserQuery, [nutritionistId]);
+      
+      if (userResult.rows.length > 0 && userResult.rows[0].user_id) {
+        const userId = userResult.rows[0].user_id;
+        
+        // Auto-pin the athlete for this user
+        await toggleAthletePin(userId, athleteId, true);
+        
+        console.log(`Auto-pinned athlete ${athleteId} for nutritionist ${nutritionistId} (user ${userId}) on reactivation`);
+      }
+    } catch (error) {
+      // Log error but don't fail the assignment update
+      console.error('Error auto-pinning athlete during assignment reactivation:', error);
+    }
+  }
+  
   return result.rows.length > 0 ? result.rows[0] : null;
 }
 
