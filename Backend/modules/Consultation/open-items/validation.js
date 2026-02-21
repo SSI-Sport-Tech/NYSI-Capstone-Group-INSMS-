@@ -27,11 +27,14 @@ export const createOpenItemSchema = z.object({
     open_item_status_id: uuidSchema.describe('Open item status UUID'),
     description: z.string().trim().optional(),
     open_item: z.string().trim().optional(),
-    owner: z.string().trim().optional(),
     due_date: optionalDateSchema,
     other_remarks: z.string().trim().optional(),
 
-    // --- Reject system-managed fields ---
+    // --- Optional: override nutritionist for testing (falls back to logged-in user) ---
+    nutritionist_id: uuidSchema.optional(),
+
+    // --- Reject auto-assigned / system-managed fields ---
+    owner: z.never().optional(),
     id: z.never().optional(),
 }).strict();
 

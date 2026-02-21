@@ -95,6 +95,14 @@ const swaggerOptions = {
                 name: "Consultation - Consultation Details",
                 description: "Consultation Details card — session-level notes, nutrition diagnosis reviews, and remarks",
             },
+            {
+                name: "Consultation - Medical History",
+                description: "Medical History card — athlete medical conditions, allergies, puberty, bowel movement, hydration, and period data",
+            },
+            {
+                name: "Consultation - Prescription",
+                description: "Prescription card — manage supplement prescriptions per session, with automatic inventory ticket creation and batch stock status updates",
+            },
             // ==================== Other ====================
             {
                 name: "OCR",
@@ -1219,6 +1227,8 @@ const swaggerOptions = {
         "./modules/Consultation/open-items/routes.js",
         "./modules/Consultation/consultation-lookups/routes.js",
         "./modules/Consultation/consultation-details/routes.js",
+        "./modules/Consultation/medical-history/routes.js",
+        "./modules/Consultation/prescription/routes.js",
         "./modules/OCR/routes.js",
         "./server.js",
         "./modules/Auth/routes.js",

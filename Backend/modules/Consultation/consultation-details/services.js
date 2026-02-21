@@ -17,7 +17,6 @@ const DETAIL_FIELDS = [
     'other_review',
     'follow_up_note',
     'intervention_note',
-    'medical_remarks',
     'other_remarks',
 ];
 
@@ -56,7 +55,6 @@ export async function getConsultationDetails(sessionId) {
             sn.other_review,
             sn.follow_up_note,
             sn.intervention_note,
-            sn.medical_remarks,
             sn.other_remarks
         FROM consultation.session_note sn
         LEFT JOIN consultation.nutrition_diagnosis_lookup carb ON sn.carbohydrates_review_id = carb.id
@@ -94,7 +92,6 @@ export async function getConsultationDetails(sessionId) {
             other_review: null,
             follow_up_note: null,
             intervention_note: null,
-            medical_remarks: null,
             other_remarks: null,
         };
     }

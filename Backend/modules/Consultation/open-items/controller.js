@@ -72,10 +72,7 @@ export async function createOpenItem(req, res) {
             [validated.sessions_id]
         );
         if (sessionCheck.rows.length === 0) {
-            return res.status(400).json({
-                error: 'Invalid sessions_id',
-                details: [{ field: 'sessions_id', message: 'Session not found' }],
-            });
+            return res.status(404).json({ error: 'Session not found' });
         }
 
         // Validate open_item_status_id exists and is active
@@ -90,7 +87,37 @@ export async function createOpenItem(req, res) {
             });
         }
 
-        const item = await services.createOpenItem(validated);
+        // Resolve nutritionist name to auto-assign as owner
+        let owner = null;
+        if (validated.nutritionist_id) {
+            // Explicit nutritionist_id provided (for testing)
+            const nutritionistResult = await pool.query(
+                'SELECT name FROM ams.nutritionist WHERE id = $1',
+                [validated.nutritionist_id]
+            );
+            if (nutritionistResult.rows.length === 0) {
+                return res.status(400).json({
+                    error: 'Invalid nutritionist_id',
+                    details: [{ field: 'nutritionist_id', message: 'Nutritionist not found' }],
+                });
+            }
+            owner = nutritionistResult.rows[0].name;
+        } else {
+            // Fall back to the logged-in user's nutritionist profile
+            const nutritionistResult = await pool.query(
+                'SELECT name FROM ams.nutritionist WHERE user_id = $1',
+                [req.user.userId]
+            );
+            if (nutritionistResult.rows.length === 0) {
+                return res.status(400).json({
+                    error: 'Nutritionist not linked',
+                    details: [{ field: 'user', message: 'Your account is not linked to a nutritionist profile' }],
+                });
+            }
+            owner = nutritionistResult.rows[0].name;
+        }
+
+        const item = await services.createOpenItem({ ...validated, owner });
 
         res.status(201).json({
             message: 'Open item created successfully',

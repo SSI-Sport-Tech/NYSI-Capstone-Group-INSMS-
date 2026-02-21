@@ -56,6 +56,7 @@ export const createCompleteAthleteSchema = z.object({
     food_allergy: z.string().trim().optional().default(''),
     drug_allergy: z.string().trim().optional().default(''),
     past_injury: z.string().trim().optional().default(''),
+    medical_remarks: z.string().trim().optional().default(''),
 
     // --- Assignment arrays ---
     coach_ids: z.array(uuidSchema).optional().default([]),
@@ -94,6 +95,7 @@ export const adminCreateCompleteAthleteSchema = z.object({
     food_allergy: z.string().trim().optional().default(''),
     drug_allergy: z.string().trim().optional().default(''),
     past_injury: z.string().trim().optional().default(''),
+    medical_remarks: z.string().trim().optional().default(''),
 
     // --- Assignment ---
     coach_ids: z.array(uuidSchema).optional().default([]),
@@ -131,6 +133,7 @@ export const updateMedicalSchema = z.object({
     food_allergy: z.string().trim().min(1, 'Food allergy cannot be empty').optional(),
     drug_allergy: z.string().trim().min(1, 'Drug allergy cannot be empty').optional(),
     past_injury: z.string().trim().min(1, 'Past injury cannot be empty').optional(),
+    medical_remarks: z.string().trim().optional(),
 }).strict();
 
 // ============================================================================
@@ -159,6 +162,7 @@ export const updateProfileSchema = z.object({
     food_allergy: z.string().trim().optional(),
     drug_allergy: z.string().trim().optional(),
     past_injury: z.string().trim().optional(),
+    medical_remarks: z.string().trim().optional(),
 
     // --- Coach mapping replacement (optional) ---
     coach_ids: z.array(uuidSchema).optional(),
@@ -197,6 +201,7 @@ export const adminUpdateProfileSchema = z.object({
     food_allergy: z.string().trim().optional(),
     drug_allergy: z.string().trim().optional(),
     past_injury: z.string().trim().optional(),
+    medical_remarks: z.string().trim().optional(),
 
     // --- Coach and nutritionist mapping replacement (optional) ---
     coach_ids: z.array(uuidSchema).optional(),

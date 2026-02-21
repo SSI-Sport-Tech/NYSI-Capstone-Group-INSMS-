@@ -20,8 +20,12 @@ export async function getConsultationUpdate(sessionId) {
             a.athlete_name_abbr,
             s.type_of_consult_id,
             tl.type_of_consult,
+            s.title_description,
+            s.venue,
             s.date_of_consult,
+            s.time_of_consult,
             s.date_of_next_follow_up,
+            s.time_of_next_follow_up,
             sn.consultation_objective
         FROM consultation.sessions s
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
@@ -49,15 +53,21 @@ export async function createConsultationSession(data) {
         const sessionResult = await client.query(`
             INSERT INTO consultation.sessions (
                 nutritionist_id, athlete_id, type_of_consult_id,
-                date_of_consult, date_of_next_follow_up
-            ) VALUES ($1, $2, $3, $4, $5)
+                title_description, venue,
+                date_of_consult, time_of_consult,
+                date_of_next_follow_up, time_of_next_follow_up
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *
         `, [
             data.nutritionist_id,
             data.athlete_id,
             data.type_of_consult_id,
+            data.title_description || null,
+            data.venue || null,
             data.date_of_consult || null,
+            data.time_of_consult || null,
             data.date_of_next_follow_up || null,
+            data.time_of_next_follow_up || null,
         ]);
         const session = sessionResult.rows[0];
 
@@ -73,7 +83,7 @@ export async function createConsultationSession(data) {
         }
 
         await client.query('COMMIT');
-        return { ...session, consultation_objective: note ? note.consultation_objective : null };
+        return getConsultationUpdate(session.id);
     } catch (error) {
         await client.query('ROLLBACK');
         throw error;
@@ -100,8 +110,12 @@ export async function updateConsultationSession(sessionId, updateData) {
 
         const fieldMapping = {
             type_of_consult_id: updateData.type_of_consult_id,
+            title_description: updateData.title_description,
+            venue: updateData.venue,
             date_of_consult: updateData.date_of_consult,
+            time_of_consult: updateData.time_of_consult,
             date_of_next_follow_up: updateData.date_of_next_follow_up,
+            time_of_next_follow_up: updateData.time_of_next_follow_up,
         };
 
         for (const [field, value] of Object.entries(fieldMapping)) {
@@ -165,6 +179,42 @@ export async function updateConsultationSession(sessionId, updateData) {
     } finally {
         client.release();
     }
+}
+
+/**
+ * Get the latest consultation session for an athlete, ordered by date_of_consult DESC
+ * @param {string} athleteId - Athlete UUID
+ * @returns {Promise<Object|null>} Latest session card data or null if athlete has no sessions
+ */
+export async function getLatestConsultationSession(athleteId) {
+    const query = `
+        SELECT
+            s.id,
+            s.nutritionist_id,
+            n.name AS nutritionist_name,
+            s.athlete_id,
+            a.athlete_name_abbr,
+            s.type_of_consult_id,
+            tl.type_of_consult,
+            s.title_description,
+            s.venue,
+            s.date_of_consult,
+            s.time_of_consult,
+            s.date_of_next_follow_up,
+            s.time_of_next_follow_up,
+            sn.consultation_objective
+        FROM consultation.sessions s
+        LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
+        LEFT JOIN ams.athlete a ON s.athlete_id = a.id
+        LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
+        LEFT JOIN consultation.session_note sn ON sn.sessions_id = s.id
+        WHERE s.athlete_id = $1
+        ORDER BY s.date_of_consult DESC NULLS LAST
+        LIMIT 1
+    `;
+
+    const result = await pool.query(query, [athleteId]);
+    return result.rows.length > 0 ? result.rows[0] : null;
 }
 
 /**

@@ -105,12 +105,32 @@ const router = express.Router();
  *                     intervention_note:
  *                       type: string
  *                       nullable: true
- *                     medical_remarks:
- *                       type: string
- *                       nullable: true
  *                     other_remarks:
  *                       type: string
  *                       nullable: true
+ *             example:
+ *               data:
+ *                 id: "b3f1e2d4-a5c6-7890-bcde-f01234567890"
+ *                 sessions_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+ *                 main_nutrition_diagnosis: "Excessive carbohydrate intake related to frequent consumption of sugary snacks and large portions of white rice as evidenced by a 24-hour diet recall showing 400g of carbs and a fasting blood glucose of 7.2 mmol/L."
+ *                 carbohydrates_review_id: "019c4c05-c20e-76bf-84b9-38a6491d6f99"
+ *                 carbohydrates_review_diagnosis: "Adequate"
+ *                 protein_review_id: "019c4c05-c213-7e21-99d8-e92502c15119"
+ *                 protein_review_diagnosis: "Adequate"
+ *                 fat_review_id: "019c4c05-c215-76a5-8731-e7f9dd22804d"
+ *                 fat_review_diagnosis: "Adequate"
+ *                 fibre_review_id: "019c4c05-c215-735a-bc36-5f04b4ade82b"
+ *                 fibre_review_diagnosis: "Adequate"
+ *                 iron_review_id: "019c4c05-c216-7e84-ae47-5f4acf0de8ab"
+ *                 iron_review_diagnosis: "Adequate"
+ *                 calcium_review_id: "019c4c05-c216-72ce-98de-6ad756a4f29c"
+ *                 calcium_review_diagnosis: "Adequate"
+ *                 micronutrients_review_id: "019c4c05-c216-7143-8f34-75efa82f1e04"
+ *                 micronutrients_review_diagnosis: "Adequate"
+ *                 other_review: "Supplement Intake"
+ *                 follow_up_note: "Adding a digestive enzyme prior to largest meal of the day to assist with protein absorption."
+ *                 intervention_note: "The initial dosage of Magnesium caused minor GI distress. Patient transitioned to a glycinate form with much better tolerance."
+ *                 other_remarks: null
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       404:
@@ -141,19 +161,6 @@ router.get('/consultation-details/:sessionId', controller.getConsultationDetails
  *             type: object
  *             required:
  *               - sessions_id
- *               - main_nutrition_diagnosis
- *               - carbohydrates_review_id
- *               - protein_review_id
- *               - fat_review_id
- *               - fibre_review_id
- *               - iron_review_id
- *               - calcium_review_id
- *               - micronutrients_review_id
- *               - other_review
- *               - follow_up_note
- *               - intervention_note
- *               - medical_remarks
- *               - other_remarks
  *             properties:
  *               sessions_id:
  *                 type: string
@@ -197,8 +204,6 @@ router.get('/consultation-details/:sessionId', controller.getConsultationDetails
  *                 type: string
  *               intervention_note:
  *                 type: string
- *               medical_remarks:
- *                 type: string
  *               other_remarks:
  *                 type: string
  *           example:
@@ -214,7 +219,6 @@ router.get('/consultation-details/:sessionId', controller.getConsultationDetails
  *             other_review: "No other concerns"
  *             follow_up_note: "Review in 2 weeks"
  *             intervention_note: "Increase carb intake by 50g/day"
- *             medical_remarks: "No medical issues"
  *             other_remarks: "Athlete is motivated"
  *     responses:
  *       201:
@@ -226,9 +230,26 @@ router.get('/consultation-details/:sessionId', controller.getConsultationDetails
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Consultation details saved successfully"
  *                 data:
  *                   type: object
+ *             example:
+ *               message: "Consultation details saved successfully"
+ *               data:
+ *                 id: "b3f1e2d4-a5c6-7890-bcde-f01234567890"
+ *                 sessions_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+ *                 consultation_objective: null
+ *                 main_nutrition_diagnosis: "Excessive carbohydrate intake related to frequent consumption of sugary snacks and large portions of white rice as evidenced by a 24-hour diet recall showing 400g of carbs and a fasting blood glucose of 7.2 mmol/L."
+ *                 carbohydrates_review_id: "019c4c05-c20e-76bf-84b9-38a6491d6f99"
+ *                 protein_review_id: "019c4c05-c213-7e21-99d8-e92502c15119"
+ *                 fat_review_id: "019c4c05-c215-76a5-8731-e7f9dd22804d"
+ *                 fibre_review_id: "019c4c05-c215-735a-bc36-5f04b4ade82b"
+ *                 iron_review_id: "019c4c05-c216-7e84-ae47-5f4acf0de8ab"
+ *                 calcium_review_id: "019c4c05-c216-72ce-98de-6ad756a4f29c"
+ *                 micronutrients_review_id: "019c4c05-c216-7143-8f34-75efa82f1e04"
+ *                 other_review: "Supplement Intake"
+ *                 follow_up_note: "Adding a digestive enzyme prior to largest meal of the day to assist with protein absorption."
+ *                 intervention_note: "The initial dosage of Magnesium caused minor GI distress. Patient transitioned to a glycinate form with much better tolerance."
+ *                 other_remarks: null
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       404:
@@ -302,13 +323,21 @@ router.post('/consultation-details', authenticateToken, controller.createConsult
  *                 type: string
  *               intervention_note:
  *                 type: string
- *               medical_remarks:
- *                 type: string
  *               other_remarks:
  *                 type: string
  *           example:
- *             main_nutrition_diagnosis: "Updated diagnosis"
- *             follow_up_note: "Check progress in 1 week"
+ *             main_nutrition_diagnosis: "Excessive carbohydrate intake related to frequent consumption of sugary snacks and large portions of white rice as evidenced by a 24-hour diet recall showing 400g of carbs and a fasting blood glucose of 7.2 mmol/L."
+ *             carbohydrates_review_id: "019c4c05-c20e-76bf-84b9-38a6491d6f99"
+ *             protein_review_id: "019c4c05-c213-7e21-99d8-e92502c15119"
+ *             fat_review_id: "019c4c05-c215-76a5-8731-e7f9dd22804d"
+ *             fibre_review_id: "019c4c05-c215-735a-bc36-5f04b4ade82b"
+ *             iron_review_id: "019c4c05-c216-7e84-ae47-5f4acf0de8ab"
+ *             calcium_review_id: "019c4c05-c216-72ce-98de-6ad756a4f29c"
+ *             micronutrients_review_id: "019c4c05-c216-7143-8f34-75efa82f1e04"
+ *             other_review: "Supplement Intake"
+ *             follow_up_note: "Adding a digestive enzyme prior to largest meal of the day to assist with protein absorption."
+ *             intervention_note: "The initial dosage of Magnesium caused minor GI distress. Patient transitioned to a glycinate form with much better tolerance."
+ *             other_remarks: null
  *     responses:
  *       200:
  *         description: Consultation details updated successfully
@@ -319,9 +348,26 @@ router.post('/consultation-details', authenticateToken, controller.createConsult
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Consultation details updated successfully"
  *                 data:
  *                   type: object
+ *             example:
+ *               message: "Consultation details updated successfully"
+ *               data:
+ *                 id: "b3f1e2d4-a5c6-7890-bcde-f01234567890"
+ *                 sessions_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+ *                 consultation_objective: null
+ *                 main_nutrition_diagnosis: "Excessive carbohydrate intake related to frequent consumption of sugary snacks and large portions of white rice as evidenced by a 24-hour diet recall showing 400g of carbs and a fasting blood glucose of 7.2 mmol/L."
+ *                 carbohydrates_review_id: "019c4c05-c20e-76bf-84b9-38a6491d6f99"
+ *                 protein_review_id: "019c4c05-c213-7e21-99d8-e92502c15119"
+ *                 fat_review_id: "019c4c05-c215-76a5-8731-e7f9dd22804d"
+ *                 fibre_review_id: "019c4c05-c215-735a-bc36-5f04b4ade82b"
+ *                 iron_review_id: "019c4c05-c216-7e84-ae47-5f4acf0de8ab"
+ *                 calcium_review_id: "019c4c05-c216-72ce-98de-6ad756a4f29c"
+ *                 micronutrients_review_id: "019c4c05-c216-7143-8f34-75efa82f1e04"
+ *                 other_review: "Supplement Intake"
+ *                 follow_up_note: "Adding a digestive enzyme prior to largest meal of the day to assist with protein absorption."
+ *                 intervention_note: "The initial dosage of Magnesium caused minor GI distress. Patient transitioned to a glycinate form with much better tolerance."
+ *                 other_remarks: null
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       404:
