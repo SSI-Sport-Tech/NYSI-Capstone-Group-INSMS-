@@ -38,7 +38,7 @@ export default function Prescription({
 
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/Consultation/prescription/session/${sessionId}`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/prescription/session/${sessionId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

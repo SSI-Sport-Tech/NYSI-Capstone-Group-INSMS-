@@ -236,6 +236,24 @@ VALUES (
 );
 
 -- ============================================================================
+-- PRESCRIPTION DATA
+-- ============================================================================
+
+-- Insert sample prescription data
+INSERT INTO consultation.session_prescription (sessions_id, batch_id, dosage, dosage_unit, dosage_frequency, start_date, projected_end_date, follow_up_required, other_remarks)
+VALUES (
+    '00000000-0000-0000-0000-000000000006',
+    '019c412f-979d-757d-a512-d10a1ab94a49',  -- batch_id from available batches
+    1000,  -- dosage
+    'IU',  -- dosage unit
+    'Once daily with breakfast',
+    '2024-02-22',  -- start date
+    '2024-05-22',  -- projected end date (3 months)
+    true,  -- follow-up required
+    'Monitor vitamin D levels after 3 months. Take with fat for better absorption.'
+);
+
+-- ============================================================================
 -- OPEN ITEMS (Action Items)
 -- ============================================================================
 

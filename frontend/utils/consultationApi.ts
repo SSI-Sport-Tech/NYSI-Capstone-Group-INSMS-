@@ -1,5 +1,6 @@
 // API utility functions for consultation components
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
 interface ApiError {
   message: string;
@@ -73,12 +74,12 @@ export const consultationApi = {
 
   // Get meal logs for session
   getMealLogs: async (sessionId: string) => {
-    return apiCall(`/api/Consultation/sessions/${sessionId}/meal-logs`);
+    return apiCall(`/api/Consultation/sessions/${sessionId}/meal-log`);
   },
 
   // Get medical history for session
   getMedicalHistory: async (sessionId: string) => {
-    return apiCall(`/api/Consultation/sessions/${sessionId}/medical-history`);
+    return apiCall(`/api/Consultation/medical-history/${sessionId}`);
   },
 
   // Get adherences for session

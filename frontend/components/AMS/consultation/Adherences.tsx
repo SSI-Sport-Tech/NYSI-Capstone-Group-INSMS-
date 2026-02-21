@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 interface AdherencesProps {
   athleteId: string;
   sessionId: string;
@@ -40,6 +42,50 @@ interface MetabolicData {
 }
 
 export default function Adherences({ athleteId, sessionId }: AdherencesProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [intakeData, setIntakeData] = useState<IntakeData>({
+    estimatedCarbohydrate: 350,
+    estimatedProtein: 154,
+    estimatedFat: 60,
+    percentMinCarbohydrate: 80,
+    percentMinProtein: 70,
+    percentMinFat: 75,
+    weekdayComments: "",
+    weekendComments: "",
+  });
+
+  const [metabolicData, setMetabolicData] = useState<MetabolicData>({
+    male: {
+      rmr: 1845,
+      tee: 3200,
+      targetWeightRMR: 1825,
+      targetWeightTEE: 3210,
+      otherRemarks: "",
+    },
+    female: {
+      rmr: 0,
+      tee: 0,
+      targetWeightRMR: 0,
+      targetWeightTEE: 0,
+    },
+  });
+
+  const handleSave = async () => {
+    try {
+      console.log("Saving adherences data:", {
+        intakeData,
+        metabolicData,
+      });
+      // TODO: Implement API call to create new consultation session entry
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Error saving adherences:", error);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+  };
   // Mock data based on the form structure in the image
   const currentIntake: NutritionRequirement = {
     minCarbohydrate: 3.0,
@@ -59,40 +105,26 @@ export default function Adherences({ athleteId, sessionId }: AdherencesProps) {
     maxFat: 1.2,
   };
 
-  const intakeData: IntakeData = {
-    estimatedCarbohydrate: 350,
-    estimatedProtein: 154,
-    estimatedFat: 60,
-    percentMinCarbohydrate: 80,
-    percentMinProtein: 70,
-    percentMinFat: 75,
-    weekdayComments: "",
-    weekendComments: "",
-  };
-
-  const metabolicData: MetabolicData = {
-    male: {
-      rmr: 1845,
-      tee: 3200,
-      targetWeightRMR: 1825,
-      targetWeightTEE: 3210,
-      otherRemarks: "",
-    },
-    female: {
-      rmr: 0,
-      tee: 0,
-      targetWeightRMR: 0,
-      targetWeightTEE: 0,
-    },
-  };
-
   return (
     <section id="adherences" className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Adherences</h2>
-        <button className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700">
-          Edit
-        </button>
+        <div className="flex items-center gap-2">
+          {isEditing && (
+            <button
+              onClick={handleCancel}
+              className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            onClick={isEditing ? handleSave : () => setIsEditing(true)}
+            className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
+          >
+            {isEditing ? "Save" : "Edit"}
+          </button>
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -401,6 +433,10 @@ export default function Adherences({ athleteId, sessionId }: AdherencesProps) {
                   className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
                   placeholder="Input Text Here"
                   value={intakeData.weekdayComments}
+                  onChange={(e) => {
+                    console.log("Weekday comments updated:", e.target.value);
+                  }}
+                  readOnly
                 />
               </div>
               <div>
@@ -411,6 +447,10 @@ export default function Adherences({ athleteId, sessionId }: AdherencesProps) {
                   className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
                   placeholder="Input Text Here"
                   value={intakeData.weekendComments}
+                  onChange={(e) => {
+                    console.log("Weekend comments updated:", e.target.value);
+                  }}
+                  readOnly
                 />
               </div>
             </div>
@@ -471,6 +511,18 @@ export default function Adherences({ athleteId, sessionId }: AdherencesProps) {
                   className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
                   placeholder="Input Text Here"
                   value={metabolicData.male.otherRemarks}
+                  onChange={(e) => {
+                    if (isEditing) {
+                      setMetabolicData((prev) => ({
+                        ...prev,
+                        male: {
+                          ...prev.male,
+                          otherRemarks: e.target.value,
+                        },
+                      }));
+                    }
+                  }}
+                  readOnly={!isEditing}
                 />
               </div>
             </div>

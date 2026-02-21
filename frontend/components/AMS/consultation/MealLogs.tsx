@@ -24,6 +24,28 @@ export default function MealLogs({ athleteId, sessionId }: MealLogsProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [editableAssessment, setEditableAssessment] = useState<Assessment>({
+    totalCarbohydrateIntake: 215,
+    totalProteinIntake: 114,
+    totalFatIntake: 82,
+    otherRemarks: "",
+  });
+
+  const handleSave = async () => {
+    try {
+      console.log("Saving meal logs data:", editableAssessment);
+      // TODO: Implement API call to create new consultation session entry
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Error saving meal logs:", error);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+  };
+
   const fetchMealLogs = async () => {
     if (!sessionId) {
       setMealEntries([]);
@@ -38,7 +60,7 @@ export default function MealLogs({ athleteId, sessionId }: MealLogsProps) {
 
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/Consultation/sessions/${sessionId}/meal-logs`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${sessionId}/meal-log`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -152,9 +174,22 @@ export default function MealLogs({ athleteId, sessionId }: MealLogsProps) {
     <section id="meal-logs" className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Meal Logs</h2>
-        <button className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700">
-          Edit
-        </button>
+        <div className="flex items-center gap-2">
+          {isEditing && (
+            <button
+              onClick={handleCancel}
+              className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            onClick={isEditing ? handleSave : () => setIsEditing(true)}
+            className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
+          >
+            {isEditing ? "Save" : "Edit"}
+          </button>
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -236,7 +271,20 @@ export default function MealLogs({ athleteId, sessionId }: MealLogsProps) {
             <textarea
               className="w-full h-24 px-3 py-2 border border-gray-300 rounded text-sm"
               placeholder="Input Text Here"
-              value={displayAssessment.otherRemarks}
+              value={
+                isEditing
+                  ? editableAssessment.otherRemarks
+                  : displayAssessment.otherRemarks
+              }
+              onChange={(e) => {
+                if (isEditing) {
+                  setEditableAssessment((prev) => ({
+                    ...prev,
+                    otherRemarks: e.target.value,
+                  }));
+                }
+              }}
+              readOnly={!isEditing}
             />
           </div>
         </div>

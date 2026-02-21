@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 interface TrainingScheduleProps {
   athleteId: string;
   sessionId: string;
@@ -28,6 +30,28 @@ export default function TrainingSchedule({
   athleteId,
   sessionId,
 }: TrainingScheduleProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [performanceDetails, setPerformanceDetails] =
+    useState<PerformanceDetails>({
+      currentPerformance: "",
+      coachPerformanceGoals: "",
+      athletePerformanceGoals: "",
+      otherRemarks: "",
+    });
+
+  const handleSave = async () => {
+    try {
+      console.log("Saving training schedule data:", performanceDetails);
+      // TODO: Implement API call to create new consultation session entry
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Error saving training schedule:", error);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+  };
   const trainingSchedule: TrainingSession[] = [
     {
       day: "Monday",
@@ -81,13 +105,6 @@ export default function TrainingSchedule({
     upcomingLocalCompetitions: "-",
   };
 
-  const performanceDetails: PerformanceDetails = {
-    currentPerformance: "",
-    coachPerformanceGoals: "",
-    athletePerformanceGoals: "",
-    otherRemarks: "",
-  };
-
   return (
     <section
       id="training-schedule"
@@ -97,9 +114,22 @@ export default function TrainingSchedule({
         <h2 className="text-xl font-semibold text-gray-900">
           Training Schedule
         </h2>
-        <button className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700">
-          Save
-        </button>
+        <div className="flex items-center gap-2">
+          {isEditing && (
+            <button
+              onClick={handleCancel}
+              className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            onClick={isEditing ? handleSave : () => setIsEditing(true)}
+            className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
+          >
+            {isEditing ? "Save" : "Edit"}
+          </button>
+        </div>
       </div>
 
       <div className="space-y-8">
@@ -203,6 +233,15 @@ export default function TrainingSchedule({
                   className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
                   placeholder="Input Text Here"
                   value={performanceDetails.currentPerformance}
+                  onChange={(e) => {
+                    if (isEditing) {
+                      setPerformanceDetails((prev) => ({
+                        ...prev,
+                        currentPerformance: e.target.value,
+                      }));
+                    }
+                  }}
+                  readOnly={!isEditing}
                 />
               </div>
 
@@ -214,6 +253,15 @@ export default function TrainingSchedule({
                   className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
                   placeholder="Input Text Here"
                   value={performanceDetails.coachPerformanceGoals}
+                  onChange={(e) => {
+                    if (isEditing) {
+                      setPerformanceDetails((prev) => ({
+                        ...prev,
+                        coachPerformanceGoals: e.target.value,
+                      }));
+                    }
+                  }}
+                  readOnly={!isEditing}
                 />
               </div>
 
@@ -225,6 +273,15 @@ export default function TrainingSchedule({
                   className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
                   placeholder="Input Text Here"
                   value={performanceDetails.athletePerformanceGoals}
+                  onChange={(e) => {
+                    if (isEditing) {
+                      setPerformanceDetails((prev) => ({
+                        ...prev,
+                        athletePerformanceGoals: e.target.value,
+                      }));
+                    }
+                  }}
+                  readOnly={!isEditing}
                 />
               </div>
 
@@ -236,6 +293,15 @@ export default function TrainingSchedule({
                   className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
                   placeholder="Input Text Here"
                   value={performanceDetails.otherRemarks}
+                  onChange={(e) => {
+                    if (isEditing) {
+                      setPerformanceDetails((prev) => ({
+                        ...prev,
+                        otherRemarks: e.target.value,
+                      }));
+                    }
+                  }}
+                  readOnly={!isEditing}
                 />
               </div>
             </div>

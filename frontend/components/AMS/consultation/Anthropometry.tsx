@@ -55,8 +55,8 @@ export default function Anthropometry({
       setLoading(true);
       setError("");
 
-      const data = await consultationApi.getAnthropometry(sessionId);
-      setAnthropometryData(data.data);
+      const response = await consultationApi.getAnthropometry(sessionId);
+      setAnthropometryData((response as any).data);
     } catch (error) {
       console.error("Error fetching anthropometry:", error);
       if (error instanceof ConsultationApiError && error.status === 404) {
