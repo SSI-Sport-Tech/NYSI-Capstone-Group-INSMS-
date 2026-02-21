@@ -21,6 +21,8 @@ export async function listAthletes(req, res) {
     const { page, search } = paginationSchema.parse(req.query);
     const pageSize = 10;
 
+    console.log(`DEBUG: listAthletes called with userId: ${req.user?.userId}`);
+
     let athletes, totalCount;
 
     if (search) {

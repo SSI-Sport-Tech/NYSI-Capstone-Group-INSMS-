@@ -1,6 +1,6 @@
-import express from 'express';
-import * as controller from './controller.js';
-import { authenticateToken, requireAdmin } from '../../Auth/authMiddleware.js';
+import express from "express";
+import * as controller from "./controller.js";
+import { authenticateToken, requireAdmin } from "../../Auth/authMiddleware.js";
 
 const router = express.Router();
 
@@ -64,7 +64,7 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/athletes', controller.listAthletes);
+router.get("/athletes", authenticateToken, controller.listAthletes);
 
 /**
  * @swagger
@@ -172,7 +172,7 @@ router.get('/athletes', controller.listAthletes);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/athletes/:id/profile', controller.getAthleteProfile);
+router.get("/athletes/:id/profile", controller.getAthleteProfile);
 
 /**
  * @swagger
@@ -292,7 +292,11 @@ router.get('/athletes/:id/profile', controller.getAthleteProfile);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch('/athletes/:id/profile', authenticateToken, controller.updateAthleteProfile);
+router.patch(
+  "/athletes/:id/profile",
+  authenticateToken,
+  controller.updateAthleteProfile,
+);
 
 /**
  * @swagger
@@ -422,7 +426,12 @@ router.patch('/athletes/:id/profile', authenticateToken, controller.updateAthlet
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch('/athletes/:id/profile/admin', authenticateToken, requireAdmin, controller.adminUpdateAthleteProfile);
+router.patch(
+  "/athletes/:id/profile/admin",
+  authenticateToken,
+  requireAdmin,
+  controller.adminUpdateAthleteProfile,
+);
 
 /**
  * @swagger
@@ -567,7 +576,11 @@ router.patch('/athletes/:id/profile/admin', authenticateToken, requireAdmin, con
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/athletes/complete', authenticateToken, controller.createCompleteAthlete);
+router.post(
+  "/athletes/complete",
+  authenticateToken,
+  controller.createCompleteAthlete,
+);
 
 /**
  * @swagger
@@ -716,7 +729,12 @@ router.post('/athletes/complete', authenticateToken, controller.createCompleteAt
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/athletes/complete/admin', authenticateToken, requireAdmin, controller.adminCreateCompleteAthlete);
+router.post(
+  "/athletes/complete/admin",
+  authenticateToken,
+  requireAdmin,
+  controller.adminCreateCompleteAthlete,
+);
 
 /**
  * @swagger
@@ -725,7 +743,7 @@ router.post('/athletes/complete/admin', authenticateToken, requireAdmin, control
  *     summary: Create Basic Athlete [DEV ONLY]
  *     description: |
  *       Create a new athlete record with only base fields.
- *       Does not create registry, medical, or assignment records. 
+ *       Does not create registry, medical, or assignment records.
  *       Gender is either MALE, FEMALE or OTHER.
  *     tags: [AMS - Athletes]
  *     requestBody:
@@ -784,7 +802,7 @@ router.post('/athletes/complete/admin', authenticateToken, requireAdmin, control
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/athletes', controller.createBasicAthlete);
+router.post("/athletes", controller.createBasicAthlete);
 
 /**
  * @swagger
@@ -834,6 +852,6 @@ router.post('/athletes', controller.createBasicAthlete);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete('/athletes', controller.deleteAthletes);
+router.delete("/athletes", controller.deleteAthletes);
 
 export default router;

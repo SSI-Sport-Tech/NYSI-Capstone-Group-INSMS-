@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { useAuth } from "@/contexts/AuthContext";
 import AthleteTable from "@/components/AMS/AthleteTable";
 import AthleteSearchSection from "@/components/AMS/AthleteSearchSection";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -29,6 +30,7 @@ interface SearchResponse {
 }
 
 export default function AthleteManagementPage() {
+  const { token } = useAuth();
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -44,12 +46,26 @@ export default function AthleteManagementPage() {
     try {
       const backendUrl =
         process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
+      // Include authorization header for user-specific pin data
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      console.log("Fetching athletes with token present:", !!token);
+
       const response = await axios.get<SearchResponse>(
         `${backendUrl}/api/AMS/athletes`,
         {
           params: { page, search: searchQuery },
+          headers,
         },
       );
+
+      console.log("Fetched athlete data:", response.data.data);
+      console.log(
+        "First athlete pin status:",
+        response.data.data[0]?.is_pinned,
+      );
+
       setAthletes(response.data.data);
       setCurrentPage(response.data.currentPage);
       setTotalPages(response.data.totalPages);

@@ -11,6 +11,7 @@ import {
   Pin,
 } from "lucide-react";
 import axios from "axios";
+import { useAuth } from "@/contexts/AuthContext";
 import AddAthleteModal from "./AddAthleteModal";
 
 interface Athlete {
@@ -57,6 +58,7 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
   onError,
 }) => {
   const router = useRouter();
+  const { token } = useAuth();
   const [selectedAthletes, setSelectedAthletes] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>("");
@@ -79,9 +81,11 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
       if (!athlete) return;
 
       const isPinned = athlete.is_pinned;
-      const token = localStorage.getItem("nysi_auth_token");
+      console.log(
+        `Toggling pin for athlete ${athleteId}, current state: ${isPinned} -> ${!isPinned}`,
+      );
 
-      await axios.patch(
+      const response = await axios.patch(
         `http://localhost:8000/api/AMS/nutritionists/pin`,
         {
           athlete_id: athleteId,
@@ -92,8 +96,15 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
         },
       );
 
+      console.log("Pin toggle response:", response.data);
+
       // Refresh the data to get updated pin status
-      if (onRefresh) onRefresh();
+      if (onRefresh) {
+        console.log("Calling onRefresh to reload data");
+        onRefresh();
+      } else {
+        console.log("onRefresh is not available");
+      }
     } catch (error) {
       console.error("Error toggling pin:", error);
       if (onError) {
@@ -379,7 +390,7 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                           onClick={() => handlePinToggle(athlete.id)}
                           className={`p-1 rounded transition-colors ${
                             athlete.is_pinned
-                              ? "text-blue-600 hover:text-blue-800"
+                              ? "text-black hover:text-gray-800"
                               : "text-gray-400 hover:text-gray-600"
                           }`}
                         >
@@ -444,17 +455,6 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-900">
                         {athlete.assigned_nutritionist || "Amy Tan"}
-                      </td>
-                      <td className="px-3 py-4 text-center">
-                        <div className="relative inline-block text-left">
-                          <button
-                            onClick={() => handleViewAthlete(athlete.id)}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-                          >
-                            <Eye className="w-3 h-3" />
-                            View
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   ))
