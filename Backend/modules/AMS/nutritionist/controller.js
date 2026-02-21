@@ -111,28 +111,16 @@ export async function getMyAthletes(req, res) {
 
 export async function togglePin(req, res) {
     try {
-        const { athlete_id, is_pinned, nutritionist_id: overrideId } = togglePinSchema.parse(req.body);
+        const { athlete_id, is_pinned } = togglePinSchema.parse(req.body);
 
-        // Allow override via body param for testing, otherwise look up from JWT
-        let nutritionistId = overrideId || null;
+        // Use the authenticated user's ID directly for pinning
+        const userId = req.user.userId;
 
-        if (!nutritionistId) {
-            nutritionistId = await services.getNutritionistIdByUserId(req.user.userId);
-            if (!nutritionistId) {
-                return res.status(400).json({
-                    error: 'Nutritionist not linked',
-                    details: [{ field: 'user', message: 'Your account is not linked to a nutritionist profile' }],
-                });
-            }
-        }
-
-        const result = await services.toggleAthletePin(nutritionistId, athlete_id, is_pinned);
+        const result = await services.toggleAthletePin(userId, athlete_id, is_pinned);
         
-        if (!result) return res.status(404).json({ error: 'Mapping not found (Is athlete assigned to you?)' });
-
         res.json({ 
             message: is_pinned ? 'Athlete pinned' : 'Athlete unpinned', 
-            data: result 
+            data: { is_pinned } 
         });
     } catch (error) {
         if (error.name === 'ZodError') {
