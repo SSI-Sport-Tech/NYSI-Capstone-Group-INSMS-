@@ -437,18 +437,21 @@ export async function createCompleteAthlete(
         [athlete.id, nutritionistId],
       );
       nutritionistMappings.push(mappingResult.rows[0]);
-      
+
       // Auto-pin the athlete for the nutritionist user
       try {
         // Get the user_id for this nutritionist
         const nutritionistUserResult = await client.query(
           `SELECT user_id FROM AMS.Nutritionist WHERE id = $1`,
-          [nutritionistId]
+          [nutritionistId],
         );
-        
-        if (nutritionistUserResult.rows.length > 0 && nutritionistUserResult.rows[0].user_id) {
+
+        if (
+          nutritionistUserResult.rows.length > 0 &&
+          nutritionistUserResult.rows[0].user_id
+        ) {
           const userId = nutritionistUserResult.rows[0].user_id;
-          
+
           // Create or update pin record (with table creation fallback)
           try {
             await client.query(
@@ -458,16 +461,18 @@ export async function createCompleteAthlete(
               ON CONFLICT (user_id, athlete_id) 
               DO UPDATE SET is_pinned = true, updated_at = now()
               `,
-              [userId, athlete.id]
+              [userId, athlete.id],
             );
-            
-            console.log(`Auto-pinned athlete ${athlete.id} for nutritionist ${nutritionistId} (user ${userId}) during creation`);
+
+            console.log(
+              `Auto-pinned athlete ${athlete.id} for nutritionist ${nutritionistId} (user ${userId}) during creation`,
+            );
           } catch (pinInsertError) {
             // If table doesn't exist, create it and retry
             if (pinInsertError.code === "42P01") {
               console.log("User_Athlete_Pins table not found, creating...");
               await createUserAthletePinsTable(client);
-              
+
               await client.query(
                 `
                 INSERT INTO AMS.User_Athlete_Pins (user_id, athlete_id, is_pinned, updated_at)
@@ -475,17 +480,19 @@ export async function createCompleteAthlete(
                 ON CONFLICT (user_id, athlete_id) 
                 DO UPDATE SET is_pinned = true, updated_at = now()
                 `,
-                [userId, athlete.id]
+                [userId, athlete.id],
               );
-              
-              console.log(`Auto-pinned athlete ${athlete.id} for nutritionist ${nutritionistId} (user ${userId}) after table creation`);
+
+              console.log(
+                `Auto-pinned athlete ${athlete.id} for nutritionist ${nutritionistId} (user ${userId}) after table creation`,
+              );
             } else {
               throw pinInsertError;
             }
           }
         }
       } catch (pinError) {
-        console.error('Error auto-pinning during athlete creation:', pinError);
+        console.error("Error auto-pinning during athlete creation:", pinError);
         // Don't fail the whole transaction for pinning errors
       }
     }
