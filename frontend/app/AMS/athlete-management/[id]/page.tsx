@@ -416,7 +416,7 @@ export default function AthleteDetailPage() {
                           Target Event
                         </label>
                         <p className="text-sm text-gray-900">
-                          SEA Games 2025 (Thailand)
+                          Not in DB col
                         </p>
                       </div>
                       <div>

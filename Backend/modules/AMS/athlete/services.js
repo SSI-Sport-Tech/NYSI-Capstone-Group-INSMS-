@@ -1,6 +1,37 @@
 import pool from "../../../config/db.js";
 
 // ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Create the User_Athlete_Pins table if it doesn't exist
+ * This table allows any user to pin any athlete for personal organization
+ */
+async function createUserAthletePinsTable() {
+  const query = `
+        CREATE TABLE IF NOT EXISTS AMS.User_Athlete_Pins (
+            id UUID PRIMARY KEY DEFAULT public.uuid_generate_v7(),
+            user_id UUID NOT NULL,
+            athlete_id UUID NOT NULL,
+            is_pinned BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMPTZ DEFAULT now(),
+            updated_at TIMESTAMPTZ DEFAULT now(),
+            
+            UNIQUE(user_id, athlete_id),
+            
+            FOREIGN KEY (athlete_id) REFERENCES AMS.Athlete(id) ON DELETE CASCADE
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_user_athlete_pins_user_id ON AMS.User_Athlete_Pins(user_id);
+        CREATE INDEX IF NOT EXISTS idx_user_athlete_pins_athlete_id ON AMS.User_Athlete_Pins(athlete_id);
+        CREATE INDEX IF NOT EXISTS idx_user_athlete_pins_is_pinned ON AMS.User_Athlete_Pins(is_pinned);
+    `;
+
+  await pool.query(query);
+}
+
+// ============================================================================
 // ATHLETE CRUD SERVICES
 // ============================================================================
 
@@ -10,8 +41,8 @@ import pool from "../../../config/db.js";
  * @returns {Promise<Object|null>} Athlete object or null
  */
 export async function getAthleteById(athleteId) {
-    // 1. Fetch Basic Profile
-    const profileQuery = `
+  // 1. Fetch Basic Profile
+  const profileQuery = `
         SELECT
             a.id,
             a.sport_id,
@@ -25,9 +56,9 @@ export async function getAthleteById(athleteId) {
         WHERE a.id = $1
     `;
 
-    // 2. Fetch Target Event from Latest Consultation
-    // Joins Sessions -> Training Schedule to get 'upcoming_major_competitions'
-    const targetEventQuery = `
+  // 2. Fetch Target Event from Latest Consultation
+  // Joins Sessions -> Training Schedule to get 'upcoming_major_competitions'
+  const targetEventQuery = `
         SELECT ts.upcoming_major_competitions AS target_event, s.date_of_consult
         FROM consultation.sessions s
         JOIN consultation.session_training_schedule ts ON s.id = ts.sessions_id
@@ -36,26 +67,26 @@ export async function getAthleteById(athleteId) {
         LIMIT 1
     `;
 
-    // Run both queries in parallel for efficiency
-    const [profileRes, eventRes] = await Promise.all([
-        pool.query(profileQuery, [athleteId]),
-        pool.query(targetEventQuery, [athleteId])
-    ]);
+  // Run both queries in parallel for efficiency
+  const [profileRes, eventRes] = await Promise.all([
+    pool.query(profileQuery, [athleteId]),
+    pool.query(targetEventQuery, [athleteId]),
+  ]);
 
-    if (profileRes.rows.length === 0) return null;
+  if (profileRes.rows.length === 0) return null;
 
-    const profile = profileRes.rows[0];
+  const profile = profileRes.rows[0];
 
-    // Attach the dynamic target event data if a consultation exists
-    if (eventRes.rows.length > 0) {
-        profile.latest_target_event = eventRes.rows[0].target_event;
-        profile.latest_consult_date = eventRes.rows[0].date_of_consult;
-    } else {
-        profile.latest_target_event = null;
-        profile.latest_consult_date = null;
-    }
+  // Attach the dynamic target event data if a consultation exists
+  if (eventRes.rows.length > 0) {
+    profile.latest_target_event = eventRes.rows[0].target_event;
+    profile.latest_consult_date = eventRes.rows[0].date_of_consult;
+  } else {
+    profile.latest_target_event = null;
+    profile.latest_consult_date = null;
+  }
 
-    return profile;
+  return profile;
 }
 // ADD THIS FUNCTION after getAthleteById (around line 60)
 
@@ -65,24 +96,63 @@ export async function getAthleteById(athleteId) {
  * @param {number} pageSize - Items per page
  * @returns {Promise<Object>} Query result with rows
  */
-export async function getAthletesByPage(pageNumber, pageSize = 10) {
-    const offset = (pageNumber - 1) * pageSize;
+export async function getAthletesByPage(
+  pageNumber,
+  pageSize = 10,
+  userId = null,
+) {
+  const offset = (pageNumber - 1) * pageSize;
 
-    const query = `
+  const baseQuery = `
         SELECT
             a.id,
             a.sportsync_id,
             a.athlete_name_abbr,
             sl.sport AS sport_name,
             a.gender,
-            a.date_of_birth
+            a.date_of_birth,
+            r.carding_status,
+            COALESCE(n.name, 'Not Assigned') AS assigned_nutritionist,
+            COALESCE(uap.is_pinned, false) AS is_pinned
         FROM AMS.Athlete a
         LEFT JOIN AMS.Sport_Lookup sl ON a.sport_id = sl.id
-        ORDER BY a.athlete_name_abbr ASC
-        LIMIT $1 OFFSET $2
-    `;
+        LEFT JOIN AMS.Athlete_Registry r ON a.id = r.athlete_id
+        LEFT JOIN AMS.Nutritionist_Athlete_Mapping nam ON a.id = nam.athlete_id AND nam.is_active = true
+        LEFT JOIN AMS.Nutritionist n ON nam.nutritionist_id = n.id`;
 
-    return await pool.query(query, [pageSize, offset]);
+  let query, params;
+
+  if (userId) {
+    // Include user-specific pinning when userId is provided
+    query =
+      baseQuery +
+      `
+        LEFT JOIN AMS.User_Athlete_Pins uap ON a.id = uap.athlete_id AND uap.user_id = $3
+        ORDER BY COALESCE(uap.is_pinned, false) DESC, a.athlete_name_abbr ASC
+        LIMIT $1 OFFSET $2`;
+    params = [pageSize, offset, userId];
+  } else {
+    // Default query without user-specific pinning
+    query =
+      baseQuery +
+      `
+        LEFT JOIN AMS.User_Athlete_Pins uap ON false -- No user context
+        ORDER BY a.athlete_name_abbr ASC
+        LIMIT $1 OFFSET $2`;
+    params = [pageSize, offset];
+  }
+
+  try {
+    return await pool.query(query, params);
+  } catch (error) {
+    // If table doesn't exist, create it and retry
+    if (error.code === "42P01") {
+      // relation does not exist
+      await createUserAthletePinsTable();
+      return await pool.query(query, params);
+    }
+    throw error;
+  }
 }
 /**
  * Search athletes across name, sportsync_id, sport, and gender
@@ -91,46 +161,82 @@ export async function getAthletesByPage(pageNumber, pageSize = 10) {
  * @param {number} pageSize - Items per page (default 10)
  * @returns {Promise<Object>} Query result with rows
  */
-export async function searchAthletes(searchQuery, pageNumber, pageSize = 10) {
-    const offset = (pageNumber - 1) * pageSize;
-    const words = searchQuery.trim().split(/\s+/).filter(w => w.length > 0);
+export async function searchAthletes(
+  searchQuery,
+  pageNumber,
+  pageSize = 10,
+  userId = null,
+) {
+  const offset = (pageNumber - 1) * pageSize;
+  const words = searchQuery
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 0);
 
-    if (words.length === 0) {
-        return getAthletesByPage(pageNumber, pageSize);
-    }
+  if (words.length === 0) {
+    return getAthletesByPage(pageNumber, pageSize, userId);
+  }
 
-    const conditions = words.map((_, i) => {
-        const paramIdx = i + 1;
-        return `(
+  const conditions = words.map((_, i) => {
+    const paramIdx = i + 1;
+    return `(
             a.athlete_name_abbr ILIKE $${paramIdx}
             OR a.sportsync_id ILIKE $${paramIdx}
             OR sl.sport ILIKE $${paramIdx}
             OR a.gender ILIKE $${paramIdx}
         )`;
-    });
+  });
 
-    const query = `
+  const baseQuery = `
         SELECT
             a.id,
             a.sportsync_id,
             a.athlete_name_abbr,
             sl.sport AS sport_name,
             a.gender,
-            a.date_of_birth
+            a.date_of_birth,
+            r.carding_status,
+            COALESCE(n.name, 'Not Assigned') AS assigned_nutritionist,
+            COALESCE(uap.is_pinned, false) AS is_pinned
         FROM AMS.Athlete a
         LEFT JOIN AMS.Sport_Lookup sl ON a.sport_id = sl.id
-        WHERE ${conditions.join(' AND ')}
+        LEFT JOIN AMS.Athlete_Registry r ON a.id = r.athlete_id
+        LEFT JOIN AMS.Nutritionist_Athlete_Mapping nam ON a.id = nam.athlete_id AND nam.is_active = true
+        LEFT JOIN AMS.Nutritionist n ON nam.nutritionist_id = n.id`;
+
+  let query, params;
+
+  if (userId) {
+    query =
+      baseQuery +
+      `
+        LEFT JOIN AMS.User_Athlete_Pins uap ON a.id = uap.athlete_id AND uap.user_id = $${words.length + 3}
+        WHERE ${conditions.join(" AND ")}
+        ORDER BY COALESCE(uap.is_pinned, false) DESC, a.athlete_name_abbr ASC
+        LIMIT $${words.length + 1} OFFSET $${words.length + 2}`;
+    params = [...words.map((w) => `%${w}%`), pageSize, offset, userId];
+  } else {
+    query =
+      baseQuery +
+      `
+        LEFT JOIN AMS.User_Athlete_Pins uap ON false
+        WHERE ${conditions.join(" AND ")}
         ORDER BY a.athlete_name_abbr ASC
-        LIMIT $${words.length + 1} OFFSET $${words.length + 2}
-    `;
+        LIMIT $${words.length + 1} OFFSET $${words.length + 2}`;
+    params = [...words.map((w) => `%${w}%`), pageSize, offset];
+  }
 
-    const params = [
-        ...words.map(w => `%${w}%`),
-        pageSize,
-        offset,
-    ];
-
+  try {
     return await pool.query(query, params);
+  } catch (error) {
+    // If table doesn't exist, create it and retry
+    if (error.code === "42P01") {
+      // relation does not exist
+      await createUserAthletePinsTable();
+      return await pool.query(query, params);
+    }
+    throw error;
+  }
 }
 
 /**
@@ -138,9 +244,9 @@ export async function searchAthletes(searchQuery, pageNumber, pageSize = 10) {
  * @returns {Promise<number>} Total count
  */
 export async function getTotalAthleteCount() {
-    const query = `SELECT COUNT(*) as count FROM AMS.Athlete`;
-    const result = await pool.query(query);
-    return parseInt(result.rows[0].count);
+  const query = `SELECT COUNT(*) as count FROM AMS.Athlete`;
+  const result = await pool.query(query);
+  return parseInt(result.rows[0].count);
 }
 
 /**
@@ -149,32 +255,35 @@ export async function getTotalAthleteCount() {
  * @returns {Promise<number>} Total count
  */
 export async function getSearchAthleteCount(searchQuery) {
-    const words = searchQuery.trim().split(/\s+/).filter(w => w.length > 0);
+  const words = searchQuery
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 0);
 
-    if (words.length === 0) {
-        return getTotalAthleteCount();
-    }
+  if (words.length === 0) {
+    return getTotalAthleteCount();
+  }
 
-    const conditions = words.map((_, i) => {
-        const paramIdx = i + 1;
-        return `(
+  const conditions = words.map((_, i) => {
+    const paramIdx = i + 1;
+    return `(
             a.athlete_name_abbr ILIKE $${paramIdx}
             OR a.sportsync_id ILIKE $${paramIdx}
             OR sl.sport ILIKE $${paramIdx}
             OR a.gender ILIKE $${paramIdx}
         )`;
-    });
+  });
 
-    const query = `
+  const query = `
         SELECT COUNT(*) as count
         FROM AMS.Athlete a
         LEFT JOIN AMS.Sport_Lookup sl ON a.sport_id = sl.id
-        WHERE ${conditions.join(' AND ')}
+        WHERE ${conditions.join(" AND ")}
     `;
 
-    const params = words.map(w => `%${w}%`);
-    const result = await pool.query(query, params);
-    return parseInt(result.rows[0].count);
+  const params = words.map((w) => `%${w}%`);
+  const result = await pool.query(query, params);
+  return parseInt(result.rows[0].count);
 }
 
 /**
@@ -184,18 +293,18 @@ export async function getSearchAthleteCount(searchQuery) {
  * @returns {Promise<boolean>} True if duplicate exists
  */
 export async function checkDuplicateAthlete(sportsync_id, excludeId = null) {
-    let query = `SELECT id FROM AMS.Athlete WHERE sportsync_id = $1`;
-    const params = [sportsync_id];
+  let query = `SELECT id FROM AMS.Athlete WHERE sportsync_id = $1`;
+  const params = [sportsync_id];
 
-    if (excludeId) {
-        query += ` AND id != $2`;
-        params.push(excludeId);
-    }
+  if (excludeId) {
+    query += ` AND id != $2`;
+    params.push(excludeId);
+  }
 
-    query += ` LIMIT 1`;
+  query += ` LIMIT 1`;
 
-    const result = await pool.query(query, params);
-    return result.rows.length > 0;
+  const result = await pool.query(query, params);
+  return result.rows.length > 0;
 }
 
 /**
@@ -204,19 +313,22 @@ export async function checkDuplicateAthlete(sportsync_id, excludeId = null) {
  * @returns {Promise<Object>} Created athlete record
  */
 export async function createBasicAthlete(athleteData) {
-    const result = await pool.query(`
+  const result = await pool.query(
+    `
         INSERT INTO AMS.Athlete (
             sport_id, sportsync_id, athlete_name_abbr, gender, date_of_birth
         ) VALUES ($1, $2, $3, $4, $5)
         RETURNING *
-    `, [
-        athleteData.sport_id,
-        athleteData.sportsync_id,
-        athleteData.athlete_name_abbr,
-        athleteData.gender,
-        athleteData.date_of_birth,
-    ]);
-    return result.rows[0];
+    `,
+    [
+      athleteData.sport_id,
+      athleteData.sportsync_id,
+      athleteData.athlete_name_abbr,
+      athleteData.gender,
+      athleteData.date_of_birth,
+    ],
+  );
+  return result.rows[0];
 }
 
 /**
@@ -228,92 +340,113 @@ export async function createBasicAthlete(athleteData) {
  * @param {Array<string>} nutritionistIds - Array of nutritionist UUIDs to map
  * @returns {Promise<Object>} Created records { athlete, registry, medical, coachMappings, nutritionistMappings }
  */
-export async function createCompleteAthlete(athleteData, registryData, medicalData, coachIds, nutritionistIds) {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
+export async function createCompleteAthlete(
+  athleteData,
+  registryData,
+  medicalData,
+  coachIds,
+  nutritionistIds,
+) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
 
-        // 1. Insert athlete
-        const athleteResult = await client.query(`
+    // 1. Insert athlete
+    const athleteResult = await client.query(
+      `
             INSERT INTO AMS.Athlete (
                 sport_id, sportsync_id, athlete_name_abbr, gender, date_of_birth
             ) VALUES ($1, $2, $3, $4, $5)
             RETURNING *
-        `, [
-            athleteData.sport_id,
-            athleteData.sportsync_id,
-            athleteData.athlete_name_abbr,
-            athleteData.gender,
-            athleteData.date_of_birth,
-        ]);
-        const athlete = athleteResult.rows[0];
+        `,
+      [
+        athleteData.sport_id,
+        athleteData.sportsync_id,
+        athleteData.athlete_name_abbr,
+        athleteData.gender,
+        athleteData.date_of_birth,
+      ],
+    );
+    const athlete = athleteResult.rows[0];
 
-        // 2. Insert registry
-        const registryResult = await client.query(`
+    // 2. Insert registry
+    const registryResult = await client.query(
+      `
             INSERT INTO AMS.Athlete_Registry (
                 athlete_id, carding_status, athlete_notified_on,
                 carding_start_date, carding_end_date, medical_clearance,
                 approved_start_date, approved_end_date
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *
-        `, [
-            athlete.id,
-            registryData.carding_status,
-            registryData.athlete_notified_on,
-            registryData.carding_start_date,
-            registryData.carding_end_date,
-            registryData.medical_clearance,
-            registryData.approved_start_date,
-            registryData.approved_end_date,
-        ]);
-        const registry = registryResult.rows[0];
+        `,
+      [
+        athlete.id,
+        registryData.carding_status,
+        registryData.athlete_notified_on,
+        registryData.carding_start_date,
+        registryData.carding_end_date,
+        registryData.medical_clearance,
+        registryData.approved_start_date,
+        registryData.approved_end_date,
+      ],
+    );
+    const registry = registryResult.rows[0];
 
-        // 3. Insert medical
-        const medicalResult = await client.query(`
+    // 3. Insert medical
+    const medicalResult = await client.query(
+      `
             INSERT INTO AMS.Athlete_Medical (
                 athlete_id, medical_condition, food_allergy, drug_allergy, past_injury, medical_remarks
             ) VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-        `, [
-            athlete.id,
-            medicalData.medical_condition,
-            medicalData.food_allergy,
-            medicalData.drug_allergy,
-            medicalData.past_injury,
-            medicalData.medical_remarks,
-        ]);
-        const medical = medicalResult.rows[0];
+        `,
+      [
+        athlete.id,
+        medicalData.medical_condition,
+        medicalData.food_allergy,
+        medicalData.drug_allergy,
+        medicalData.past_injury,
+        medicalData.medical_remarks,
+      ],
+    );
+    const medical = medicalResult.rows[0];
 
-        // 4. Insert coach mappings
-        const coachMappings = [];
-        for (const coachId of coachIds) {
-            const mappingResult = await client.query(`
+    // 4. Insert coach mappings
+    const coachMappings = [];
+    for (const coachId of coachIds) {
+      const mappingResult = await client.query(
+        `
                 INSERT INTO AMS.Coach_Athlete_Mapping (athlete_id, coach_id, is_active)
                 VALUES ($1, $2, true)
                 RETURNING *
-            `, [athlete.id, coachId]);
-            coachMappings.push(mappingResult.rows[0]);
-        }
+            `,
+        [athlete.id, coachId],
+      );
+      coachMappings.push(mappingResult.rows[0]);
+    }
 
-        // 5. Insert nutritionist mappings (pinned by default on creation)
-        const nutritionistMappings = [];
-        for (const nutritionistId of nutritionistIds) {
-            const mappingResult = await client.query(`
+    // 5. Insert nutritionist mappings (pinned by default on creation)
+    const nutritionistMappings = [];
+    for (const nutritionistId of nutritionistIds) {
+      const mappingResult = await client.query(
+        `
                 INSERT INTO AMS.Nutritionist_Athlete_Mapping (athlete_id, nutritionist_id, is_active, is_pinned)
                 VALUES ($1, $2, true, true)
                 RETURNING *
-            `, [athlete.id, nutritionistId]);
-            nutritionistMappings.push(mappingResult.rows[0]);
-        }
-
-        await client.query('COMMIT');
-        return { athlete, registry, medical, coachMappings, nutritionistMappings };
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
+            `,
+        [athlete.id, nutritionistId],
+      );
+      nutritionistMappings.push(mappingResult.rows[0]);
     }
+
+    await client.query("COMMIT");
+    return { athlete, registry, medical, coachMappings, nutritionistMappings };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -323,41 +456,41 @@ export async function createCompleteAthlete(athleteData, registryData, medicalDa
  * @returns {Promise<Object|null>} Updated athlete or null
  */
 export async function updateAthlete(athleteId, updateData) {
-    const fields = [];
-    const values = [];
-    let paramCounter = 1;
+  const fields = [];
+  const values = [];
+  let paramCounter = 1;
 
-    const fieldMapping = {
-        sport_id: updateData.sport_id,
-        sportsync_id: updateData.sportsync_id,
-        athlete_name_abbr: updateData.athlete_name_abbr,
-        gender: updateData.gender,
-        date_of_birth: updateData.date_of_birth,
-    };
+  const fieldMapping = {
+    sport_id: updateData.sport_id,
+    sportsync_id: updateData.sportsync_id,
+    athlete_name_abbr: updateData.athlete_name_abbr,
+    gender: updateData.gender,
+    date_of_birth: updateData.date_of_birth,
+  };
 
-    for (const [field, value] of Object.entries(fieldMapping)) {
-        if (value !== undefined) {
-            fields.push(`${field} = $${paramCounter}`);
-            values.push(value);
-            paramCounter++;
-        }
+  for (const [field, value] of Object.entries(fieldMapping)) {
+    if (value !== undefined) {
+      fields.push(`${field} = $${paramCounter}`);
+      values.push(value);
+      paramCounter++;
     }
+  }
 
-    if (fields.length === 0) {
-        return null;
-    }
+  if (fields.length === 0) {
+    return null;
+  }
 
-    values.push(athleteId);
+  values.push(athleteId);
 
-    const query = `
+  const query = `
         UPDATE AMS.Athlete
-        SET ${fields.join(', ')}
+        SET ${fields.join(", ")}
         WHERE id = $${paramCounter}
         RETURNING *
     `;
 
-    const result = await pool.query(query, values);
-    return result.rows.length > 0 ? result.rows[0] : null;
+  const result = await pool.query(query, values);
+  return result.rows.length > 0 ? result.rows[0] : null;
 }
 
 /**
@@ -366,14 +499,14 @@ export async function updateAthlete(athleteId, updateData) {
  * @returns {Promise<Array>} Array of deleted rows
  */
 export async function deleteAthletes(athleteIds) {
-    const query = `
+  const query = `
         DELETE FROM AMS.Athlete
         WHERE id = ANY($1::uuid[])
         RETURNING id
     `;
 
-    const result = await pool.query(query, [athleteIds]);
-    return result.rows;
+  const result = await pool.query(query, [athleteIds]);
+  return result.rows;
 }
 
 // ============================================================================
@@ -386,7 +519,7 @@ export async function deleteAthletes(athleteIds) {
  * @returns {Promise<Object|null>} Profile object or null if athlete not found
  */
 export async function getAthleteProfile(athleteId) {
-    const profileQuery = `
+  const profileQuery = `
         SELECT
             a.id,
             a.sport_id,
@@ -400,7 +533,7 @@ export async function getAthleteProfile(athleteId) {
         WHERE a.id = $1
     `;
 
-    const registryQuery = `
+  const registryQuery = `
         SELECT id, athlete_id, carding_status, athlete_notified_on,
                carding_start_date, carding_end_date, medical_clearance,
                approved_start_date, approved_end_date
@@ -408,7 +541,7 @@ export async function getAthleteProfile(athleteId) {
         WHERE athlete_id = $1
     `;
 
-    const coachQuery = `
+  const coachQuery = `
         SELECT cam.coach_id, cam.is_active, c.name AS coach_name
         FROM AMS.Coach_Athlete_Mapping cam
         JOIN AMS.Coach c ON cam.coach_id = c.id
@@ -416,7 +549,7 @@ export async function getAthleteProfile(athleteId) {
         ORDER BY c.name ASC
     `;
 
-    const nutritionistQuery = `
+  const nutritionistQuery = `
         SELECT nam.nutritionist_id, nam.is_active, n.name AS nutritionist_name
         FROM AMS.Nutritionist_Athlete_Mapping nam
         JOIN AMS.Nutritionist n ON nam.nutritionist_id = n.id
@@ -424,21 +557,22 @@ export async function getAthleteProfile(athleteId) {
         ORDER BY n.name ASC
     `;
 
-    const [profileRes, registryRes, coachRes, nutritionistRes] = await Promise.all([
-        pool.query(profileQuery, [athleteId]),
-        pool.query(registryQuery, [athleteId]),
-        pool.query(coachQuery, [athleteId]),
-        pool.query(nutritionistQuery, [athleteId]),
+  const [profileRes, registryRes, coachRes, nutritionistRes] =
+    await Promise.all([
+      pool.query(profileQuery, [athleteId]),
+      pool.query(registryQuery, [athleteId]),
+      pool.query(coachQuery, [athleteId]),
+      pool.query(nutritionistQuery, [athleteId]),
     ]);
 
-    if (profileRes.rows.length === 0) return null;
+  if (profileRes.rows.length === 0) return null;
 
-    return {
-        athlete: profileRes.rows[0],
-        registry: registryRes.rows.length > 0 ? registryRes.rows[0] : null,
-        coaches: coachRes.rows,
-        nutritionists: nutritionistRes.rows,
-    };
+  return {
+    athlete: profileRes.rows[0],
+    registry: registryRes.rows.length > 0 ? registryRes.rows[0] : null,
+    coaches: coachRes.rows,
+    nutritionists: nutritionistRes.rows,
+  };
 }
 
 // ============================================================================
@@ -451,11 +585,11 @@ export async function getAthleteProfile(athleteId) {
  * @returns {Promise<string|null>} Nutritionist UUID or null
  */
 export async function getNutritionistIdByUserId(userId) {
-    const result = await pool.query(
-        `SELECT id FROM AMS.Nutritionist WHERE user_id = $1`,
-        [userId]
-    );
-    return result.rows.length > 0 ? result.rows[0].id : null;
+  const result = await pool.query(
+    `SELECT id FROM AMS.Nutritionist WHERE user_id = $1`,
+    [userId],
+  );
+  return result.rows.length > 0 ? result.rows[0].id : null;
 }
 
 // ============================================================================
@@ -468,7 +602,7 @@ export async function getNutritionistIdByUserId(userId) {
  * @returns {Promise<Array>} Array of coach mapping rows
  */
 export async function getCoachMappingsByAthleteId(athleteId) {
-    const query = `
+  const query = `
         SELECT cam.id, cam.athlete_id, cam.coach_id, cam.is_active,
                c.name AS coach_name
         FROM AMS.Coach_Athlete_Mapping cam
@@ -477,8 +611,8 @@ export async function getCoachMappingsByAthleteId(athleteId) {
         ORDER BY c.name ASC
     `;
 
-    const result = await pool.query(query, [athleteId]);
-    return result.rows;
+  const result = await pool.query(query, [athleteId]);
+  return result.rows;
 }
 
 /**
@@ -487,7 +621,7 @@ export async function getCoachMappingsByAthleteId(athleteId) {
  * @returns {Promise<Array>} Array of nutritionist mapping rows
  */
 export async function getNutritionistMappingsByAthleteId(athleteId) {
-    const query = `
+  const query = `
         SELECT nam.id, nam.athlete_id, nam.nutritionist_id, nam.is_active,
                n.name AS nutritionist_name
         FROM AMS.Nutritionist_Athlete_Mapping nam
@@ -496,8 +630,8 @@ export async function getNutritionistMappingsByAthleteId(athleteId) {
         ORDER BY n.name ASC
     `;
 
-    const result = await pool.query(query, [athleteId]);
-    return result.rows;
+  const result = await pool.query(query, [athleteId]);
+  return result.rows;
 }
 
 // ============================================================================
@@ -510,7 +644,7 @@ export async function getNutritionistMappingsByAthleteId(athleteId) {
  * @returns {Promise<Object|null>} Registry object or null
  */
 export async function getRegistryByAthleteId(athleteId) {
-    const query = `
+  const query = `
         SELECT id, athlete_id, carding_status, athlete_notified_on,
                carding_start_date, carding_end_date, medical_clearance,
                approved_start_date, approved_end_date
@@ -518,8 +652,8 @@ export async function getRegistryByAthleteId(athleteId) {
         WHERE athlete_id = $1
     `;
 
-    const result = await pool.query(query, [athleteId]);
-    return result.rows.length > 0 ? result.rows[0] : null;
+  const result = await pool.query(query, [athleteId]);
+  return result.rows.length > 0 ? result.rows[0] : null;
 }
 
 /**
@@ -529,43 +663,43 @@ export async function getRegistryByAthleteId(athleteId) {
  * @returns {Promise<Object|null>} Updated registry or null
  */
 export async function updateRegistry(athleteId, updateData) {
-    const fields = [];
-    const values = [];
-    let paramCounter = 1;
+  const fields = [];
+  const values = [];
+  let paramCounter = 1;
 
-    const fieldMapping = {
-        carding_status: updateData.carding_status,
-        athlete_notified_on: updateData.athlete_notified_on,
-        carding_start_date: updateData.carding_start_date,
-        carding_end_date: updateData.carding_end_date,
-        medical_clearance: updateData.medical_clearance,
-        approved_start_date: updateData.approved_start_date,
-        approved_end_date: updateData.approved_end_date,
-    };
+  const fieldMapping = {
+    carding_status: updateData.carding_status,
+    athlete_notified_on: updateData.athlete_notified_on,
+    carding_start_date: updateData.carding_start_date,
+    carding_end_date: updateData.carding_end_date,
+    medical_clearance: updateData.medical_clearance,
+    approved_start_date: updateData.approved_start_date,
+    approved_end_date: updateData.approved_end_date,
+  };
 
-    for (const [field, value] of Object.entries(fieldMapping)) {
-        if (value !== undefined) {
-            fields.push(`${field} = $${paramCounter}`);
-            values.push(value);
-            paramCounter++;
-        }
+  for (const [field, value] of Object.entries(fieldMapping)) {
+    if (value !== undefined) {
+      fields.push(`${field} = $${paramCounter}`);
+      values.push(value);
+      paramCounter++;
     }
+  }
 
-    if (fields.length === 0) {
-        return null;
-    }
+  if (fields.length === 0) {
+    return null;
+  }
 
-    values.push(athleteId);
+  values.push(athleteId);
 
-    const query = `
+  const query = `
         UPDATE AMS.Athlete_Registry
-        SET ${fields.join(', ')}
+        SET ${fields.join(", ")}
         WHERE athlete_id = $${paramCounter}
         RETURNING *
     `;
 
-    const result = await pool.query(query, values);
-    return result.rows.length > 0 ? result.rows[0] : null;
+  const result = await pool.query(query, values);
+  return result.rows.length > 0 ? result.rows[0] : null;
 }
 
 // ============================================================================
@@ -578,14 +712,14 @@ export async function updateRegistry(athleteId, updateData) {
  * @returns {Promise<Object|null>} Medical object or null
  */
 export async function getMedicalByAthleteId(athleteId) {
-    const query = `
+  const query = `
         SELECT id, athlete_id, medical_condition, food_allergy, drug_allergy, past_injury, medical_remarks
         FROM AMS.Athlete_Medical
         WHERE athlete_id = $1
     `;
 
-    const result = await pool.query(query, [athleteId]);
-    return result.rows.length > 0 ? result.rows[0] : null;
+  const result = await pool.query(query, [athleteId]);
+  return result.rows.length > 0 ? result.rows[0] : null;
 }
 
 /**
@@ -595,41 +729,41 @@ export async function getMedicalByAthleteId(athleteId) {
  * @returns {Promise<Object|null>} Updated medical or null
  */
 export async function updateMedical(athleteId, updateData) {
-    const fields = [];
-    const values = [];
-    let paramCounter = 1;
+  const fields = [];
+  const values = [];
+  let paramCounter = 1;
 
-    const fieldMapping = {
-        medical_condition: updateData.medical_condition,
-        food_allergy: updateData.food_allergy,
-        drug_allergy: updateData.drug_allergy,
-        past_injury: updateData.past_injury,
-        medical_remarks: updateData.medical_remarks,
-    };
+  const fieldMapping = {
+    medical_condition: updateData.medical_condition,
+    food_allergy: updateData.food_allergy,
+    drug_allergy: updateData.drug_allergy,
+    past_injury: updateData.past_injury,
+    medical_remarks: updateData.medical_remarks,
+  };
 
-    for (const [field, value] of Object.entries(fieldMapping)) {
-        if (value !== undefined) {
-            fields.push(`${field} = $${paramCounter}`);
-            values.push(value);
-            paramCounter++;
-        }
+  for (const [field, value] of Object.entries(fieldMapping)) {
+    if (value !== undefined) {
+      fields.push(`${field} = $${paramCounter}`);
+      values.push(value);
+      paramCounter++;
     }
+  }
 
-    if (fields.length === 0) {
-        return null;
-    }
+  if (fields.length === 0) {
+    return null;
+  }
 
-    values.push(athleteId);
+  values.push(athleteId);
 
-    const query = `
+  const query = `
         UPDATE AMS.Athlete_Medical
-        SET ${fields.join(', ')}
+        SET ${fields.join(", ")}
         WHERE athlete_id = $${paramCounter}
         RETURNING *
     `;
 
-    const result = await pool.query(query, values);
-    return result.rows.length > 0 ? result.rows[0] : null;
+  const result = await pool.query(query, values);
+  return result.rows.length > 0 ? result.rows[0] : null;
 }
 
 // ============================================================================
@@ -650,170 +784,191 @@ export async function updateMedical(athleteId, updateData) {
  * @returns {Promise<Object>} Updated profile
  */
 export async function updateAthleteProfile(athleteId, data, options = {}) {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
 
-        // 1. Update athlete base fields
-        const athleteFields = {
-            sport_id: data.sport_id,
-            sportsync_id: data.sportsync_id,
-            athlete_name_abbr: data.athlete_name_abbr,
-            gender: data.gender,
-            date_of_birth: data.date_of_birth,
-        };
+    // 1. Update athlete base fields
+    const athleteFields = {
+      sport_id: data.sport_id,
+      sportsync_id: data.sportsync_id,
+      athlete_name_abbr: data.athlete_name_abbr,
+      gender: data.gender,
+      date_of_birth: data.date_of_birth,
+    };
 
-        const athleteSetClauses = [];
-        const athleteValues = [];
-        let paramCounter = 1;
+    const athleteSetClauses = [];
+    const athleteValues = [];
+    let paramCounter = 1;
 
-        for (const [field, value] of Object.entries(athleteFields)) {
-            if (value !== undefined) {
-                athleteSetClauses.push(`${field} = $${paramCounter}`);
-                athleteValues.push(value);
-                paramCounter++;
-            }
-        }
+    for (const [field, value] of Object.entries(athleteFields)) {
+      if (value !== undefined) {
+        athleteSetClauses.push(`${field} = $${paramCounter}`);
+        athleteValues.push(value);
+        paramCounter++;
+      }
+    }
 
-        let athlete;
-        if (athleteSetClauses.length > 0) {
-            athleteValues.push(athleteId);
-            const athleteResult = await client.query(`
+    let athlete;
+    if (athleteSetClauses.length > 0) {
+      athleteValues.push(athleteId);
+      const athleteResult = await client.query(
+        `
                 UPDATE AMS.Athlete
-                SET ${athleteSetClauses.join(', ')}
+                SET ${athleteSetClauses.join(", ")}
                 WHERE id = $${paramCounter}
                 RETURNING *
-            `, athleteValues);
-            athlete = athleteResult.rows[0];
-        }
+            `,
+        athleteValues,
+      );
+      athlete = athleteResult.rows[0];
+    }
 
-        // 2. Update registry fields
-        const registryFields = {
-            carding_status: data.carding_status,
-            athlete_notified_on: data.athlete_notified_on,
-            carding_start_date: data.carding_start_date,
-            carding_end_date: data.carding_end_date,
-            medical_clearance: data.medical_clearance,
-            approved_start_date: data.approved_start_date,
-            approved_end_date: data.approved_end_date,
-        };
+    // 2. Update registry fields
+    const registryFields = {
+      carding_status: data.carding_status,
+      athlete_notified_on: data.athlete_notified_on,
+      carding_start_date: data.carding_start_date,
+      carding_end_date: data.carding_end_date,
+      medical_clearance: data.medical_clearance,
+      approved_start_date: data.approved_start_date,
+      approved_end_date: data.approved_end_date,
+    };
 
-        const registrySetClauses = [];
-        const registryValues = [];
-        paramCounter = 1;
+    const registrySetClauses = [];
+    const registryValues = [];
+    paramCounter = 1;
 
-        for (const [field, value] of Object.entries(registryFields)) {
-            if (value !== undefined) {
-                registrySetClauses.push(`${field} = $${paramCounter}`);
-                registryValues.push(value);
-                paramCounter++;
-            }
-        }
+    for (const [field, value] of Object.entries(registryFields)) {
+      if (value !== undefined) {
+        registrySetClauses.push(`${field} = $${paramCounter}`);
+        registryValues.push(value);
+        paramCounter++;
+      }
+    }
 
-        let registry;
-        if (registrySetClauses.length > 0) {
-            registryValues.push(athleteId);
-            const registryResult = await client.query(`
+    let registry;
+    if (registrySetClauses.length > 0) {
+      registryValues.push(athleteId);
+      const registryResult = await client.query(
+        `
                 UPDATE AMS.Athlete_Registry
-                SET ${registrySetClauses.join(', ')}
+                SET ${registrySetClauses.join(", ")}
                 WHERE athlete_id = $${paramCounter}
                 RETURNING *
-            `, registryValues);
-            registry = registryResult.rows[0];
-        }
+            `,
+        registryValues,
+      );
+      registry = registryResult.rows[0];
+    }
 
-        // 3. Update medical fields
-        const medicalFields = {
-            medical_condition: data.medical_condition,
-            food_allergy: data.food_allergy,
-            drug_allergy: data.drug_allergy,
-            past_injury: data.past_injury,
-            medical_remarks: data.medical_remarks,
-        };
+    // 3. Update medical fields
+    const medicalFields = {
+      medical_condition: data.medical_condition,
+      food_allergy: data.food_allergy,
+      drug_allergy: data.drug_allergy,
+      past_injury: data.past_injury,
+      medical_remarks: data.medical_remarks,
+    };
 
-        const medicalSetClauses = [];
-        const medicalValues = [];
-        paramCounter = 1;
+    const medicalSetClauses = [];
+    const medicalValues = [];
+    paramCounter = 1;
 
-        for (const [field, value] of Object.entries(medicalFields)) {
-            if (value !== undefined) {
-                medicalSetClauses.push(`${field} = $${paramCounter}`);
-                medicalValues.push(value);
-                paramCounter++;
-            }
-        }
+    for (const [field, value] of Object.entries(medicalFields)) {
+      if (value !== undefined) {
+        medicalSetClauses.push(`${field} = $${paramCounter}`);
+        medicalValues.push(value);
+        paramCounter++;
+      }
+    }
 
-        let medical;
-        if (medicalSetClauses.length > 0) {
-            medicalValues.push(athleteId);
-            const medicalResult = await client.query(`
+    let medical;
+    if (medicalSetClauses.length > 0) {
+      medicalValues.push(athleteId);
+      const medicalResult = await client.query(
+        `
                 UPDATE AMS.Athlete_Medical
-                SET ${medicalSetClauses.join(', ')}
+                SET ${medicalSetClauses.join(", ")}
                 WHERE athlete_id = $${paramCounter}
                 RETURNING *
-            `, medicalValues);
-            medical = medicalResult.rows[0];
-        }
+            `,
+        medicalValues,
+      );
+      medical = medicalResult.rows[0];
+    }
 
-        // 4. Replace coach mappings (if coach_ids provided)
-        let coachMappings;
-        if (data.coach_ids !== undefined) {
-            // Deactivate all current active coach mappings
-            await client.query(`
+    // 4. Replace coach mappings (if coach_ids provided)
+    let coachMappings;
+    if (data.coach_ids !== undefined) {
+      // Deactivate all current active coach mappings
+      await client.query(
+        `
                 UPDATE AMS.Coach_Athlete_Mapping
                 SET is_active = false
                 WHERE athlete_id = $1 AND is_active = true
-            `, [athleteId]);
+            `,
+        [athleteId],
+      );
 
-            // Insert or reactivate new coach mappings
-            coachMappings = [];
-            for (const coachId of data.coach_ids) {
-                const result = await client.query(`
+      // Insert or reactivate new coach mappings
+      coachMappings = [];
+      for (const coachId of data.coach_ids) {
+        const result = await client.query(
+          `
                     INSERT INTO AMS.Coach_Athlete_Mapping (athlete_id, coach_id, is_active)
                     VALUES ($1, $2, true)
                     ON CONFLICT (athlete_id, coach_id) DO UPDATE SET is_active = true
                     RETURNING *
-                `, [athleteId, coachId]);
-                coachMappings.push(result.rows[0]);
-            }
-        }
+                `,
+          [athleteId, coachId],
+        );
+        coachMappings.push(result.rows[0]);
+      }
+    }
 
-        // 5. Replace nutritionist mappings (if nutritionist_ids provided and allowed)
-        let nutritionistMappings;
-        if (options.updateNutritionists && data.nutritionist_ids !== undefined) {
-            // Deactivate all current active nutritionist mappings
-            await client.query(`
+    // 5. Replace nutritionist mappings (if nutritionist_ids provided and allowed)
+    let nutritionistMappings;
+    if (options.updateNutritionists && data.nutritionist_ids !== undefined) {
+      // Deactivate all current active nutritionist mappings
+      await client.query(
+        `
                 UPDATE AMS.Nutritionist_Athlete_Mapping
                 SET is_active = false
                 WHERE athlete_id = $1 AND is_active = true
-            `, [athleteId]);
+            `,
+        [athleteId],
+      );
 
-            // Insert or reactivate new nutritionist mappings
-            nutritionistMappings = [];
-            for (const nutritionistId of data.nutritionist_ids) {
-                const result = await client.query(`
+      // Insert or reactivate new nutritionist mappings
+      nutritionistMappings = [];
+      for (const nutritionistId of data.nutritionist_ids) {
+        const result = await client.query(
+          `
                     INSERT INTO AMS.Nutritionist_Athlete_Mapping (athlete_id, nutritionist_id, is_active)
                     VALUES ($1, $2, true)
                     ON CONFLICT (athlete_id, nutritionist_id) DO UPDATE SET is_active = true
                     RETURNING *
-                `, [athleteId, nutritionistId]);
-                nutritionistMappings.push(result.rows[0]);
-            }
-        }
-
-        await client.query('COMMIT');
-
-        return {
-            athlete: athlete || null,
-            registry: registry || null,
-            medical: medical || null,
-            coachMappings: coachMappings || null,
-            nutritionistMappings: nutritionistMappings || null,
-        };
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
+                `,
+          [athleteId, nutritionistId],
+        );
+        nutritionistMappings.push(result.rows[0]);
+      }
     }
+
+    await client.query("COMMIT");
+
+    return {
+      athlete: athlete || null,
+      registry: registry || null,
+      medical: medical || null,
+      coachMappings: coachMappings || null,
+      nutritionistMappings: nutritionistMappings || null,
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 }

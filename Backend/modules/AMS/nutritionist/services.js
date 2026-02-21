@@ -9,13 +9,13 @@ import pool from "../../../config/db.js";
  * @returns {Promise<Object>} Query result with rows
  */
 export async function getAllNutritionists() {
-    const query = `
+  const query = `
         SELECT id, name
         FROM AMS.Nutritionist
         ORDER BY name ASC
     `;
 
-    return await pool.query(query);
+  return await pool.query(query);
 }
 
 /**
@@ -24,14 +24,14 @@ export async function getAllNutritionists() {
  * @returns {Promise<boolean>} True if duplicate exists
  */
 export async function checkDuplicateNutritionist(name) {
-    const query = `
+  const query = `
         SELECT id FROM AMS.Nutritionist
         WHERE LOWER(name) = LOWER($1)
         LIMIT 1
     `;
 
-    const result = await pool.query(query, [name]);
-    return result.rows.length > 0;
+  const result = await pool.query(query, [name]);
+  return result.rows.length > 0;
 }
 
 /**
@@ -40,14 +40,14 @@ export async function checkDuplicateNutritionist(name) {
  * @returns {Promise<Object>} Created nutritionist row
  */
 export async function createNutritionist(name) {
-    const query = `
+  const query = `
         INSERT INTO AMS.Nutritionist (name)
         VALUES ($1)
         RETURNING *
     `;
 
-    const result = await pool.query(query, [name]);
-    return result.rows[0];
+  const result = await pool.query(query, [name]);
+  return result.rows[0];
 }
 
 /**
@@ -57,15 +57,15 @@ export async function createNutritionist(name) {
  * @returns {Promise<Object|null>} Updated row or null
  */
 export async function updateNutritionist(id, name) {
-    const query = `
+  const query = `
         UPDATE AMS.Nutritionist 
         SET name = $1 
         WHERE id = $2 
         RETURNING *
     `;
 
-    const result = await pool.query(query, [name, id]);
-    return result.rows.length > 0 ? result.rows[0] : null;
+  const result = await pool.query(query, [name, id]);
+  return result.rows.length > 0 ? result.rows[0] : null;
 }
 
 /**
@@ -74,14 +74,14 @@ export async function updateNutritionist(id, name) {
  * @returns {Promise<Array>} Array of deleted rows
  */
 export async function deleteNutritionists(nutritionistIds) {
-    const query = `
+  const query = `
         DELETE FROM AMS.Nutritionist
         WHERE id = ANY($1::uuid[])
         RETURNING id
     `;
 
-    const result = await pool.query(query, [nutritionistIds]);
-    return result.rows;
+  const result = await pool.query(query, [nutritionistIds]);
+  return result.rows;
 }
 
 /**
@@ -90,14 +90,14 @@ export async function deleteNutritionists(nutritionistIds) {
  * @returns {Promise<Object|null>} Nutritionist object or null
  */
 export async function getNutritionistById(nutritionistId) {
-    const query = `
+  const query = `
         SELECT id, name
         FROM AMS.Nutritionist
         WHERE id = $1
     `;
 
-    const result = await pool.query(query, [nutritionistId]);
-    return result.rows.length > 0 ? result.rows[0] : null;
+  const result = await pool.query(query, [nutritionistId]);
+  return result.rows.length > 0 ? result.rows[0] : null;
 }
 
 /**
@@ -106,14 +106,14 @@ export async function getNutritionistById(nutritionistId) {
  * @returns {Promise<boolean>} True if athlete exists
  */
 export async function checkAthleteExists(athleteId) {
-    const query = `
+  const query = `
         SELECT id FROM AMS.Athlete
         WHERE id = $1
         LIMIT 1
     `;
 
-    const result = await pool.query(query, [athleteId]);
-    return result.rows.length > 0;
+  const result = await pool.query(query, [athleteId]);
+  return result.rows.length > 0;
 }
 
 // ============================================================================
@@ -126,11 +126,11 @@ export async function checkAthleteExists(athleteId) {
  * @returns {Promise<string|null>} Nutritionist UUID or null
  */
 export async function getNutritionistIdByUserId(userId) {
-    const result = await pool.query(
-        `SELECT id FROM AMS.Nutritionist WHERE user_id = $1`,
-        [userId]
-    );
-    return result.rows.length > 0 ? result.rows[0].id : null;
+  const result = await pool.query(
+    `SELECT id FROM AMS.Nutritionist WHERE user_id = $1`,
+    [userId],
+  );
+  return result.rows.length > 0 ? result.rows[0].id : null;
 }
 
 // ============================================================================
@@ -140,10 +140,10 @@ export async function getNutritionistIdByUserId(userId) {
 /**
  * Get "My Athletes" for a logged-in nutritionist
  * Sorts by PINNED status first, then by name.
- * @param {string} nutritionistId 
+ * @param {string} nutritionistId
  */
 export async function getAssignedAthletes(nutritionistId) {
-    const query = `
+  const query = `
         SELECT 
             a.id, 
             a.athlete_name_abbr, 
@@ -158,25 +158,40 @@ export async function getAssignedAthletes(nutritionistId) {
         WHERE nam.nutritionist_id = $1 AND nam.is_active = TRUE
         ORDER BY nam.is_pinned DESC, a.athlete_name_abbr ASC
     `;
-    const result = await pool.query(query, [nutritionistId]);
-    return result.rows;
+  const result = await pool.query(query, [nutritionistId]);
+  return result.rows;
 }
 
 /**
  * Toggle the pinned status of an athlete for a nutritionist
- * @param {string} nutritionistId 
- * @param {string} athleteId 
- * @param {boolean} isPinned 
+ * @param {string} nutritionistId
+ * @param {string} athleteId
+ * @param {boolean} isPinned
  */
-export async function toggleAthletePin(nutritionistId, athleteId, isPinned) {
-    const query = `
-        UPDATE AMS.Nutritionist_Athlete_Mapping
-        SET is_pinned = $3
-        WHERE nutritionist_id = $1 AND athlete_id = $2
+export async function toggleAthletePin(userId, athleteId, isPinned) {
+  // Create a simple user-based pinning system using upsert
+  // This allows any authenticated user to pin any athlete for their personal organization
+  const query = `
+        INSERT INTO AMS.User_Athlete_Pins (user_id, athlete_id, is_pinned, updated_at)
+        VALUES ($1, $2, $3, now())
+        ON CONFLICT (user_id, athlete_id) 
+        DO UPDATE SET is_pinned = $3, updated_at = now()
         RETURNING is_pinned
     `;
-    const result = await pool.query(query, [nutritionistId, athleteId, isPinned]);
+
+  try {
+    const result = await pool.query(query, [userId, athleteId, isPinned]);
     return result.rows[0];
+  } catch (error) {
+    // If table doesn't exist, create it and retry
+    if (error.code === "42P01") {
+      // relation does not exist
+      await createUserAthletePinsTable();
+      const result = await pool.query(query, [userId, athleteId, isPinned]);
+      return result.rows[0];
+    }
+    throw error;
+  }
 }
 
 /**
@@ -185,7 +200,7 @@ export async function toggleAthletePin(nutritionistId, athleteId, isPinned) {
  * @returns {Promise<Object>} Query result with rows
  */
 export async function getAllMappings(isActive = null) {
-    let query = `
+  let query = `
         SELECT nam.id, nam.athlete_id, nam.nutritionist_id, nam.is_active,
                n.name AS nutritionist_name, a.athlete_name_abbr AS athlete_name
         FROM AMS.Nutritionist_Athlete_Mapping nam
@@ -193,15 +208,15 @@ export async function getAllMappings(isActive = null) {
         JOIN AMS.Athlete a ON nam.athlete_id = a.id
     `;
 
-    const params = [];
-    if (isActive !== null) {
-        query += ` WHERE nam.is_active = $1`;
-        params.push(isActive);
-    }
+  const params = [];
+  if (isActive !== null) {
+    query += ` WHERE nam.is_active = $1`;
+    params.push(isActive);
+  }
 
-    query += ` ORDER BY a.athlete_name_abbr ASC, n.name ASC`;
+  query += ` ORDER BY a.athlete_name_abbr ASC, n.name ASC`;
 
-    return await pool.query(query, params);
+  return await pool.query(query, params);
 }
 
 /**
@@ -211,7 +226,7 @@ export async function getAllMappings(isActive = null) {
  * @returns {Promise<Object>} Query result with rows
  */
 export async function getMappingsByAthleteId(athleteId, isActive = null) {
-    let query = `
+  let query = `
         SELECT nam.id, nam.athlete_id, nam.nutritionist_id, nam.is_active,
                n.name AS nutritionist_name, a.athlete_name_abbr AS athlete_name
         FROM AMS.Nutritionist_Athlete_Mapping nam
@@ -220,15 +235,15 @@ export async function getMappingsByAthleteId(athleteId, isActive = null) {
         WHERE nam.athlete_id = $1
     `;
 
-    const params = [athleteId];
-    if (isActive !== null) {
-        query += ` AND nam.is_active = $2`;
-        params.push(isActive);
-    }
+  const params = [athleteId];
+  if (isActive !== null) {
+    query += ` AND nam.is_active = $2`;
+    params.push(isActive);
+  }
 
-    query += ` ORDER BY n.name ASC`;
+  query += ` ORDER BY n.name ASC`;
 
-    return await pool.query(query, params);
+  return await pool.query(query, params);
 }
 
 /**
@@ -238,14 +253,14 @@ export async function getMappingsByAthleteId(athleteId, isActive = null) {
  * @returns {Promise<boolean>} True if mapping exists
  */
 export async function checkMappingExists(athleteId, nutritionistId) {
-    const query = `
+  const query = `
         SELECT 1 FROM AMS.Nutritionist_Athlete_Mapping
         WHERE athlete_id = $1 AND nutritionist_id = $2
         LIMIT 1
     `;
 
-    const result = await pool.query(query, [athleteId, nutritionistId]);
-    return result.rows.length > 0;
+  const result = await pool.query(query, [athleteId, nutritionistId]);
+  return result.rows.length > 0;
 }
 
 /**
@@ -256,14 +271,14 @@ export async function checkMappingExists(athleteId, nutritionistId) {
  * @returns {Promise<Object>} Created mapping row
  */
 export async function createMapping(athleteId, nutritionistId, isActive) {
-    const query = `
+  const query = `
         INSERT INTO AMS.Nutritionist_Athlete_Mapping (athlete_id, nutritionist_id, is_active)
         VALUES ($1, $2, $3)
         RETURNING *
     `;
 
-    const result = await pool.query(query, [athleteId, nutritionistId, isActive]);
-    return result.rows[0];
+  const result = await pool.query(query, [athleteId, nutritionistId, isActive]);
+  return result.rows[0];
 }
 
 /**
@@ -274,15 +289,15 @@ export async function createMapping(athleteId, nutritionistId, isActive) {
  * @returns {Promise<Object|null>} Updated mapping or null if not found
  */
 export async function updateMapping(athleteId, nutritionistId, isActive) {
-    const query = `
+  const query = `
         UPDATE AMS.Nutritionist_Athlete_Mapping
         SET is_active = $3
         WHERE athlete_id = $1 AND nutritionist_id = $2
         RETURNING *
     `;
 
-    const result = await pool.query(query, [athleteId, nutritionistId, isActive]);
-    return result.rows.length > 0 ? result.rows[0] : null;
+  const result = await pool.query(query, [athleteId, nutritionistId, isActive]);
+  return result.rows.length > 0 ? result.rows[0] : null;
 }
 
 /**
@@ -291,22 +306,49 @@ export async function updateMapping(athleteId, nutritionistId, isActive) {
  * @returns {Promise<Array>} Array of deleted rows
  */
 export async function deleteMappings(pairs) {
-    const valueClauses = [];
-    const params = [];
-    let paramCounter = 1;
+  const valueClauses = [];
+  const params = [];
+  let paramCounter = 1;
 
-    for (const pair of pairs) {
-        valueClauses.push(`($${paramCounter}::uuid, $${paramCounter + 1}::uuid)`);
-        params.push(pair.athlete_id, pair.nutritionist_id);
-        paramCounter += 2;
-    }
+  for (const pair of pairs) {
+    valueClauses.push(`($${paramCounter}::uuid, $${paramCounter + 1}::uuid)`);
+    params.push(pair.athlete_id, pair.nutritionist_id);
+    paramCounter += 2;
+  }
 
-    const query = `
+  const query = `
         DELETE FROM AMS.Nutritionist_Athlete_Mapping
-        WHERE (athlete_id, nutritionist_id) IN (${valueClauses.join(', ')})
+        WHERE (athlete_id, nutritionist_id) IN (${valueClauses.join(", ")})
         RETURNING id, athlete_id, nutritionist_id
     `;
 
-    const result = await pool.query(query, params);
-    return result.rows;
+  const result = await pool.query(query, params);
+  return result.rows;
+}
+
+/**
+ * Create the User_Athlete_Pins table if it doesn't exist
+ * This table allows any user to pin any athlete for personal organization
+ */
+async function createUserAthletePinsTable() {
+  const query = `
+        CREATE TABLE IF NOT EXISTS AMS.User_Athlete_Pins (
+            id UUID PRIMARY KEY DEFAULT public.uuid_generate_v7(),
+            user_id UUID NOT NULL,
+            athlete_id UUID NOT NULL,
+            is_pinned BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMPTZ DEFAULT now(),
+            updated_at TIMESTAMPTZ DEFAULT now(),
+            
+            UNIQUE(user_id, athlete_id),
+            
+            FOREIGN KEY (athlete_id) REFERENCES AMS.Athlete(id) ON DELETE CASCADE
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_user_athlete_pins_user_id ON AMS.User_Athlete_Pins(user_id);
+        CREATE INDEX IF NOT EXISTS idx_user_athlete_pins_athlete_id ON AMS.User_Athlete_Pins(athlete_id);
+        CREATE INDEX IF NOT EXISTS idx_user_athlete_pins_is_pinned ON AMS.User_Athlete_Pins(is_pinned);
+    `;
+
+  await pool.query(query);
 }

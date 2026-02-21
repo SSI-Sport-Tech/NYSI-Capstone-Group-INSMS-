@@ -5,7 +5,7 @@ import swaggerUi from "swagger-ui-express";
 import swaggerSpecs from "./config/swagger.js";
 import ocrRoutes from "./modules/OCR/routes.js";
 import supplementRoutes from "./modules/SSS/index.js";
-import adminRoutes from './modules/Admin/adminRoutes.js';
+import adminRoutes from "./modules/Admin/adminRoutes.js";
 import athleteRoutes from "./modules/AMS/index.js";
 import authRoutes from "./modules/Auth/routes.js";
 import consultationRoutes from "./modules/Consultation/index.js";
@@ -25,10 +25,12 @@ const PORT = process.env.PORT || 8000;
 
 // CORS - Allow requests from Next.js dev server
 app.use(
-    cors({
-        origin: process.env.FRONTEND_URL || "http://localhost:3000",
-        credentials: true,
-    })
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
 );
 
 // Body parsing middleware
@@ -37,43 +39,44 @@ app.use(express.urlencoded({ extended: true }));
 
 // ==================== API DOCUMENTATION ====================
 
-// Update Swagger with security scheme for JWT
+// Update Swagger with security scheme for JWT (SAFE MERGE)
 const swaggerOptions = {
-    ...swaggerSpecs,
-    components: {
-        ...swaggerSpecs.components,
-        securitySchemes: {
-            bearerAuth: {
-                type: "http",
-                scheme: "bearer",
-                bearerFormat: "JWT",
-                description: "Enter your JWT token from /api/auth/verify-code",
-            },
-        },
+  ...swaggerSpecs,
+  components: {
+    ...(swaggerSpecs.components || {}),
+    securitySchemes: {
+      ...(swaggerSpecs.components?.securitySchemes || {}),
+      bearerAuth: {
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT",
+        description: "Enter your JWT token from /api/auth/verify-code",
+      },
     },
+  },
 };
 
 // Swagger UI setup
 app.use(
-    "/docs",
-    swaggerUi.serve,
-    swaggerUi.setup(swaggerOptions, {
-        explorer: true,
-        customCss: ".swagger-ui .topbar { display: none }",
-        customSiteTitle: "NYSI API Documentation",
-        swaggerOptions: {
-            persistAuthorization: true,
-            displayRequestDuration: true,
-            filter: true,
-            tryItOutEnabled: true,
-        },
-    })
+  "/docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerOptions, {
+    explorer: true,
+    customCss: ".swagger-ui .topbar { display: none }",
+    customSiteTitle: "NYSI API Documentation",
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayRequestDuration: true,
+      filter: true,
+      tryItOutEnabled: true,
+    },
+  }),
 );
 
 // Swagger JSON endpoint (useful for importing into other tools)
 app.get("/docs.json", (req, res) => {
-    res.setHeader("Content-Type", "application/json");
-    res.send(swaggerOptions);
+  res.setHeader("Content-Type", "application/json");
+  res.send(swaggerOptions);
 });
 
 // ==================== API ROUTES ====================
@@ -85,7 +88,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/SSS", supplementRoutes);
 app.use("/api/AMS", athleteRoutes);
 app.use("/api/ocr", ocrRoutes);
-app.use('/api/admin', adminRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/Consultation", consultationRoutes);
 
 // ==================== HEALTH CHECK ENDPOINTS ====================
@@ -123,19 +126,19 @@ app.use("/api/Consultation", consultationRoutes);
  *                   format: date-time
  */
 app.get("/", (req, res) => {
-    res.json({
-        message: "NYSI Backend API is running",
-        version: "2.1",
-        features: [
-            "2FA Email Authentication",
-            "Supplement Management",
-            "Athlete Profiles",
-            "OCR Services",
-            "Web Scraping",
-        ],
-        documentation: `http://localhost:${PORT}/docs`,
-        timestamp: new Date().toISOString(),
-    });
+  res.json({
+    message: "NYSI Backend API is running",
+    version: "2.1",
+    features: [
+      "2FA Email Authentication",
+      "Supplement Management",
+      "Athlete Profiles",
+      "OCR Services",
+      "Web Scraping",
+    ],
+    documentation: `http://localhost:${PORT}/docs`,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 /**
@@ -167,12 +170,12 @@ app.get("/", (req, res) => {
  *                   example: This endpoint doesn't require database
  */
 app.get("/api/test", (req, res) => {
-    res.json({
-        success: true,
-        message: "Backend is working! ✅",
-        timestamp: new Date().toISOString(),
-        note: "This endpoint doesn't require database",
-    });
+  res.json({
+    success: true,
+    message: "Backend is working! ✅",
+    timestamp: new Date().toISOString(),
+    note: "This endpoint doesn't require database",
+  });
 });
 
 /**
@@ -222,78 +225,80 @@ app.get("/api/test", (req, res) => {
  *                   type: string
  */
 app.get("/api/health", async (req, res) => {
-    try {
-        // Test database connection
-        await pool.query("SELECT 1");
+  try {
+    // Test database connection
+    await pool.query("SELECT 1");
 
-        // Check email configuration
-        const emailConfigured = process.env.EMAIL_USER && process.env.EMAIL_PASSWORD;
+    // Check email configuration
+    const emailConfigured =
+      process.env.EMAIL_USER && process.env.EMAIL_PASSWORD;
 
-        res.json({
-            status: "healthy",
-            services: {
-                api: "running",
-                database: "connected",
-                email: emailConfigured ? "configured" : "not_configured",
-            },
-            timestamp: new Date().toISOString(),
-        });
-    } catch (error) {
-        res.status(503).json({
-            status: "unhealthy",
-            services: {
-                api: "running",
-                database: "disconnected",
-                email: "unknown",
-            },
-            error: error.message,
-            timestamp: new Date().toISOString(),
-        });
-    }
+    res.json({
+      status: "healthy",
+      services: {
+        api: "running",
+        database: "connected",
+        email: emailConfigured ? "configured" : "not_configured",
+      },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: "unhealthy",
+      services: {
+        api: "running",
+        database: "disconnected",
+        email: "unknown",
+      },
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 // ==================== 404 HANDLER ====================
 
 app.use((req, res) => {
-    res.status(404).json({
-        error: "Route not found",
-        path: req.path,
-        method: req.method,
-        suggestion: `Visit http://localhost:${PORT}/docs for API documentation`,
-    });
+  res.status(404).json({
+    error: "Route not found",
+    path: req.path,
+    method: req.method,
+    suggestion: `Visit http://localhost:${PORT}/docs for API documentation`,
+  });
 });
 
 // ==================== ERROR HANDLER ====================
 
 app.use((err, req, res, next) => {
-    console.error("Error:", err);
+  console.error("Error:", err);
 
-    res.status(err.status || 500).json({
-        error: err.message || "Internal server error",
-        ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
-    });
+  res.status(err.status || 500).json({
+    error: err.message || "Internal server error",
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+  });
 });
 
 // ==================== START SERVER ====================
 
 const server = app.listen(PORT, async () => {
-    console.log("\n" + "=".repeat(60));
-    console.log("✅ NYSI Backend API Server Started");
-    console.log("=".repeat(60));
-    console.log(`🌐 Server URL:        http://localhost:${PORT}`);
-    console.log(`📚 API Docs:          http://localhost:${PORT}/docs`);
-    console.log(`📄 OpenAPI JSON:      http://localhost:${PORT}/docs.json`);
-    console.log(
-        `🔗 CORS Enabled For:  ${process.env.FRONTEND_URL || "http://localhost:3000"
-        }`
-    );
-    console.log("=".repeat(60));
-    console.log("🔒 Authentication:    2FA Email Enabled");
-    console.log("📧 Email Service:     Checking configuration...");
-    console.log("=".repeat(60) + "\n");
+  console.log("\n" + "=".repeat(60));
+  console.log("✅ NYSI Backend API Server Started");
+  console.log("=".repeat(60));
+  console.log(`🌐 Server URL:        http://localhost:${PORT}`);
+  console.log(`📚 API Docs:          http://localhost:${PORT}/docs`);
+  console.log(`📄 OpenAPI JSON:      http://localhost:${PORT}/docs.json`);
+  console.log(
+    `🔗 CORS Enabled For:  ${
+      process.env.FRONTEND_URL || "http://localhost:3000"
+    }`,
+  );
+  console.log("=".repeat(60));
+  console.log("🔒 Authentication:    2FA Email Enabled");
+  console.log("📧 Email Service:     Checking configuration...");
+  console.log("=".repeat(60) + "\n");
 
-    // Verify email configuration on startup
-    await verifyEmailConfig();
+  // Verify email configuration on startup
+  await verifyEmailConfig();
 });
 
 // Increase timeout for long-running OCR requests (2 minutes)
@@ -301,12 +306,12 @@ server.timeout = 120000;
 
 // Graceful shutdown
 process.on("SIGTERM", () => {
-    console.log("SIGTERM signal received: closing HTTP server");
-    server.close(() => {
-        console.log("HTTP server closed");
-        pool.end(() => {
-            console.log("Database pool closed");
-            process.exit(0);
-        });
+  console.log("SIGTERM signal received: closing HTTP server");
+  server.close(() => {
+    console.log("HTTP server closed");
+    pool.end(() => {
+      console.log("Database pool closed");
+      process.exit(0);
     });
+  });
 });

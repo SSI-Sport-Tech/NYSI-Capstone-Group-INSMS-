@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { useAuth } from "@/contexts/AuthContext";
 import AthleteTable from "@/components/AMS/AthleteTable";
 import AthleteSearchSection from "@/components/AMS/AthleteSearchSection";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -14,6 +15,10 @@ interface Athlete {
   sport_name: string;
   gender: string;
   date_of_birth: string;
+  carding_status?: string;
+  target_event?: string;
+  assigned_nutritionist?: string;
+  is_pinned?: boolean;
 }
 
 interface SearchResponse {
@@ -25,6 +30,7 @@ interface SearchResponse {
 }
 
 export default function AthleteManagementPage() {
+  const { token } = useAuth();
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -32,6 +38,7 @@ export default function AthleteManagementPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const fetchAthletes = async (page = 1, searchQuery = "") => {
     setLoading(true);
@@ -39,12 +46,26 @@ export default function AthleteManagementPage() {
     try {
       const backendUrl =
         process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
+      // Include authorization header for user-specific pin data
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      console.log("Fetching athletes with token present:", !!token);
+
       const response = await axios.get<SearchResponse>(
         `${backendUrl}/api/AMS/athletes`,
         {
           params: { page, search: searchQuery },
+          headers,
         },
       );
+
+      console.log("Fetched athlete data:", response.data.data);
+      console.log(
+        "First athlete pin status:",
+        response.data.data[0]?.is_pinned,
+      );
+
       setAthletes(response.data.data);
       setCurrentPage(response.data.currentPage);
       setTotalPages(response.data.totalPages);
@@ -75,12 +96,42 @@ export default function AthleteManagementPage() {
     fetchAthletes(page, query);
   };
 
+  const handleSuccess = (message: string) => {
+    setSuccessMessage(message);
+    setError(null);
+    setTimeout(() => setSuccessMessage(null), 5000);
+  };
+
+  const handleError = (message: string) => {
+    setError(message);
+    setSuccessMessage(null);
+  };
+
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-[1600px] mx-auto px-6 py-8">
           {/* Page Header */}
           <PageHeader title="Athlete Management" />
+
+          {/* Success Message */}
+          {successMessage && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-5 py-4 rounded-xl mb-6 flex items-start gap-3">
+              <svg
+                className="w-5 h-5 flex-shrink-0 mt-0.5"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <p className="text-sm font-medium">{successMessage}</p>
+            </div>
+          )}
+
           {/* Error Message */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-5 py-4 rounded-xl mb-6 flex items-start gap-3">
@@ -118,6 +169,8 @@ export default function AthleteManagementPage() {
             totalPages={totalPages}
             onPageChange={handlePageChange}
             onRefresh={() => fetchAthletes(currentPage, query)}
+            onSuccess={handleSuccess}
+            onError={handleError}
           />
         </div>
       </div>
