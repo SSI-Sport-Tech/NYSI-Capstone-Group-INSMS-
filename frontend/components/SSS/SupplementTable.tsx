@@ -193,7 +193,7 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <Link
-                      href={`/supplements/${supplement.id}`}
+                      href={`/SSS/supplements/${supplement.id}`}
                       className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
                     >
                       {supplement.supplement_name || "N/A"}

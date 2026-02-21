@@ -322,7 +322,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
                     </td>
                     <td className="px-3 py-4 text-sm text-gray-900">
                       <Link
-                        href={`/supplements/${batch.supplement_id}`}
+                        href={`/SSS/supplements/${batch.supplement_id}`}
                         className="font-medium text-blue-600 underline cursor-pointer hover:text-blue-800"
                         onClick={() =>
                           console.log(

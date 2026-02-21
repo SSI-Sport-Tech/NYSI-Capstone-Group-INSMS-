@@ -22,11 +22,25 @@ interface OCRAnalysisResult {
   nutritional_info_per_100g?: Record<string, string>;
 }
 
+interface VerificationResult {
+  supplement_brand: string;
+  supplement_name: string;
+  batch_id: string;
+  is_verified: boolean;
+  is_batch_tested: boolean;
+  batch_id_verified: boolean;
+  found_count: number;
+  found_websites: string[];
+  results: any[];
+  quick_links: any[];
+}
+
 interface BatchTestResult {
   id: string;
   fileName: string;
   status: "pending" | "processing" | "completed" | "failed";
   result?: OCRAnalysisResult;
+  verification?: VerificationResult;
   error?: string;
   uploadTime: Date;
   processingTime?: number;
@@ -37,25 +51,25 @@ const tabs = [
     id: "inventory",
     label: "Current Inventory View",
     icon: "inventory",
-    href: "/inventory",
+    href: "/SSS/inventory",
   },
   {
     id: "scraper",
     label: "Web Scraper View",
     icon: "scraper",
-    href: "/web-scraper",
+    href: "/SSS/web-scraper",
   },
   {
     id: "library",
     label: "Supplement Library",
     icon: "library",
-    href: "/library",
+    href: "/SSS/library",
   },
   {
     id: "batch-testing",
     label: "Batch OCR Testing",
     icon: "batch",
-    href: "/batch-testing",
+    href: "/SSS/batch-testing",
   },
 ];
 
@@ -172,10 +186,8 @@ export default function BatchTesting() {
                 ? {
                     ...result,
                     status: "completed" as const,
-                    result: {
-                      ...extractedData,
-                      verification_result: verifyResponse.data,
-                    },
+                    result: extractedData,
+                    verification: verifyResponse.data.verification,
                     processingTime,
                   }
                 : result,
@@ -465,6 +477,18 @@ export default function BatchTesting() {
                         Brand
                       </th>
                       <th className="text-left py-3 px-4 font-medium text-gray-900">
+                        Batch ID
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">
+                        Verified
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">
+                        Batch Tested
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">
+                        Found Count
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">
                         Error
                       </th>
                     </tr>
@@ -492,10 +516,54 @@ export default function BatchTesting() {
                             : "-"}
                         </td>
                         <td className="py-3 px-4 text-gray-900">
-                          {result.result?.supplement_name || "-"}
+                          {result.verification?.supplement_name ||
+                            result.result?.supplement_name ||
+                            "-"}
                         </td>
                         <td className="py-3 px-4 text-gray-900">
-                          {result.result?.supplement_brand || "-"}
+                          {result.verification?.supplement_brand ||
+                            result.result?.supplement_brand ||
+                            "-"}
+                        </td>
+                        <td className="py-3 px-4 text-gray-900">
+                          {result.verification?.batch_id || "-"}
+                        </td>
+                        <td className="py-3 px-4">
+                          {result.verification ? (
+                            <span
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                result.verification.is_verified
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {result.verification.is_verified
+                                ? "Verified"
+                                : "Not Verified"}
+                            </span>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          {result.verification ? (
+                            <span
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                result.verification.is_batch_tested
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {result.verification.is_batch_tested
+                                ? "Batch Tested"
+                                : "Not Batch Tested"}
+                            </span>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-gray-600">
+                          {result.verification?.found_count ?? "-"}
                         </td>
                         <td className="py-3 px-4 text-red-600 text-xs max-w-xs truncate">
                           {result.error || "-"}
