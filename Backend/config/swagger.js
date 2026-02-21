@@ -104,6 +104,15 @@ const swaggerOptions = {
                 name: "Consultation - Meal Log",
                 description: "Manage athlete meal logs and macronutrient intake for a session",
             },
+
+            {
+                name: "Consultation - Anthropometry",
+                description: "Anthropometry card — height/weight/body composition + BMI category for a session",
+            },
+            {
+                name: "Consultation - Adherences",
+                description: "Adherences card — nutrition requirements, estimated intake, PAL, comments, and computed outputs",
+            },
             // ==================== Other ====================
             {
                 name: "OCR",
@@ -268,6 +277,126 @@ const swaggerOptions = {
                       },
                       { $ref: "#/components/schemas/MealLogPayload" }
                     ]
+                },
+                AnthropometryPatchRequest: {
+                    type: "object",
+                    properties: {
+                      heightCm: { type: "number", format: "float", nullable: true },
+                      weightKg: { type: "number", format: "float", nullable: true },
+                      targetWeightKg: { type: "number", format: "float", nullable: true },
+                      fatMassKg: { type: "number", format: "float", nullable: true },
+                      skeletalMuscleMassKg: { type: "number", format: "float", nullable: true },
+                  
+                      bmiCategory: { type: "string", nullable: true, enum: ["Normal", "Underweight", "Overweight"] },
+                      sumOf8Skinfold: { type: "number", format: "float", nullable: true },
+                      motherHeightCm: { type: "number", format: "float", nullable: true },
+                      fatherHeightCm: { type: "number", format: "float", nullable: true },
+                      otherRemarks: { type: "string", nullable: true, maxLength: 4000 },
+                    },
+                },
+                  
+                  AnthropometryResponse: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string", format: "uuid", nullable: true },
+                      sessionId: { type: "string", format: "uuid" },
+                  
+                      heightCm: { type: "number", format: "float", nullable: true },
+                      weightKg: { type: "number", format: "float", nullable: true },
+                      bmi: { type: "number", format: "float", nullable: true },
+                      bmiCategory: { type: "string", nullable: true },
+                  
+                      fatMassKg: { type: "number", format: "float", nullable: true },
+                      fatMassPct: { type: "number", format: "float", nullable: true },
+                      skeletalMuscleMassKg: { type: "number", format: "float", nullable: true },
+                      skeletalMuscleMassPct: { type: "number", format: "float", nullable: true },
+                  
+                      sumOf8Skinfold: { type: "number", format: "float", nullable: true },
+                      targetWeightKg: { type: "number", format: "float", nullable: true },
+                      targetBmi: { type: "number", format: "float", nullable: true },
+                  
+                      motherHeightCm: { type: "number", format: "float", nullable: true },
+                      fatherHeightCm: { type: "number", format: "float", nullable: true },
+                  
+                      athletePotentialAdultHeightCm: { type: "number", format: "float", nullable: true, description: "Not stored in DB by default" },
+                      otherRemarks: { type: "string", nullable: true },
+                    },
+                },
+                  
+                  AdherencesPatchRequest: {
+                    type: "object",
+                    properties: {
+                      pal: { type: "number", format: "float", nullable: true },
+                  
+                      minCarbGkg: { type: "number", format: "float", nullable: true },
+                      maxCarbGkg: { type: "number", format: "float", nullable: true },
+                      minProteinGkg: { type: "number", format: "float", nullable: true },
+                      maxProteinGkg: { type: "number", format: "float", nullable: true },
+                      minFatGkg: { type: "number", format: "float", nullable: true },
+                      maxFatGkg: { type: "number", format: "float", nullable: true },
+                  
+                      estimatedCarbG: { type: "number", format: "float", nullable: true },
+                      estimatedProteinG: { type: "number", format: "float", nullable: true },
+                      estimatedFatG: { type: "number", format: "float", nullable: true },
+                  
+                      commentsWeekday: { type: "string", nullable: true, maxLength: 4000 },
+                      commentsWeekend: { type: "string", nullable: true, maxLength: 4000 },
+                      otherRemarks: { type: "string", nullable: true, maxLength: 4000 },
+                    },
+                },
+                  
+                  AdherencesResponse: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string", format: "uuid", nullable: true },
+                      sessionId: { type: "string", format: "uuid" },
+                  
+                      pal: { type: "number", format: "float", nullable: true },
+                  
+                      minCarbGkg: { type: "number", format: "float", nullable: true },
+                      maxCarbGkg: { type: "number", format: "float", nullable: true },
+                      minProteinGkg: { type: "number", format: "float", nullable: true },
+                      maxProteinGkg: { type: "number", format: "float", nullable: true },
+                      minFatGkg: { type: "number", format: "float", nullable: true },
+                      maxFatGkg: { type: "number", format: "float", nullable: true },
+                  
+                      estimatedCarbG: { type: "number", format: "float", nullable: true },
+                      estimatedProteinG: { type: "number", format: "float", nullable: true },
+                      estimatedFatG: { type: "number", format: "float", nullable: true },
+                  
+                      commentsWeekday: { type: "string", nullable: true },
+                      commentsWeekend: { type: "string", nullable: true },
+                      otherRemarks: { type: "string", nullable: true },
+                  
+                      // computed outputs
+                      minCarbG: { type: "number", format: "float", nullable: true },
+                      maxCarbG: { type: "number", format: "float", nullable: true },
+                      minProteinG: { type: "number", format: "float", nullable: true },
+                      maxProteinG: { type: "number", format: "float", nullable: true },
+                      minFatG: { type: "number", format: "float", nullable: true },
+                      maxFatG: { type: "number", format: "float", nullable: true },
+                  
+                      targetMinCarbG: { type: "number", format: "float", nullable: true },
+                      targetMaxCarbG: { type: "number", format: "float", nullable: true },
+                      targetMinProteinG: { type: "number", format: "float", nullable: true },
+                      targetMaxProteinG: { type: "number", format: "float", nullable: true },
+                      targetMinFatG: { type: "number", format: "float", nullable: true },
+                      targetMaxFatG: { type: "number", format: "float", nullable: true },
+                  
+                      pctMinCarb: { type: "number", format: "float", nullable: true },
+                      pctMinProtein: { type: "number", format: "float", nullable: true },
+                      pctMinFat: { type: "number", format: "float", nullable: true },
+                  
+                      rmrMale: { type: "number", format: "float", nullable: true },
+                      teeMale: { type: "number", format: "float", nullable: true },
+                      targetRmrMale: { type: "number", format: "float", nullable: true },
+                      targetTeeMale: { type: "number", format: "float", nullable: true },
+                  
+                      rmrFemale: { type: "number", format: "float", nullable: true },
+                      teeFemale: { type: "number", format: "float", nullable: true },
+                      targetRmrFemale: { type: "number", format: "float", nullable: true },
+                      targetTeeFemale: { type: "number", format: "float", nullable: true },
+                    },
                 },
         
                 // ==================== SUPPLEMENT SCHEMAS ====================
@@ -1383,6 +1512,8 @@ const swaggerOptions = {
         "./modules/Auth/routes.js",
         "./modules/Consultation/trainingSchedule/routes.js",
         "./modules/Consultation/mealLog/routes.js",
+        "./modules/Consultation/anthropometry/routes.js",
+        "./modules/Consultation/adherences/routes.js",
         "./modules/Admin/adminRoutes.js"
     ],
 };
