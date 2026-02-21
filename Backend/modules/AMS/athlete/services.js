@@ -425,18 +425,76 @@ export async function createCompleteAthlete(
       coachMappings.push(mappingResult.rows[0]);
     }
 
-    // 5. Insert nutritionist mappings (pinned by default on creation)
+    // 5. Insert nutritionist mappings and trigger auto-pinning
     const nutritionistMappings = [];
     for (const nutritionistId of nutritionistIds) {
       const mappingResult = await client.query(
         `
-                INSERT INTO AMS.Nutritionist_Athlete_Mapping (athlete_id, nutritionist_id, is_active, is_pinned)
-                VALUES ($1, $2, true, true)
+                INSERT INTO AMS.Nutritionist_Athlete_Mapping (athlete_id, nutritionist_id, is_active)
+                VALUES ($1, $2, true)
                 RETURNING *
             `,
         [athlete.id, nutritionistId],
       );
       nutritionistMappings.push(mappingResult.rows[0]);
+
+      // Auto-pin the athlete for the nutritionist user
+      try {
+        // Get the user_id for this nutritionist
+        const nutritionistUserResult = await client.query(
+          `SELECT user_id FROM AMS.Nutritionist WHERE id = $1`,
+          [nutritionistId],
+        );
+
+        if (
+          nutritionistUserResult.rows.length > 0 &&
+          nutritionistUserResult.rows[0].user_id
+        ) {
+          const userId = nutritionistUserResult.rows[0].user_id;
+
+          // Create or update pin record (with table creation fallback)
+          try {
+            await client.query(
+              `
+              INSERT INTO AMS.User_Athlete_Pins (user_id, athlete_id, is_pinned, updated_at)
+              VALUES ($1, $2, true, now())
+              ON CONFLICT (user_id, athlete_id) 
+              DO UPDATE SET is_pinned = true, updated_at = now()
+              `,
+              [userId, athlete.id],
+            );
+
+            console.log(
+              `Auto-pinned athlete ${athlete.id} for nutritionist ${nutritionistId} (user ${userId}) during creation`,
+            );
+          } catch (pinInsertError) {
+            // If table doesn't exist, create it and retry
+            if (pinInsertError.code === "42P01") {
+              console.log("User_Athlete_Pins table not found, creating...");
+              await createUserAthletePinsTable(client);
+
+              await client.query(
+                `
+                INSERT INTO AMS.User_Athlete_Pins (user_id, athlete_id, is_pinned, updated_at)
+                VALUES ($1, $2, true, now())
+                ON CONFLICT (user_id, athlete_id) 
+                DO UPDATE SET is_pinned = true, updated_at = now()
+                `,
+                [userId, athlete.id],
+              );
+
+              console.log(
+                `Auto-pinned athlete ${athlete.id} for nutritionist ${nutritionistId} (user ${userId}) after table creation`,
+              );
+            } else {
+              throw pinInsertError;
+            }
+          }
+        }
+      } catch (pinError) {
+        console.error("Error auto-pinning during athlete creation:", pinError);
+        // Don't fail the whole transaction for pinning errors
+      }
     }
 
     await client.query("COMMIT");
