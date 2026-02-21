@@ -100,6 +100,10 @@ const swaggerOptions = {
                 name: "Consultation - Training Schedule",
                 description: "Manage athlete daily training schedules, RPE, and performance details for a session",
             },
+            {
+                name: "Consultation - Meal Log",
+                description: "Manage athlete meal logs and macronutrient intake for a session",
+            },
             // ==================== Other ====================
             {
                 name: "OCR",
@@ -229,6 +233,41 @@ const swaggerOptions = {
                     },
                     { $ref: "#/components/schemas/TrainingSchedulePayload" },
                   ],
+                },
+
+                MealLogEntry: {
+                    type: "object",
+                    properties: {
+                      food: { type: "string", nullable: true, maxLength: 4000 },
+                      macro: { type: "string", nullable: true, maxLength: 4000 }
+                    }
+                },
+                  MealLogPayload: {
+                    type: "object",
+                    properties: {
+                      amBreakfast: { $ref: "#/components/schemas/MealLogEntry" },
+                      amTraining: { $ref: "#/components/schemas/MealLogEntry" },
+                      pmLunch: { $ref: "#/components/schemas/MealLogEntry" },
+                      pmTraining: { $ref: "#/components/schemas/MealLogEntry" },
+                      pmDinner: { $ref: "#/components/schemas/MealLogEntry" },
+                      supper: { $ref: "#/components/schemas/MealLogEntry" },
+                      totalCarbohydrateIntake: { type: "number", format: "float", nullable: true },
+                      totalProteinIntake: { type: "number", format: "float", nullable: true },
+                      totalFatIntake: { type: "number", format: "float", nullable: true },
+                      otherRemarks: { type: "string", nullable: true, maxLength: 4000 }
+                    }
+                },
+                  MealLogResponse: {
+                    allOf: [
+                      {
+                        type: "object",
+                        properties: {
+                          id: { type: "string", format: "uuid", nullable: true },
+                          sessionId: { type: "string", format: "uuid" }
+                        }
+                      },
+                      { $ref: "#/components/schemas/MealLogPayload" }
+                    ]
                 },
         
                 // ==================== SUPPLEMENT SCHEMAS ====================
@@ -1343,6 +1382,7 @@ const swaggerOptions = {
         "./server.js",
         "./modules/Auth/routes.js",
         "./modules/Consultation/trainingSchedule/routes.js",
+        "./modules/Consultation/mealLog/routes.js",
         "./modules/Admin/adminRoutes.js"
     ],
 };
