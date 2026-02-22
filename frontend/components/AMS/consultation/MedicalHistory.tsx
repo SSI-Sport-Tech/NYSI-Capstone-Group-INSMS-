@@ -179,7 +179,7 @@ const emptyState = () => ({
 });
 
 export default function MedicalHistory({
-  athleteId: _athleteId,
+  athleteId,
   sessionId,
   isNewConsultation,
   newSessionId,
@@ -188,6 +188,7 @@ export default function MedicalHistory({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [saveError, setSaveError] = useState<string>("");
+  const [gender, setGender] = useState<string | null>(null);
 
   const s = emptyState();
   const [generalInfo, setGeneralInfo] = useState<GeneralInfo>(s.general);
@@ -202,6 +203,9 @@ export default function MedicalHistory({
 
   // Snapshot of last-saved values — used to detect unsaved changes (text color)
   const [savedState, setSavedState] = useState(emptyState());
+
+  // Show Period section only for female athletes; show as fallback when gender unknown
+  const isFemale = gender === null || gender.toLowerCase().startsWith("f");
 
   const effectiveEditing = isEditing || !!isNewConsultation;
   const targetSessionId =
@@ -240,6 +244,24 @@ export default function MedicalHistory({
   useEffect(() => {
     fetchMedicalHistory();
   }, [sessionId]);
+
+  useEffect(() => {
+    if (!athleteId) return;
+    (async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/AMS/athletes/${athleteId}/profile`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        setGender(data.gender ?? null);
+      } catch {
+        // non-critical — falls back to showing all sections
+      }
+    })();
+  }, [athleteId]);
 
   const handleSave = async () => {
     try {
@@ -791,7 +813,8 @@ export default function MedicalHistory({
           </div>
         </div>
 
-        {/* Period Section */}
+        {/* Period Section — female athletes only */}
+        {isFemale && (
         <div>
           <h3 className="text-base font-medium text-gray-900 mb-4">Period</h3>
           <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
@@ -917,6 +940,7 @@ export default function MedicalHistory({
             </div>
           </div>
         </div>
+        )}
       </div>
     </section>
   );
