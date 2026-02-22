@@ -440,7 +440,7 @@ export default function Anthropometry({
                 value={editForm[field]}
                 onChange={(e) => updateField(field, e.target.value)}
                 placeholder="—"
-                className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                className="text-gray-300 flex-1 px-2 py-1 border border-gray-300 rounded text-sm text-right"
               />
             </div>
           ))}
@@ -541,131 +541,131 @@ export default function Anthropometry({
             <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Height:</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">
+                <div className="flex text-gray-900 items-center gap-2">
+                  <span className="font-medium ">
                     {anthropometryData.height || "N/A"}
                   </span>
                   {anthropometryData.height && (
-                    <span className="text-gray-500">cm</span>
+                    <span className="">cm</span>
                   )}
                 </div>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Weight:</span>
-                <div className="flex items-center gap-2">
+                <div className="flex text-gray-900 items-center gap-2">
                   <span className="font-medium">
                     {anthropometryData.weight || "N/A"}
                   </span>
                   {anthropometryData.weight && (
-                    <span className="text-gray-500">kg</span>
+                    <span className="">kg</span>
                   )}
                 </div>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">BMI:</span>
-                <span className="font-medium">
+                <span className="text-gray-900 font-medium">
                   {anthropometryData.bmi || "N/A"}
                 </span>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">BMI Category:</span>
-                <span className="font-medium">
+                <span className="font-medium text-gray-900">
                   {anthropometryData.bmi_category || "N/A"}
                 </span>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Fat Mass:</span>
-                <div className="flex items-center gap-2">
+                <div className="flex text-gray-900 items-center gap-2">
                   <span className="font-medium">
                     {anthropometryData.fat_mass || "N/A"}
                   </span>
                   {anthropometryData.fat_mass && (
-                    <span className="text-gray-500">kg</span>
+                    <span className="">kg</span>
                   )}
                 </div>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Fat Mass (%):</span>
-                <span className="font-medium">
+                <span className="text-gray-900 font-medium">
                   {anthropometryData.fat_mass_percentage || "N/A"}
                 </span>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Skeletal Muscle Mass:</span>
-                <div className="flex items-center gap-2">
+                <div className="flex text-gray-900 items-center gap-2">
                   <span className="font-medium">
                     {anthropometryData.skeletal_muscle_mass || "N/A"}
                   </span>
                   {anthropometryData.skeletal_muscle_mass && (
-                    <span className="text-gray-500">kg</span>
+                    <span className="">kg</span>
                   )}
                 </div>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Skeletal Muscle Mass (%):</span>
-                <span className="font-medium">
+                <span className="text-gray-900 font-medium">
                   {anthropometryData.skeletal_muscle_mass_percentage || "N/A"}
                 </span>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Sum of 8 Skinfold:</span>
-                <div className="flex items-center gap-2">
+                <div className="flex text-gray-900 items-center gap-2">
                   <span className="font-medium">
                     {anthropometryData.sum_of_skinfold || "N/A"}
                   </span>
                   {anthropometryData.sum_of_skinfold && (
-                    <span className="text-gray-500">mm</span>
+                    <span className="">mm</span>
                   )}
                 </div>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Target Weight:</span>
-                <div className="flex items-center gap-2">
+                <div className="flex text-gray-900 items-center gap-2">
                   <span className="font-medium">
                     {anthropometryData.target_weight || "N/A"}
                   </span>
                   {anthropometryData.target_weight && (
-                    <span className="text-gray-500">kg</span>
+                    <span className="">kg</span>
                   )}
                 </div>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Target BMI:</span>
-                <span className="font-medium">
+                <span className="text-gray-900 font-medium">
                   {anthropometryData.target_bmi || "N/A"}
                 </span>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Mother's Height:</span>
-                <div className="flex items-center gap-2">
+                <div className="flex text-gray-900 items-center gap-2">
                   <span className="font-medium">
                     {anthropometryData.mothers_height || "N/A"}
                   </span>
                   {anthropometryData.mothers_height && (
-                    <span className="text-gray-500">cm</span>
+                    <span className="">cm</span>
                   )}
                 </div>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Father's Height:</span>
-                <div className="flex items-center gap-2">
+                <div className="flex text-gray-900 items-center gap-2">
                   <span className="font-medium">
                     {anthropometryData.fathers_height || "N/A"}
                   </span>
                   {anthropometryData.fathers_height && (
-                    <span className="text-gray-500">cm</span>
+                    <span className="">cm</span>
                   )}
                 </div>
               </div>
@@ -674,12 +674,12 @@ export default function Anthropometry({
                 <span className="text-gray-600">
                   Athlete's Potential Adult Height:
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex text-gray-900 items-center gap-2">
                   <span className="font-medium">
                     {anthropometryData.athlete_potential_adult_height || "N/A"}
                   </span>
                   {anthropometryData.athlete_potential_adult_height && (
-                    <span className="text-gray-500">cm</span>
+                    <span className="">cm</span>
                   )}
                 </div>
               </div>

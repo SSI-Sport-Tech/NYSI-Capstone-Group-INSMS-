@@ -265,7 +265,7 @@ export default function PreviousConsultation({
                 onChange={(e) => updateForm("consult_type", e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
               >
-                <option value="">Select type...</option>
+                <option className="text-gray-500" value="">Select type...</option>
                 {CONSULT_TYPES.map((t) => (
                   <option key={t} value={t}>
                     {t}
