@@ -61,12 +61,11 @@ export default function ConsultationView({
       setLatestConsultation(data);
       setCurrentSessionId(data.id);
     } catch (error) {
-      console.error("Error fetching latest consultation:", error);
-
       if (error instanceof ConsultationApiError && error.status === 404) {
         setLatestConsultation(null);
         setCurrentSessionId("");
       } else {
+        console.error("Error fetching latest consultation:", error);
         setError("Failed to load consultation data");
       }
     } finally {

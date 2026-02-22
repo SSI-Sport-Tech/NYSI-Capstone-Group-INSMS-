@@ -256,7 +256,7 @@ export default function MedicalHistory({
         );
         if (!res.ok) return;
         const data = await res.json();
-        setGender(data.gender ?? null);
+        setGender(data.athlete?.gender ?? null);
       } catch {
         // non-critical — falls back to showing all sections
       }

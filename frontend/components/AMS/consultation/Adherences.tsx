@@ -231,7 +231,7 @@ export default function Adherences({
         );
         if (!res.ok) return;
         const data = await res.json();
-        setGender(data.gender ?? null);
+        setGender(data.athlete?.gender ?? null);
       } catch {
         // non-critical — falls back to showing both sections
       }
