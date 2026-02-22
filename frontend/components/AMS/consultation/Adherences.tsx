@@ -50,12 +50,6 @@ interface AdherencesData {
   targetTeeFemale: number | null;
 }
 
-interface AnthropometryApiData {
-  height: number | null;
-  weight: number | null;
-  target_weight: number | null;
-  [key: string]: unknown;
-}
 
 interface EditForm {
   pal: string;
@@ -157,20 +151,42 @@ export default function Adherences({
     try {
       setLoading(true);
       setError("");
-      const [adherencesRes, anthropometryRes] = await Promise.all([
+      const adherencesRes = await (
         consultationApi.getAdherences(sessionId) as Promise<{
           data: AdherencesData;
-        }>,
-        consultationApi.getAnthropometry(sessionId) as Promise<{
-          data: AnthropometryApiData;
-        }>,
-      ]);
-      setAdherencesData(adherencesRes.data);
-      setEditForm(toEditForm(adherencesRes.data));
-      const anthro = anthropometryRes.data;
-      setWeight(anthro.weight);
-      setHeight(anthro.height);
-      setTargetWeight(anthro.target_weight);
+        }>
+      );
+      const data = adherencesRes.data;
+      setAdherencesData(data);
+      setEditForm(toEditForm(data));
+
+      // Derive weight, targetWeight, height from DB-computed values so live
+      // calculations work without a separate anthropometry API call.
+      // weight      = minCarbG  / minCarbGkg
+      // targetWeight = targetMinCarbG / minCarbGkg
+      // height       = (rmrMale - 11.1 × weight + 340) / 8.4
+      const gkg = Number(data.minCarbGkg);
+      const gVal = Number(data.minCarbG);
+      const tgVal = Number(data.targetMinCarbG);
+      const rmr = Number(data.rmrMale);
+
+      let w: number | null = null;
+      let tw: number | null = null;
+      let h: number | null = null;
+
+      if (gkg > 0 && data.minCarbG !== null && !isNaN(gVal)) {
+        w = +(gVal / gkg).toFixed(2);
+      }
+      if (gkg > 0 && data.targetMinCarbG !== null && !isNaN(tgVal)) {
+        tw = +(tgVal / gkg).toFixed(2);
+      }
+      if (w !== null && data.rmrMale !== null && !isNaN(rmr)) {
+        h = +((rmr - 11.1 * w + 340) / 8.4).toFixed(2);
+      }
+
+      setWeight(w);
+      setTargetWeight(tw);
+      setHeight(h);
     } catch (err) {
       console.error("Error fetching adherences:", err);
       setError("Failed to load adherences data");
@@ -293,7 +309,7 @@ export default function Adherences({
 
   if (loading) {
     return (
-      <section id="adherences" className="bg-white rounded-xl shadow-lg p-6">
+      <section id="adherences" className="bg-white rounded-xl shadow-lg p-6 text-gray-900">
         <div className="animate-pulse">
           <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
           <div className="space-y-3">
@@ -307,7 +323,7 @@ export default function Adherences({
 
   if (error) {
     return (
-      <section id="adherences" className="bg-white rounded-xl shadow-lg p-6">
+      <section id="adherences" className="bg-white rounded-xl shadow-lg p-6 text-gray-900">
         <div className="text-center py-4">
           <p className="text-red-600">{error}</p>
           <button
@@ -321,13 +337,13 @@ export default function Adherences({
     );
   }
 
-  // Shared class for live-calculated read-only values
-  const calcClass = effectiveEditing
-    ? "font-medium text-gray-400"
-    : "font-medium";
+  // Shared class for live-calculated read-only values — styled like a
+  // disabled input so it's visually distinct and updates in real-time.
+  const calcClass =
+    "inline-block min-w-[72px] px-2 py-1 bg-gray-100 border border-gray-200 rounded text-sm text-right font-medium text-gray-900";
 
   return (
-    <section id="adherences" className="bg-white rounded-xl shadow-lg p-6">
+    <section id="adherences" className="bg-white rounded-xl shadow-lg p-6 text-gray-900">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Adherences</h2>
         <div className="flex items-center gap-2">
@@ -359,7 +375,7 @@ export default function Adherences({
           <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
             {/* Carbohydrate */}
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Minimum Carbohydrate Requirement (g/kg/bw):
               </span>
               {effectiveEditing ? (
@@ -379,14 +395,14 @@ export default function Adherences({
               )}
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Minimum Carbohydrate Requirement (g):
               </span>
               <span className={calcClass}>{fmt(minCarbG)}</span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Maximum Carbohydrate Requirement (g/kg/bw):
               </span>
               {effectiveEditing ? (
@@ -406,7 +422,7 @@ export default function Adherences({
               )}
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Maximum Carbohydrate Requirement (g):
               </span>
               <span className={calcClass}>{fmt(maxCarbG)}</span>
@@ -414,7 +430,7 @@ export default function Adherences({
 
             {/* Protein */}
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Minimum Protein Requirement (g/kg/bw):
               </span>
               {effectiveEditing ? (
@@ -437,14 +453,14 @@ export default function Adherences({
               )}
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Minimum Protein Requirement (g):
               </span>
               <span className={calcClass}>{fmt(minProteinG)}</span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Maximum Protein Requirement (g/kg/bw):
               </span>
               {effectiveEditing ? (
@@ -467,7 +483,7 @@ export default function Adherences({
               )}
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Maximum Protein Requirement (g):
               </span>
               <span className={calcClass}>{fmt(maxProteinG)}</span>
@@ -475,7 +491,7 @@ export default function Adherences({
 
             {/* Fat */}
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Minimum Fat Requirement (g/kg/bw):
               </span>
               {effectiveEditing ? (
@@ -495,14 +511,14 @@ export default function Adherences({
               )}
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Minimum Fat Requirement (g):
               </span>
               <span className={calcClass}>{fmt(minFatG)}</span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Maximum Fat Requirement (g/kg/bw):
               </span>
               {effectiveEditing ? (
@@ -522,7 +538,7 @@ export default function Adherences({
               )}
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Maximum Fat Requirement (g):
               </span>
               <span className={calcClass}>{fmt(maxFatG)}</span>
@@ -537,78 +553,78 @@ export default function Adherences({
           </h3>
           <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Minimum Carbohydrate Requirement (g/kg/bw):
               </span>
               <span className="font-medium">{fmt(liveMinCarbGkg)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Minimum Carbohydrate Requirement (g):
               </span>
               <span className={calcClass}>{fmt(targetMinCarbG)}</span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Maximum Carbohydrate Requirement (g/kg/bw):
               </span>
               <span className="font-medium">{fmt(liveMaxCarbGkg)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Maximum Carbohydrate Requirement (g):
               </span>
               <span className={calcClass}>{fmt(targetMaxCarbG)}</span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Minimum Protein Requirement (g/kg/bw):
               </span>
               <span className="font-medium">{fmt(liveMinProteinGkg)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Minimum Protein Requirement (g):
               </span>
               <span className={calcClass}>{fmt(targetMinProteinG)}</span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Maximum Protein Requirement (g/kg/bw):
               </span>
               <span className="font-medium">{fmt(liveMaxProteinGkg)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Maximum Protein Requirement (g):
               </span>
               <span className={calcClass}>{fmt(targetMaxProteinG)}</span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Minimum Fat Requirement (g/kg/bw):
               </span>
               <span className="font-medium">{fmt(liveMinFatGkg)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Minimum Fat Requirement (g):
               </span>
               <span className={calcClass}>{fmt(targetMinFatG)}</span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Maximum Fat Requirement (g/kg/bw):
               </span>
               <span className="font-medium">{fmt(liveMaxFatGkg)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
+              <span className="text-gray-900">
                 Maximum Fat Requirement (g):
               </span>
               <span className={calcClass}>{fmt(targetMaxFatG)}</span>
@@ -619,7 +635,7 @@ export default function Adherences({
           <div className="mt-6">
             <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">
+                <span className="text-gray-900">
                   Estimated Carbohydrate Intake (g):
                 </span>
                 {effectiveEditing ? (
@@ -642,14 +658,14 @@ export default function Adherences({
                 )}
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">
+                <span className="text-gray-900">
                   % of Min Carbohydrate Requirement:
                 </span>
                 <span className={calcClass}>{fmtPct(pctMinCarb)}</span>
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">
+                <span className="text-gray-900">
                   Estimated Protein Intake (g):
                 </span>
                 {effectiveEditing ? (
@@ -672,14 +688,14 @@ export default function Adherences({
                 )}
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">
+                <span className="text-gray-900">
                   % of Min Protein Requirement:
                 </span>
                 <span className={calcClass}>{fmtPct(pctMinProtein)}</span>
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">
+                <span className="text-gray-900">
                   Estimated Fat Intake (g):
                 </span>
                 {effectiveEditing ? (
@@ -702,14 +718,14 @@ export default function Adherences({
                 )}
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">% of Min Fat Requirement:</span>
+                <span className="text-gray-900">% of Min Fat Requirement:</span>
                 <span className={calcClass}>{fmtPct(pctMinFat)}</span>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div>
-                <label className="block text-sm text-gray-600 mb-2">
+                <label className="block text-sm text-gray-900 mb-2">
                   Comments on Weekday Intake:
                 </label>
                 {effectiveEditing ? (
@@ -731,7 +747,7 @@ export default function Adherences({
                 )}
               </div>
               <div>
-                <label className="block text-sm text-gray-600 mb-2">
+                <label className="block text-sm text-gray-900 mb-2">
                   Comments on Weekend Intake:
                 </label>
                 {effectiveEditing ? (
@@ -756,9 +772,8 @@ export default function Adherences({
           </div>
         </div>
 
-        {/* ── PAL ───────────────────────────────────────────────────────── */}
         <div className="flex justify-between items-center text-sm border-t pt-4">
-          <span className="text-gray-600 font-medium">
+          <span className="text-gray-900 font-medium">
             Physical Activity Level (PAL):
           </span>
           {effectiveEditing ? (
@@ -778,46 +793,45 @@ export default function Adherences({
           )}
         </div>
 
-        {/* ── Male / Female RMR + TEE ────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-8">
           {/* Male */}
           <div>
             <h3 className="text-lg font-medium text-gray-900 mb-4">Male</h3>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">
+                <span className="text-gray-900">
                   Resting Metabolic Rate (RMR):
                 </span>
                 <div className="flex items-center gap-1">
                   <span className={calcClass}>{fmt(rmrMale, 0)}</span>
-                  <span className="text-gray-500">kcal</span>
+                  <span className="text-gray-900">kcal</span>
                 </div>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">
+                <span className="text-gray-900">
                   Total Energy Expenditure (TEE):
                 </span>
                 <div className="flex items-center gap-1">
                   <span className={calcClass}>{fmt(teeMale, 0)}</span>
-                  <span className="text-gray-500">kcal</span>
+                  <span className="text-gray-900">kcal</span>
                 </div>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Target Weight RMR:</span>
+                <span className="text-gray-900">Target Weight RMR:</span>
                 <div className="flex items-center gap-1">
                   <span className={calcClass}>{fmt(targetRmrMale, 0)}</span>
-                  <span className="text-gray-500">kcal</span>
+                  <span className="text-gray-900">kcal</span>
                 </div>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Target Weight TEE:</span>
+                <span className="text-gray-900">Target Weight TEE:</span>
                 <div className="flex items-center gap-1">
                   <span className={calcClass}>{fmt(targetTeeMale, 0)}</span>
-                  <span className="text-gray-500">kcal</span>
+                  <span className="text-gray-900">kcal</span>
                 </div>
               </div>
               <div className="mt-4">
-                <label className="block text-sm text-gray-600 mb-2">
+                <label className="block text-sm text-gray-900 mb-2">
                   Other Remarks:
                 </label>
                 {effectiveEditing ? (
@@ -846,35 +860,35 @@ export default function Adherences({
             <h3 className="text-lg font-medium text-gray-900 mb-4">Female</h3>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">
+                <span className="text-gray-900">
                   Resting Metabolic Rate (RMR):
                 </span>
                 <div className="flex items-center gap-1">
                   <span className={calcClass}>{fmt(rmrFemale, 0)}</span>
-                  <span className="text-gray-500">kcal</span>
+                  <span className="text-gray-900">kcal</span>
                 </div>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">
+                <span className="text-gray-900">
                   Total Energy Expenditure (TEE):
                 </span>
                 <div className="flex items-center gap-1">
                   <span className={calcClass}>{fmt(teeFemale, 0)}</span>
-                  <span className="text-gray-500">kcal</span>
+                  <span className="text-gray-900">kcal</span>
                 </div>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Target Weight RMR:</span>
+                <span className="text-gray-900">Target Weight RMR:</span>
                 <div className="flex items-center gap-1">
                   <span className={calcClass}>{fmt(targetRmrFemale, 0)}</span>
-                  <span className="text-gray-500">kcal</span>
+                  <span className="text-gray-900">kcal</span>
                 </div>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Target Weight TEE:</span>
+                <span className="text-gray-900">Target Weight TEE:</span>
                 <div className="flex items-center gap-1">
                   <span className={calcClass}>{fmt(targetTeeFemale, 0)}</span>
-                  <span className="text-gray-500">kcal</span>
+                  <span className="text-gray-900">kcal</span>
                 </div>
               </div>
             </div>
