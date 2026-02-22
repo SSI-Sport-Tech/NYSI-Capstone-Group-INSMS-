@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { consultationApi } from "@/utils/consultationApi";
 
 interface AdherencesProps {
   athleteId: string;
@@ -7,106 +8,323 @@ interface AdherencesProps {
   newSessionId?: string;
 }
 
-interface NutritionRequirement {
-  minCarbohydrate: number;
-  maxCarbohydrate: number;
-  minProtein: number;
-  maxProtein: number;
-  minFat: number;
-  maxFat: number;
+interface AdherencesData {
+  id: string | null;
+  sessionId: string;
+  pal: number | null;
+  minCarbGkg: number | null;
+  maxCarbGkg: number | null;
+  minProteinGkg: number | null;
+  maxProteinGkg: number | null;
+  minFatGkg: number | null;
+  maxFatGkg: number | null;
+  estimatedCarbG: number | null;
+  estimatedProteinG: number | null;
+  estimatedFatG: number | null;
+  commentsWeekday: string | null;
+  commentsWeekend: string | null;
+  otherRemarks: string | null;
+  // Computed by DB (used in view mode)
+  minCarbG: number | null;
+  maxCarbG: number | null;
+  minProteinG: number | null;
+  maxProteinG: number | null;
+  minFatG: number | null;
+  maxFatG: number | null;
+  targetMinCarbG: number | null;
+  targetMaxCarbG: number | null;
+  targetMinProteinG: number | null;
+  targetMaxProteinG: number | null;
+  targetMinFatG: number | null;
+  targetMaxFatG: number | null;
+  pctMinCarb: number | null;
+  pctMinProtein: number | null;
+  pctMinFat: number | null;
+  rmrMale: number | null;
+  teeMale: number | null;
+  targetRmrMale: number | null;
+  targetTeeMale: number | null;
+  rmrFemale: number | null;
+  teeFemale: number | null;
+  targetRmrFemale: number | null;
+  targetTeeFemale: number | null;
 }
 
-interface IntakeData {
-  estimatedCarbohydrate: number;
-  estimatedProtein: number;
-  estimatedFat: number;
-  percentMinCarbohydrate: number;
-  percentMinProtein: number;
-  percentMinFat: number;
-  weekdayComments: string;
-  weekendComments: string;
+interface AnthropometryApiData {
+  height: number | null;
+  weight: number | null;
+  target_weight: number | null;
+  [key: string]: unknown;
 }
 
-interface MetabolicData {
-  male: {
-    rmr: number;
-    tee: number;
-    targetWeightRMR: number;
-    targetWeightTEE: number;
-    otherRemarks: string;
+interface EditForm {
+  pal: string;
+  minCarbGkg: string;
+  maxCarbGkg: string;
+  minProteinGkg: string;
+  maxProteinGkg: string;
+  minFatGkg: string;
+  maxFatGkg: string;
+  estimatedCarbG: string;
+  estimatedProteinG: string;
+  estimatedFatG: string;
+  commentsWeekday: string;
+  commentsWeekend: string;
+  otherRemarks: string;
+}
+
+const emptyForm: EditForm = {
+  pal: "",
+  minCarbGkg: "",
+  maxCarbGkg: "",
+  minProteinGkg: "",
+  maxProteinGkg: "",
+  minFatGkg: "",
+  maxFatGkg: "",
+  estimatedCarbG: "",
+  estimatedProteinG: "",
+  estimatedFatG: "",
+  commentsWeekday: "",
+  commentsWeekend: "",
+  otherRemarks: "",
+};
+
+function toEditForm(data: AdherencesData): EditForm {
+  return {
+    pal: data.pal?.toString() ?? "",
+    minCarbGkg: data.minCarbGkg?.toString() ?? "",
+    maxCarbGkg: data.maxCarbGkg?.toString() ?? "",
+    minProteinGkg: data.minProteinGkg?.toString() ?? "",
+    maxProteinGkg: data.maxProteinGkg?.toString() ?? "",
+    minFatGkg: data.minFatGkg?.toString() ?? "",
+    maxFatGkg: data.maxFatGkg?.toString() ?? "",
+    estimatedCarbG: data.estimatedCarbG?.toString() ?? "",
+    estimatedProteinG: data.estimatedProteinG?.toString() ?? "",
+    estimatedFatG: data.estimatedFatG?.toString() ?? "",
+    commentsWeekday: data.commentsWeekday ?? "",
+    commentsWeekend: data.commentsWeekend ?? "",
+    otherRemarks: data.otherRemarks ?? "",
   };
-  female: {
-    rmr: number;
-    tee: number;
-    targetWeightRMR: number;
-    targetWeightTEE: number;
-  };
 }
 
-export default function Adherences({ athleteId, sessionId, isNewConsultation, newSessionId }: AdherencesProps) {
+function n(v: string | number | null | undefined): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const num = typeof v === "number" ? v : parseFloat(v);
+  return isNaN(num) ? null : num;
+}
+
+function fmt(v: number | string | null | undefined, decimals = 1): string {
+  if (v === null || v === undefined || v === "") return "—";
+  const num = Number(v);
+  if (isNaN(num)) return "—";
+  return num.toFixed(decimals);
+}
+
+function fmtPct(v: number | string | null | undefined): string {
+  if (v === null || v === undefined || v === "") return "—";
+  const num = Number(v);
+  if (isNaN(num)) return "—";
+  return `${num.toFixed(1)}%`;
+}
+
+export default function Adherences({
+  athleteId: _athleteId,
+  sessionId,
+  isNewConsultation,
+  newSessionId,
+}: AdherencesProps) {
+  const [adherencesData, setAdherencesData] = useState<AdherencesData | null>(
+    null,
+  );
+  const [weight, setWeight] = useState<number | null>(null);
+  const [height, setHeight] = useState<number | null>(null);
+  const [targetWeight, setTargetWeight] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
-  const effectiveEditing = isEditing || !!isNewConsultation;
-  const [intakeData, setIntakeData] = useState<IntakeData>({
-    estimatedCarbohydrate: 350,
-    estimatedProtein: 154,
-    estimatedFat: 60,
-    percentMinCarbohydrate: 80,
-    percentMinProtein: 70,
-    percentMinFat: 75,
-    weekdayComments: "",
-    weekendComments: "",
-  });
+  const [editForm, setEditForm] = useState<EditForm>(emptyForm);
+  const [saveError, setSaveError] = useState<string>("");
 
-  const [metabolicData, setMetabolicData] = useState<MetabolicData>({
-    male: {
-      rmr: 1845,
-      tee: 3200,
-      targetWeightRMR: 1825,
-      targetWeightTEE: 3210,
-      otherRemarks: "",
-    },
-    female: {
-      rmr: 0,
-      tee: 0,
-      targetWeightRMR: 0,
-      targetWeightTEE: 0,
-    },
-  });
+  const effectiveEditing = isEditing || !!isNewConsultation;
+  const targetSessionId =
+    isNewConsultation && newSessionId ? newSessionId : sessionId;
+
+  const fetchData = async () => {
+    if (!sessionId) {
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setError("");
+      const [adherencesRes, anthropometryRes] = await Promise.all([
+        consultationApi.getAdherences(sessionId) as Promise<{
+          data: AdherencesData;
+        }>,
+        consultationApi.getAnthropometry(sessionId) as Promise<{
+          data: AnthropometryApiData;
+        }>,
+      ]);
+      setAdherencesData(adherencesRes.data);
+      setEditForm(toEditForm(adherencesRes.data));
+      const anthro = anthropometryRes.data;
+      setWeight(anthro.weight);
+      setHeight(anthro.height);
+      setTargetWeight(anthro.target_weight);
+    } catch (err) {
+      console.error("Error fetching adherences:", err);
+      setError("Failed to load adherences data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [sessionId]);
+
+  // ── Live-calculated values ──────────────────────────────────────────────
+  // In edit mode: compute from form inputs + anthropometry data
+  // In view mode: use DB-computed values returned by the API
+
+  const livePal = effectiveEditing ? n(editForm.pal) : (adherencesData?.pal ?? null);
+  const liveMinCarbGkg = effectiveEditing ? n(editForm.minCarbGkg) : (adherencesData?.minCarbGkg ?? null);
+  const liveMaxCarbGkg = effectiveEditing ? n(editForm.maxCarbGkg) : (adherencesData?.maxCarbGkg ?? null);
+  const liveMinProteinGkg = effectiveEditing ? n(editForm.minProteinGkg) : (adherencesData?.minProteinGkg ?? null);
+  const liveMaxProteinGkg = effectiveEditing ? n(editForm.maxProteinGkg) : (adherencesData?.maxProteinGkg ?? null);
+  const liveMinFatGkg = effectiveEditing ? n(editForm.minFatGkg) : (adherencesData?.minFatGkg ?? null);
+  const liveMaxFatGkg = effectiveEditing ? n(editForm.maxFatGkg) : (adherencesData?.maxFatGkg ?? null);
+  const liveEstCarbG = effectiveEditing ? n(editForm.estimatedCarbG) : (adherencesData?.estimatedCarbG ?? null);
+  const liveEstProteinG = effectiveEditing ? n(editForm.estimatedProteinG) : (adherencesData?.estimatedProteinG ?? null);
+  const liveEstFatG = effectiveEditing ? n(editForm.estimatedFatG) : (adherencesData?.estimatedFatG ?? null);
+
+  // Derived g values — current weight
+  const calcG = (gkg: number | null, w: number | null) =>
+    gkg !== null && w !== null ? +(gkg * w).toFixed(1) : null;
+
+  const minCarbG = effectiveEditing ? calcG(liveMinCarbGkg, weight) : (adherencesData?.minCarbG ?? null);
+  const maxCarbG = effectiveEditing ? calcG(liveMaxCarbGkg, weight) : (adherencesData?.maxCarbG ?? null);
+  const minProteinG = effectiveEditing ? calcG(liveMinProteinGkg, weight) : (adherencesData?.minProteinG ?? null);
+  const maxProteinG = effectiveEditing ? calcG(liveMaxProteinGkg, weight) : (adherencesData?.maxProteinG ?? null);
+  const minFatG = effectiveEditing ? calcG(liveMinFatGkg, weight) : (adherencesData?.minFatG ?? null);
+  const maxFatG = effectiveEditing ? calcG(liveMaxFatGkg, weight) : (adherencesData?.maxFatG ?? null);
+
+  // Derived g values — target weight
+  const targetMinCarbG = effectiveEditing ? calcG(liveMinCarbGkg, targetWeight) : (adherencesData?.targetMinCarbG ?? null);
+  const targetMaxCarbG = effectiveEditing ? calcG(liveMaxCarbGkg, targetWeight) : (adherencesData?.targetMaxCarbG ?? null);
+  const targetMinProteinG = effectiveEditing ? calcG(liveMinProteinGkg, targetWeight) : (adherencesData?.targetMinProteinG ?? null);
+  const targetMaxProteinG = effectiveEditing ? calcG(liveMaxProteinGkg, targetWeight) : (adherencesData?.targetMaxProteinG ?? null);
+  const targetMinFatG = effectiveEditing ? calcG(liveMinFatGkg, targetWeight) : (adherencesData?.targetMinFatG ?? null);
+  const targetMaxFatG = effectiveEditing ? calcG(liveMaxFatGkg, targetWeight) : (adherencesData?.targetMaxFatG ?? null);
+
+  // % of minimum required
+  const calcPct = (estimated: number | null, minG: number | null) =>
+    estimated !== null && minG !== null && minG > 0
+      ? +((estimated / minG) * 100).toFixed(1)
+      : null;
+
+  const pctMinCarb = effectiveEditing ? calcPct(liveEstCarbG, minCarbG) : (adherencesData?.pctMinCarb ?? null);
+  const pctMinProtein = effectiveEditing ? calcPct(liveEstProteinG, minProteinG) : (adherencesData?.pctMinProtein ?? null);
+  const pctMinFat = effectiveEditing ? calcPct(liveEstFatG, minFatG) : (adherencesData?.pctMinFat ?? null);
+
+  // RMR/TEE — Male (formula: 11.1 × weight + 8.4 × height − 340)
+  const calcRMR = (w: number | null, h: number | null, offset: number) =>
+    w !== null && h !== null ? +(11.1 * w + 8.4 * h - offset).toFixed(0) : null;
+  const calcTEE = (rmr: number | null, pal: number | null) =>
+    rmr !== null && pal !== null ? +(rmr * pal).toFixed(0) : null;
+
+  const rmrMale = effectiveEditing ? calcRMR(weight, height, 340) : (adherencesData?.rmrMale ?? null);
+  const teeMale = effectiveEditing ? calcTEE(rmrMale, livePal) : (adherencesData?.teeMale ?? null);
+  const targetRmrMale = effectiveEditing ? calcRMR(targetWeight, height, 340) : (adherencesData?.targetRmrMale ?? null);
+  const targetTeeMale = effectiveEditing ? calcTEE(targetRmrMale, livePal) : (adherencesData?.targetTeeMale ?? null);
+
+  // RMR/TEE — Female (formula: 11.1 × weight + 8.4 × height − 540)
+  const rmrFemale = effectiveEditing ? calcRMR(weight, height, 540) : (adherencesData?.rmrFemale ?? null);
+  const teeFemale = effectiveEditing ? calcTEE(rmrFemale, livePal) : (adherencesData?.teeFemale ?? null);
+  const targetRmrFemale = effectiveEditing ? calcRMR(targetWeight, height, 540) : (adherencesData?.targetRmrFemale ?? null);
+  const targetTeeFemale = effectiveEditing ? calcTEE(targetRmrFemale, livePal) : (adherencesData?.targetTeeFemale ?? null);
 
   const handleSave = async () => {
     try {
-      console.log("Saving adherences data:", {
-        intakeData,
-        metabolicData,
-      });
-      // TODO: Implement API call to create new consultation session entry
+      setSaveError("");
+      const token = localStorage.getItem("token");
+      const body: Record<string, number | string | null> = {};
+      if (editForm.pal !== "") body.pal = parseFloat(editForm.pal);
+      if (editForm.minCarbGkg !== "") body.minCarbGkg = parseFloat(editForm.minCarbGkg);
+      if (editForm.maxCarbGkg !== "") body.maxCarbGkg = parseFloat(editForm.maxCarbGkg);
+      if (editForm.minProteinGkg !== "") body.minProteinGkg = parseFloat(editForm.minProteinGkg);
+      if (editForm.maxProteinGkg !== "") body.maxProteinGkg = parseFloat(editForm.maxProteinGkg);
+      if (editForm.minFatGkg !== "") body.minFatGkg = parseFloat(editForm.minFatGkg);
+      if (editForm.maxFatGkg !== "") body.maxFatGkg = parseFloat(editForm.maxFatGkg);
+      if (editForm.estimatedCarbG !== "") body.estimatedCarbG = parseFloat(editForm.estimatedCarbG);
+      if (editForm.estimatedProteinG !== "") body.estimatedProteinG = parseFloat(editForm.estimatedProteinG);
+      if (editForm.estimatedFatG !== "") body.estimatedFatG = parseFloat(editForm.estimatedFatG);
+      body.commentsWeekday = editForm.commentsWeekday || null;
+      body.commentsWeekend = editForm.commentsWeekend || null;
+      body.otherRemarks = editForm.otherRemarks || null;
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${targetSessionId}/adherences`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        },
+      );
+      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+      const updated = (await response.json()) as { data: AdherencesData };
+      setAdherencesData(updated.data);
+      setEditForm(toEditForm(updated.data));
       setIsEditing(false);
-    } catch (error) {
-      console.error("Error saving adherences:", error);
+    } catch (err) {
+      console.error("Error saving adherences:", err);
+      setSaveError("Failed to save. Please try again.");
     }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-  };
-  // Mock data based on the form structure in the image
-  const currentIntake: NutritionRequirement = {
-    minCarbohydrate: 3.0,
-    maxCarbohydrate: 7.0,
-    minProtein: 1.6,
-    maxProtein: 2.2,
-    minFat: 0.8,
-    maxFat: 1.2,
+    setSaveError("");
+    if (adherencesData) setEditForm(toEditForm(adherencesData));
   };
 
-  const targetIntake: NutritionRequirement = {
-    minCarbohydrate: 3.0,
-    maxCarbohydrate: 7.0,
-    minProtein: 1.6,
-    maxProtein: 2.2,
-    minFat: 0.8,
-    maxFat: 1.2,
-  };
+  if (loading) {
+    return (
+      <section id="adherences" className="bg-white rounded-xl shadow-lg p-6">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
+          <div className="space-y-3">
+            <div className="h-4 bg-gray-200 rounded"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section id="adherences" className="bg-white rounded-xl shadow-lg p-6">
+        <div className="text-center py-4">
+          <p className="text-red-600">{error}</p>
+          <button
+            onClick={fetchData}
+            className="mt-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  // Shared class for live-calculated read-only values
+  const calcClass = effectiveEditing
+    ? "font-medium text-gray-400"
+    : "font-medium";
 
   return (
     <section id="adherences" className="bg-white rounded-xl shadow-lg p-6">
@@ -130,126 +348,189 @@ export default function Adherences({ athleteId, sessionId, isNewConsultation, ne
         </div>
       </div>
 
+      {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
+
       <div className="space-y-6">
-        {/* Current Intake */}
+        {/* ── Current Intake ─────────────────────────────────────────────── */}
         <div>
           <h3 className="text-lg font-medium text-gray-900 mb-4">
             Current Intake
           </h3>
           <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+            {/* Carbohydrate */}
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Minimum Carbohydrate Requirement (g/kg/bw):
               </span>
-              <div className="flex items-center gap-2">
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.minCarbGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, minCarbGkg: e.target.value }))
+                  }
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
                 <span className="font-medium">
-                  {currentIntake.minCarbohydrate}
+                  {fmt(adherencesData?.minCarbGkg ?? null)}
                 </span>
-              </div>
+              )}
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Minimum Carbohydrate Requirement (g):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">
-                  {currentIntake.minCarbohydrate}
-                </span>
-              </div>
+              <span className={calcClass}>{fmt(minCarbG)}</span>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Maximum Carbohydrate Requirement (g/kg/bw):
               </span>
-              <div className="flex items-center gap-2">
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.maxCarbGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, maxCarbGkg: e.target.value }))
+                  }
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
                 <span className="font-medium">
-                  {currentIntake.maxCarbohydrate}
+                  {fmt(adherencesData?.maxCarbGkg ?? null)}
                 </span>
-              </div>
+              )}
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Maximum Carbohydrate Requirement (g):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">
-                  {currentIntake.maxCarbohydrate}
-                </span>
-              </div>
+              <span className={calcClass}>{fmt(maxCarbG)}</span>
             </div>
 
+            {/* Protein */}
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Minimum Protein Requirement (g/kg/bw):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{currentIntake.minProtein}</span>
-              </div>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.minProteinGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({
+                      ...p,
+                      minProteinGkg: e.target.value,
+                    }))
+                  }
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
+                <span className="font-medium">
+                  {fmt(adherencesData?.minProteinGkg ?? null)}
+                </span>
+              )}
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Minimum Protein Requirement (g):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{currentIntake.minProtein}</span>
-              </div>
+              <span className={calcClass}>{fmt(minProteinG)}</span>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Maximum Protein Requirement (g/kg/bw):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{currentIntake.maxProtein}</span>
-              </div>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.maxProteinGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({
+                      ...p,
+                      maxProteinGkg: e.target.value,
+                    }))
+                  }
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
+                <span className="font-medium">
+                  {fmt(adherencesData?.maxProteinGkg ?? null)}
+                </span>
+              )}
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Maximum Protein Requirement (g):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{currentIntake.maxProtein}</span>
-              </div>
+              <span className={calcClass}>{fmt(maxProteinG)}</span>
+            </div>
+
+            {/* Fat */}
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">
+                Minimum Fat Requirement (g/kg/bw):
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.minFatGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, minFatGkg: e.target.value }))
+                  }
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
+                <span className="font-medium">
+                  {fmt(adherencesData?.minFatGkg ?? null)}
+                </span>
+              )}
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">
+                Minimum Fat Requirement (g):
+              </span>
+              <span className={calcClass}>{fmt(minFatG)}</span>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Maximum Fat Requirement (g/kg/bw):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{currentIntake.minFat}</span>
-              </div>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.maxFatGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, maxFatGkg: e.target.value }))
+                  }
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
+                <span className="font-medium">
+                  {fmt(adherencesData?.maxFatGkg ?? null)}
+                </span>
+              )}
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Maximum Fat Requirement (g):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{currentIntake.minFat}</span>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">
-                Maximum Fat Requirement (g/kg/bw):
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{currentIntake.maxFat}</span>
-              </div>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">
-                Maximum Fat Requirement (g):
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{currentIntake.maxFat}</span>
-              </div>
+              <span className={calcClass}>{fmt(maxFatG)}</span>
             </div>
           </div>
         </div>
 
-        {/* Target Intake */}
+        {/* ── Target Intake ──────────────────────────────────────────────── */}
         <div>
           <h3 className="text-lg font-medium text-gray-900 mb-4">
             Target Intake
@@ -259,171 +540,170 @@ export default function Adherences({ athleteId, sessionId, isNewConsultation, ne
               <span className="text-gray-600">
                 Minimum Carbohydrate Requirement (g/kg/bw):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">
-                  {targetIntake.minCarbohydrate}
-                </span>
-              </div>
+              <span className="font-medium">{fmt(liveMinCarbGkg)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Minimum Carbohydrate Requirement (g):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">
-                  {targetIntake.minCarbohydrate}
-                </span>
-              </div>
+              <span className={calcClass}>{fmt(targetMinCarbG)}</span>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Maximum Carbohydrate Requirement (g/kg/bw):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">
-                  {targetIntake.maxCarbohydrate}
-                </span>
-              </div>
+              <span className="font-medium">{fmt(liveMaxCarbGkg)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Maximum Carbohydrate Requirement (g):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">
-                  {targetIntake.maxCarbohydrate}
-                </span>
-              </div>
+              <span className={calcClass}>{fmt(targetMaxCarbG)}</span>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Minimum Protein Requirement (g/kg/bw):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{targetIntake.minProtein}</span>
-              </div>
+              <span className="font-medium">{fmt(liveMinProteinGkg)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Minimum Protein Requirement (g):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{targetIntake.minProtein}</span>
-              </div>
+              <span className={calcClass}>{fmt(targetMinProteinG)}</span>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Maximum Protein Requirement (g/kg/bw):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{targetIntake.maxProtein}</span>
-              </div>
+              <span className="font-medium">{fmt(liveMaxProteinGkg)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Maximum Protein Requirement (g):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{targetIntake.maxProtein}</span>
-              </div>
+              <span className={calcClass}>{fmt(targetMaxProteinG)}</span>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">
+                Minimum Fat Requirement (g/kg/bw):
+              </span>
+              <span className="font-medium">{fmt(liveMinFatGkg)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">
+                Minimum Fat Requirement (g):
+              </span>
+              <span className={calcClass}>{fmt(targetMinFatG)}</span>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Maximum Fat Requirement (g/kg/bw):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{targetIntake.minFat}</span>
-              </div>
+              <span className="font-medium">{fmt(liveMaxFatGkg)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Maximum Fat Requirement (g):
               </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{targetIntake.minFat}</span>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">
-                Maximum Fat Requirement (g/kg/bw):
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{targetIntake.maxFat}</span>
-              </div>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">
-                Maximum Fat Requirement (g):
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{targetIntake.maxFat}</span>
-              </div>
+              <span className={calcClass}>{fmt(targetMaxFatG)}</span>
             </div>
           </div>
 
           {/* Estimated Intake */}
-          <div className="mt-6 space-y-3">
+          <div className="mt-6">
             <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">
                   Estimated Carbohydrate Intake (g):
                 </span>
-                <div className="flex items-center gap-2">
+                {effectiveEditing ? (
+                  <input
+                    type="number"
+                    step="1"
+                    value={editForm.estimatedCarbG}
+                    onChange={(e) =>
+                      setEditForm((p) => ({
+                        ...p,
+                        estimatedCarbG: e.target.value,
+                      }))
+                    }
+                    className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                  />
+                ) : (
                   <span className="font-medium">
-                    {intakeData.estimatedCarbohydrate}
+                    {fmt(adherencesData?.estimatedCarbG ?? null)}
                   </span>
-                </div>
+                )}
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">
                   % of Min Carbohydrate Requirement:
                 </span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">
-                    {intakeData.percentMinCarbohydrate}
-                  </span>
-                </div>
+                <span className={calcClass}>{fmtPct(pctMinCarb)}</span>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">
                   Estimated Protein Intake (g):
                 </span>
-                <div className="flex items-center gap-2">
+                {effectiveEditing ? (
+                  <input
+                    type="number"
+                    step="1"
+                    value={editForm.estimatedProteinG}
+                    onChange={(e) =>
+                      setEditForm((p) => ({
+                        ...p,
+                        estimatedProteinG: e.target.value,
+                      }))
+                    }
+                    className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                  />
+                ) : (
                   <span className="font-medium">
-                    {intakeData.estimatedProtein}
+                    {fmt(adherencesData?.estimatedProteinG ?? null)}
                   </span>
-                </div>
+                )}
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">
                   % of Min Protein Requirement:
                 </span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">
-                    {intakeData.percentMinProtein}
-                  </span>
-                </div>
+                <span className={calcClass}>{fmtPct(pctMinProtein)}</span>
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Estimated Fat Intake (g):</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{intakeData.estimatedFat}</span>
-                </div>
+                <span className="text-gray-600">
+                  Estimated Fat Intake (g):
+                </span>
+                {effectiveEditing ? (
+                  <input
+                    type="number"
+                    step="1"
+                    value={editForm.estimatedFatG}
+                    onChange={(e) =>
+                      setEditForm((p) => ({
+                        ...p,
+                        estimatedFatG: e.target.value,
+                      }))
+                    }
+                    className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                  />
+                ) : (
+                  <span className="font-medium">
+                    {fmt(adherencesData?.estimatedFatG ?? null)}
+                  </span>
+                )}
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">% of Min Fat Requirement:</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">
-                    {intakeData.percentMinFat}
-                  </span>
-                </div>
+                <span className={calcClass}>{fmtPct(pctMinFat)}</span>
               </div>
             </div>
 
@@ -432,19 +712,73 @@ export default function Adherences({ athleteId, sessionId, isNewConsultation, ne
                 <label className="block text-sm text-gray-600 mb-2">
                   Comments on Weekday Intake:
                 </label>
-                <p className="text-sm text-gray-900">{intakeData.weekdayComments}</p>
+                {effectiveEditing ? (
+                  <textarea
+                    className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
+                    placeholder="Input Text Here"
+                    value={editForm.commentsWeekday}
+                    onChange={(e) =>
+                      setEditForm((p) => ({
+                        ...p,
+                        commentsWeekday: e.target.value,
+                      }))
+                    }
+                  />
+                ) : (
+                  <p className="text-sm text-gray-900">
+                    {adherencesData?.commentsWeekday || "—"}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-2">
                   Comments on Weekend Intake:
                 </label>
-                <p className="text-sm text-gray-900">{intakeData.weekendComments}</p>
+                {effectiveEditing ? (
+                  <textarea
+                    className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
+                    placeholder="Input Text Here"
+                    value={editForm.commentsWeekend}
+                    onChange={(e) =>
+                      setEditForm((p) => ({
+                        ...p,
+                        commentsWeekend: e.target.value,
+                      }))
+                    }
+                  />
+                ) : (
+                  <p className="text-sm text-gray-900">
+                    {adherencesData?.commentsWeekend || "—"}
+                  </p>
+                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Male and Female Sections */}
+        {/* ── PAL ───────────────────────────────────────────────────────── */}
+        <div className="flex justify-between items-center text-sm border-t pt-4">
+          <span className="text-gray-600 font-medium">
+            Physical Activity Level (PAL):
+          </span>
+          {effectiveEditing ? (
+            <input
+              type="number"
+              step="0.01"
+              value={editForm.pal}
+              onChange={(e) =>
+                setEditForm((p) => ({ ...p, pal: e.target.value }))
+              }
+              className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+            />
+          ) : (
+            <span className="font-medium">
+              {fmt(adherencesData?.pal ?? null, 2)}
+            </span>
+          )}
+        </div>
+
+        {/* ── Male / Female RMR + TEE ────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-8">
           {/* Male */}
           <div>
@@ -452,44 +786,36 @@ export default function Adherences({ athleteId, sessionId, isNewConsultation, ne
             <div className="space-y-3 text-sm">
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">
-                  Resting Metabolic Rate (RMR) Calculation:
+                  Resting Metabolic Rate (RMR):
                 </span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{metabolicData.male.rmr}</span>
+                <div className="flex items-center gap-1">
+                  <span className={calcClass}>{fmt(rmrMale, 0)}</span>
                   <span className="text-gray-500">kcal</span>
                 </div>
               </div>
-
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">
-                  Total Energy Expenditure (TEE) Calculation:
+                  Total Energy Expenditure (TEE):
                 </span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{metabolicData.male.tee}</span>
+                <div className="flex items-center gap-1">
+                  <span className={calcClass}>{fmt(teeMale, 0)}</span>
                   <span className="text-gray-500">kcal</span>
                 </div>
               </div>
-
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Target Weight RMR:</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">
-                    {metabolicData.male.targetWeightRMR}
-                  </span>
+                <div className="flex items-center gap-1">
+                  <span className={calcClass}>{fmt(targetRmrMale, 0)}</span>
                   <span className="text-gray-500">kcal</span>
                 </div>
               </div>
-
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Target Weight TEE:</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">
-                    {metabolicData.male.targetWeightTEE}
-                  </span>
+                <div className="flex items-center gap-1">
+                  <span className={calcClass}>{fmt(targetTeeMale, 0)}</span>
                   <span className="text-gray-500">kcal</span>
                 </div>
               </div>
-
               <div className="mt-4">
                 <label className="block text-sm text-gray-600 mb-2">
                   Other Remarks:
@@ -498,19 +824,18 @@ export default function Adherences({ athleteId, sessionId, isNewConsultation, ne
                   <textarea
                     className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
                     placeholder="Input Text Here"
-                    value={metabolicData.male.otherRemarks}
+                    value={editForm.otherRemarks}
                     onChange={(e) =>
-                      setMetabolicData((prev) => ({
-                        ...prev,
-                        male: {
-                          ...prev.male,
-                          otherRemarks: e.target.value,
-                        },
+                      setEditForm((p) => ({
+                        ...p,
+                        otherRemarks: e.target.value,
                       }))
                     }
                   />
                 ) : (
-                  <p className="text-sm text-gray-900">{metabolicData.male.otherRemarks}</p>
+                  <p className="text-sm text-gray-900">
+                    {adherencesData?.otherRemarks || "—"}
+                  </p>
                 )}
               </div>
             </div>
@@ -522,44 +847,33 @@ export default function Adherences({ athleteId, sessionId, isNewConsultation, ne
             <div className="space-y-3 text-sm">
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">
-                  Resting Metabolic Rate (RMR) Calculation:
+                  Resting Metabolic Rate (RMR):
                 </span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">
-                    {metabolicData.female.rmr}
-                  </span>
+                <div className="flex items-center gap-1">
+                  <span className={calcClass}>{fmt(rmrFemale, 0)}</span>
                   <span className="text-gray-500">kcal</span>
                 </div>
               </div>
-
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">
-                  Total Energy Expenditure (TEE) Calculation:
+                  Total Energy Expenditure (TEE):
                 </span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">
-                    {metabolicData.female.tee}
-                  </span>
+                <div className="flex items-center gap-1">
+                  <span className={calcClass}>{fmt(teeFemale, 0)}</span>
                   <span className="text-gray-500">kcal</span>
                 </div>
               </div>
-
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Target Weight RMR:</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">
-                    {metabolicData.female.targetWeightRMR}
-                  </span>
+                <div className="flex items-center gap-1">
+                  <span className={calcClass}>{fmt(targetRmrFemale, 0)}</span>
                   <span className="text-gray-500">kcal</span>
                 </div>
               </div>
-
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Target Weight TEE:</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">
-                    {metabolicData.female.targetWeightTEE}
-                  </span>
+                <div className="flex items-center gap-1">
+                  <span className={calcClass}>{fmt(targetTeeFemale, 0)}</span>
                   <span className="text-gray-500">kcal</span>
                 </div>
               </div>
