@@ -209,7 +209,10 @@ export default function SupplementDetailPage() {
           {/* Inventory Batches */}
           <InventoryBatches
             batches={batches}
+            supplementId={supplement.id}
             supplementName={supplement.supplement_name}
+            supplementBrand={supplement.supplement_brand}
+            onRefresh={loadSupplementDetails}
           />
         </div>
       </div>

@@ -242,14 +242,16 @@ export async function getBatchesBySupplementId(
       ib.batch_price,
       COALESCE(SUM(it.quantity), 0) AS booked,
       ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available,
-      bssl.batch_stock_status AS batch_status
+      bssl.batch_stock_status AS batch_status,
+      ib.date_added
     FROM SSS.Inventory_Batch ib
     LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.inventory_batch_id
     LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl ON ib.batch_stock_status_id = bssl.id
     WHERE ib.supplement_id = $1
       AND bssl.is_active = true
     GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity,
-             ib.batch_expiration_date, ib.batch_price, bssl.batch_stock_status
+             ib.batch_expiration_date, ib.batch_price, bssl.batch_stock_status,
+             ib.date_added
     ORDER BY ib.id DESC
     LIMIT $2 OFFSET $3
   `;

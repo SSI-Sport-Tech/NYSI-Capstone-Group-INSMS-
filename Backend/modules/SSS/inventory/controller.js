@@ -128,7 +128,8 @@ export async function createBatch(req, res) {
                 batch_expiration_date: newBatch.batch_expiration_date,
                 batch_manufacture_date: newBatch.batch_manufacture_date,
                 batch_stock_status_id: newBatch.batch_stock_status_id,
-                batch_stock_status: availableStatus.batch_stock_status
+                batch_stock_status: availableStatus.batch_stock_status,
+                date_added: newBatch.date_added
             }
         });
 
