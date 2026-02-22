@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Trash2, Plus } from "lucide-react";
+import AddSupplementModal from "./AddSupplementModal";
 
 interface Batch {
   id: number;
@@ -12,11 +13,15 @@ interface Batch {
   available: number;
   batch_expiration_date: string;
   batch_price: number;
+  date_added: string;
 }
 
 interface InventoryBatchesProps {
   batches: Batch[];
+  supplementId: string;
   supplementName: string;
+  supplementBrand: string;
+  onRefresh?: () => void;
 }
 
 const getStatusBadgeClass = (status: string) => {
@@ -33,8 +38,15 @@ const getStatusBadgeClass = (status: string) => {
   }
 };
 
-const InventoryBatches: React.FC<InventoryBatchesProps> = ({ batches, supplementName }) => {
+const InventoryBatches: React.FC<InventoryBatchesProps> = ({
+  batches,
+  supplementId,
+  supplementName,
+  supplementBrand,
+  onRefresh,
+}) => {
   const [selectedBatches, setSelectedBatches] = useState<number[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -90,7 +102,10 @@ const InventoryBatches: React.FC<InventoryBatchesProps> = ({ batches, supplement
               </span>
             )}
           </button>
-          <button className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm"
+          >
             <Plus className="w-4 h-4" />
             <span>Add Batch</span>
           </button>
@@ -134,6 +149,9 @@ const InventoryBatches: React.FC<InventoryBatchesProps> = ({ batches, supplement
               <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
                 Batch Price
               </th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
+                Date Added
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
@@ -175,11 +193,16 @@ const InventoryBatches: React.FC<InventoryBatchesProps> = ({ batches, supplement
                   <td className="px-3 py-4 text-sm font-medium text-gray-900">
                     ${batch.batch_price ? Number(batch.batch_price).toFixed(2) : "N/A"}
                   </td>
+                  <td className="px-3 py-4 text-sm text-gray-900">
+                    {batch.date_added
+                      ? new Date(batch.date_added).toLocaleDateString("en-US")
+                      : "-"}
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
                   No batches available for this supplement
                 </td>
               </tr>
@@ -187,6 +210,20 @@ const InventoryBatches: React.FC<InventoryBatchesProps> = ({ batches, supplement
           </tbody>
         </table>
       </div>
+
+      <AddSupplementModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={() => {
+          setShowAddModal(false);
+          if (onRefresh) onRefresh();
+        }}
+        preselectedSupplement={{
+          id: supplementId,
+          name: supplementName,
+          brand: supplementBrand,
+        }}
+      />
     </div>
   );
 };

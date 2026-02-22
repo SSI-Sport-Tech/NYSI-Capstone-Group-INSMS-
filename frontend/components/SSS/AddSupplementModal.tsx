@@ -20,6 +20,7 @@ interface AddSupplementModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  preselectedSupplement?: { id: string; name: string; brand: string };
 }
 
 interface FormData {
@@ -45,6 +46,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  preselectedSupplement,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Supplement[]>([]);
@@ -90,6 +92,15 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
       setSearchQuery("");
       setSearchResults([]);
       setShowResults(false);
+      setIsNewSupplement(false);
+    } else if (isOpen && preselectedSupplement) {
+      setFormData((prev) => ({
+        ...prev,
+        supplementId: preselectedSupplement.id,
+        name: preselectedSupplement.name,
+        brand: preselectedSupplement.brand,
+      }));
+      setSearchQuery(`${preselectedSupplement.brand} ${preselectedSupplement.name}`);
       setIsNewSupplement(false);
     }
   }, [isOpen]);
@@ -649,6 +660,18 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                         placeholder="Date"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-1">
+                        Date Added
+                      </label>
+                      <input
+                        type="text"
+                        value={new Date().toLocaleDateString("en-US")}
+                        readOnly
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-500 cursor-not-allowed"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Auto-set to today on save</p>
                     </div>
                     <div>
                       <label className="block text-sm text-gray-700 mb-1">

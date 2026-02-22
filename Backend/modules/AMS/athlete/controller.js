@@ -255,6 +255,9 @@ export async function createCompleteAthlete(req, res) {
       athlete_name_abbr: validated.athlete_name_abbr,
       gender: validated.gender,
       date_of_birth: validated.date_of_birth,
+      ethnicity: validated.ethnicity,
+      target_event: validated.target_event,
+      sport_start_date: validated.sport_start_date,
     };
 
     const registryData = {
@@ -273,6 +276,7 @@ export async function createCompleteAthlete(req, res) {
       drug_allergy: validated.drug_allergy,
       past_injury: validated.past_injury,
       medical_remarks: validated.medical_remarks,
+      dietary_restriction: validated.dietary_restriction,
     };
 
     // Step 7: Create in transaction
@@ -400,6 +404,9 @@ export async function adminCreateCompleteAthlete(req, res) {
       athlete_name_abbr: validated.athlete_name_abbr,
       gender: validated.gender,
       date_of_birth: validated.date_of_birth,
+      ethnicity: validated.ethnicity,
+      target_event: validated.target_event,
+      sport_start_date: validated.sport_start_date,
     };
 
     const registryData = {
@@ -418,6 +425,7 @@ export async function adminCreateCompleteAthlete(req, res) {
       drug_allergy: validated.drug_allergy,
       past_injury: validated.past_injury,
       medical_remarks: validated.medical_remarks,
+      dietary_restriction: validated.dietary_restriction,
     };
 
     // Step 7: Create in transaction

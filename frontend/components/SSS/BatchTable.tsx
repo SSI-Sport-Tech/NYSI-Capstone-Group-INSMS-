@@ -24,6 +24,7 @@ interface Batch {
   available: number;
   batch_expiration_date: string;
   batch_price: number;
+  date_added: string;
 }
 
 interface BatchTableProps {
@@ -125,6 +126,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
       "Available",
       "Expiration",
       "Price",
+      "Date Added",
     ];
     const csvContent = [
       headers.join(","),
@@ -143,6 +145,9 @@ const BatchTable: React.FC<BatchTableProps> = ({
           batch.batch_price
             ? `$${Number(batch.batch_price).toFixed(2)}`
             : "N/A",
+          batch.date_added
+            ? new Date(batch.date_added).toLocaleDateString()
+            : "-",
         ].join(","),
       ),
     ].join("\n");
@@ -291,6 +296,12 @@ const BatchTable: React.FC<BatchTableProps> = ({
                     <ArrowUpDown className="w-3 h-3" />
                   </div>
                 </th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
+                  <div className="flex items-center gap-1">
+                    <span className="whitespace-nowrap">Date Added</span>
+                    <ArrowUpDown className="w-3 h-3" />
+                  </div>
+                </th>
                 <th className="px-3 py-3 text-left w-16"></th>
               </tr>
             </thead>
@@ -298,7 +309,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
               {loading ? (
                 <tr>
                   <td
-                    colSpan={11}
+                    colSpan={12}
                     className="px-6 py-8 text-center text-gray-500"
                   >
                     Loading batches...
@@ -370,6 +381,11 @@ const BatchTable: React.FC<BatchTableProps> = ({
                         ? Number(batch.batch_price).toFixed(2)
                         : "N/A"}
                     </td>
+                    <td className="px-3 py-4 text-sm text-gray-900">
+                      {batch.date_added
+                        ? new Date(batch.date_added).toLocaleDateString("en-US")
+                        : "-"}
+                    </td>
                     <td className="px-3 py-4 text-center">
                       <button className="text-gray-400 hover:text-gray-600 p-1">
                         <MoreVertical className="w-4 h-4" />
@@ -380,7 +396,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
               ) : (
                 <tr>
                   <td
-                    colSpan={11}
+                    colSpan={12}
                     className="px-6 py-8 text-center text-gray-500"
                   >
                     {searchQuery

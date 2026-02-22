@@ -50,6 +50,9 @@ export async function getAthleteById(athleteId) {
             a.athlete_name_abbr,
             a.gender,
             a.date_of_birth,
+            a.ethnicity,
+            a.target_event,
+            a.sport_start_date,
             sl.sport AS sport_name
         FROM AMS.Athlete a
         LEFT JOIN AMS.Sport_Lookup sl ON a.sport_id = sl.id
@@ -111,6 +114,7 @@ export async function getAthletesByPage(
             sl.sport AS sport_name,
             a.gender,
             a.date_of_birth,
+            a.target_event,
             r.carding_status,
             COALESCE(n.name, 'Not Assigned') AS assigned_nutritionist,
             COALESCE(uap.is_pinned, false) AS is_pinned
@@ -195,6 +199,7 @@ export async function searchAthletes(
             sl.sport AS sport_name,
             a.gender,
             a.date_of_birth,
+            a.target_event,
             r.carding_status,
             COALESCE(n.name, 'Not Assigned') AS assigned_nutritionist,
             COALESCE(uap.is_pinned, false) AS is_pinned
@@ -316,8 +321,9 @@ export async function createBasicAthlete(athleteData) {
   const result = await pool.query(
     `
         INSERT INTO AMS.Athlete (
-            sport_id, sportsync_id, athlete_name_abbr, gender, date_of_birth
-        ) VALUES ($1, $2, $3, $4, $5)
+            sport_id, sportsync_id, athlete_name_abbr, gender, date_of_birth,
+            ethnicity, target_event, sport_start_date
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *
     `,
     [
@@ -326,6 +332,9 @@ export async function createBasicAthlete(athleteData) {
       athleteData.athlete_name_abbr,
       athleteData.gender,
       athleteData.date_of_birth,
+      athleteData.ethnicity || null,
+      athleteData.target_event || null,
+      athleteData.sport_start_date || null,
     ],
   );
   return result.rows[0];
@@ -355,8 +364,9 @@ export async function createCompleteAthlete(
     const athleteResult = await client.query(
       `
             INSERT INTO AMS.Athlete (
-                sport_id, sportsync_id, athlete_name_abbr, gender, date_of_birth
-            ) VALUES ($1, $2, $3, $4, $5)
+                sport_id, sportsync_id, athlete_name_abbr, gender, date_of_birth,
+                ethnicity, target_event, sport_start_date
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *
         `,
       [
@@ -365,6 +375,9 @@ export async function createCompleteAthlete(
         athleteData.athlete_name_abbr,
         athleteData.gender,
         athleteData.date_of_birth,
+        athleteData.ethnicity || null,
+        athleteData.target_event || null,
+        athleteData.sport_start_date || null,
       ],
     );
     const athlete = athleteResult.rows[0];
@@ -396,8 +409,8 @@ export async function createCompleteAthlete(
     const medicalResult = await client.query(
       `
             INSERT INTO AMS.Athlete_Medical (
-                athlete_id, medical_condition, food_allergy, drug_allergy, past_injury, medical_remarks
-            ) VALUES ($1, $2, $3, $4, $5, $6)
+                athlete_id, medical_condition, food_allergy, drug_allergy, past_injury, medical_remarks, dietary_restriction
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *
         `,
       [
@@ -407,6 +420,7 @@ export async function createCompleteAthlete(
         medicalData.drug_allergy,
         medicalData.past_injury,
         medicalData.medical_remarks,
+        medicalData.dietary_restriction,
       ],
     );
     const medical = medicalResult.rows[0];
@@ -524,6 +538,9 @@ export async function updateAthlete(athleteId, updateData) {
     athlete_name_abbr: updateData.athlete_name_abbr,
     gender: updateData.gender,
     date_of_birth: updateData.date_of_birth,
+    ethnicity: updateData.ethnicity,
+    target_event: updateData.target_event,
+    sport_start_date: updateData.sport_start_date,
   };
 
   for (const [field, value] of Object.entries(fieldMapping)) {
@@ -585,6 +602,9 @@ export async function getAthleteProfile(athleteId) {
             a.athlete_name_abbr,
             a.gender,
             a.date_of_birth,
+            a.ethnicity,
+            a.target_event,
+            a.sport_start_date,
             sl.sport AS sport_name
         FROM AMS.Athlete a
         LEFT JOIN AMS.Sport_Lookup sl ON a.sport_id = sl.id
@@ -771,7 +791,7 @@ export async function updateRegistry(athleteId, updateData) {
  */
 export async function getMedicalByAthleteId(athleteId) {
   const query = `
-        SELECT id, athlete_id, medical_condition, food_allergy, drug_allergy, past_injury, medical_remarks
+        SELECT id, athlete_id, medical_condition, food_allergy, drug_allergy, past_injury, medical_remarks, dietary_restriction
         FROM AMS.Athlete_Medical
         WHERE athlete_id = $1
     `;
@@ -797,6 +817,7 @@ export async function updateMedical(athleteId, updateData) {
     drug_allergy: updateData.drug_allergy,
     past_injury: updateData.past_injury,
     medical_remarks: updateData.medical_remarks,
+    dietary_restriction: updateData.dietary_restriction,
   };
 
   for (const [field, value] of Object.entries(fieldMapping)) {
@@ -853,6 +874,9 @@ export async function updateAthleteProfile(athleteId, data, options = {}) {
       athlete_name_abbr: data.athlete_name_abbr,
       gender: data.gender,
       date_of_birth: data.date_of_birth,
+      ethnicity: data.ethnicity,
+      target_event: data.target_event,
+      sport_start_date: data.sport_start_date,
     };
 
     const athleteSetClauses = [];
@@ -927,6 +951,7 @@ export async function updateAthleteProfile(athleteId, data, options = {}) {
       drug_allergy: data.drug_allergy,
       past_injury: data.past_injury,
       medical_remarks: data.medical_remarks,
+      dietary_restriction: data.dietary_restriction,
     };
 
     const medicalSetClauses = [];

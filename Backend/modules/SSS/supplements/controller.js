@@ -136,7 +136,8 @@ export async function getSupplementDetails(req, res) {
                     booked: parseInt(batch.booked),
                     available: parseInt(batch.available),
                     batch_expiration_date: batch.batch_expiration_date,
-                    batch_price: parseFloat(batch.batch_price) || null
+                    batch_price: parseFloat(batch.batch_price) || null,
+                    date_added: batch.date_added
                 })),
                 currentPage: batchPage,
                 totalPages: totalBatchPages,

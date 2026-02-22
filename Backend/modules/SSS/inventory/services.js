@@ -20,7 +20,8 @@ export async function getBatchesByPage(pageNumber, pageSize = 10) {
       s.supplement_brand,
       COALESCE(SUM(it.quantity), 0) AS booked,
       ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available,
-      bssl.batch_stock_status AS batch_status
+      bssl.batch_stock_status AS batch_status,
+      ib.date_added
     FROM SSS.Inventory_Batch ib
     INNER JOIN SSS.Supplement s ON ib.supplement_id = s.id
     LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.inventory_batch_id
@@ -28,7 +29,8 @@ export async function getBatchesByPage(pageNumber, pageSize = 10) {
     WHERE bssl.is_active = true
     GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity,
              ib.batch_expiration_date, ib.batch_price, ib.supplement_id,
-             s.supplement_name, s.supplement_brand, bssl.batch_stock_status
+             s.supplement_name, s.supplement_brand, bssl.batch_stock_status,
+             ib.date_added
     ORDER BY ib.id DESC
     LIMIT $1 OFFSET $2
   `;
@@ -88,7 +90,8 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
       s.supplement_brand,
       COALESCE(SUM(it.quantity), 0) AS booked,
       ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available,
-      bssl.batch_stock_status AS batch_status
+      bssl.batch_stock_status AS batch_status,
+      ib.date_added
     FROM SSS.Inventory_Batch ib
     INNER JOIN SSS.Supplement s ON ib.supplement_id = s.id
     LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.inventory_batch_id
@@ -96,7 +99,8 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
     WHERE bssl.is_active = true AND (${whereConditions})
     GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity,
              ib.batch_expiration_date, ib.batch_price, ib.supplement_id,
-             s.supplement_name, s.supplement_brand, bssl.batch_stock_status
+             s.supplement_name, s.supplement_brand, bssl.batch_stock_status,
+             ib.date_added
     ORDER BY ib.id DESC
     LIMIT $${searchWords.length + 1} OFFSET $${searchWords.length + 2}
   `;
@@ -157,6 +161,7 @@ export async function getBatchById(batchId) {
             ib.batch_expiration_date,
             ib.batch_manufacture_date,
             ib.batch_stock_status_id,
+            ib.date_added,
             bssl.batch_stock_status,
             s.supplement_name,
             s.supplement_brand
@@ -238,7 +243,8 @@ export async function createBatch(batchData) {
             batch_initial_quantity,
             batch_price,
             batch_expiration_date,
-            batch_manufacture_date
+            batch_manufacture_date,
+            date_added
     `;
 
   const values = [

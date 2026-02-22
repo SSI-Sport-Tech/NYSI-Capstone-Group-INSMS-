@@ -27,6 +27,7 @@ export const createMedicalHistorySchema = z.object({
     drug_allergy: z.string().trim().optional(),
     past_injury: z.string().trim().optional(),
     medical_remarks: z.string().trim().optional(),
+    dietary_restriction: z.string().trim().optional(),
 
     // Puberty section (consultation.session_puberty)
     puberty: z.object({
@@ -78,6 +79,7 @@ export const updateMedicalHistorySchema = z.object({
     drug_allergy: z.string().trim().optional(),
     past_injury: z.string().trim().optional(),
     medical_remarks: z.string().trim().optional(),
+    dietary_restriction: z.string().trim().optional(),
 
     // Puberty section
     puberty: z.object({

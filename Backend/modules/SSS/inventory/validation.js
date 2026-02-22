@@ -43,6 +43,7 @@ export const createBatchSchema = z.object({
 
     id: z.never().optional(),
     batch_stock_status_id: z.never().optional(),
+    date_added: z.never().optional(),
     created_on: z.never().optional(),
     created_by: z.never().optional(),
     last_modified_on: z.never().optional(),

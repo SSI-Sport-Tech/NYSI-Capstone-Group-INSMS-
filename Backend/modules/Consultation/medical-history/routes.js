@@ -60,6 +60,9 @@ const router = express.Router();
  *                     medical_remarks:
  *                       type: string
  *                       nullable: true
+ *                     dietary_restriction:
+ *                       type: string
+ *                       nullable: true
  *             example:
  *               data:
  *                 id: "c1d2e3f4-a5b6-7890-cdef-012345678901"
@@ -69,6 +72,7 @@ const router = express.Router();
  *                 drug_allergy: null
  *                 past_injury: null
  *                 medical_remarks: null
+ *                 dietary_restriction: "Halal"
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       404:
@@ -191,6 +195,9 @@ router.get('/medical-history/athlete/:athleteId/eligibility', controller.getAthl
  *                         medical_remarks:
  *                           type: string
  *                           nullable: true
+ *                         dietary_restriction:
+ *                           type: string
+ *                           nullable: true
  *                     puberty:
  *                       type: object
  *                       properties:
@@ -291,6 +298,7 @@ router.get('/medical-history/athlete/:athleteId/eligibility', controller.getAthl
  *                   drug_allergy: null
  *                   past_injury: null
  *                   medical_remarks: null
+ *                   dietary_restriction: null
  *                 puberty:
  *                   id: null
  *                   period_of_growth_spurt: null
@@ -364,6 +372,8 @@ router.get('/medical-history/:sessionId', controller.getMedicalHistory);
  *                 type: string
  *               medical_remarks:
  *                 type: string
+ *               dietary_restriction:
+ *                 type: string
  *               puberty:
  *                 type: object
  *                 properties:
@@ -420,6 +430,7 @@ router.get('/medical-history/:sessionId', controller.getMedicalHistory);
  *             drug_allergy: "Penicillin"
  *             past_injury: "Left ACL tear (2022), right ankle sprain (2023)"
  *             medical_remarks: "Currently on Ventolin inhaler as needed"
+ *             dietary_restriction: "Halal, no pork"
  *             puberty:
  *               period_of_growth_spurt: "Age 13-15"
  *               other_remarks: "Growth plates closed, confirmed by X-ray"
@@ -506,6 +517,8 @@ router.post('/medical-history', authenticateToken, controller.createMedicalHisto
  *                 type: string
  *               medical_remarks:
  *                 type: string
+ *               dietary_restriction:
+ *                 type: string
  *               puberty:
  *                 type: object
  *                 properties:
@@ -557,6 +570,7 @@ router.post('/medical-history', authenticateToken, controller.createMedicalHisto
  *                     type: string
  *           example:
  *             drug_allergy: "Penicillin"
+ *             dietary_restriction: "Halal, no pork"
  *             period:
  *               age_of_menarchy: 12
  *               regularity_of_period: 28

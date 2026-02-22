@@ -43,6 +43,10 @@ export const createBasicAthleteSchema = z
       invalid_type_error: "Gender must be one of: MALE, FEMALE, OTHER",
     }),
     date_of_birth: dateSchema,
+    ethnicity: z.string().trim().optional(),
+    target_event: z.string().trim().optional(),
+    sport_start_date: optionalDateSchema,
+    dietary_restriction: z.string().trim().optional(),
 
     // --- Reject system-managed fields ---
     id: z.never().optional(),
@@ -67,6 +71,9 @@ export const createCompleteAthleteSchema = z
       invalid_type_error: "Gender must be one of: MALE, FEMALE, OTHER",
     }),
     date_of_birth: dateSchema,
+    ethnicity: z.string().trim().optional(),
+    target_event: z.string().trim().optional(),
+    sport_start_date: optionalDateSchema,
 
     // --- Registry fields ---
     carding_status: z.string().trim().min(1, "Carding status is required"),
@@ -85,6 +92,7 @@ export const createCompleteAthleteSchema = z
     drug_allergy: z.string().trim().optional().default(""),
     past_injury: z.string().trim().optional().default(""),
     medical_remarks: z.string().trim().optional().default(""),
+    dietary_restriction: z.string().trim().optional().default(""),
 
     // --- Assignment arrays ---
     coach_ids: z.array(uuidSchema).optional().default([]),
@@ -116,6 +124,9 @@ export const adminCreateCompleteAthleteSchema = z
       invalid_type_error: "Gender must be one of: MALE, FEMALE, OTHER",
     }),
     date_of_birth: dateSchema,
+    ethnicity: z.string().trim().optional(),
+    target_event: z.string().trim().optional(),
+    sport_start_date: optionalDateSchema,
 
     // --- Registry fields ---
     carding_status: z.string().trim().min(1, "Carding status is required"),
@@ -134,6 +145,7 @@ export const adminCreateCompleteAthleteSchema = z
     drug_allergy: z.string().trim().optional().default(""),
     past_injury: z.string().trim().optional().default(""),
     medical_remarks: z.string().trim().optional().default(""),
+    dietary_restriction: z.string().trim().optional().default(""),
 
     // --- Assignment ---
     coach_ids: z.array(uuidSchema).optional().default([]),
@@ -170,6 +182,10 @@ export const updateAthleteSchema = z
       })
       .optional(),
     date_of_birth: optionalDateSchema,
+    ethnicity: z.string().trim().optional(),
+    target_event: z.string().trim().optional(),
+    sport_start_date: optionalDateSchema,
+    dietary_restriction: z.string().trim().optional(),
   })
   .strict();
 
@@ -239,6 +255,9 @@ export const updateProfileSchema = z
       })
       .optional(),
     date_of_birth: optionalDateSchema,
+    ethnicity: z.string().trim().optional(),
+    target_event: z.string().trim().optional(),
+    sport_start_date: optionalDateSchema,
 
     // --- Registry fields (all optional) ---
     carding_status: z
@@ -259,6 +278,7 @@ export const updateProfileSchema = z
     drug_allergy: z.string().trim().optional(),
     past_injury: z.string().trim().optional(),
     medical_remarks: z.string().trim().optional(),
+    dietary_restriction: z.string().trim().optional(),
 
     // --- Coach mapping replacement (optional) ---
     coach_ids: z.array(uuidSchema).optional(),
@@ -296,6 +316,9 @@ export const adminUpdateProfileSchema = z
       })
       .optional(),
     date_of_birth: optionalDateSchema,
+    ethnicity: z.string().trim().optional(),
+    target_event: z.string().trim().optional(),
+    sport_start_date: optionalDateSchema,
 
     // --- Registry fields (all optional) ---
     carding_status: z
@@ -316,6 +339,7 @@ export const adminUpdateProfileSchema = z
     drug_allergy: z.string().trim().optional(),
     past_injury: z.string().trim().optional(),
     medical_remarks: z.string().trim().optional(),
+    dietary_restriction: z.string().trim().optional(),
 
     // --- Coach and nutritionist mapping replacement (optional) ---
     coach_ids: z.array(uuidSchema).optional(),

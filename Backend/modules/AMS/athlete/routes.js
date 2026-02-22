@@ -19,6 +19,8 @@ const router = express.Router();
  *
  *       **List columns:** sportsync_id, athlete_name_abbr, sport, gender, date_of_birth
  *     tags: [AMS - Athletes]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - $ref: '#/components/parameters/PageParam'
  *       - $ref: '#/components/parameters/SearchParam'
@@ -75,6 +77,8 @@ router.get("/athletes", authenticateToken, controller.listAthletes);
  *       Get the athlete profile card data for the detail page.
  *       Returns athlete base info, registry, coach mappings, and nutritionist mappings.
  *     tags: [AMS - Athletes]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - name: id
  *         in: path
@@ -110,6 +114,16 @@ router.get("/athletes", authenticateToken, controller.listAthletes);
  *                     date_of_birth:
  *                       type: string
  *                       format: date
+ *                     ethnicity:
+ *                       type: string
+ *                       nullable: true
+ *                     target_event:
+ *                       type: string
+ *                       nullable: true
+ *                     sport_start_date:
+ *                       type: string
+ *                       format: date
+ *                       nullable: true
  *                     sport_name:
  *                       type: string
  *                 registry:
@@ -214,6 +228,16 @@ router.get("/athletes/:id/profile", controller.getAthleteProfile);
  *               date_of_birth:
  *                 type: string
  *                 format: date
+ *               ethnicity:
+ *                 type: string
+ *                 description: Optional
+ *               target_event:
+ *                 type: string
+ *                 description: Optional
+ *               sport_start_date:
+ *                 type: string
+ *                 format: date
+ *                 description: Optional
  *               carding_status:
  *                 type: string
  *               athlete_notified_on:
@@ -251,6 +275,8 @@ router.get("/athletes/:id/profile", controller.getAthleteProfile);
  *                 description: Replace active coach mappings with these coaches
  *           example:
  *             athlete_name_abbr: "J. Smith Jr."
+ *             ethnicity: "Chinese"
+ *             sport_start_date: "2015-01-01"
  *             carding_status: "Active"
  *             coach_ids: ["b2c3d4e5-f6a7-8901-bcde-f12345678901"]
  *     responses:
@@ -338,6 +364,16 @@ router.patch(
  *               date_of_birth:
  *                 type: string
  *                 format: date
+ *               ethnicity:
+ *                 type: string
+ *                 description: Optional
+ *               target_event:
+ *                 type: string
+ *                 description: Optional
+ *               sport_start_date:
+ *                 type: string
+ *                 format: date
+ *                 description: Optional
  *               carding_status:
  *                 type: string
  *               athlete_notified_on:
@@ -381,6 +417,8 @@ router.patch(
  *                 description: Replace active nutritionist mappings with these nutritionists
  *           example:
  *             athlete_name_abbr: "J. Smith Jr."
+ *             ethnicity: "Chinese"
+ *             sport_start_date: "2015-01-01"
  *             nutritionist_ids: ["c3d4e5f6-a7b8-9012-cdef-123456789012"]
  *     responses:
  *       200:
@@ -483,6 +521,16 @@ router.patch(
  *               date_of_birth:
  *                 type: string
  *                 format: date
+ *               ethnicity:
+ *                 type: string
+ *                 description: Optional
+ *               target_event:
+ *                 type: string
+ *                 description: Optional
+ *               sport_start_date:
+ *                 type: string
+ *                 format: date
+ *                 description: Optional
  *               carding_status:
  *                 type: string
  *               athlete_notified_on:
@@ -529,6 +577,9 @@ router.patch(
  *             athlete_name_abbr: "J. Smith"
  *             gender: "MALE"
  *             date_of_birth: "1998-03-15"
+ *             ethnicity: "Chinese"
+ *             target_event: "100m Sprint"
+ *             sport_start_date: "2015-01-01"
  *             carding_status: "Active"
  *             athlete_notified_on: "2024-01-01"
  *             carding_start_date: "2024-01-01"
@@ -633,6 +684,16 @@ router.post(
  *               date_of_birth:
  *                 type: string
  *                 format: date
+ *               ethnicity:
+ *                 type: string
+ *                 description: Optional
+ *               target_event:
+ *                 type: string
+ *                 description: Optional
+ *               sport_start_date:
+ *                 type: string
+ *                 format: date
+ *                 description: Optional
  *               carding_status:
  *                 type: string
  *               athlete_notified_on:
@@ -683,6 +744,9 @@ router.post(
  *             athlete_name_abbr: "J. Smith"
  *             gender: "MALE"
  *             date_of_birth: "1998-03-15"
+ *             ethnicity: "Chinese"
+ *             target_event: "100m Sprint"
+ *             sport_start_date: "2015-01-01"
  *             carding_status: "Active"
  *             athlete_notified_on: "2024-01-01"
  *             carding_start_date: "2024-01-01"
@@ -776,12 +840,25 @@ router.post(
  *                 type: string
  *                 format: date
  *                 description: Date of birth (YYYY-MM-DD)
+ *               ethnicity:
+ *                 type: string
+ *                 description: Optional
+ *               target_event:
+ *                 type: string
+ *                 description: Optional
+ *               sport_start_date:
+ *                 type: string
+ *                 format: date
+ *                 description: Optional
  *           example:
  *             sport_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
  *             sportsync_id: "SS-12345"
  *             athlete_name_abbr: "J. Smith"
  *             gender: "MALE"
  *             date_of_birth: "1998-03-15"
+ *             ethnicity: "Chinese"
+ *             target_event: "100m Sprint"
+ *             sport_start_date: "2015-01-01"
  *     responses:
  *       201:
  *         description: Athlete created successfully
