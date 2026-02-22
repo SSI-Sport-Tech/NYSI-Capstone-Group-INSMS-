@@ -1,10 +1,60 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { consultationApi, ConsultationApiError } from "@/utils/consultationApi";
 
 interface MedicalHistoryProps {
   athleteId: string;
   sessionId: string;
+  isNewConsultation?: boolean;
+  newSessionId?: string;
 }
 
+// ---- API response shape ----
+interface MedicalHistoryApiData {
+  session_id: string;
+  athlete_id: string;
+  general: {
+    id: string | null;
+    medical_condition: string | null;
+    food_allergy: string | null;
+    drug_allergy: string | null;
+    past_injury: string | null;
+    medical_remarks: string | null;
+  };
+  puberty: {
+    id: string | null;
+    period_of_growth_spurt: string | null;
+    other_remarks: string | null;
+  };
+  bowel_movement: {
+    id: string | null;
+    regular_bowel_movement: boolean | null;
+    frequency_of_bowel_movement: string | null;
+    stool_visual: string | null;
+    other_remarks: string | null;
+  };
+  hydration: {
+    id: string | null;
+    water_intake_per_day: number | null;
+    urine_colour: string | null;
+    hydration_status: string | null;
+    other_remarks: string | null;
+    hydration_water_intake_for_target_weight: number | null;
+    hydration_requirement_for_water_intake: number | null;
+  };
+  period: {
+    id: string | null;
+    date_of_first_period: string | null;
+    age_of_menarchy: number | null;
+    regularity_of_period: number | null;
+    length_of_typical_menstrual_cycle: number | null;
+    length_of_period: number | null;
+    heaviness_of_menstrual_bleeding: number | null;
+    any_signs_and_symptoms: string | null;
+    other_remarks: string | null;
+  };
+}
+
+// ---- Component edit state shapes ----
 interface GeneralInfo {
   medicalCondition: string;
   foodAllergy: string;
@@ -12,19 +62,16 @@ interface GeneralInfo {
   notablePastInjuries: string;
   medicalRemarks: string;
 }
-
 interface PubertyInfo {
   periodOfGrowthSpurt: string;
   otherRemarks: string;
 }
-
 interface BowelMovement {
   regularBowelMovement: string;
   frequencyOfBowelMovements: string;
   stoolAppearance: string;
   otherRemarks: string;
 }
-
 interface HydrationInfo {
   waterIntakeForTargetWeight: string;
   requirementForWaterIntake: string;
@@ -33,90 +80,287 @@ interface HydrationInfo {
   hydrationStatus: string;
   otherRemarks: string;
 }
-
 interface PeriodInfo {
   firstDayPeriod: string;
-  ageOfMenarche: number;
-  regularityOfPeriod: number;
-  menstrualCycleLength: number;
-  periodBleedingLength: number;
-  menstrualBleedingHeaviness: number;
+  ageOfMenarche: string;
+  regularityOfPeriod: string;
+  menstrualCycleLength: string;
+  periodBleedingLength: string;
+  menstrualBleedingHeaviness: string;
   signsAndSymptoms: string;
   otherRemarks: string;
 }
 
-export default function MedicalHistory({
-  athleteId,
-  sessionId,
-}: MedicalHistoryProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [generalInfo, setGeneralInfo] = useState<GeneralInfo>({
-    medicalCondition:
-      "Often undergo dehydration to lose weight 24 hours before competition fight",
-    foodAllergy: "Allergy to Peanut",
-    drugAllergy: "N.A.",
-    notablePastInjuries: "LCL/MCL Sprains",
+// ---- Mapping helpers ----
+function apiToState(data: MedicalHistoryApiData) {
+  return {
+    general: {
+      medicalCondition: data.general.medical_condition ?? "",
+      foodAllergy: data.general.food_allergy ?? "",
+      drugAllergy: data.general.drug_allergy ?? "",
+      notablePastInjuries: data.general.past_injury ?? "",
+      medicalRemarks: data.general.medical_remarks ?? "",
+    },
+    puberty: {
+      periodOfGrowthSpurt: data.puberty.period_of_growth_spurt ?? "",
+      otherRemarks: data.puberty.other_remarks ?? "",
+    },
+    bowelMovement: {
+      regularBowelMovement:
+        data.bowel_movement.regular_bowel_movement === true
+          ? "Yes"
+          : data.bowel_movement.regular_bowel_movement === false
+            ? "No"
+            : "",
+      frequencyOfBowelMovements:
+        data.bowel_movement.frequency_of_bowel_movement ?? "",
+      stoolAppearance: data.bowel_movement.stool_visual ?? "",
+      otherRemarks: data.bowel_movement.other_remarks ?? "",
+    },
+    hydrationInfo: {
+      waterIntakeForTargetWeight:
+        data.hydration.hydration_water_intake_for_target_weight?.toString() ??
+        "",
+      requirementForWaterIntake:
+        data.hydration.hydration_requirement_for_water_intake?.toString() ?? "",
+      waterIntakePerDay: data.hydration.water_intake_per_day?.toString() ?? "",
+      urineColour: data.hydration.urine_colour ?? "",
+      hydrationStatus: data.hydration.hydration_status ?? "",
+      otherRemarks: data.hydration.other_remarks ?? "",
+    },
+    periodInfo: {
+      firstDayPeriod: data.period.date_of_first_period ?? "",
+      ageOfMenarche: data.period.age_of_menarchy?.toString() ?? "",
+      regularityOfPeriod: data.period.regularity_of_period?.toString() ?? "",
+      menstrualCycleLength:
+        data.period.length_of_typical_menstrual_cycle?.toString() ?? "",
+      periodBleedingLength: data.period.length_of_period?.toString() ?? "",
+      menstrualBleedingHeaviness:
+        data.period.heaviness_of_menstrual_bleeding?.toString() ?? "",
+      signsAndSymptoms: data.period.any_signs_and_symptoms ?? "",
+      otherRemarks: data.period.other_remarks ?? "",
+    },
+  };
+}
+
+const emptyState = () => ({
+  general: {
+    medicalCondition: "",
+    foodAllergy: "",
+    drugAllergy: "",
+    notablePastInjuries: "",
     medicalRemarks: "",
-  });
-
-  const [pubertyInfo, setPubertyInfo] = useState<PubertyInfo>({
-    periodOfGrowthSpurt: "",
-    otherRemarks: "",
-  });
-
-  const [bowelMovement, setBowelMovement] = useState<BowelMovement>({
+  },
+  puberty: { periodOfGrowthSpurt: "", otherRemarks: "" },
+  bowelMovement: {
     regularBowelMovement: "",
     frequencyOfBowelMovements: "",
     stoolAppearance: "",
     otherRemarks: "",
-  });
-
-  const [hydrationInfo, setHydrationInfo] = useState<HydrationInfo>({
+  },
+  hydrationInfo: {
     waterIntakeForTargetWeight: "",
     requirementForWaterIntake: "",
     waterIntakePerDay: "",
     urineColour: "",
     hydrationStatus: "",
     otherRemarks: "",
-  });
-
-  const [periodInfo, setPeriodInfo] = useState<PeriodInfo>({
-    firstDayPeriod: "YYYY-MM-DD",
-    ageOfMenarche: 0,
-    regularityOfPeriod: 0,
-    menstrualCycleLength: 0,
-    periodBleedingLength: 0,
-    menstrualBleedingHeaviness: 0,
+  },
+  periodInfo: {
+    firstDayPeriod: "",
+    ageOfMenarche: "",
+    regularityOfPeriod: "",
+    menstrualCycleLength: "",
+    periodBleedingLength: "",
+    menstrualBleedingHeaviness: "",
     signsAndSymptoms: "",
     otherRemarks: "",
-  });
+  },
+});
+
+export default function MedicalHistory({
+  athleteId: _athleteId,
+  sessionId,
+  isNewConsultation,
+  newSessionId,
+}: MedicalHistoryProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>("");
+  const [saveError, setSaveError] = useState<string>("");
+
+  const s = emptyState();
+  const [generalInfo, setGeneralInfo] = useState<GeneralInfo>(s.general);
+  const [pubertyInfo, setPubertyInfo] = useState<PubertyInfo>(s.puberty);
+  const [bowelMovement, setBowelMovement] = useState<BowelMovement>(
+    s.bowelMovement,
+  );
+  const [hydrationInfo, setHydrationInfo] = useState<HydrationInfo>(
+    s.hydrationInfo,
+  );
+  const [periodInfo, setPeriodInfo] = useState<PeriodInfo>(s.periodInfo);
+
+  const effectiveEditing = isEditing || !!isNewConsultation;
+  const targetSessionId =
+    isNewConsultation && newSessionId ? newSessionId : sessionId;
+
+  const fetchMedicalHistory = async () => {
+    if (!sessionId) {
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setError("");
+      const response = (await consultationApi.getMedicalHistory(
+        sessionId,
+      )) as { data: MedicalHistoryApiData };
+      const mapped = apiToState(response.data);
+      setGeneralInfo(mapped.general);
+      setPubertyInfo(mapped.puberty);
+      setBowelMovement(mapped.bowelMovement);
+      setHydrationInfo(mapped.hydrationInfo);
+      setPeriodInfo(mapped.periodInfo);
+    } catch (err) {
+      if (err instanceof ConsultationApiError && err.status === 404) {
+        // No data yet — keep empty state
+      } else {
+        console.error("Error fetching medical history:", err);
+        setError("Failed to load medical history");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMedicalHistory();
+  }, [sessionId]);
 
   const handleSave = async () => {
     try {
-      console.log("Saving medical history data:", {
-        generalInfo,
-        pubertyInfo,
-        bowelMovement,
-        hydrationInfo,
-        periodInfo,
-      });
-      // TODO: Implement API call to create new consultation session entry
+      setSaveError("");
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/medical-history/${targetSessionId}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            // general fields at top level
+            medical_condition: generalInfo.medicalCondition,
+            food_allergy: generalInfo.foodAllergy,
+            drug_allergy: generalInfo.drugAllergy,
+            past_injury: generalInfo.notablePastInjuries,
+            medical_remarks: generalInfo.medicalRemarks,
+            // section objects
+            puberty: {
+              period_of_growth_spurt: pubertyInfo.periodOfGrowthSpurt,
+              other_remarks: pubertyInfo.otherRemarks,
+            },
+            bowel_movement: {
+              regular_bowel_movement:
+                bowelMovement.regularBowelMovement === "Yes"
+                  ? true
+                  : bowelMovement.regularBowelMovement === "No"
+                    ? false
+                    : null,
+              frequency_of_bowel_movement:
+                bowelMovement.frequencyOfBowelMovements,
+              stool_visual: bowelMovement.stoolAppearance,
+              other_remarks: bowelMovement.otherRemarks,
+            },
+            hydration: {
+              water_intake_per_day: hydrationInfo.waterIntakePerDay
+                ? parseFloat(hydrationInfo.waterIntakePerDay)
+                : null,
+              urine_colour: hydrationInfo.urineColour,
+              hydration_status: hydrationInfo.hydrationStatus,
+              other_remarks: hydrationInfo.otherRemarks,
+            },
+            period: {
+              date_of_first_period: periodInfo.firstDayPeriod || null,
+              age_of_menarchy: periodInfo.ageOfMenarche
+                ? parseFloat(periodInfo.ageOfMenarche)
+                : null,
+              regularity_of_period: periodInfo.regularityOfPeriod
+                ? parseFloat(periodInfo.regularityOfPeriod)
+                : null,
+              length_of_typical_menstrual_cycle: periodInfo.menstrualCycleLength
+                ? parseFloat(periodInfo.menstrualCycleLength)
+                : null,
+              length_of_period: periodInfo.periodBleedingLength
+                ? parseFloat(periodInfo.periodBleedingLength)
+                : null,
+              heaviness_of_menstrual_bleeding:
+                periodInfo.menstrualBleedingHeaviness
+                  ? parseFloat(periodInfo.menstrualBleedingHeaviness)
+                  : null,
+              any_signs_and_symptoms: periodInfo.signsAndSymptoms,
+              other_remarks: periodInfo.otherRemarks,
+            },
+          }),
+        },
+      );
+      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
       setIsEditing(false);
-    } catch (error) {
-      console.error("Error saving medical history:", error);
+    } catch (err) {
+      console.error("Error saving medical history:", err);
+      setSaveError("Failed to save. Please try again.");
     }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
+    setSaveError("");
+    fetchMedicalHistory();
   };
+
+  if (loading) {
+    return (
+      <section
+        id="medical-history"
+        className="bg-white rounded-xl shadow-lg p-6"
+      >
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-40 mb-4"></div>
+          <div className="space-y-3">
+            <div className="h-4 bg-gray-200 rounded"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section
+        id="medical-history"
+        className="bg-white rounded-xl shadow-lg p-6"
+      >
+        <div className="text-center py-4">
+          <p className="text-red-600">{error}</p>
+          <button
+            onClick={fetchMedicalHistory}
+            className="mt-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="medical-history" className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Medical History</h2>
         <div className="flex items-center gap-2">
-          {isEditing && (
+          {effectiveEditing && !isNewConsultation && (
             <button
               onClick={handleCancel}
               className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
@@ -125,123 +369,84 @@ export default function MedicalHistory({
             </button>
           )}
           <button
-            onClick={isEditing ? handleSave : () => setIsEditing(true)}
+            onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
             className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
           >
-            {isEditing ? "Save" : "Edit"}
+            {effectiveEditing ? "Save" : "Edit"}
           </button>
         </div>
       </div>
+
+      {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
       <div className="space-y-8">
         {/* General Section */}
         <div>
           <div className="flex items-center text-sm text-gray-600 mb-4">
             <span className="font-medium">General</span>
-            <span className="ml-2">2025-11-23 15:00:25 | Amy Tan</span>
           </div>
-
           <div className="space-y-4 text-sm">
-            <div className="flex items-start gap-4">
-              <span className="text-gray-600 w-48 flex-shrink-0">
-                Medical Condition:
-              </span>
-              <span className="text-gray-900 flex-1">
-                {generalInfo.medicalCondition}
-              </span>
-              <button className="text-gray-400 hover:text-gray-600">
-                <svg
-                  className="w-4 h-4"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <span className="text-gray-600 w-48 flex-shrink-0">
-                Food Allergy:
-              </span>
-              <span className="text-gray-900 flex-1">
-                {generalInfo.foodAllergy}
-              </span>
-              <button className="text-gray-400 hover:text-gray-600">
-                <svg
-                  className="w-4 h-4"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <span className="text-gray-600 w-48 flex-shrink-0">
-                Drug Allergy:
-              </span>
-              <span className="text-gray-900 flex-1">
-                {generalInfo.drugAllergy}
-              </span>
-              <button className="text-gray-400 hover:text-gray-600">
-                <svg
-                  className="w-4 h-4"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <span className="text-gray-600 w-48 flex-shrink-0">
-                Notable Past Injuries:
-              </span>
-              <span className="text-gray-900 flex-1">
-                {generalInfo.notablePastInjuries}
-              </span>
-              <button className="text-gray-400 hover:text-gray-600">
-                <svg
-                  className="w-4 h-4"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                </svg>
-              </button>
-            </div>
+            {(
+              [
+                {
+                  label: "Medical Condition:",
+                  field: "medicalCondition" as const,
+                },
+                { label: "Food Allergy:", field: "foodAllergy" as const },
+                { label: "Drug Allergy:", field: "drugAllergy" as const },
+                {
+                  label: "Notable Past Injuries:",
+                  field: "notablePastInjuries" as const,
+                },
+              ] as { label: string; field: keyof GeneralInfo }[]
+            ).map(({ label, field }) => (
+              <div key={field} className="flex items-center gap-4">
+                <span className="text-gray-600 w-48 flex-shrink-0">
+                  {label}
+                </span>
+                {effectiveEditing ? (
+                  <input
+                    type="text"
+                    placeholder="Input Text Here"
+                    className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                    value={generalInfo[field]}
+                    onChange={(e) =>
+                      setGeneralInfo((prev) => ({
+                        ...prev,
+                        [field]: e.target.value,
+                      }))
+                    }
+                  />
+                ) : (
+                  <span className="text-gray-900 flex-1">
+                    {generalInfo[field] || "—"}
+                  </span>
+                )}
+              </div>
+            ))}
 
             <div className="flex items-start gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Medical Remarks:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={generalInfo.medicalRemarks}
-                onChange={(e) => {
-                  if (isEditing) {
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  value={generalInfo.medicalRemarks}
+                  onChange={(e) =>
                     setGeneralInfo((prev) => ({
                       ...prev,
                       medicalRemarks: e.target.value,
-                    }));
+                    }))
                   }
-                }}
-                readOnly={!isEditing}
-              />
-              <button className="text-gray-400 hover:text-gray-600">
-                <svg
-                  className="w-4 h-4"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                </svg>
-              </button>
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {generalInfo.medicalRemarks || "—"}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -254,40 +459,47 @@ export default function MedicalHistory({
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Period of Growth Spurt:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={pubertyInfo.periodOfGrowthSpurt}
-                onChange={(e) => {
-                  console.log(
-                    "Period of growth spurt updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  value={pubertyInfo.periodOfGrowthSpurt}
+                  onChange={(e) =>
+                    setPubertyInfo((prev) => ({
+                      ...prev,
+                      periodOfGrowthSpurt: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {pubertyInfo.periodOfGrowthSpurt || "—"}
+                </span>
+              )}
             </div>
-
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Other Remarks:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={pubertyInfo.otherRemarks}
-                onChange={(e) => {
-                  if (isEditing) {
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  value={pubertyInfo.otherRemarks}
+                  onChange={(e) =>
                     setPubertyInfo((prev) => ({
                       ...prev,
                       otherRemarks: e.target.value,
-                    }));
+                    }))
                   }
-                }}
-                readOnly={!isEditing}
-              />
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {pubertyInfo.otherRemarks || "—"}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -298,193 +510,231 @@ export default function MedicalHistory({
             Bowel Movement
           </h3>
           <div className="space-y-4 text-sm">
-            <div className="flex items-start gap-4">
+            <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
-                Does Athlete Have Regular Bowel Movement? :
+                Regular Bowel Movement:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={bowelMovement.regularBowelMovement}
-                onChange={(e) => {
-                  console.log(
-                    "Regular bowel movement updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
+              {effectiveEditing ? (
+                <select
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  value={bowelMovement.regularBowelMovement}
+                  onChange={(e) =>
+                    setBowelMovement((prev) => ({
+                      ...prev,
+                      regularBowelMovement: e.target.value,
+                    }))
+                  }
+                >
+                  <option value="">—</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {bowelMovement.regularBowelMovement || "—"}
+                </span>
+              )}
             </div>
 
             <div className="flex items-start gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
-                Frequency of Bowel Movements: (i.e. once a day/once every two
-                days)
+                Frequency of Bowel Movements:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={bowelMovement.frequencyOfBowelMovements}
-                onChange={(e) => {
-                  console.log(
-                    "Frequency of bowel movements updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="e.g. once a day"
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  value={bowelMovement.frequencyOfBowelMovements}
+                  onChange={(e) =>
+                    setBowelMovement((prev) => ({
+                      ...prev,
+                      frequencyOfBowelMovements: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {bowelMovement.frequencyOfBowelMovements || "—"}
+                </span>
+              )}
             </div>
 
             <div className="flex items-start gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
-                How Does Athlete's Stool Typically Look Like? :
+                Stool Appearance:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={bowelMovement.stoolAppearance}
-                onChange={(e) => {
-                  if (isEditing) {
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  value={bowelMovement.stoolAppearance}
+                  onChange={(e) =>
                     setBowelMovement((prev) => ({
                       ...prev,
                       stoolAppearance: e.target.value,
-                    }));
+                    }))
                   }
-                }}
-                readOnly={!isEditing}
-              />
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {bowelMovement.stoolAppearance || "—"}
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Other Remarks:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={bowelMovement.otherRemarks}
-                onChange={(e) => {
-                  console.log(
-                    "Bowel movement remarks updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  value={bowelMovement.otherRemarks}
+                  onChange={(e) =>
+                    setBowelMovement((prev) => ({
+                      ...prev,
+                      otherRemarks: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {bowelMovement.otherRemarks || "—"}
+                </span>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Hydration/Fluid Intake Section */}
+        {/* Hydration Section */}
         <div>
           <h3 className="text-base font-medium text-gray-900 mb-4">
-            Hydration/Fluid Intake
+            Hydration / Fluid Intake
           </h3>
           <div className="space-y-4 text-sm">
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
-                Water intake for Target Weight (45ml/kg BW):
+                Water Intake for Target Weight (45 ml/kg):
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={hydrationInfo.waterIntakeForTargetWeight}
-                onChange={(e) => {
-                  console.log(
-                    "Water intake for target weight updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
+              <span className="text-gray-900 flex-1">
+                {hydrationInfo.waterIntakeForTargetWeight
+                  ? `${hydrationInfo.waterIntakeForTargetWeight} ml`
+                  : "—"}
+              </span>
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
-                Requirement for Water Intake (45ml/kg BW):
+                Requirement for Water Intake (45 ml/kg):
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={hydrationInfo.requirementForWaterIntake}
-                onChange={(e) => {
-                  console.log(
-                    "Requirement for water intake updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
+              <span className="text-gray-900 flex-1">
+                {hydrationInfo.requirementForWaterIntake
+                  ? `${hydrationInfo.requirementForWaterIntake} ml`
+                  : "—"}
+              </span>
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
-                Water Intake per Day:
+                Water Intake per Day (L):
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={hydrationInfo.waterIntakePerDay}
-                onChange={(e) => {
-                  console.log("Water intake per day updated:", e.target.value);
-                }}
-                readOnly
-              />
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  placeholder="e.g. 2.5"
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  value={hydrationInfo.waterIntakePerDay}
+                  onChange={(e) =>
+                    setHydrationInfo((prev) => ({
+                      ...prev,
+                      waterIntakePerDay: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {hydrationInfo.waterIntakePerDay
+                    ? `${hydrationInfo.waterIntakePerDay} L`
+                    : "—"}
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
-                Athlete's Typical Colour of Urine:
+                Urine Colour:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={hydrationInfo.urineColour}
-                onChange={(e) => {
-                  console.log("Urine colour updated:", e.target.value);
-                }}
-                readOnly
-              />
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="e.g. Pale yellow"
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  value={hydrationInfo.urineColour}
+                  onChange={(e) =>
+                    setHydrationInfo((prev) => ({
+                      ...prev,
+                      urineColour: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {hydrationInfo.urineColour || "—"}
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
-                Typical Hydration Status Based on Colour of Urine:
+                Hydration Status:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={hydrationInfo.hydrationStatus}
-                onChange={(e) => {
-                  console.log("Hydration status updated:", e.target.value);
-                }}
-                readOnly
-              />
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="e.g. Well hydrated"
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  value={hydrationInfo.hydrationStatus}
+                  onChange={(e) =>
+                    setHydrationInfo((prev) => ({
+                      ...prev,
+                      hydrationStatus: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {hydrationInfo.hydrationStatus || "—"}
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Other Remarks:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={hydrationInfo.otherRemarks}
-                onChange={(e) => {
-                  console.log("Hydration remarks updated:", e.target.value);
-                }}
-                readOnly
-              />
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  value={hydrationInfo.otherRemarks}
+                  onChange={(e) =>
+                    setHydrationInfo((prev) => ({
+                      ...prev,
+                      otherRemarks: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {hydrationInfo.otherRemarks || "—"}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -493,131 +743,113 @@ export default function MedicalHistory({
         <div>
           <h3 className="text-base font-medium text-gray-900 mb-4">Period</h3>
           <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Date of First Day Period:</span>
-              <input
-                type="text"
-                value={periodInfo.firstDayPeriod}
-                className="w-28 px-2 py-1 border border-gray-300 rounded text-center text-xs"
-                onChange={(e) => {
-                  console.log("First day period updated:", e.target.value);
-                }}
-                readOnly
-              />
-            </div>
-
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">
-                Length of Typical Menstrual Cycle:
-              </span>
-              <input
-                type="number"
-                value={periodInfo.menstrualCycleLength}
-                className="w-16 px-2 py-1 border border-gray-300 rounded text-center"
-                onChange={(e) => {
-                  console.log(
-                    "Menstrual cycle length updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
-            </div>
-
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Age of Menarche:</span>
-              <input
-                type="number"
-                value={periodInfo.ageOfMenarche}
-                className="w-16 px-2 py-1 border border-gray-300 rounded text-center"
-                onChange={(e) => {
-                  console.log("Age of menarche updated:", e.target.value);
-                }}
-                readOnly
-              />
-            </div>
-
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">
-                Length of Period/Menstrual Bleeding:
-              </span>
-              <input
-                type="number"
-                value={periodInfo.periodBleedingLength}
-                className="w-16 px-2 py-1 border border-gray-300 rounded text-center"
-                onChange={(e) => {
-                  console.log(
-                    "Period bleeding length updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
-            </div>
-
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Regularity of Period:</span>
-              <input
-                type="number"
-                value={periodInfo.regularityOfPeriod}
-                className="w-16 px-2 py-1 border border-gray-300 rounded text-center"
-                onChange={(e) => {
-                  console.log("Regularity of period updated:", e.target.value);
-                }}
-                readOnly
-              />
-            </div>
-
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">
-                Heaviness of Menstrual Bleeding:
-              </span>
-              <input
-                type="number"
-                value={periodInfo.menstrualBleedingHeaviness}
-                className="w-16 px-2 py-1 border border-gray-300 rounded text-center"
-                onChange={(e) => {
-                  console.log(
-                    "Menstrual bleeding heaviness updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
-            </div>
+            {(
+              [
+                {
+                  label: "Date of First Day Period:",
+                  field: "firstDayPeriod" as const,
+                  type: "date",
+                },
+                {
+                  label: "Age of Menarche:",
+                  field: "ageOfMenarche" as const,
+                  type: "number",
+                },
+                {
+                  label: "Regularity of Period:",
+                  field: "regularityOfPeriod" as const,
+                  type: "number",
+                },
+                {
+                  label: "Menstrual Cycle Length (days):",
+                  field: "menstrualCycleLength" as const,
+                  type: "number",
+                },
+                {
+                  label: "Period Bleeding Length (days):",
+                  field: "periodBleedingLength" as const,
+                  type: "number",
+                },
+                {
+                  label: "Menstrual Bleeding Heaviness:",
+                  field: "menstrualBleedingHeaviness" as const,
+                  type: "number",
+                },
+              ] as {
+                label: string;
+                field: keyof PeriodInfo;
+                type: string;
+              }[]
+            ).map(({ label, field, type }) => (
+              <div key={field} className="flex justify-between items-center">
+                <span className="text-gray-600">{label}</span>
+                {effectiveEditing ? (
+                  <input
+                    type={type}
+                    className="w-28 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                    value={periodInfo[field]}
+                    onChange={(e) =>
+                      setPeriodInfo((prev) => ({
+                        ...prev,
+                        [field]: e.target.value,
+                      }))
+                    }
+                  />
+                ) : (
+                  <span className="font-medium">
+                    {periodInfo[field] || "—"}
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
 
           <div className="mt-4 space-y-4 text-sm">
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
-                Any Signs and Symptoms:
+                Signs and Symptoms:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={periodInfo.signsAndSymptoms}
-                onChange={(e) => {
-                  console.log("Signs and symptoms updated:", e.target.value);
-                }}
-                readOnly
-              />
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  value={periodInfo.signsAndSymptoms}
+                  onChange={(e) =>
+                    setPeriodInfo((prev) => ({
+                      ...prev,
+                      signsAndSymptoms: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {periodInfo.signsAndSymptoms || "—"}
+                </span>
+              )}
             </div>
-
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Other Remarks:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={periodInfo.otherRemarks}
-                onChange={(e) => {
-                  console.log("Period remarks updated:", e.target.value);
-                }}
-                readOnly
-              />
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  value={periodInfo.otherRemarks}
+                  onChange={(e) =>
+                    setPeriodInfo((prev) => ({
+                      ...prev,
+                      otherRemarks: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {periodInfo.otherRemarks || "—"}
+                </span>
+              )}
             </div>
           </div>
         </div>

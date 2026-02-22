@@ -7,6 +7,8 @@ import {
 interface AnthropometryProps {
   athleteId: string;
   sessionId: string;
+  isNewConsultation?: boolean;
+  newSessionId?: string;
 }
 
 interface AnthropometryData {
@@ -35,14 +37,104 @@ interface AnthropometryData {
   date_recorded: string | null;
 }
 
+interface EditForm {
+  height: string;
+  weight: string;
+  fat_mass: string;
+  skeletal_muscle_mass: string;
+  sum_of_skinfold: string;
+  target_weight: string;
+  mothers_height: string;
+  fathers_height: string;
+  date_recorded: string;
+  measured_by: string;
+}
+
+function calcBMI(weight: number, height: number): string {
+  if (!weight || !height) return "";
+  return (weight / Math.pow(height / 100, 2)).toFixed(2);
+}
+
+function calcBMICategory(bmi: number): string {
+  if (bmi < 18.5) return "Underweight";
+  if (bmi < 25) return "Normal";
+  if (bmi < 30) return "Overweight";
+  return "Obese";
+}
+
+function calcFatMassPercent(fatMass: number, weight: number): string {
+  if (!fatMass || !weight) return "";
+  return ((fatMass / weight) * 100).toFixed(1);
+}
+
+function calcSMMPercent(smm: number, weight: number): string {
+  if (!smm || !weight) return "";
+  return ((smm / weight) * 100).toFixed(1);
+}
+
+function calcTargetBMI(targetWeight: number, height: number): string {
+  if (!targetWeight || !height) return "";
+  return (targetWeight / Math.pow(height / 100, 2)).toFixed(2);
+}
+
+function calcPotentialHeight(
+  mothersHeight: number,
+  fathersHeight: number,
+): string {
+  if (!mothersHeight || !fathersHeight) return "";
+  return ((mothersHeight + fathersHeight + 13) / 2).toFixed(0);
+}
+
 export default function Anthropometry({
   athleteId,
   sessionId,
+  isNewConsultation,
+  newSessionId,
 }: AnthropometryProps) {
   const [anthropometryData, setAnthropometryData] =
     useState<AnthropometryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [saveError, setSaveError] = useState<string>("");
+
+  const effectiveEditing = isEditing || !!isNewConsultation;
+
+  const emptyForm: EditForm = {
+    height: "",
+    weight: "",
+    fat_mass: "",
+    skeletal_muscle_mass: "",
+    sum_of_skinfold: "",
+    target_weight: "",
+    mothers_height: "",
+    fathers_height: "",
+    date_recorded: "",
+    measured_by: "",
+  };
+
+  const [editForm, setEditForm] = useState<EditForm>(emptyForm);
+
+  // Derived calculated fields from editForm
+  const w = parseFloat(editForm.weight);
+  const h = parseFloat(editForm.height);
+  const fm = parseFloat(editForm.fat_mass);
+  const smm = parseFloat(editForm.skeletal_muscle_mass);
+  const tw = parseFloat(editForm.target_weight);
+  const mh = parseFloat(editForm.mothers_height);
+  const fh = parseFloat(editForm.fathers_height);
+
+  const calcedBMI = !isNaN(w) && !isNaN(h) ? calcBMI(w, h) : "";
+  const calcedBMICategory = calcedBMI
+    ? calcBMICategory(parseFloat(calcedBMI))
+    : "";
+  const calcedFatMassPercent =
+    !isNaN(fm) && !isNaN(w) ? calcFatMassPercent(fm, w) : "";
+  const calcedSMMPercent =
+    !isNaN(smm) && !isNaN(w) ? calcSMMPercent(smm, w) : "";
+  const calcedTargetBMI = !isNaN(tw) && !isNaN(h) ? calcTargetBMI(tw, h) : "";
+  const calcedPotentialHeight =
+    !isNaN(mh) && !isNaN(fh) ? calcPotentialHeight(mh, fh) : "";
 
   const fetchAnthropometry = async () => {
     if (!sessionId) {
@@ -56,7 +148,73 @@ export default function Anthropometry({
       setError("");
 
       const response = await consultationApi.getAnthropometry(sessionId);
-      setAnthropometryData((response as any).data);
+      const apiData = (response as any).data;
+
+      console.log("🔍 Anthropometry API Response:", apiData);
+
+      // Map API response to our interface
+      const data: AnthropometryData = {
+        height: apiData.heightCm ? parseFloat(apiData.heightCm) : null,
+        weight: apiData.weightKg ? parseFloat(apiData.weightKg) : null,
+        bmi: apiData.bmi ? parseFloat(apiData.bmi) : null,
+        bmi_category: apiData.bmiCategory || null,
+        fat_mass: apiData.fatMassKg ? parseFloat(apiData.fatMassKg) : null,
+        fat_mass_percentage: apiData.fatMassPct
+          ? parseFloat(apiData.fatMassPct)
+          : null,
+        skeletal_muscle_mass: apiData.skeletalMuscleMassKg
+          ? parseFloat(apiData.skeletalMuscleMassKg)
+          : null,
+        skeletal_muscle_mass_percentage: apiData.skeletalMuscleMassPct
+          ? parseFloat(apiData.skeletalMuscleMassPct)
+          : null,
+        sum_of_skinfold: apiData.sumOf8Skinfold
+          ? parseFloat(apiData.sumOf8Skinfold)
+          : null,
+        target_weight: apiData.targetWeightKg
+          ? parseFloat(apiData.targetWeightKg)
+          : null,
+        target_bmi: apiData.targetBmi ? parseFloat(apiData.targetBmi) : null,
+        mothers_height: apiData.motherHeightCm
+          ? parseFloat(apiData.motherHeightCm)
+          : null,
+        fathers_height: apiData.fatherHeightCm
+          ? parseFloat(apiData.fatherHeightCm)
+          : null,
+        athlete_potential_adult_height: apiData.athletePotentialAdultHeightCm
+          ? parseFloat(apiData.athletePotentialAdultHeightCm)
+          : null,
+        measured_by: null, // This field doesn't exist in the API response
+        measurement_notes: apiData.otherRemarks || null,
+        date_recorded: null, // This field doesn't exist in the API response
+        // Fields not in API:
+        body_fat_percentage: null,
+        muscle_mass: null,
+        bone_density: null,
+        water_percentage: null,
+        basal_metabolic_rate: null,
+        visceral_fat: null,
+      };
+
+      console.log("🎯 Mapped Anthropometry Data:", data);
+
+      setAnthropometryData(data);
+
+      // Pre-populate edit form from fetched data
+      setEditForm({
+        height: data.height?.toString() ?? "",
+        weight: data.weight?.toString() ?? "",
+        fat_mass: data.fat_mass?.toString() ?? "",
+        skeletal_muscle_mass: data.skeletal_muscle_mass?.toString() ?? "",
+        sum_of_skinfold: data.sum_of_skinfold?.toString() ?? "",
+        target_weight: data.target_weight?.toString() ?? "",
+        mothers_height: data.mothers_height?.toString() ?? "",
+        fathers_height: data.fathers_height?.toString() ?? "",
+        date_recorded: data.date_recorded
+          ? new Date(data.date_recorded).toISOString().split("T")[0]
+          : "",
+        measured_by: data.measured_by ?? "",
+      });
     } catch (error) {
       console.error("Error fetching anthropometry:", error);
       if (error instanceof ConsultationApiError && error.status === 404) {
@@ -72,6 +230,103 @@ export default function Anthropometry({
   useEffect(() => {
     fetchAnthropometry();
   }, [sessionId]);
+
+  const handleSave = async () => {
+    try {
+      setSaveError("");
+      const targetId =
+        isNewConsultation && newSessionId ? newSessionId : sessionId;
+      const token = localStorage.getItem("token");
+
+      const payload = {
+        height: editForm.height ? parseFloat(editForm.height) : null,
+        weight: editForm.weight ? parseFloat(editForm.weight) : null,
+        fat_mass: editForm.fat_mass ? parseFloat(editForm.fat_mass) : null,
+        skeletal_muscle_mass: editForm.skeletal_muscle_mass
+          ? parseFloat(editForm.skeletal_muscle_mass)
+          : null,
+        sum_of_skinfold: editForm.sum_of_skinfold
+          ? parseFloat(editForm.sum_of_skinfold)
+          : null,
+        target_weight: editForm.target_weight
+          ? parseFloat(editForm.target_weight)
+          : null,
+        mothers_height: editForm.mothers_height
+          ? parseFloat(editForm.mothers_height)
+          : null,
+        fathers_height: editForm.fathers_height
+          ? parseFloat(editForm.fathers_height)
+          : null,
+        bmi: calcedBMI ? parseFloat(calcedBMI) : null,
+        bmi_category: calcedBMICategory || null,
+        fat_mass_percentage: calcedFatMassPercent
+          ? parseFloat(calcedFatMassPercent)
+          : null,
+        skeletal_muscle_mass_percentage: calcedSMMPercent
+          ? parseFloat(calcedSMMPercent)
+          : null,
+        target_bmi: calcedTargetBMI ? parseFloat(calcedTargetBMI) : null,
+        athlete_potential_adult_height: calcedPotentialHeight
+          ? parseFloat(calcedPotentialHeight)
+          : null,
+        date_recorded: editForm.date_recorded || null,
+        measured_by: editForm.measured_by || null,
+      };
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${targetId}/anthropometry`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      setIsEditing(false);
+      if (!isNewConsultation) {
+        fetchAnthropometry();
+      }
+    } catch (err) {
+      console.error("Error saving anthropometry:", err);
+      setSaveError("Failed to save. Please try again.");
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setSaveError("");
+    // Reset form to fetched data
+    if (anthropometryData) {
+      setEditForm({
+        height: anthropometryData.height?.toString() ?? "",
+        weight: anthropometryData.weight?.toString() ?? "",
+        fat_mass: anthropometryData.fat_mass?.toString() ?? "",
+        skeletal_muscle_mass:
+          anthropometryData.skeletal_muscle_mass?.toString() ?? "",
+        sum_of_skinfold: anthropometryData.sum_of_skinfold?.toString() ?? "",
+        target_weight: anthropometryData.target_weight?.toString() ?? "",
+        mothers_height: anthropometryData.mothers_height?.toString() ?? "",
+        fathers_height: anthropometryData.fathers_height?.toString() ?? "",
+        date_recorded: anthropometryData.date_recorded
+          ? new Date(anthropometryData.date_recorded)
+              .toISOString()
+              .split("T")[0]
+          : "",
+        measured_by: anthropometryData.measured_by ?? "",
+      });
+    }
+  };
+
+  const updateField = (field: keyof EditForm, value: string) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  };
 
   if (loading) {
     return (
@@ -103,11 +358,169 @@ export default function Anthropometry({
     );
   }
 
+  // Edit mode layout
+  if (effectiveEditing) {
+    return (
+      <section id="anthropometry" className="bg-white rounded-xl shadow-lg p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold text-gray-900">Anthropometry</h2>
+          <div className="flex items-center gap-2">
+            {!isNewConsultation && (
+              <button
+                onClick={handleCancel}
+                className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              onClick={handleSave}
+              className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+
+        {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
+
+        <div className="space-y-3 text-sm">
+          {/* Editable inputs */}
+          {(
+            [
+              {
+                label: "Height (cm)",
+                field: "height" as const,
+                type: "number",
+              },
+              {
+                label: "Weight (kg)",
+                field: "weight" as const,
+                type: "number",
+              },
+              {
+                label: "Fat Mass (kg)",
+                field: "fat_mass" as const,
+                type: "number",
+              },
+              {
+                label: "Skeletal Muscle Mass (kg)",
+                field: "skeletal_muscle_mass" as const,
+                type: "number",
+              },
+              {
+                label: "Sum of 8 Skinfold (mm)",
+                field: "sum_of_skinfold" as const,
+                type: "number",
+              },
+              {
+                label: "Target Weight (kg)",
+                field: "target_weight" as const,
+                type: "number",
+              },
+              {
+                label: "Mother's Height (cm)",
+                field: "mothers_height" as const,
+                type: "number",
+              },
+              {
+                label: "Father's Height (cm)",
+                field: "fathers_height" as const,
+                type: "number",
+              },
+            ] as { label: string; field: keyof EditForm; type: string }[]
+          ).map(({ label, field, type }) => (
+            <div
+              key={field}
+              className="flex items-center justify-between gap-4"
+            >
+              <span className="text-gray-600 w-56 flex-shrink-0">{label}:</span>
+              <input
+                type={type}
+                value={editForm[field]}
+                onChange={(e) => updateField(field, e.target.value)}
+                placeholder="—"
+                className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+              />
+            </div>
+          ))}
+
+          {/* Calculated (greyed) fields */}
+          <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+            <p className="text-xs text-gray-400 mb-2">
+              Auto-calculated (read-only)
+            </p>
+            {[
+              { label: "BMI", value: calcedBMI },
+              { label: "BMI Category", value: calcedBMICategory },
+              {
+                label: "Fat Mass (%)",
+                value: calcedFatMassPercent ? `${calcedFatMassPercent}%` : "",
+              },
+              {
+                label: "Skeletal Muscle Mass (%)",
+                value: calcedSMMPercent ? `${calcedSMMPercent}%` : "",
+              },
+              { label: "Target BMI", value: calcedTargetBMI },
+              {
+                label: "Athlete's Potential Adult Height (cm)",
+                value: calcedPotentialHeight,
+              },
+            ].map(({ label, value }) => (
+              <div
+                key={label}
+                className="flex items-center justify-between gap-4"
+              >
+                <span className="text-gray-500 w-56 flex-shrink-0">
+                  {label}:
+                </span>
+                <div className="flex-1 px-2 py-1 bg-gray-100 border border-gray-200 rounded text-sm text-right text-gray-500">
+                  {value || "—"}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Measurement details */}
+          <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-gray-600 w-56 flex-shrink-0">
+                Date Recorded:
+              </span>
+              <input
+                type="date"
+                value={editForm.date_recorded}
+                onChange={(e) => updateField("date_recorded", e.target.value)}
+                className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-gray-600 w-56 flex-shrink-0">
+                Measured By:
+              </span>
+              <input
+                type="text"
+                value={editForm.measured_by}
+                onChange={(e) => updateField("measured_by", e.target.value)}
+                placeholder="Name"
+                className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Read-only view
   return (
     <section id="anthropometry" className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Anthropometry</h2>
-        <button className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700">
+        <button
+          onClick={() => setIsEditing(true)}
+          className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
+        >
           Edit
         </button>
       </div>
