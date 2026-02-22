@@ -3,6 +3,8 @@ import { useState } from "react";
 interface AssessmentProps {
   athleteId: string;
   sessionId: string;
+  isNewConsultation?: boolean;
+  newSessionId?: string;
 }
 
 interface AssessmentData {
@@ -12,8 +14,9 @@ interface AssessmentData {
   otherRemarks: string;
 }
 
-export default function Assessment({ athleteId, sessionId }: AssessmentProps) {
+export default function Assessment({ athleteId, sessionId, isNewConsultation, newSessionId }: AssessmentProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const effectiveEditing = isEditing || !!isNewConsultation;
   const [assessmentData, setAssessmentData] = useState<AssessmentData>({
     totalCarbohydrateIntake: 215,
     totalProteinIntake: 114,
@@ -46,7 +49,7 @@ export default function Assessment({ athleteId, sessionId }: AssessmentProps) {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Assessment</h2>
         <div className="flex items-center gap-2">
-          {isEditing && (
+          {effectiveEditing && !isNewConsultation && (
             <button
               onClick={handleCancel}
               className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
@@ -55,10 +58,10 @@ export default function Assessment({ athleteId, sessionId }: AssessmentProps) {
             </button>
           )}
           <button
-            onClick={isEditing ? handleSave : () => setIsEditing(true)}
+            onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
             className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
           >
-            {isEditing ? "Save" : "Edit"}
+            {effectiveEditing ? "Save" : "Edit"}
           </button>
         </div>
       </div>
@@ -70,60 +73,63 @@ export default function Assessment({ athleteId, sessionId }: AssessmentProps) {
               Total Carbohydrate Intake (g):
             </span>
             <div className="flex items-center gap-2">
-              <input
-                type="number"
-                value={assessmentData.totalCarbohydrateIntake}
-                onChange={(e) => {
-                  if (isEditing) {
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  value={assessmentData.totalCarbohydrateIntake}
+                  onChange={(e) =>
                     setAssessmentData((prev) => ({
                       ...prev,
                       totalCarbohydrateIntake: Number(e.target.value),
-                    }));
+                    }))
                   }
-                }}
-                className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
-                readOnly={!isEditing}
-              />
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
+                />
+              ) : (
+                <span className="font-medium">{assessmentData.totalCarbohydrateIntake}</span>
+              )}
             </div>
           </div>
 
           <div className="flex justify-between items-center">
             <span className="text-gray-600">Total Protein Intake (g):</span>
             <div className="flex items-center gap-2">
-              <input
-                type="number"
-                value={assessmentData.totalProteinIntake}
-                onChange={(e) => {
-                  if (isEditing) {
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  value={assessmentData.totalProteinIntake}
+                  onChange={(e) =>
                     setAssessmentData((prev) => ({
                       ...prev,
                       totalProteinIntake: Number(e.target.value),
-                    }));
+                    }))
                   }
-                }}
-                className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
-                readOnly={!isEditing}
-              />
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
+                />
+              ) : (
+                <span className="font-medium">{assessmentData.totalProteinIntake}</span>
+              )}
             </div>
           </div>
 
           <div className="flex justify-between items-center">
             <span className="text-gray-600">Total Fat Intake (g):</span>
             <div className="flex items-center gap-2">
-              <input
-                type="number"
-                value={assessmentData.totalFatIntake}
-                onChange={(e) => {
-                  if (isEditing) {
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  value={assessmentData.totalFatIntake}
+                  onChange={(e) =>
                     setAssessmentData((prev) => ({
                       ...prev,
                       totalFatIntake: Number(e.target.value),
-                    }));
+                    }))
                   }
-                }}
-                className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
-                readOnly={!isEditing}
-              />
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
+                />
+              ) : (
+                <span className="font-medium">{assessmentData.totalFatIntake}</span>
+              )}
             </div>
           </div>
         </div>
@@ -132,20 +138,21 @@ export default function Assessment({ athleteId, sessionId }: AssessmentProps) {
           <label className="block text-sm text-gray-600 mb-2">
             Other Remarks:
           </label>
-          <textarea
-            className="w-full h-24 px-3 py-2 border border-gray-300 rounded text-sm"
-            placeholder="Input Text Here"
-            value={assessmentData.otherRemarks}
-            onChange={(e) => {
-              if (isEditing) {
+          {effectiveEditing ? (
+            <textarea
+              className="w-full h-24 px-3 py-2 border border-gray-300 rounded text-sm"
+              placeholder="Input Text Here"
+              value={assessmentData.otherRemarks}
+              onChange={(e) =>
                 setAssessmentData((prev) => ({
                   ...prev,
                   otherRemarks: e.target.value,
-                }));
+                }))
               }
-            }}
-            readOnly={!isEditing}
-          />
+            />
+          ) : (
+            <p className="text-sm text-gray-900">{assessmentData.otherRemarks}</p>
+          )}
         </div>
       </div>
     </section>
