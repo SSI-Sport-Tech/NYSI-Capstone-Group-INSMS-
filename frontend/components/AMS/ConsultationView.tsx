@@ -54,9 +54,10 @@ export default function ConsultationView({
       setLoading(true);
       setError("");
 
-      const data = await consultationApi.getLatestConsultation(athleteId);
-      setLatestConsultation(data.data);
-      setCurrentSessionId(data.data.id);
+      const response = await consultationApi.getLatestConsultation(athleteId) as { data: LatestConsultation };
+      const data = response.data as LatestConsultation;
+      setLatestConsultation(data);
+      setCurrentSessionId(data.id);
     } catch (error) {
       console.error("Error fetching latest consultation:", error);
 
