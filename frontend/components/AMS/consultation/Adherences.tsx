@@ -65,6 +65,13 @@ interface EditForm {
   commentsWeekday: string;
   commentsWeekend: string;
   otherRemarks: string;
+  // Independent target g/kg/bw inputs (UI-only, default from current)
+  targetMinCarbGkg: string;
+  targetMaxCarbGkg: string;
+  targetMinProteinGkg: string;
+  targetMaxProteinGkg: string;
+  targetMinFatGkg: string;
+  targetMaxFatGkg: string;
 }
 
 const emptyForm: EditForm = {
@@ -81,6 +88,12 @@ const emptyForm: EditForm = {
   commentsWeekday: "",
   commentsWeekend: "",
   otherRemarks: "",
+  targetMinCarbGkg: "",
+  targetMaxCarbGkg: "",
+  targetMinProteinGkg: "",
+  targetMaxProteinGkg: "",
+  targetMinFatGkg: "",
+  targetMaxFatGkg: "",
 };
 
 function toEditForm(data: AdherencesData): EditForm {
@@ -98,6 +111,13 @@ function toEditForm(data: AdherencesData): EditForm {
     commentsWeekday: data.commentsWeekday ?? "",
     commentsWeekend: data.commentsWeekend ?? "",
     otherRemarks: data.otherRemarks ?? "",
+    // Default target g/kg/bw to current values
+    targetMinCarbGkg: data.minCarbGkg?.toString() ?? "",
+    targetMaxCarbGkg: data.maxCarbGkg?.toString() ?? "",
+    targetMinProteinGkg: data.minProteinGkg?.toString() ?? "",
+    targetMaxProteinGkg: data.maxProteinGkg?.toString() ?? "",
+    targetMinFatGkg: data.minFatGkg?.toString() ?? "",
+    targetMaxFatGkg: data.maxFatGkg?.toString() ?? "",
   };
 }
 
@@ -122,7 +142,7 @@ function fmtPct(v: number | string | null | undefined): string {
 }
 
 export default function Adherences({
-  athleteId: _athleteId,
+  athleteId,
   sessionId,
   isNewConsultation,
   newSessionId,
@@ -138,6 +158,7 @@ export default function Adherences({
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<EditForm>(emptyForm);
   const [saveError, setSaveError] = useState<string>("");
+  const [gender, setGender] = useState<string | null>(null);
 
   const effectiveEditing = isEditing || !!isNewConsultation;
   const targetSessionId =
@@ -199,6 +220,24 @@ export default function Adherences({
     fetchData();
   }, [sessionId]);
 
+  useEffect(() => {
+    if (!athleteId) return;
+    (async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/AMS/athletes/${athleteId}/profile`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        setGender(data.gender ?? null);
+      } catch {
+        // non-critical — falls back to showing both sections
+      }
+    })();
+  }, [athleteId]);
+
   // ── Live-calculated values ──────────────────────────────────────────────
   // In edit mode: compute from form inputs + anthropometry data
   // In view mode: use DB-computed values returned by the API
@@ -225,13 +264,20 @@ export default function Adherences({
   const minFatG = effectiveEditing ? calcG(liveMinFatGkg, weight) : (adherencesData?.minFatG ?? null);
   const maxFatG = effectiveEditing ? calcG(liveMaxFatGkg, weight) : (adherencesData?.maxFatG ?? null);
 
-  // Derived g values — target weight
-  const targetMinCarbG = effectiveEditing ? calcG(liveMinCarbGkg, targetWeight) : (adherencesData?.targetMinCarbG ?? null);
-  const targetMaxCarbG = effectiveEditing ? calcG(liveMaxCarbGkg, targetWeight) : (adherencesData?.targetMaxCarbG ?? null);
-  const targetMinProteinG = effectiveEditing ? calcG(liveMinProteinGkg, targetWeight) : (adherencesData?.targetMinProteinG ?? null);
-  const targetMaxProteinG = effectiveEditing ? calcG(liveMaxProteinGkg, targetWeight) : (adherencesData?.targetMaxProteinG ?? null);
-  const targetMinFatG = effectiveEditing ? calcG(liveMinFatGkg, targetWeight) : (adherencesData?.targetMinFatG ?? null);
-  const targetMaxFatG = effectiveEditing ? calcG(liveMaxFatGkg, targetWeight) : (adherencesData?.targetMaxFatG ?? null);
+  // Derived g values — target weight (use independent target g/kg/bw inputs)
+  const liveTgtMinCarbGkg = effectiveEditing ? n(editForm.targetMinCarbGkg) : (adherencesData?.minCarbGkg ?? null);
+  const liveTgtMaxCarbGkg = effectiveEditing ? n(editForm.targetMaxCarbGkg) : (adherencesData?.maxCarbGkg ?? null);
+  const liveTgtMinProteinGkg = effectiveEditing ? n(editForm.targetMinProteinGkg) : (adherencesData?.minProteinGkg ?? null);
+  const liveTgtMaxProteinGkg = effectiveEditing ? n(editForm.targetMaxProteinGkg) : (adherencesData?.maxProteinGkg ?? null);
+  const liveTgtMinFatGkg = effectiveEditing ? n(editForm.targetMinFatGkg) : (adherencesData?.minFatGkg ?? null);
+  const liveTgtMaxFatGkg = effectiveEditing ? n(editForm.targetMaxFatGkg) : (adherencesData?.maxFatGkg ?? null);
+
+  const targetMinCarbG = effectiveEditing ? calcG(liveTgtMinCarbGkg, targetWeight) : (adherencesData?.targetMinCarbG ?? null);
+  const targetMaxCarbG = effectiveEditing ? calcG(liveTgtMaxCarbGkg, targetWeight) : (adherencesData?.targetMaxCarbG ?? null);
+  const targetMinProteinG = effectiveEditing ? calcG(liveTgtMinProteinGkg, targetWeight) : (adherencesData?.targetMinProteinG ?? null);
+  const targetMaxProteinG = effectiveEditing ? calcG(liveTgtMaxProteinGkg, targetWeight) : (adherencesData?.targetMaxProteinG ?? null);
+  const targetMinFatG = effectiveEditing ? calcG(liveTgtMinFatGkg, targetWeight) : (adherencesData?.targetMinFatG ?? null);
+  const targetMaxFatG = effectiveEditing ? calcG(liveTgtMaxFatGkg, targetWeight) : (adherencesData?.targetMaxFatG ?? null);
 
   // % of minimum required
   const calcPct = (estimated: number | null, minG: number | null) =>
@@ -336,6 +382,12 @@ export default function Adherences({
       </section>
     );
   }
+
+  // Show only the gender-matched PAL section; show both when gender is unknown
+  const showMale =
+    !gender || gender.toLowerCase().startsWith("m");
+  const showFemale =
+    !gender || gender.toLowerCase().startsWith("f");
 
   // Shared class for live-calculated read-only values — styled like a
   // disabled input so it's visually distinct and updates in real-time.
@@ -552,11 +604,24 @@ export default function Adherences({
             Target Intake
           </h3>
           <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+            {/* Carbohydrate */}
             <div className="flex justify-between items-center">
               <span className="text-gray-900">
                 Minimum Carbohydrate Requirement (g/kg/bw):
               </span>
-              <span className="font-medium">{fmt(liveMinCarbGkg)}</span>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.targetMinCarbGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, targetMinCarbGkg: e.target.value }))
+                  }
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
+                <span className="font-medium">{fmt(adherencesData?.minCarbGkg ?? null)}</span>
+              )}
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-900">
@@ -569,7 +634,19 @@ export default function Adherences({
               <span className="text-gray-900">
                 Maximum Carbohydrate Requirement (g/kg/bw):
               </span>
-              <span className="font-medium">{fmt(liveMaxCarbGkg)}</span>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.targetMaxCarbGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, targetMaxCarbGkg: e.target.value }))
+                  }
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
+                <span className="font-medium">{fmt(adherencesData?.maxCarbGkg ?? null)}</span>
+              )}
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-900">
@@ -578,11 +655,24 @@ export default function Adherences({
               <span className={calcClass}>{fmt(targetMaxCarbG)}</span>
             </div>
 
+            {/* Protein */}
             <div className="flex justify-between items-center">
               <span className="text-gray-900">
                 Minimum Protein Requirement (g/kg/bw):
               </span>
-              <span className="font-medium">{fmt(liveMinProteinGkg)}</span>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.targetMinProteinGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, targetMinProteinGkg: e.target.value }))
+                  }
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
+                <span className="font-medium">{fmt(adherencesData?.minProteinGkg ?? null)}</span>
+              )}
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-900">
@@ -595,7 +685,19 @@ export default function Adherences({
               <span className="text-gray-900">
                 Maximum Protein Requirement (g/kg/bw):
               </span>
-              <span className="font-medium">{fmt(liveMaxProteinGkg)}</span>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.targetMaxProteinGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, targetMaxProteinGkg: e.target.value }))
+                  }
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
+                <span className="font-medium">{fmt(adherencesData?.maxProteinGkg ?? null)}</span>
+              )}
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-900">
@@ -604,11 +706,24 @@ export default function Adherences({
               <span className={calcClass}>{fmt(targetMaxProteinG)}</span>
             </div>
 
+            {/* Fat */}
             <div className="flex justify-between items-center">
               <span className="text-gray-900">
                 Minimum Fat Requirement (g/kg/bw):
               </span>
-              <span className="font-medium">{fmt(liveMinFatGkg)}</span>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.targetMinFatGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, targetMinFatGkg: e.target.value }))
+                  }
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
+                <span className="font-medium">{fmt(adherencesData?.minFatGkg ?? null)}</span>
+              )}
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-900">
@@ -621,7 +736,19 @@ export default function Adherences({
               <span className="text-gray-900">
                 Maximum Fat Requirement (g/kg/bw):
               </span>
-              <span className="font-medium">{fmt(liveMaxFatGkg)}</span>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.targetMaxFatGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, targetMaxFatGkg: e.target.value }))
+                  }
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
+                <span className="font-medium">{fmt(adherencesData?.maxFatGkg ?? null)}</span>
+              )}
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-900">
@@ -793,10 +920,12 @@ export default function Adherences({
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-8">
-          {/* Male */}
+        {/* Gender-based RMR/TEE — shows only the relevant section */}
+        {showMale && (
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Male</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              {showFemale ? "Male" : "Energy Expenditure"}
+            </h3>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between items-center">
                 <span className="text-gray-900">
@@ -830,34 +959,15 @@ export default function Adherences({
                   <span className="text-gray-900">kcal</span>
                 </div>
               </div>
-              <div className="mt-4">
-                <label className="block text-sm text-gray-900 mb-2">
-                  Other Remarks:
-                </label>
-                {effectiveEditing ? (
-                  <textarea
-                    className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
-                    placeholder="Input Text Here"
-                    value={editForm.otherRemarks}
-                    onChange={(e) =>
-                      setEditForm((p) => ({
-                        ...p,
-                        otherRemarks: e.target.value,
-                      }))
-                    }
-                  />
-                ) : (
-                  <p className="text-sm text-gray-900">
-                    {adherencesData?.otherRemarks || "—"}
-                  </p>
-                )}
-              </div>
             </div>
           </div>
+        )}
 
-          {/* Female */}
+        {showFemale && (
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Female</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              {showMale ? "Female" : "Energy Expenditure"}
+            </h3>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between items-center">
                 <span className="text-gray-900">
@@ -893,6 +1003,30 @@ export default function Adherences({
               </div>
             </div>
           </div>
+        )}
+
+        {/* Other Remarks */}
+        <div>
+          <label className="block text-sm text-gray-900 mb-2">
+            Other Remarks:
+          </label>
+          {effectiveEditing ? (
+            <textarea
+              className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
+              placeholder="Input Text Here"
+              value={editForm.otherRemarks}
+              onChange={(e) =>
+                setEditForm((p) => ({
+                  ...p,
+                  otherRemarks: e.target.value,
+                }))
+              }
+            />
+          ) : (
+            <p className="text-sm text-gray-900">
+              {adherencesData?.otherRemarks || "—"}
+            </p>
+          )}
         </div>
       </div>
     </section>

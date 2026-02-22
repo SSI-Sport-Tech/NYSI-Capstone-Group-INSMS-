@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { consultationApi } from "@/utils/consultationApi";
+import { consultationApi, ConsultationApiError } from "@/utils/consultationApi";
 
 interface MealLogsProps {
   athleteId: string;
@@ -104,7 +104,8 @@ export default function MealLogs({
   const [saveError, setSaveError] = useState<string>("");
 
   const effectiveEditing = isEditing || !!isNewConsultation;
-  const targetSessionId = isNewConsultation && newSessionId ? newSessionId : sessionId;
+  const targetSessionId =
+    isNewConsultation && newSessionId ? newSessionId : sessionId;
 
   const fetchMealLogs = async () => {
     if (!sessionId) {
@@ -122,8 +123,12 @@ export default function MealLogs({
       setMealLog(data);
       setEditLog(toEditLog(data));
     } catch (err) {
-      console.error("Error fetching meal logs:", err);
-      setError("Failed to load meal logs");
+      if (err instanceof ConsultationApiError && err.status === 404) {
+        setMealLog(null);
+      } else {
+        console.error("Error fetching meal logs:", err);
+        setError("Failed to load meal logs");
+      }
     } finally {
       setLoading(false);
     }
@@ -275,7 +280,9 @@ export default function MealLogs({
                       <input
                         type="text"
                         value={editLog[key].food}
-                        onChange={(e) => updateMeal(key, "food", e.target.value)}
+                        onChange={(e) =>
+                          updateMeal(key, "food", e.target.value)
+                        }
                         placeholder="Food description..."
                         className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                       />
@@ -309,7 +316,9 @@ export default function MealLogs({
           <h3 className="text-lg font-medium text-gray-900 mb-4">Assessment</h3>
           <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">Total Carbohydrate Intake (g):</span>
+              <span className="text-gray-600">
+                Total Carbohydrate Intake (g):
+              </span>
               {effectiveEditing ? (
                 <input
                   type="number"
@@ -320,10 +329,15 @@ export default function MealLogs({
                       totalCarbohydrateIntake: e.target.value,
                     }))
                   }
-                  className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
+                  className={`w-20 px-2 py-1 border border-gray-300 rounded text-center transition-colors ${
+                    // Compare the editing value to the original value
+                    editLog.totalCarbohydrateIntake !== (mealLog?.totalCarbohydrateIntake?.toString() ?? "")
+                      ? "text-black" // Changed: Black
+                      : "text-gray-400" // Unchanged: Gray
+                  }`}
                 />
               ) : (
-                <span className="font-medium">
+                <span className="font-medium text-black">
                   {mealLog?.totalCarbohydrateIntake ?? "—"}
                 </span>
               )}
@@ -341,10 +355,15 @@ export default function MealLogs({
                       totalProteinIntake: e.target.value,
                     }))
                   }
-                  className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
+                  className={`w-20 px-2 py-1 border border-gray-300 rounded text-center transition-colors ${
+                    // Compare the editing value to the original value
+                    editLog.totalProteinIntake !== (mealLog?.totalProteinIntake?.toString() ?? "")
+                      ? "text-black" // Changed: Black
+                      : "text-gray-400" // Unchanged: Gray
+                  }`}
                 />
               ) : (
-                <span className="font-medium">
+                <span className="font-medium text-black">
                   {mealLog?.totalProteinIntake ?? "—"}
                 </span>
               )}
@@ -362,10 +381,15 @@ export default function MealLogs({
                       totalFatIntake: e.target.value,
                     }))
                   }
-                  className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
+                  className={`w-20 px-2 py-1 border border-gray-300 rounded text-center transition-colors ${
+                    // Compare the editing value to the original value
+                    editLog.totalFatIntake !== (mealLog?.totalFatIntake?.toString() ?? "")
+                      ? "text-black" // Changed: Black
+                      : "text-gray-400" // Unchanged: Gray
+                  }`}
                 />
               ) : (
-                <span className="font-medium">
+                <span className="font-medium text-black">
                   {mealLog?.totalFatIntake ?? "—"}
                 </span>
               )}
@@ -378,7 +402,12 @@ export default function MealLogs({
             </label>
             {effectiveEditing ? (
               <textarea
-                className="w-full h-24 px-3 py-2 border border-gray-300 rounded text-sm"
+                 className={`w-full px-2 py-1 border border-gray-300 rounded transition-colors ${
+                    // Compare the editing value to the original value
+                    editLog.otherRemarks !== (mealLog?.otherRemarks?.toString() ?? "")
+                      ? "text-black" // Changed: Black
+                      : "text-gray-400" // Unchanged: Gray
+                  }`}
                 placeholder="Input Text Here"
                 value={editLog.otherRemarks}
                 onChange={(e) =>

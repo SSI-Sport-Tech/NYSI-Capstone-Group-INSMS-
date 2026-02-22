@@ -200,6 +200,9 @@ export default function MedicalHistory({
   );
   const [periodInfo, setPeriodInfo] = useState<PeriodInfo>(s.periodInfo);
 
+  // Snapshot of last-saved values — used to detect unsaved changes (text color)
+  const [savedState, setSavedState] = useState(emptyState());
+
   const effectiveEditing = isEditing || !!isNewConsultation;
   const targetSessionId =
     isNewConsultation && newSessionId ? newSessionId : sessionId;
@@ -221,6 +224,7 @@ export default function MedicalHistory({
       setBowelMovement(mapped.bowelMovement);
       setHydrationInfo(mapped.hydrationInfo);
       setPeriodInfo(mapped.periodInfo);
+      setSavedState(mapped);
     } catch (err) {
       if (err instanceof ConsultationApiError && err.status === 404) {
         // No data yet — keep empty state
@@ -408,7 +412,11 @@ export default function MedicalHistory({
                   <input
                     type="text"
                     placeholder="Input Text Here"
-                    className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                    className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                      generalInfo[field] !== savedState.general[field]
+                        ? "text-black"
+                        : "text-gray-400"
+                    }`}
                     value={generalInfo[field]}
                     onChange={(e) =>
                       setGeneralInfo((prev) => ({
@@ -433,7 +441,11 @@ export default function MedicalHistory({
                 <input
                   type="text"
                   placeholder="Input Text Here"
-                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    generalInfo.medicalRemarks !== savedState.general.medicalRemarks
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
                   value={generalInfo.medicalRemarks}
                   onChange={(e) =>
                     setGeneralInfo((prev) => ({
@@ -463,7 +475,11 @@ export default function MedicalHistory({
                 <input
                   type="text"
                   placeholder="Input Text Here"
-                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    pubertyInfo.periodOfGrowthSpurt !== savedState.puberty.periodOfGrowthSpurt
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
                   value={pubertyInfo.periodOfGrowthSpurt}
                   onChange={(e) =>
                     setPubertyInfo((prev) => ({
@@ -486,7 +502,11 @@ export default function MedicalHistory({
                 <input
                   type="text"
                   placeholder="Input Text Here"
-                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    pubertyInfo.otherRemarks !== savedState.puberty.otherRemarks
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
                   value={pubertyInfo.otherRemarks}
                   onChange={(e) =>
                     setPubertyInfo((prev) => ({
@@ -516,7 +536,11 @@ export default function MedicalHistory({
               </span>
               {effectiveEditing ? (
                 <select
-                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    bowelMovement.regularBowelMovement !== savedState.bowelMovement.regularBowelMovement
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
                   value={bowelMovement.regularBowelMovement}
                   onChange={(e) =>
                     setBowelMovement((prev) => ({
@@ -544,7 +568,11 @@ export default function MedicalHistory({
                 <input
                   type="text"
                   placeholder="e.g. once a day"
-                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    bowelMovement.frequencyOfBowelMovements !== savedState.bowelMovement.frequencyOfBowelMovements
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
                   value={bowelMovement.frequencyOfBowelMovements}
                   onChange={(e) =>
                     setBowelMovement((prev) => ({
@@ -568,7 +596,11 @@ export default function MedicalHistory({
                 <input
                   type="text"
                   placeholder="Input Text Here"
-                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    bowelMovement.stoolAppearance !== savedState.bowelMovement.stoolAppearance
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
                   value={bowelMovement.stoolAppearance}
                   onChange={(e) =>
                     setBowelMovement((prev) => ({
@@ -592,7 +624,11 @@ export default function MedicalHistory({
                 <input
                   type="text"
                   placeholder="Input Text Here"
-                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    bowelMovement.otherRemarks !== savedState.bowelMovement.otherRemarks
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
                   value={bowelMovement.otherRemarks}
                   onChange={(e) =>
                     setBowelMovement((prev) => ({
@@ -647,7 +683,11 @@ export default function MedicalHistory({
                   type="number"
                   step="0.1"
                   placeholder="e.g. 2.5"
-                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    hydrationInfo.waterIntakePerDay !== savedState.hydrationInfo.waterIntakePerDay
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
                   value={hydrationInfo.waterIntakePerDay}
                   onChange={(e) =>
                     setHydrationInfo((prev) => ({
@@ -673,7 +713,11 @@ export default function MedicalHistory({
                 <input
                   type="text"
                   placeholder="e.g. Pale yellow"
-                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    hydrationInfo.urineColour !== savedState.hydrationInfo.urineColour
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
                   value={hydrationInfo.urineColour}
                   onChange={(e) =>
                     setHydrationInfo((prev) => ({
@@ -697,7 +741,11 @@ export default function MedicalHistory({
                 <input
                   type="text"
                   placeholder="e.g. Well hydrated"
-                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    hydrationInfo.hydrationStatus !== savedState.hydrationInfo.hydrationStatus
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
                   value={hydrationInfo.hydrationStatus}
                   onChange={(e) =>
                     setHydrationInfo((prev) => ({
@@ -721,7 +769,11 @@ export default function MedicalHistory({
                 <input
                   type="text"
                   placeholder="Input Text Here"
-                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    hydrationInfo.otherRemarks !== savedState.hydrationInfo.otherRemarks
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
                   value={hydrationInfo.otherRemarks}
                   onChange={(e) =>
                     setHydrationInfo((prev) => ({
@@ -786,7 +838,11 @@ export default function MedicalHistory({
                 {effectiveEditing ? (
                   <input
                     type={type}
-                    className="w-28 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                    className={`w-28 px-2 py-1 border border-gray-300 rounded text-sm text-right transition-colors ${
+                      periodInfo[field] !== savedState.periodInfo[field]
+                        ? "text-black"
+                        : "text-gray-400"
+                    }`}
                     value={periodInfo[field]}
                     onChange={(e) =>
                       setPeriodInfo((prev) => ({
@@ -813,7 +869,11 @@ export default function MedicalHistory({
                 <input
                   type="text"
                   placeholder="Input Text Here"
-                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    periodInfo.signsAndSymptoms !== savedState.periodInfo.signsAndSymptoms
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
                   value={periodInfo.signsAndSymptoms}
                   onChange={(e) =>
                     setPeriodInfo((prev) => ({
@@ -836,7 +896,11 @@ export default function MedicalHistory({
                 <input
                   type="text"
                   placeholder="Input Text Here"
-                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    periodInfo.otherRemarks !== savedState.periodInfo.otherRemarks
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
                   value={periodInfo.otherRemarks}
                   onChange={(e) =>
                     setPeriodInfo((prev) => ({

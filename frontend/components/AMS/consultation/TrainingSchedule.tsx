@@ -8,73 +8,17 @@ interface TrainingScheduleProps {
   newSessionId?: string;
 }
 
-interface TrainingSession {
-  day: string;
-  activities: string;
-  trainingHours: number;
-  rpe: number;
-}
-
-interface TrainingDetails {
-  totalTrainingHours: number;
-  physicalActivityLevel: number;
-  upcomingMajorCompetitions: string;
-  upcomingLocalCompetitions: string;
-}
-
-interface PerformanceDetails {
-  currentPerformance: string;
-  coachPerformanceGoals: string;
-  athletePerformanceGoals: string;
-  otherRemarks: string;
-}
-
 interface TrainingScheduleData {
   id: string | null;
   sessionId: string;
   days: {
-    monday: {
-      am: string | null;
-      pm: string | null;
-      trainingHours: number;
-      rpe: number;
-    };
-    tuesday: {
-      am: string | null;
-      pm: string | null;
-      trainingHours: number;
-      rpe: number;
-    };
-    wednesday: {
-      am: string | null;
-      pm: string | null;
-      trainingHours: number;
-      rpe: number;
-    };
-    thursday: {
-      am: string | null;
-      pm: string | null;
-      trainingHours: number;
-      rpe: number;
-    };
-    friday: {
-      am: string | null;
-      pm: string | null;
-      trainingHours: number;
-      rpe: number;
-    };
-    saturday: {
-      am: string | null;
-      pm: string | null;
-      trainingHours: number;
-      rpe: number;
-    };
-    sunday: {
-      am: string | null;
-      pm: string | null;
-      trainingHours: number;
-      rpe: number;
-    };
+    monday: { am: string | null; pm: string | null; trainingHours: number; rpe: number };
+    tuesday: { am: string | null; pm: string | null; trainingHours: number; rpe: number };
+    wednesday: { am: string | null; pm: string | null; trainingHours: number; rpe: number };
+    thursday: { am: string | null; pm: string | null; trainingHours: number; rpe: number };
+    friday: { am: string | null; pm: string | null; trainingHours: number; rpe: number };
+    saturday: { am: string | null; pm: string | null; trainingHours: number; rpe: number };
+    sunday: { am: string | null; pm: string | null; trainingHours: number; rpe: number };
   };
   totalTrainingHours: number;
   pal: string;
@@ -90,51 +34,192 @@ interface TrainingScheduleData {
   };
 }
 
+type DayKey =
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday"
+  | "sunday";
+
+const DAY_KEYS: { key: DayKey; label: string }[] = [
+  { key: "monday", label: "Monday" },
+  { key: "tuesday", label: "Tuesday" },
+  { key: "wednesday", label: "Wednesday" },
+  { key: "thursday", label: "Thursday" },
+  { key: "friday", label: "Friday" },
+  { key: "saturday", label: "Saturday" },
+  { key: "sunday", label: "Sunday" },
+];
+
+interface DayEdit {
+  am: string;
+  pm: string;
+  trainingHours: string;
+  rpe: string;
+}
+
+interface EditForm {
+  days: Record<DayKey, DayEdit>;
+  upcomingMajorCompetitions: string;
+  upcomingLocalCompetitions: string;
+  pal: string;
+  currentPerformance: string;
+  coachPerformanceGoals: string;
+  athletePerformanceGoals: string;
+  otherRemarks: string;
+}
+
+const emptyDay: DayEdit = { am: "", pm: "", trainingHours: "", rpe: "" };
+
+const emptyEditForm: EditForm = {
+  days: {
+    monday: { ...emptyDay },
+    tuesday: { ...emptyDay },
+    wednesday: { ...emptyDay },
+    thursday: { ...emptyDay },
+    friday: { ...emptyDay },
+    saturday: { ...emptyDay },
+    sunday: { ...emptyDay },
+  },
+  upcomingMajorCompetitions: "",
+  upcomingLocalCompetitions: "",
+  pal: "",
+  currentPerformance: "",
+  coachPerformanceGoals: "",
+  athletePerformanceGoals: "",
+  otherRemarks: "",
+};
+
+function toEditForm(data: TrainingScheduleData): EditForm {
+  const toDay = (d: {
+    am: string | null;
+    pm: string | null;
+    trainingHours: number;
+    rpe: number;
+  }): DayEdit => ({
+    am: d.am ?? "",
+    pm: d.pm ?? "",
+    trainingHours: d.trainingHours?.toString() ?? "",
+    rpe: d.rpe?.toString() ?? "",
+  });
+  return {
+    days: {
+      monday: toDay(data.days.monday),
+      tuesday: toDay(data.days.tuesday),
+      wednesday: toDay(data.days.wednesday),
+      thursday: toDay(data.days.thursday),
+      friday: toDay(data.days.friday),
+      saturday: toDay(data.days.saturday),
+      sunday: toDay(data.days.sunday),
+    },
+    upcomingMajorCompetitions:
+      data.trainingDetails?.upcomingMajorCompetitions ?? "",
+    upcomingLocalCompetitions:
+      data.trainingDetails?.upcomingLocalCompetitions ?? "",
+    pal: data.pal ?? "",
+    currentPerformance: data.performanceDetails?.currentPerformance ?? "",
+    coachPerformanceGoals:
+      data.performanceDetails?.coachPerformanceGoals ?? "",
+    athletePerformanceGoals:
+      data.performanceDetails?.athletePerformanceGoals ?? "",
+    otherRemarks: data.performanceDetails?.otherRemarks ?? "",
+  };
+}
+
 export default function TrainingSchedule({
   athleteId: _athleteId,
   sessionId,
   isNewConsultation,
-  newSessionId: _newSessionId,
+  newSessionId,
 }: TrainingScheduleProps) {
   const [isEditing, setIsEditing] = useState(false);
   const effectiveEditing = isEditing || !!isNewConsultation;
+  const targetSessionId =
+    isNewConsultation && newSessionId ? newSessionId : sessionId;
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [trainingData, setTrainingData] = useState<TrainingScheduleData | null>(
-    null,
-  );
-  const [performanceDetails, setPerformanceDetails] =
-    useState<PerformanceDetails>({
-      currentPerformance: "",
-      coachPerformanceGoals: "",
-      athletePerformanceGoals: "",
-      otherRemarks: "",
-    });
+  const [saveError, setSaveError] = useState("");
+  const [trainingData, setTrainingData] =
+    useState<TrainingScheduleData | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>(emptyEditForm);
+
+  const updateDay = (key: DayKey, field: keyof DayEdit, value: string) => {
+    setEditForm((prev) => ({
+      ...prev,
+      days: {
+        ...prev.days,
+        [key]: { ...prev.days[key], [field]: value },
+      },
+    }));
+  };
 
   const handleSave = async () => {
     try {
-      console.log("Saving training schedule data:", performanceDetails);
-      // TODO: Implement API call to create new consultation session entry
+      setSaveError("");
+      const token = localStorage.getItem("token");
+      const dayPayload = (key: DayKey) => ({
+        am: editForm.days[key].am || null,
+        pm: editForm.days[key].pm || null,
+        trainingHours: editForm.days[key].trainingHours
+          ? parseFloat(editForm.days[key].trainingHours)
+          : null,
+        rpe: editForm.days[key].rpe
+          ? parseFloat(editForm.days[key].rpe)
+          : null,
+      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${targetSessionId}/training-schedule`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            days: {
+              monday: dayPayload("monday"),
+              tuesday: dayPayload("tuesday"),
+              wednesday: dayPayload("wednesday"),
+              thursday: dayPayload("thursday"),
+              friday: dayPayload("friday"),
+              saturday: dayPayload("saturday"),
+              sunday: dayPayload("sunday"),
+            },
+            trainingDetails: {
+              upcomingMajorCompetitions:
+                editForm.upcomingMajorCompetitions || null,
+              upcomingLocalCompetitions:
+                editForm.upcomingLocalCompetitions || null,
+            },
+            performanceDetails: {
+              currentPerformance: editForm.currentPerformance || null,
+              coachPerformanceGoals: editForm.coachPerformanceGoals || null,
+              athletePerformanceGoals:
+                editForm.athletePerformanceGoals || null,
+              otherRemarks: editForm.otherRemarks || null,
+            },
+            pal: editForm.pal ? parseFloat(editForm.pal) : null,
+          }),
+        },
+      );
+      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+      const updated = (await response.json()) as { data: TrainingScheduleData };
+      setTrainingData(updated.data);
+      setEditForm(toEditForm(updated.data));
       setIsEditing(false);
-    } catch (error) {
-      console.error("Error saving training schedule:", error);
+    } catch (err) {
+      console.error("Error saving training schedule:", err);
+      setSaveError("Failed to save. Please try again.");
     }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    // Reset performance details to original values
-    if (trainingData?.performanceDetails) {
-      setPerformanceDetails({
-        currentPerformance:
-          trainingData.performanceDetails.currentPerformance || "",
-        coachPerformanceGoals:
-          trainingData.performanceDetails.coachPerformanceGoals || "",
-        athletePerformanceGoals:
-          trainingData.performanceDetails.athletePerformanceGoals || "",
-        otherRemarks: trainingData.performanceDetails.otherRemarks || "",
-      });
-    }
+    setSaveError("");
+    if (trainingData) setEditForm(toEditForm(trainingData));
   };
 
   useEffect(() => {
@@ -142,27 +227,12 @@ export default function TrainingSchedule({
       try {
         setLoading(true);
         setError(null);
-
         const response = (await consultationApi.getTrainingSchedule(
           sessionId,
-        )) as {
-          data: TrainingScheduleData;
-        };
-
-        console.log("Training schedule response:", response);
-
+        )) as { data: TrainingScheduleData };
         if (response?.data) {
           setTrainingData(response.data);
-          // Set performance details for editing
-          setPerformanceDetails({
-            currentPerformance:
-              response.data.performanceDetails?.currentPerformance || "",
-            coachPerformanceGoals:
-              response.data.performanceDetails?.coachPerformanceGoals || "",
-            athletePerformanceGoals:
-              response.data.performanceDetails?.athletePerformanceGoals || "",
-            otherRemarks: response.data.performanceDetails?.otherRemarks || "",
-          });
+          setEditForm(toEditForm(response.data));
         }
       } catch (err) {
         console.error("Error fetching training schedule:", err);
@@ -174,93 +244,22 @@ export default function TrainingSchedule({
 
     if (sessionId) {
       fetchTrainingSchedule();
+    } else {
+      setLoading(false);
     }
   }, [sessionId]);
-  // Convert API data to display format
-  const trainingSchedule: TrainingSession[] = trainingData
-    ? [
-        {
-          day: "Monday",
-          activities:
-            [trainingData.days.monday.am, trainingData.days.monday.pm]
-              .filter(Boolean)
-              .join("\n") || "",
-          trainingHours: trainingData.days.monday.trainingHours,
-          rpe: trainingData.days.monday.rpe,
-        },
-        {
-          day: "Tuesday",
-          activities:
-            [trainingData.days.tuesday.am, trainingData.days.tuesday.pm]
-              .filter(Boolean)
-              .join("\n") || "",
-          trainingHours: trainingData.days.tuesday.trainingHours,
-          rpe: trainingData.days.tuesday.rpe,
-        },
-        {
-          day: "Wednesday",
-          activities:
-            [trainingData.days.wednesday.am, trainingData.days.wednesday.pm]
-              .filter(Boolean)
-              .join("\n") || "",
-          trainingHours: trainingData.days.wednesday.trainingHours,
-          rpe: trainingData.days.wednesday.rpe,
-        },
-        {
-          day: "Thursday",
-          activities:
-            [trainingData.days.thursday.am, trainingData.days.thursday.pm]
-              .filter(Boolean)
-              .join("\n") || "",
-          trainingHours: trainingData.days.thursday.trainingHours,
-          rpe: trainingData.days.thursday.rpe,
-        },
-        {
-          day: "Friday",
-          activities:
-            [trainingData.days.friday.am, trainingData.days.friday.pm]
-              .filter(Boolean)
-              .join("\n") || "",
-          trainingHours: trainingData.days.friday.trainingHours,
-          rpe: trainingData.days.friday.rpe,
-        },
-        {
-          day: "Saturday",
-          activities:
-            [trainingData.days.saturday.am, trainingData.days.saturday.pm]
-              .filter(Boolean)
-              .join("\n") || "",
-          trainingHours: trainingData.days.saturday.trainingHours,
-          rpe: trainingData.days.saturday.rpe,
-        },
-        {
-          day: "Sunday",
-          activities:
-            [trainingData.days.sunday.am, trainingData.days.sunday.pm]
-              .filter(Boolean)
-              .join("\n") || "",
-          trainingHours: trainingData.days.sunday.trainingHours,
-          rpe: trainingData.days.sunday.rpe,
-        },
-      ]
-    : [];
 
-  const trainingDetails: TrainingDetails = {
-    totalTrainingHours: trainingData?.totalTrainingHours || 0,
-    physicalActivityLevel: parseFloat(trainingData?.pal || "0"),
-    upcomingMajorCompetitions:
-      trainingData?.trainingDetails?.upcomingMajorCompetitions ||
-      "Not specified",
-    upcomingLocalCompetitions:
-      trainingData?.trainingDetails?.upcomingLocalCompetitions ||
-      "Not specified",
-  };
+  // Total hours derived from editForm in edit mode
+  const editTotalHours = DAY_KEYS.reduce((sum, { key }) => {
+    const h = parseFloat(editForm.days[key].trainingHours);
+    return sum + (isNaN(h) ? 0 : h);
+  }, 0);
 
   if (loading) {
     return (
       <section
         id="training-schedule"
-        className="bg-white rounded-xl shadow-lg p-6"
+        className="bg-white rounded-xl shadow-lg p-6 text-gray-900"
       >
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -276,7 +275,7 @@ export default function TrainingSchedule({
     return (
       <section
         id="training-schedule"
-        className="bg-white rounded-xl shadow-lg p-6"
+        className="bg-white rounded-xl shadow-lg p-6 text-gray-900"
       >
         <div className="text-center py-12">
           <div className="text-red-600 mb-2">⚠️ Error</div>
@@ -289,7 +288,7 @@ export default function TrainingSchedule({
   return (
     <section
       id="training-schedule"
-      className="bg-white rounded-xl shadow-lg p-6"
+      className="bg-white rounded-xl shadow-lg p-6 text-gray-900"
     >
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">
@@ -313,6 +312,8 @@ export default function TrainingSchedule({
         </div>
       </div>
 
+      {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
+
       <div className="space-y-8">
         {/* Training Schedule Table */}
         <div className="overflow-x-auto">
@@ -323,7 +324,7 @@ export default function TrainingSchedule({
                   Day
                 </th>
                 <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
-                  Activities
+                  Activities (AM / PM)
                 </th>
                 <th className="border border-gray-300 px-4 py-3 text-center text-sm font-medium text-gray-700 w-32">
                   Training Hours
@@ -334,23 +335,80 @@ export default function TrainingSchedule({
               </tr>
             </thead>
             <tbody>
-              {trainingSchedule.map((session, index) => (
-                <tr key={index}>
+              {DAY_KEYS.map(({ key, label }) => (
+                <tr key={key}>
                   <td className="border border-gray-300 px-4 py-3 text-sm font-medium text-gray-900">
-                    {session.day}
+                    {label}
                   </td>
                   <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900">
-                    {session.activities.split("\n").map((activity, idx) => (
-                      <div key={idx} className="whitespace-nowrap">
-                        {activity}
+                    {effectiveEditing ? (
+                      <div className="flex flex-col gap-1">
+                        <input
+                          type="text"
+                          value={editForm.days[key].am}
+                          onChange={(e) =>
+                            updateDay(key, "am", e.target.value)
+                          }
+                          placeholder="AM activity..."
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                        <input
+                          type="text"
+                          value={editForm.days[key].pm}
+                          onChange={(e) =>
+                            updateDay(key, "pm", e.target.value)
+                          }
+                          placeholder="PM activity..."
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
                       </div>
-                    ))}
+                    ) : (
+                      <div>
+                        {trainingData?.days[key].am && (
+                          <div>{trainingData.days[key].am}</div>
+                        )}
+                        {trainingData?.days[key].pm && (
+                          <div>{trainingData.days[key].pm}</div>
+                        )}
+                        {!trainingData?.days[key].am &&
+                          !trainingData?.days[key].pm &&
+                          "—"}
+                      </div>
+                    )}
                   </td>
-                  <td className="text-gray-900 border border-gray-300 px-4 py-3 text-sm text-center">
-                    {session.trainingHours}
+                  <td className="border border-gray-300 px-4 py-3 text-sm text-center">
+                    {effectiveEditing ? (
+                      <input
+                        type="number"
+                        min="0"
+                        max="24"
+                        step="0.5"
+                        value={editForm.days[key].trainingHours}
+                        onChange={(e) =>
+                          updateDay(key, "trainingHours", e.target.value)
+                        }
+                        className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                      />
+                    ) : (
+                      trainingData?.days[key].trainingHours ?? "—"
+                    )}
                   </td>
-                  <td className="text-gray-900 border border-gray-300 px-4 py-3 text-sm text-center">
-                    {session.rpe}
+                  <td className="border border-gray-300 px-4 py-3 text-sm text-center">
+                    {effectiveEditing ? (
+                      <input
+                        type="number"
+                        min="0"
+                        max="10"
+                        step="1"
+                        value={editForm.days[key].rpe}
+                        onChange={(e) =>
+                          updateDay(key, "rpe", e.target.value)
+                        }
+                        className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                      />
+                    ) : (
+                      trainingData?.days[key].rpe ?? "—"
+                    )}
                   </td>
                 </tr>
               ))}
@@ -368,7 +426,9 @@ export default function TrainingSchedule({
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Total Training Hours:</span>
                 <span className="text-gray-900">
-                  {trainingDetails.totalTrainingHours}
+                  {effectiveEditing
+                    ? editTotalHours.toFixed(1)
+                    : (trainingData?.totalTrainingHours ?? 0)}
                 </span>
               </div>
 
@@ -376,27 +436,75 @@ export default function TrainingSchedule({
                 <span className="text-gray-600">
                   Physical Activity Level (PAL):
                 </span>
-                <span className="text-gray-900">
-                  {trainingDetails.physicalActivityLevel}
-                </span>
+                {effectiveEditing ? (
+                  <input
+                    type="number"
+                    min="1"
+                    max="5"
+                    step="0.01"
+                    value={editForm.pal}
+                    onChange={(e) =>
+                      setEditForm((prev) => ({ ...prev, pal: e.target.value }))
+                    }
+                    className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                  />
+                ) : (
+                  <span className="text-gray-900">
+                    {trainingData?.pal
+                      ? parseFloat(trainingData.pal)
+                      : "Not set"}
+                  </span>
+                )}
               </div>
 
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">
+              <div className="flex justify-between items-start gap-4">
+                <span className="text-gray-600 shrink-0">
                   Upcoming Major Competitions:
                 </span>
-                <span className="text-gray-900">
-                  {trainingDetails.upcomingMajorCompetitions}
-                </span>
+                {effectiveEditing ? (
+                  <input
+                    type="text"
+                    value={editForm.upcomingMajorCompetitions}
+                    onChange={(e) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        upcomingMajorCompetitions: e.target.value,
+                      }))
+                    }
+                    placeholder="e.g. SEA Games 2026"
+                    className="w-48 px-2 py-1 border border-gray-300 rounded text-sm"
+                  />
+                ) : (
+                  <span className="text-gray-900">
+                    {trainingData?.trainingDetails?.upcomingMajorCompetitions ||
+                      "Not specified"}
+                  </span>
+                )}
               </div>
 
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">
+              <div className="flex justify-between items-start gap-4">
+                <span className="text-gray-600 shrink-0">
                   Upcoming Local Competitions:
                 </span>
-                <span className="text-gray-900">
-                  {trainingDetails.upcomingLocalCompetitions}
-                </span>
+                {effectiveEditing ? (
+                  <input
+                    type="text"
+                    value={editForm.upcomingLocalCompetitions}
+                    onChange={(e) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        upcomingLocalCompetitions: e.target.value,
+                      }))
+                    }
+                    placeholder="e.g. National Championships"
+                    className="w-48 px-2 py-1 border border-gray-300 rounded text-sm"
+                  />
+                ) : (
+                  <span className="text-gray-900">
+                    {trainingData?.trainingDetails?.upcomingLocalCompetitions ||
+                      "Not specified"}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -414,16 +522,18 @@ export default function TrainingSchedule({
                   <textarea
                     className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
                     placeholder="Input Text Here"
-                    value={performanceDetails.currentPerformance}
+                    value={editForm.currentPerformance}
                     onChange={(e) =>
-                      setPerformanceDetails((prev) => ({
+                      setEditForm((prev) => ({
                         ...prev,
                         currentPerformance: e.target.value,
                       }))
                     }
                   />
                 ) : (
-                  <p className="text-sm text-gray-900">{performanceDetails.currentPerformance}</p>
+                  <p className="text-sm text-gray-900">
+                    {editForm.currentPerformance || "—"}
+                  </p>
                 )}
               </div>
 
@@ -435,16 +545,18 @@ export default function TrainingSchedule({
                   <textarea
                     className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
                     placeholder="Input Text Here"
-                    value={performanceDetails.coachPerformanceGoals}
+                    value={editForm.coachPerformanceGoals}
                     onChange={(e) =>
-                      setPerformanceDetails((prev) => ({
+                      setEditForm((prev) => ({
                         ...prev,
                         coachPerformanceGoals: e.target.value,
                       }))
                     }
                   />
                 ) : (
-                  <p className="text-sm text-gray-900">{performanceDetails.coachPerformanceGoals}</p>
+                  <p className="text-sm text-gray-900">
+                    {editForm.coachPerformanceGoals || "—"}
+                  </p>
                 )}
               </div>
 
@@ -456,16 +568,18 @@ export default function TrainingSchedule({
                   <textarea
                     className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
                     placeholder="Input Text Here"
-                    value={performanceDetails.athletePerformanceGoals}
+                    value={editForm.athletePerformanceGoals}
                     onChange={(e) =>
-                      setPerformanceDetails((prev) => ({
+                      setEditForm((prev) => ({
                         ...prev,
                         athletePerformanceGoals: e.target.value,
                       }))
                     }
                   />
                 ) : (
-                  <p className="text-sm text-gray-900">{performanceDetails.athletePerformanceGoals}</p>
+                  <p className="text-sm text-gray-900">
+                    {editForm.athletePerformanceGoals || "—"}
+                  </p>
                 )}
               </div>
 
@@ -477,16 +591,18 @@ export default function TrainingSchedule({
                   <textarea
                     className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
                     placeholder="Input Text Here"
-                    value={performanceDetails.otherRemarks}
+                    value={editForm.otherRemarks}
                     onChange={(e) =>
-                      setPerformanceDetails((prev) => ({
+                      setEditForm((prev) => ({
                         ...prev,
                         otherRemarks: e.target.value,
                       }))
                     }
                   />
                 ) : (
-                  <p className="text-sm text-gray-900">{performanceDetails.otherRemarks}</p>
+                  <p className="text-sm text-gray-900">
+                    {editForm.otherRemarks || "—"}
+                  </p>
                 )}
               </div>
             </div>

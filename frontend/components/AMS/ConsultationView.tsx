@@ -13,7 +13,6 @@ import MealLogs from "./consultation/MealLogs";
 import Anthropometry from "./consultation/Anthropometry";
 import MedicalHistory from "./consultation/MedicalHistory";
 import Adherences from "./consultation/Adherences";
-import Assessment from "./consultation/Assessment";
 import NewPrescriptionForm from "./consultation/NewPrescriptionForm";
 
 interface LatestConsultation {
@@ -46,6 +45,8 @@ export default function ConsultationView({
   // New consultation state
   const [isNewConsultation, setIsNewConsultation] = useState(false);
   const [newSessionId, setNewSessionId] = useState<string>("");
+  const [newConsultation, setNewConsultation] =
+    useState<LatestConsultation | null>(null);
 
   // Fetch latest consultation data for the athlete
   const fetchLatestConsultation = async () => {
@@ -96,6 +97,7 @@ export default function ConsultationView({
       const data = await response.json();
       if (data?.data?.id) {
         setNewSessionId(data.data.id);
+        setNewConsultation(data.data as LatestConsultation);
       }
       setIsNewConsultation(true);
     } catch (err) {
@@ -106,12 +108,14 @@ export default function ConsultationView({
   const handleCancelNewConsultation = () => {
     setIsNewConsultation(false);
     setNewSessionId("");
+    setNewConsultation(null);
   };
 
   const handleSaveAll = () => {
     // Stub: individual cards handle their own saves
     setIsNewConsultation(false);
     setNewSessionId("");
+    setNewConsultation(null);
     fetchLatestConsultation();
   };
 
@@ -125,7 +129,7 @@ export default function ConsultationView({
       <div className="flex h-full items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading consultation data...</p>
+          <p className="mt-4 text-gray-900">Loading consultation data...</p>
         </div>
       </div>
     );
@@ -140,7 +144,7 @@ export default function ConsultationView({
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
             Error Loading Data
           </h3>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-gray-900 mb-4">{error}</p>
           <button
             onClick={fetchLatestConsultation}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -157,11 +161,11 @@ export default function ConsultationView({
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center max-w-md">
-          <div className="text-gray-400 text-4xl mb-4">📋</div>
+          <div className="text-gray-900 text-4xl mb-4">📋</div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
             No Consultation Records
           </h3>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-900 mb-6">
             This athlete hasn&apos;t had any consultation sessions yet. Start by
             creating a new consultation.
           </p>
@@ -225,112 +229,129 @@ export default function ConsultationView({
             </div>
           </div>
 
-          {latestConsultation && (
-            <div>
-              <h2 className="text-base font-medium text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                Consultation Update:
-              </h2>
+          {(() => {
+            const displaySession = isNewConsultation
+              ? newConsultation
+              : latestConsultation;
+            if (!displaySession) return null;
+            const dateLabel = isNewConsultation
+              ? "Consultation Date"
+              : "Last Consult Date";
+            return (
+              <div>
+                <h2 className="text-base font-medium text-gray-900 border-b border-gray-200 pb-2 mb-4">
+                  Consultation Update:
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-900">
+                  <div>
+                    <span className="text-gray-900">{dateLabel}:</span>
+                    <span className="ml-2 font-medium">
+                      {new Date(
+                        displaySession.date_of_consult,
+                      ).toLocaleDateString()}
+                    </span>
+                  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-600">Last Consult Date:</span>
-                  <span className="ml-2 text-gray-900 font-medium">
-                    {new Date(
-                      latestConsultation.date_of_consult,
-                    ).toLocaleDateString()}
-                  </span>
-                </div>
+                  <div>
+                    <span className="text-gray-900">Follow Up Date:</span>
+                    <span className="ml-2 font-medium">
+                      {displaySession.follow_up_date
+                        ? new Date(
+                            displaySession.follow_up_date,
+                          ).toLocaleDateString()
+                        : "Not set"}
+                    </span>
+                  </div>
 
-                <div>
-                  <span className="text-gray-600">Follow Up Date:</span>
-                  <span className="ml-2 text-gray-900 font-medium">
-                    {latestConsultation.follow_up_date
-                      ? new Date(
-                          latestConsultation.follow_up_date,
-                        ).toLocaleDateString()
-                      : "Not set"}
-                  </span>
-                </div>
+                  <div>
+                    <span className="text-gray-900">Consulted By:</span>
+                    <span className="ml-2 font-medium">
+                      {displaySession.nutritionist_name || "—"}
+                    </span>
+                  </div>
 
-                <div>
-                  <span className="text-gray-600">Consulted By:</span>
-                  <span className="ml-2 text-gray-900 font-medium">
-                    {latestConsultation.nutritionist_name}
-                  </span>
-                </div>
+                  <div>
+                    <span className="text-gray-900">Consult Type:</span>
+                    <span className="ml-2 font-medium">
+                      {displaySession.consult_type || "—"}
+                    </span>
+                  </div>
 
-                <div>
-                  <span className="text-gray-600">Consult Type:</span>
-                  <span className="ml-2 text-gray-900 font-medium">
-                    {latestConsultation.consult_type}
-                  </span>
-                </div>
-
-                <div className="md:col-span-2">
-                  <span className="text-gray-600">Objective:</span>
-                  <span className="ml-2 text-gray-900 font-medium">
-                    {latestConsultation.consultation_objective ||
-                      "No objective specified"}
-                  </span>
+                  <div className="md:col-span-2">
+                    <span className="text-gray-900">Objective:</span>
+                    <span className="ml-2 font-medium">
+                      {displaySession.consultation_objective ||
+                        "No objective specified"}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-
-          {!latestConsultation && isNewConsultation && (
-            <p className="text-sm text-gray-500">
-              New consultation in progress. Fill in the cards below and save.
-            </p>
-          )}
+            );
+          })()}
         </div>
 
+        {/* 1. Open Items */}
         <OpenItems
           athleteId={athleteId}
           sessionId={currentSessionId}
+          isNewConsultation={isNewConsultation}
+          newSessionId={newSessionId}
         />
+
+        {/* 2. Previous Consultation */}
         <PreviousConsultation
           athleteId={athleteId}
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
           newSessionId={newSessionId}
         />
-        <Prescription athleteId={athleteId} sessionId={currentSessionId} />
+
+        {/* 3. Prescription (hidden in new consultation mode) */}
+        {!isNewConsultation && (
+          <Prescription athleteId={athleteId} sessionId={currentSessionId} />
+        )}
+
+        {/* 4. Training Schedule */}
         <TrainingSchedule
           athleteId={athleteId}
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
           newSessionId={newSessionId}
         />
+
+        {/* 5. Meal Logs */}
         <MealLogs
           athleteId={athleteId}
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
           newSessionId={newSessionId}
         />
+
+        {/* 6. Anthropometry */}
         <Anthropometry
           athleteId={athleteId}
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
           newSessionId={newSessionId}
         />
-        <MedicalHistory
-          athleteId={athleteId}
-          sessionId={currentSessionId}
-          isNewConsultation={isNewConsultation}
-          newSessionId={newSessionId}
-        />
+
+        {/* 7. Adherences */}
         <Adherences
           athleteId={athleteId}
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
           newSessionId={newSessionId}
         />
-        <Assessment
+
+        {/* 9. Medical History */}
+        <MedicalHistory
           athleteId={athleteId}
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
           newSessionId={newSessionId}
         />
+
+        {/* 10. New Prescription Form (only when starting a new consultation) */}
         {isNewConsultation && <NewPrescriptionForm sessionId={newSessionId} />}
       </div>
     </div>
