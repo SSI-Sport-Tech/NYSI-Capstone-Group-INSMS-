@@ -10,6 +10,7 @@ const GENERAL_FIELDS = [
     'drug_allergy',
     'past_injury',
     'medical_remarks',
+    'dietary_restriction',
 ];
 
 const PUBERTY_FIELDS = [
@@ -61,7 +62,7 @@ export async function getAthleteGeneralMedical(athleteId) {
     if (athleteCheck.rows.length === 0) return null;
 
     const result = await pool.query(
-        `SELECT id, medical_condition, food_allergy, drug_allergy, past_injury, medical_remarks
+        `SELECT id, medical_condition, food_allergy, drug_allergy, past_injury, medical_remarks, dietary_restriction
          FROM ams.athlete_medical
          WHERE athlete_id = $1`,
         [athleteId]
@@ -76,6 +77,7 @@ export async function getAthleteGeneralMedical(athleteId) {
             drug_allergy: null,
             past_injury: null,
             medical_remarks: null,
+            dietary_restriction: null,
         };
     }
 
@@ -110,7 +112,7 @@ export async function getMedicalHistory(sessionId) {
 
     // Fetch general medical data from ams.athlete_medical
     const generalResult = await pool.query(
-        `SELECT id, medical_condition, food_allergy, drug_allergy, past_injury, medical_remarks
+        `SELECT id, medical_condition, food_allergy, drug_allergy, past_injury, medical_remarks, dietary_restriction
          FROM ams.athlete_medical
          WHERE athlete_id = $1`,
         [athleteId]
@@ -169,6 +171,7 @@ export async function getMedicalHistory(sessionId) {
             drug_allergy: generalRow?.drug_allergy ?? null,
             past_injury: generalRow?.past_injury ?? null,
             medical_remarks: generalRow?.medical_remarks ?? null,
+            dietary_restriction: generalRow?.dietary_restriction ?? null,
         },
         puberty: {
             id: row.puberty_id ?? null,

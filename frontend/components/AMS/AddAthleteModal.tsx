@@ -51,6 +51,7 @@ interface AthleteFormData {
   drug_allergy: string;
   past_injury: string;
   medical_remarks: string;
+  dietary_restriction: string;
 
   // Sport & event fields
   ethnicity: string;
@@ -108,6 +109,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
     drug_allergy: "",
     past_injury: "",
     medical_remarks: "",
+    dietary_restriction: "",
     ethnicity: "",
     sport_start_date: "",
     target_event: "",
@@ -282,6 +284,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
         drug_allergy: formData.drug_allergy || "",
         past_injury: formData.past_injury || "",
         medical_remarks: formData.medical_remarks || "",
+        dietary_restriction: formData.dietary_restriction || "",
 
         // Sport & event fields
         ...(formData.ethnicity && { ethnicity: formData.ethnicity }),
@@ -351,6 +354,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
       drug_allergy: "",
       past_injury: "",
       medical_remarks: "",
+      dietary_restriction: "",
       ethnicity: "",
       sport_start_date: "",
       target_event: "",
@@ -859,6 +863,20 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                     value={formData.medical_remarks}
                     onChange={handleInputChange}
                     placeholder="Additional medical remarks (optional)"
+                    rows={3}
+                    className="w-full px-3 py-2 placeholder:text-gray-400 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-black mb-2">
+                    Dietary Restriction
+                  </label>
+                  <textarea
+                    name="dietary_restriction"
+                    value={formData.dietary_restriction}
+                    onChange={handleInputChange}
+                    placeholder="e.g. Vegetarian, Halal, Gluten-free (optional)"
                     rows={3}
                     className="w-full px-3 py-2 placeholder:text-gray-400 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
