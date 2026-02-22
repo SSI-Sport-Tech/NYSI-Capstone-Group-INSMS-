@@ -16,6 +16,9 @@ interface AthleteProfile {
     gender: string;
     date_of_birth: string;
     sport_name: string;
+    ethnicity?: string | null;
+    target_event?: string | null;
+    sport_start_date?: string | null;
   };
   registry: {
     id: string;
@@ -101,6 +104,17 @@ export default function AthleteDetailPage() {
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return "-";
     return new Date(dateString).toLocaleDateString();
+  };
+
+  const getYearsInSport = (sportStartDate: string | null | undefined) => {
+    if (!sportStartDate) return "-";
+    const start = new Date(sportStartDate);
+    const now = new Date();
+    const years = Math.floor(
+      (now.getTime() - start.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
+    );
+    if (years < 1) return "Less than 1 year";
+    return years === 1 ? "1 year" : `${years} years`;
   };
 
   if (loading) {
@@ -310,6 +324,14 @@ export default function AthleteDetailPage() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Ethnicity
+                        </label>
+                        <p className="text-sm text-gray-900">
+                          {profile.athlete.ethnicity || "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
                           Status
                         </label>
                         <p className="text-sm text-gray-900">Active</p>
@@ -406,7 +428,7 @@ export default function AthleteDetailPage() {
                     </div>
                   )}
 
-                  {/* Sport Information
+                  {/* Sport Information */}
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">
                       Sport Information
@@ -417,29 +439,27 @@ export default function AthleteDetailPage() {
                           Target Event
                         </label>
                         <p className="text-sm text-gray-900">
-                          Not in DB col
+                          {profile.athlete.target_event || "-"}
                         </p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Started Current Sport
+                          Sport Start Date
                         </label>
-                        <p className="text-sm text-gray-900">5 years old</p>
+                        <p className="text-sm text-gray-900">
+                          {formatDate(profile.athlete.sport_start_date)}
+                        </p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Number of Years in Current Sport
+                          Years in Sport
                         </label>
-                        <p className="text-sm text-gray-900">11</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Other Details
-                        </label>
-                        <p className="text-sm text-gray-900">N.A.</p>
+                        <p className="text-sm text-gray-900">
+                          {getYearsInSport(profile.athlete.sport_start_date)}
+                        </p>
                       </div>
                     </div>
-                  </div> */}
+                  </div>
                 </div>
               )}
 

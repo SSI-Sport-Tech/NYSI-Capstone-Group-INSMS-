@@ -255,6 +255,9 @@ export async function createCompleteAthlete(req, res) {
       athlete_name_abbr: validated.athlete_name_abbr,
       gender: validated.gender,
       date_of_birth: validated.date_of_birth,
+      ethnicity: validated.ethnicity,
+      target_event: validated.target_event,
+      sport_start_date: validated.sport_start_date,
     };
 
     const registryData = {
@@ -400,6 +403,9 @@ export async function adminCreateCompleteAthlete(req, res) {
       athlete_name_abbr: validated.athlete_name_abbr,
       gender: validated.gender,
       date_of_birth: validated.date_of_birth,
+      ethnicity: validated.ethnicity,
+      target_event: validated.target_event,
+      sport_start_date: validated.sport_start_date,
     };
 
     const registryData = {

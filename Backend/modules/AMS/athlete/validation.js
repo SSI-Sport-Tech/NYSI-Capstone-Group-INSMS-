@@ -43,6 +43,9 @@ export const createBasicAthleteSchema = z
       invalid_type_error: "Gender must be one of: MALE, FEMALE, OTHER",
     }),
     date_of_birth: dateSchema,
+    ethnicity: z.string().trim().optional(),
+    target_event: z.string().trim().optional(),
+    sport_start_date: optionalDateSchema,
 
     // --- Reject system-managed fields ---
     id: z.never().optional(),
@@ -67,6 +70,9 @@ export const createCompleteAthleteSchema = z
       invalid_type_error: "Gender must be one of: MALE, FEMALE, OTHER",
     }),
     date_of_birth: dateSchema,
+    ethnicity: z.string().trim().optional(),
+    target_event: z.string().trim().optional(),
+    sport_start_date: optionalDateSchema,
 
     // --- Registry fields ---
     carding_status: z.string().trim().min(1, "Carding status is required"),
@@ -116,6 +122,9 @@ export const adminCreateCompleteAthleteSchema = z
       invalid_type_error: "Gender must be one of: MALE, FEMALE, OTHER",
     }),
     date_of_birth: dateSchema,
+    ethnicity: z.string().trim().optional(),
+    target_event: z.string().trim().optional(),
+    sport_start_date: optionalDateSchema,
 
     // --- Registry fields ---
     carding_status: z.string().trim().min(1, "Carding status is required"),
@@ -170,6 +179,9 @@ export const updateAthleteSchema = z
       })
       .optional(),
     date_of_birth: optionalDateSchema,
+    ethnicity: z.string().trim().optional(),
+    target_event: z.string().trim().optional(),
+    sport_start_date: optionalDateSchema,
   })
   .strict();
 
@@ -239,6 +251,9 @@ export const updateProfileSchema = z
       })
       .optional(),
     date_of_birth: optionalDateSchema,
+    ethnicity: z.string().trim().optional(),
+    target_event: z.string().trim().optional(),
+    sport_start_date: optionalDateSchema,
 
     // --- Registry fields (all optional) ---
     carding_status: z
@@ -296,6 +311,9 @@ export const adminUpdateProfileSchema = z
       })
       .optional(),
     date_of_birth: optionalDateSchema,
+    ethnicity: z.string().trim().optional(),
+    target_event: z.string().trim().optional(),
+    sport_start_date: optionalDateSchema,
 
     // --- Registry fields (all optional) ---
     carding_status: z
