@@ -4,6 +4,8 @@ import { consultationApi } from "@/utils/consultationApi";
 interface TrainingScheduleProps {
   athleteId: string;
   sessionId: string;
+  isNewConsultation?: boolean;
+  newSessionId?: string;
 }
 
 interface TrainingSession {
@@ -89,10 +91,13 @@ interface TrainingScheduleData {
 }
 
 export default function TrainingSchedule({
-  athleteId,
+  athleteId: _athleteId,
   sessionId,
+  isNewConsultation,
+  newSessionId: _newSessionId,
 }: TrainingScheduleProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const effectiveEditing = isEditing || !!isNewConsultation;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [trainingData, setTrainingData] = useState<TrainingScheduleData | null>(
@@ -291,7 +296,7 @@ export default function TrainingSchedule({
           Training Schedule
         </h2>
         <div className="flex items-center gap-2">
-          {isEditing && (
+          {effectiveEditing && !isNewConsultation && (
             <button
               onClick={handleCancel}
               className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
@@ -300,10 +305,10 @@ export default function TrainingSchedule({
             </button>
           )}
           <button
-            onClick={isEditing ? handleSave : () => setIsEditing(true)}
+            onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
             className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
           >
-            {isEditing ? "Save" : "Edit"}
+            {effectiveEditing ? "Save" : "Edit"}
           </button>
         </div>
       </div>
@@ -405,80 +410,84 @@ export default function TrainingSchedule({
                 <label className="block text-gray-600 mb-2">
                   Current Performance:
                 </label>
-                <textarea
-                  className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
-                  placeholder="Input Text Here"
-                  value={performanceDetails.currentPerformance}
-                  onChange={(e) => {
-                    if (isEditing) {
+                {effectiveEditing ? (
+                  <textarea
+                    className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
+                    placeholder="Input Text Here"
+                    value={performanceDetails.currentPerformance}
+                    onChange={(e) =>
                       setPerformanceDetails((prev) => ({
                         ...prev,
                         currentPerformance: e.target.value,
-                      }));
+                      }))
                     }
-                  }}
-                  readOnly={!isEditing}
-                />
+                  />
+                ) : (
+                  <p className="text-sm text-gray-900">{performanceDetails.currentPerformance}</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-gray-600 mb-2">
                   Coach Performance Goals:
                 </label>
-                <textarea
-                  className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
-                  placeholder="Input Text Here"
-                  value={performanceDetails.coachPerformanceGoals}
-                  onChange={(e) => {
-                    if (isEditing) {
+                {effectiveEditing ? (
+                  <textarea
+                    className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
+                    placeholder="Input Text Here"
+                    value={performanceDetails.coachPerformanceGoals}
+                    onChange={(e) =>
                       setPerformanceDetails((prev) => ({
                         ...prev,
                         coachPerformanceGoals: e.target.value,
-                      }));
+                      }))
                     }
-                  }}
-                  readOnly={!isEditing}
-                />
+                  />
+                ) : (
+                  <p className="text-sm text-gray-900">{performanceDetails.coachPerformanceGoals}</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-gray-600 mb-2">
                   Athlete Performance Goals:
                 </label>
-                <textarea
-                  className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
-                  placeholder="Input Text Here"
-                  value={performanceDetails.athletePerformanceGoals}
-                  onChange={(e) => {
-                    if (isEditing) {
+                {effectiveEditing ? (
+                  <textarea
+                    className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
+                    placeholder="Input Text Here"
+                    value={performanceDetails.athletePerformanceGoals}
+                    onChange={(e) =>
                       setPerformanceDetails((prev) => ({
                         ...prev,
                         athletePerformanceGoals: e.target.value,
-                      }));
+                      }))
                     }
-                  }}
-                  readOnly={!isEditing}
-                />
+                  />
+                ) : (
+                  <p className="text-sm text-gray-900">{performanceDetails.athletePerformanceGoals}</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-gray-600 mb-2">
                   Other Remarks:
                 </label>
-                <textarea
-                  className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
-                  placeholder="Input Text Here"
-                  value={performanceDetails.otherRemarks}
-                  onChange={(e) => {
-                    if (isEditing) {
+                {effectiveEditing ? (
+                  <textarea
+                    className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
+                    placeholder="Input Text Here"
+                    value={performanceDetails.otherRemarks}
+                    onChange={(e) =>
                       setPerformanceDetails((prev) => ({
                         ...prev,
                         otherRemarks: e.target.value,
-                      }));
+                      }))
                     }
-                  }}
-                  readOnly={!isEditing}
-                />
+                  />
+                ) : (
+                  <p className="text-sm text-gray-900">{performanceDetails.otherRemarks}</p>
+                )}
               </div>
             </div>
           </div>

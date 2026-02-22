@@ -4,6 +4,8 @@ import { consultationApi, apiCall } from "@/utils/consultationApi";
 interface PreviousConsultationProps {
   athleteId: string;
   sessionId: string;
+  isNewConsultation?: boolean;
+  newSessionId?: string;
 }
 
 interface ConsultationData {
@@ -12,6 +14,7 @@ interface ConsultationData {
   date_of_consult: string;
   nutritionist_name: string;
   intervention_status?: string;
+  consult_type?: string;
   details: {
     main_nutrition_diagnosis: string | null;
     carbohydrates_review_diagnosis: string | null;
@@ -36,14 +39,62 @@ interface ConsultationData {
   }>;
 }
 
+const REVIEW_OPTIONS = ["Adequate", "Inadequate", "Excessive", "Not Assessed"];
+const CONSULT_TYPES = ["Initial", "Review", "Follow-up", "Emergency"];
+const INTERVENTION_STATUSES = [
+  "Supplement Intake",
+  "Dietary Modification",
+  "Referral",
+  "No Change",
+];
+
+interface CurrentConsultForm {
+  consult_type: string;
+  intervention_status: string;
+  main_nutrition_diagnosis: string;
+  carbohydrates_review: string;
+  protein_review: string;
+  fat_review: string;
+  fibre_review: string;
+  iron_review: string;
+  calcium_review: string;
+  micronutrients_review: string;
+  other_review: string;
+  intervention_note: string;
+  follow_up_note: string;
+  other_remarks: string;
+}
+
+const emptyForm: CurrentConsultForm = {
+  consult_type: "",
+  intervention_status: "",
+  main_nutrition_diagnosis: "",
+  carbohydrates_review: "",
+  protein_review: "",
+  fat_review: "",
+  fibre_review: "",
+  iron_review: "",
+  calcium_review: "",
+  micronutrients_review: "",
+  other_review: "",
+  intervention_note: "",
+  follow_up_note: "",
+  other_remarks: "",
+};
+
 export default function PreviousConsultation({
   athleteId,
-  sessionId,
+  sessionId: _sessionId,
+  isNewConsultation,
+  newSessionId,
 }: PreviousConsultationProps) {
   const [consultationData, setConsultationData] =
     useState<ConsultationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState<CurrentConsultForm>(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string>("");
 
   useEffect(() => {
     const fetchPreviousConsultation = async () => {
@@ -51,7 +102,6 @@ export default function PreviousConsultation({
         setLoading(true);
         setError(null);
 
-        // Fetch the latest consultation session for the athlete
         const latestSession = (await consultationApi.getLatestConsultation(
           athleteId,
         )) as {
@@ -63,17 +113,9 @@ export default function PreviousConsultation({
           };
         };
 
-        console.log("Latest session response:", latestSession);
-
         if (latestSession?.data) {
-          const sessionData = latestSession.data as {
-            id: string;
-            athlete_id: string;
-            date_of_consult: string;
-            nutritionist_name: string;
-          };
+          const sessionData = latestSession.data;
 
-          // Fetch detailed consultation data and prescriptions in parallel
           const [detailsResponse, prescriptionsResponse] =
             await Promise.allSettled([
               apiCall(
@@ -82,42 +124,12 @@ export default function PreviousConsultation({
               consultationApi.getPrescriptions(sessionData.id),
             ]);
 
-          console.log("Details response:", detailsResponse);
-          console.log("Prescriptions response:", prescriptionsResponse);
-
-          // Debug: Log the actual data structure
-          if (detailsResponse.status === "fulfilled") {
-            console.log("Details response value:", detailsResponse.value);
-            console.log(
-              "Details response data:",
-              (detailsResponse.value as any)?.data,
-            );
-          } else {
-            console.log("Details response rejected:", detailsResponse.reason);
-          }
-
-          if (prescriptionsResponse.status === "fulfilled") {
-            console.log(
-              "Prescriptions response value:",
-              prescriptionsResponse.value,
-            );
-            console.log(
-              "Prescriptions response data:",
-              (prescriptionsResponse.value as any)?.data,
-            );
-          } else {
-            console.log(
-              "Prescriptions response rejected:",
-              prescriptionsResponse.reason,
-            );
-          }
-
           const consultationData: ConsultationData = {
             id: sessionData.id,
             athlete_id: sessionData.athlete_id,
             date_of_consult: sessionData.date_of_consult,
             nutritionist_name: sessionData.nutritionist_name,
-            intervention_status: "Supplement Intake", // Default or from session data
+            intervention_status: "Supplement Intake",
             details:
               detailsResponse.status === "fulfilled"
                 ? (
@@ -136,8 +148,6 @@ export default function PreviousConsultation({
                 : [],
           };
 
-          console.log("Final consultation data:", consultationData);
-
           setConsultationData(consultationData);
         }
       } catch (err) {
@@ -153,6 +163,247 @@ export default function PreviousConsultation({
     }
   }, [athleteId]);
 
+  const updateForm = (field: keyof CurrentConsultForm, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSave = async () => {
+    if (!newSessionId) return;
+    setSaving(true);
+    setSaveError("");
+    try {
+      const token = localStorage.getItem("token");
+
+      // PATCH consult_type and intervention_status
+      await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/${newSessionId}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            consult_type: form.consult_type,
+            intervention_status: form.intervention_status,
+          }),
+        },
+      );
+
+      // POST consultation details
+      await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-details`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            session_id: newSessionId,
+            main_nutrition_diagnosis: form.main_nutrition_diagnosis,
+            carbohydrates_review_diagnosis: form.carbohydrates_review,
+            protein_review_diagnosis: form.protein_review,
+            fat_review_diagnosis: form.fat_review,
+            fibre_review_diagnosis: form.fibre_review,
+            iron_review_diagnosis: form.iron_review,
+            calcium_review_diagnosis: form.calcium_review,
+            micronutrients_review_diagnosis: form.micronutrients_review,
+            other_review: form.other_review,
+            intervention_note: form.intervention_note,
+            follow_up_note: form.follow_up_note,
+            other_remarks: form.other_remarks,
+          }),
+        },
+      );
+    } catch (err) {
+      console.error("Error saving current consultation:", err);
+      setSaveError("Failed to save. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Render "Current Consultation" form when isNewConsultation=true
+  if (isNewConsultation) {
+    const today = new Date().toLocaleDateString();
+
+    return (
+      <section
+        id="previous-consultation"
+        className="bg-white rounded-xl shadow-lg p-6"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Current Consultation
+            </h2>
+            <span className="text-sm text-gray-500">{today}</span>
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700 disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
+
+        {saveError && (
+          <p className="text-red-600 text-sm mb-4">{saveError}</p>
+        )}
+
+        <div className="space-y-6">
+          {/* Type of Consultation + Intervention Status */}
+          <div className="grid grid-cols-2 gap-6 text-sm">
+            <div>
+              <label className="block text-gray-600 mb-1">
+                Type of Consultation:
+              </label>
+              <select
+                value={form.consult_type}
+                onChange={(e) => updateForm("consult_type", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+              >
+                <option value="">Select type...</option>
+                {CONSULT_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-gray-600 mb-1">
+                Intervention Status:
+              </label>
+              <select
+                value={form.intervention_status}
+                onChange={(e) =>
+                  updateForm("intervention_status", e.target.value)
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+              >
+                <option value="">Select status...</option>
+                {INTERVENTION_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Main Nutrition Diagnosis */}
+          <div>
+            <label className="block text-gray-600 text-sm mb-1">
+              Main Nutrition Diagnosis:
+            </label>
+            <textarea
+              value={form.main_nutrition_diagnosis}
+              onChange={(e) =>
+                updateForm("main_nutrition_diagnosis", e.target.value)
+              }
+              placeholder="Enter main nutrition diagnosis..."
+              className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm"
+            />
+          </div>
+
+          {/* Review Dropdowns */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Review</h3>
+            <div className="grid grid-cols-4 gap-3 text-sm">
+              {(
+                [
+                  { label: "Carbohydrate", field: "carbohydrates_review" as const },
+                  { label: "Protein", field: "protein_review" as const },
+                  { label: "Fat", field: "fat_review" as const },
+                  { label: "Fibre", field: "fibre_review" as const },
+                  { label: "Iron", field: "iron_review" as const },
+                  { label: "Calcium", field: "calcium_review" as const },
+                  { label: "Micronutrients", field: "micronutrients_review" as const },
+                ] as { label: string; field: keyof CurrentConsultForm }[]
+              ).map(({ label, field }) => (
+                <div key={field}>
+                  <label className="block text-xs text-gray-500 mb-1">
+                    {label}
+                  </label>
+                  <select
+                    value={form[field]}
+                    onChange={(e) => updateForm(field, e.target.value)}
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                  >
+                    <option value="">—</option>
+                    {REVIEW_OPTIONS.map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">
+                  Other
+                </label>
+                <input
+                  type="text"
+                  value={form.other_review}
+                  onChange={(e) => updateForm("other_review", e.target.value)}
+                  placeholder="Other..."
+                  className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Notes</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">
+                  Intervention Notes:
+                </label>
+                <textarea
+                  value={form.intervention_note}
+                  onChange={(e) =>
+                    updateForm("intervention_note", e.target.value)
+                  }
+                  placeholder="Input Text Here"
+                  className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">
+                  Follow-Up Notes:
+                </label>
+                <textarea
+                  value={form.follow_up_note}
+                  onChange={(e) => updateForm("follow_up_note", e.target.value)}
+                  placeholder="Input Text Here"
+                  className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">
+                  Other Remarks:
+                </label>
+                <textarea
+                  value={form.other_remarks}
+                  onChange={(e) => updateForm("other_remarks", e.target.value)}
+                  placeholder="Input Text Here"
+                  className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Read-only previous consultation view
   if (loading) {
     return (
       <section

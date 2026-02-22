@@ -3,6 +3,8 @@ import { useState } from "react";
 interface AdherencesProps {
   athleteId: string;
   sessionId: string;
+  isNewConsultation?: boolean;
+  newSessionId?: string;
 }
 
 interface NutritionRequirement {
@@ -41,8 +43,9 @@ interface MetabolicData {
   };
 }
 
-export default function Adherences({ athleteId, sessionId }: AdherencesProps) {
+export default function Adherences({ athleteId, sessionId, isNewConsultation, newSessionId }: AdherencesProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const effectiveEditing = isEditing || !!isNewConsultation;
   const [intakeData, setIntakeData] = useState<IntakeData>({
     estimatedCarbohydrate: 350,
     estimatedProtein: 154,
@@ -110,7 +113,7 @@ export default function Adherences({ athleteId, sessionId }: AdherencesProps) {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Adherences</h2>
         <div className="flex items-center gap-2">
-          {isEditing && (
+          {effectiveEditing && !isNewConsultation && (
             <button
               onClick={handleCancel}
               className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
@@ -119,10 +122,10 @@ export default function Adherences({ athleteId, sessionId }: AdherencesProps) {
             </button>
           )}
           <button
-            onClick={isEditing ? handleSave : () => setIsEditing(true)}
+            onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
             className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
           >
-            {isEditing ? "Save" : "Edit"}
+            {effectiveEditing ? "Save" : "Edit"}
           </button>
         </div>
       </div>
@@ -429,29 +432,13 @@ export default function Adherences({ athleteId, sessionId }: AdherencesProps) {
                 <label className="block text-sm text-gray-600 mb-2">
                   Comments on Weekday Intake:
                 </label>
-                <textarea
-                  className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
-                  placeholder="Input Text Here"
-                  value={intakeData.weekdayComments}
-                  onChange={(e) => {
-                    console.log("Weekday comments updated:", e.target.value);
-                  }}
-                  readOnly
-                />
+                <p className="text-sm text-gray-900">{intakeData.weekdayComments}</p>
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-2">
                   Comments on Weekend Intake:
                 </label>
-                <textarea
-                  className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
-                  placeholder="Input Text Here"
-                  value={intakeData.weekendComments}
-                  onChange={(e) => {
-                    console.log("Weekend comments updated:", e.target.value);
-                  }}
-                  readOnly
-                />
+                <p className="text-sm text-gray-900">{intakeData.weekendComments}</p>
               </div>
             </div>
           </div>
@@ -507,23 +494,24 @@ export default function Adherences({ athleteId, sessionId }: AdherencesProps) {
                 <label className="block text-sm text-gray-600 mb-2">
                   Other Remarks:
                 </label>
-                <textarea
-                  className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
-                  placeholder="Input Text Here"
-                  value={metabolicData.male.otherRemarks}
-                  onChange={(e) => {
-                    if (isEditing) {
+                {effectiveEditing ? (
+                  <textarea
+                    className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
+                    placeholder="Input Text Here"
+                    value={metabolicData.male.otherRemarks}
+                    onChange={(e) =>
                       setMetabolicData((prev) => ({
                         ...prev,
                         male: {
                           ...prev.male,
                           otherRemarks: e.target.value,
                         },
-                      }));
+                      }))
                     }
-                  }}
-                  readOnly={!isEditing}
-                />
+                  />
+                ) : (
+                  <p className="text-sm text-gray-900">{metabolicData.male.otherRemarks}</p>
+                )}
               </div>
             </div>
           </div>

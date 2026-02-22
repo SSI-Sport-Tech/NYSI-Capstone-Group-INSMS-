@@ -1,88 +1,128 @@
 import { useState, useEffect } from "react";
+import { consultationApi } from "@/utils/consultationApi";
 
 interface MealLogsProps {
   athleteId: string;
   sessionId: string;
+  isNewConsultation?: boolean;
+  newSessionId?: string;
 }
 
-interface MealEntry {
-  time: string;
-  foodIntake: string;
-  macronutrients: string;
+interface MealSlot {
+  food: string | null;
+  macro: string | null;
 }
 
-interface Assessment {
-  totalCarbohydrateIntake: number;
-  totalProteinIntake: number;
-  totalFatIntake: number;
+interface MealLogData {
+  id: string | null;
+  sessionId: string;
+  amBreakfast: MealSlot;
+  amTraining: MealSlot;
+  pmLunch: MealSlot;
+  pmTraining: MealSlot;
+  pmDinner: MealSlot;
+  supper: MealSlot;
+  totalCarbohydrateIntake: number | null;
+  totalProteinIntake: number | null;
+  totalFatIntake: number | null;
+  otherRemarks: string | null;
+}
+
+type MealTimeKey =
+  | "amBreakfast"
+  | "amTraining"
+  | "pmLunch"
+  | "pmTraining"
+  | "pmDinner"
+  | "supper";
+
+interface EditLog {
+  amBreakfast: { food: string; macro: string };
+  amTraining: { food: string; macro: string };
+  pmLunch: { food: string; macro: string };
+  pmTraining: { food: string; macro: string };
+  pmDinner: { food: string; macro: string };
+  supper: { food: string; macro: string };
+  totalCarbohydrateIntake: string;
+  totalProteinIntake: string;
+  totalFatIntake: string;
   otherRemarks: string;
 }
 
-export default function MealLogs({ athleteId, sessionId }: MealLogsProps) {
-  const [mealEntries, setMealEntries] = useState<MealEntry[]>([]);
-  const [assessment, setAssessment] = useState<Assessment | null>(null);
+const MEAL_ROWS: { key: MealTimeKey; label: string }[] = [
+  { key: "amBreakfast", label: "AM Breakfast" },
+  { key: "amTraining", label: "AM Training" },
+  { key: "pmLunch", label: "PM Lunch" },
+  { key: "pmTraining", label: "PM Training" },
+  { key: "pmDinner", label: "PM Dinner" },
+  { key: "supper", label: "Supper" },
+];
+
+function toEditLog(data: MealLogData): EditLog {
+  const slot = (s: MealSlot) => ({
+    food: s.food ?? "",
+    macro: s.macro ?? "",
+  });
+  return {
+    amBreakfast: slot(data.amBreakfast),
+    amTraining: slot(data.amTraining),
+    pmLunch: slot(data.pmLunch),
+    pmTraining: slot(data.pmTraining),
+    pmDinner: slot(data.pmDinner),
+    supper: slot(data.supper),
+    totalCarbohydrateIntake: data.totalCarbohydrateIntake?.toString() ?? "",
+    totalProteinIntake: data.totalProteinIntake?.toString() ?? "",
+    totalFatIntake: data.totalFatIntake?.toString() ?? "",
+    otherRemarks: data.otherRemarks ?? "",
+  };
+}
+
+const emptyEditLog: EditLog = {
+  amBreakfast: { food: "", macro: "" },
+  amTraining: { food: "", macro: "" },
+  pmLunch: { food: "", macro: "" },
+  pmTraining: { food: "", macro: "" },
+  pmDinner: { food: "", macro: "" },
+  supper: { food: "", macro: "" },
+  totalCarbohydrateIntake: "",
+  totalProteinIntake: "",
+  totalFatIntake: "",
+  otherRemarks: "",
+};
+
+export default function MealLogs({
+  athleteId: _athleteId,
+  sessionId,
+  isNewConsultation,
+  newSessionId,
+}: MealLogsProps) {
+  const [mealLog, setMealLog] = useState<MealLogData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
-
   const [isEditing, setIsEditing] = useState(false);
-  const [editableAssessment, setEditableAssessment] = useState<Assessment>({
-    totalCarbohydrateIntake: 215,
-    totalProteinIntake: 114,
-    totalFatIntake: 82,
-    otherRemarks: "",
-  });
+  const [editLog, setEditLog] = useState<EditLog>(emptyEditLog);
+  const [saveError, setSaveError] = useState<string>("");
 
-  const handleSave = async () => {
-    try {
-      console.log("Saving meal logs data:", editableAssessment);
-      // TODO: Implement API call to create new consultation session entry
-      setIsEditing(false);
-    } catch (error) {
-      console.error("Error saving meal logs:", error);
-    }
-  };
-
-  const handleCancel = () => {
-    setIsEditing(false);
-  };
+  const effectiveEditing = isEditing || !!isNewConsultation;
+  const targetSessionId = isNewConsultation && newSessionId ? newSessionId : sessionId;
 
   const fetchMealLogs = async () => {
     if (!sessionId) {
-      setMealEntries([]);
-      setAssessment(null);
+      setMealLog(null);
       setLoading(false);
       return;
     }
-
     try {
       setLoading(true);
       setError("");
-
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${sessionId}/meal-log`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        },
-      );
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          setMealEntries([]);
-          setAssessment(null);
-          return;
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setMealEntries(data.data?.meal_entries || []);
-      setAssessment(data.data?.assessment || null);
-    } catch (error) {
-      console.error("Error fetching meal logs:", error);
+      const response = (await consultationApi.getMealLogs(sessionId)) as {
+        data: MealLogData;
+      };
+      const data = response.data;
+      setMealLog(data);
+      setEditLog(toEditLog(data));
+    } catch (err) {
+      console.error("Error fetching meal logs:", err);
       setError("Failed to load meal logs");
     } finally {
       setLoading(false);
@@ -92,6 +132,66 @@ export default function MealLogs({ athleteId, sessionId }: MealLogsProps) {
   useEffect(() => {
     fetchMealLogs();
   }, [sessionId]);
+
+  const handleSave = async () => {
+    try {
+      setSaveError("");
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${targetSessionId}/meal-log`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            amBreakfast: editLog.amBreakfast,
+            amTraining: editLog.amTraining,
+            pmLunch: editLog.pmLunch,
+            pmTraining: editLog.pmTraining,
+            pmDinner: editLog.pmDinner,
+            supper: editLog.supper,
+            totalCarbohydrateIntake: editLog.totalCarbohydrateIntake
+              ? parseFloat(editLog.totalCarbohydrateIntake)
+              : null,
+            totalProteinIntake: editLog.totalProteinIntake
+              ? parseFloat(editLog.totalProteinIntake)
+              : null,
+            totalFatIntake: editLog.totalFatIntake
+              ? parseFloat(editLog.totalFatIntake)
+              : null,
+            otherRemarks: editLog.otherRemarks || null,
+          }),
+        },
+      );
+      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+      const updated = (await response.json()) as { data: MealLogData };
+      setMealLog(updated.data);
+      setEditLog(toEditLog(updated.data));
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Error saving meal logs:", err);
+      setSaveError("Failed to save. Please try again.");
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setSaveError("");
+    if (mealLog) setEditLog(toEditLog(mealLog));
+  };
+
+  const updateMeal = (
+    mealKey: MealTimeKey,
+    field: "food" | "macro",
+    value: string,
+  ) => {
+    setEditLog((prev) => ({
+      ...prev,
+      [mealKey]: { ...prev[mealKey], [field]: value },
+    }));
+  };
 
   if (loading) {
     return (
@@ -123,59 +223,12 @@ export default function MealLogs({ athleteId, sessionId }: MealLogsProps) {
     );
   }
 
-  // Mock data for demonstration if no data from API
-  const defaultMealEntries: MealEntry[] = [
-    {
-      time: "AM Breakfast",
-      foodIntake: "2 Yakun Kaya Toast + 2 boiled eggs + teh o kosong",
-      macronutrients: "CHO: 55g, Protein: 16g, Fat: 18g",
-    },
-    {
-      time: "AM Training",
-      foodIntake: "",
-      macronutrients: "",
-    },
-    {
-      time: "PM Lunch",
-      foodIntake:
-        "Chicken rice with steamed chicken, braised egg, braised tofu + veggie with oyster sauce",
-      macronutrients: "CHO: 85G, P: 35g, F: 30g",
-    },
-    {
-      time: "PM Training",
-      foodIntake: "Protein shake",
-      macronutrients: "P: 25g",
-    },
-    {
-      time: "PM Dinner",
-      foodIntake: "Cai fan (2 meats + 1 veggie + brown rice)",
-      macronutrients: "CHO: 60g, P: 30g, F: 28g",
-    },
-    {
-      time: "Supper",
-      foodIntake: "Soy milk",
-      macronutrients: "CHO: 12g, P: 8g, F: 4g",
-    },
-  ];
-
-  const defaultAssessment: Assessment = {
-    totalCarbohydrateIntake: 215,
-    totalProteinIntake: 114,
-    totalFatIntake: 82,
-    otherRemarks: "",
-  };
-
-  // Use fetched data if available, otherwise use defaults
-  const displayMealEntries =
-    mealEntries.length > 0 ? mealEntries : defaultMealEntries;
-  const displayAssessment = assessment || defaultAssessment;
-
   return (
     <section id="meal-logs" className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Meal Logs</h2>
         <div className="flex items-center gap-2">
-          {isEditing && (
+          {effectiveEditing && !isNewConsultation && (
             <button
               onClick={handleCancel}
               className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
@@ -184,13 +237,15 @@ export default function MealLogs({ athleteId, sessionId }: MealLogsProps) {
             </button>
           )}
           <button
-            onClick={isEditing ? handleSave : () => setIsEditing(true)}
+            onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
             className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
           >
-            {isEditing ? "Save" : "Edit"}
+            {effectiveEditing ? "Save" : "Edit"}
           </button>
         </div>
       </div>
+
+      {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
       <div className="space-y-6">
         {/* Meal Entries Table */}
@@ -210,16 +265,38 @@ export default function MealLogs({ athleteId, sessionId }: MealLogsProps) {
               </tr>
             </thead>
             <tbody>
-              {displayMealEntries.map((entry, index) => (
-                <tr key={index}>
+              {MEAL_ROWS.map(({ key, label }) => (
+                <tr key={key}>
                   <td className="border border-gray-300 px-4 py-3 text-sm font-medium text-gray-900">
-                    {entry.time}
+                    {label}
                   </td>
                   <td className="border border-gray-300 px-4 py-3 text-sm text-gray-700">
-                    {entry.foodIntake}
+                    {effectiveEditing ? (
+                      <input
+                        type="text"
+                        value={editLog[key].food}
+                        onChange={(e) => updateMeal(key, "food", e.target.value)}
+                        placeholder="Food description..."
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                      />
+                    ) : (
+                      mealLog?.[key].food || "—"
+                    )}
                   </td>
                   <td className="border border-gray-300 px-4 py-3 text-sm text-gray-700 text-center">
-                    {entry.macronutrients}
+                    {effectiveEditing ? (
+                      <input
+                        type="text"
+                        value={editLog[key].macro}
+                        onChange={(e) =>
+                          updateMeal(key, "macro", e.target.value)
+                        }
+                        placeholder="e.g. CHO: 55g, P: 20g, F: 10g"
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                      />
+                    ) : (
+                      mealLog?.[key].macro || "—"
+                    )}
                   </td>
                 </tr>
               ))}
@@ -232,35 +309,66 @@ export default function MealLogs({ athleteId, sessionId }: MealLogsProps) {
           <h3 className="text-lg font-medium text-gray-900 mb-4">Assessment</h3>
           <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">
-                Total Carbohydrate Intake (g):
-              </span>
-              <input
-                type="number"
-                value={displayAssessment.totalCarbohydrateIntake}
-                className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
-                readOnly
-              />
+              <span className="text-gray-600">Total Carbohydrate Intake (g):</span>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  value={editLog.totalCarbohydrateIntake}
+                  onChange={(e) =>
+                    setEditLog((prev) => ({
+                      ...prev,
+                      totalCarbohydrateIntake: e.target.value,
+                    }))
+                  }
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
+                />
+              ) : (
+                <span className="font-medium">
+                  {mealLog?.totalCarbohydrateIntake ?? "—"}
+                </span>
+              )}
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Total Protein Intake (g):</span>
-              <input
-                type="number"
-                value={displayAssessment.totalProteinIntake}
-                className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
-                readOnly
-              />
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  value={editLog.totalProteinIntake}
+                  onChange={(e) =>
+                    setEditLog((prev) => ({
+                      ...prev,
+                      totalProteinIntake: e.target.value,
+                    }))
+                  }
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
+                />
+              ) : (
+                <span className="font-medium">
+                  {mealLog?.totalProteinIntake ?? "—"}
+                </span>
+              )}
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Total Fat Intake (g):</span>
-              <input
-                type="number"
-                value={displayAssessment.totalFatIntake}
-                className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
-                readOnly
-              />
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  value={editLog.totalFatIntake}
+                  onChange={(e) =>
+                    setEditLog((prev) => ({
+                      ...prev,
+                      totalFatIntake: e.target.value,
+                    }))
+                  }
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
+                />
+              ) : (
+                <span className="font-medium">
+                  {mealLog?.totalFatIntake ?? "—"}
+                </span>
+              )}
             </div>
           </div>
 
@@ -268,24 +376,23 @@ export default function MealLogs({ athleteId, sessionId }: MealLogsProps) {
             <label className="block text-sm text-gray-600 mb-2">
               Other Remarks:
             </label>
-            <textarea
-              className="w-full h-24 px-3 py-2 border border-gray-300 rounded text-sm"
-              placeholder="Input Text Here"
-              value={
-                isEditing
-                  ? editableAssessment.otherRemarks
-                  : displayAssessment.otherRemarks
-              }
-              onChange={(e) => {
-                if (isEditing) {
-                  setEditableAssessment((prev) => ({
+            {effectiveEditing ? (
+              <textarea
+                className="w-full h-24 px-3 py-2 border border-gray-300 rounded text-sm"
+                placeholder="Input Text Here"
+                value={editLog.otherRemarks}
+                onChange={(e) =>
+                  setEditLog((prev) => ({
                     ...prev,
                     otherRemarks: e.target.value,
-                  }));
+                  }))
                 }
-              }}
-              readOnly={!isEditing}
-            />
+              />
+            ) : (
+              <p className="text-sm text-gray-900">
+                {mealLog?.otherRemarks || "—"}
+              </p>
+            )}
           </div>
         </div>
       </div>

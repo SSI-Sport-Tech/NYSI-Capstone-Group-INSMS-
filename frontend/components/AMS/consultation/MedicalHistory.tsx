@@ -3,6 +3,8 @@ import { useState } from "react";
 interface MedicalHistoryProps {
   athleteId: string;
   sessionId: string;
+  isNewConsultation?: boolean;
+  newSessionId?: string;
 }
 
 interface GeneralInfo {
@@ -48,8 +50,11 @@ interface PeriodInfo {
 export default function MedicalHistory({
   athleteId,
   sessionId,
+  isNewConsultation,
+  newSessionId,
 }: MedicalHistoryProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const effectiveEditing = isEditing || !!isNewConsultation;
   const [generalInfo, setGeneralInfo] = useState<GeneralInfo>({
     medicalCondition:
       "Often undergo dehydration to lose weight 24 hours before competition fight",
@@ -116,7 +121,7 @@ export default function MedicalHistory({
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Medical History</h2>
         <div className="flex items-center gap-2">
-          {isEditing && (
+          {effectiveEditing && !isNewConsultation && (
             <button
               onClick={handleCancel}
               className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
@@ -125,10 +130,10 @@ export default function MedicalHistory({
             </button>
           )}
           <button
-            onClick={isEditing ? handleSave : () => setIsEditing(true)}
+            onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
             className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
           >
-            {isEditing ? "Save" : "Edit"}
+            {effectiveEditing ? "Save" : "Edit"}
           </button>
         </div>
       </div>
@@ -218,21 +223,22 @@ export default function MedicalHistory({
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Medical Remarks:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={generalInfo.medicalRemarks}
-                onChange={(e) => {
-                  if (isEditing) {
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  value={generalInfo.medicalRemarks}
+                  onChange={(e) =>
                     setGeneralInfo((prev) => ({
                       ...prev,
                       medicalRemarks: e.target.value,
-                    }));
+                    }))
                   }
-                }}
-                readOnly={!isEditing}
-              />
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">{generalInfo.medicalRemarks}</span>
+              )}
               <button className="text-gray-400 hover:text-gray-600">
                 <svg
                   className="w-4 h-4"
@@ -254,40 +260,29 @@ export default function MedicalHistory({
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Period of Growth Spurt:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={pubertyInfo.periodOfGrowthSpurt}
-                onChange={(e) => {
-                  console.log(
-                    "Period of growth spurt updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
+              <span className="text-gray-900 flex-1">{pubertyInfo.periodOfGrowthSpurt}</span>
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Other Remarks:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={pubertyInfo.otherRemarks}
-                onChange={(e) => {
-                  if (isEditing) {
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  value={pubertyInfo.otherRemarks}
+                  onChange={(e) =>
                     setPubertyInfo((prev) => ({
                       ...prev,
                       otherRemarks: e.target.value,
-                    }));
+                    }))
                   }
-                }}
-                readOnly={!isEditing}
-              />
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">{pubertyInfo.otherRemarks}</span>
+              )}
             </div>
           </div>
         </div>
@@ -302,19 +297,7 @@ export default function MedicalHistory({
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Does Athlete Have Regular Bowel Movement? :
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={bowelMovement.regularBowelMovement}
-                onChange={(e) => {
-                  console.log(
-                    "Regular bowel movement updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
+              <span className="text-gray-900 flex-1">{bowelMovement.regularBowelMovement}</span>
             </div>
 
             <div className="flex items-start gap-4">
@@ -322,59 +305,36 @@ export default function MedicalHistory({
                 Frequency of Bowel Movements: (i.e. once a day/once every two
                 days)
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={bowelMovement.frequencyOfBowelMovements}
-                onChange={(e) => {
-                  console.log(
-                    "Frequency of bowel movements updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
+              <span className="text-gray-900 flex-1">{bowelMovement.frequencyOfBowelMovements}</span>
             </div>
 
             <div className="flex items-start gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
                 How Does Athlete's Stool Typically Look Like? :
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={bowelMovement.stoolAppearance}
-                onChange={(e) => {
-                  if (isEditing) {
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                  value={bowelMovement.stoolAppearance}
+                  onChange={(e) =>
                     setBowelMovement((prev) => ({
                       ...prev,
                       stoolAppearance: e.target.value,
-                    }));
+                    }))
                   }
-                }}
-                readOnly={!isEditing}
-              />
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">{bowelMovement.stoolAppearance}</span>
+              )}
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Other Remarks:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={bowelMovement.otherRemarks}
-                onChange={(e) => {
-                  console.log(
-                    "Bowel movement remarks updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
+              <span className="text-gray-900 flex-1">{bowelMovement.otherRemarks}</span>
             </div>
           </div>
         </div>
@@ -389,102 +349,42 @@ export default function MedicalHistory({
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Water intake for Target Weight (45ml/kg BW):
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={hydrationInfo.waterIntakeForTargetWeight}
-                onChange={(e) => {
-                  console.log(
-                    "Water intake for target weight updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
+              <span className="text-gray-900 flex-1">{hydrationInfo.waterIntakeForTargetWeight}</span>
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Requirement for Water Intake (45ml/kg BW):
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={hydrationInfo.requirementForWaterIntake}
-                onChange={(e) => {
-                  console.log(
-                    "Requirement for water intake updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
+              <span className="text-gray-900 flex-1">{hydrationInfo.requirementForWaterIntake}</span>
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Water Intake per Day:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={hydrationInfo.waterIntakePerDay}
-                onChange={(e) => {
-                  console.log("Water intake per day updated:", e.target.value);
-                }}
-                readOnly
-              />
+              <span className="text-gray-900 flex-1">{hydrationInfo.waterIntakePerDay}</span>
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Athlete's Typical Colour of Urine:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={hydrationInfo.urineColour}
-                onChange={(e) => {
-                  console.log("Urine colour updated:", e.target.value);
-                }}
-                readOnly
-              />
+              <span className="text-gray-900 flex-1">{hydrationInfo.urineColour}</span>
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Typical Hydration Status Based on Colour of Urine:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={hydrationInfo.hydrationStatus}
-                onChange={(e) => {
-                  console.log("Hydration status updated:", e.target.value);
-                }}
-                readOnly
-              />
+              <span className="text-gray-900 flex-1">{hydrationInfo.hydrationStatus}</span>
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Other Remarks:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={hydrationInfo.otherRemarks}
-                onChange={(e) => {
-                  console.log("Hydration remarks updated:", e.target.value);
-                }}
-                readOnly
-              />
+              <span className="text-gray-900 flex-1">{hydrationInfo.otherRemarks}</span>
             </div>
           </div>
         </div>
@@ -495,95 +395,38 @@ export default function MedicalHistory({
           <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Date of First Day Period:</span>
-              <input
-                type="text"
-                value={periodInfo.firstDayPeriod}
-                className="w-28 px-2 py-1 border border-gray-300 rounded text-center text-xs"
-                onChange={(e) => {
-                  console.log("First day period updated:", e.target.value);
-                }}
-                readOnly
-              />
+              <span className="font-medium">{periodInfo.firstDayPeriod}</span>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Length of Typical Menstrual Cycle:
               </span>
-              <input
-                type="number"
-                value={periodInfo.menstrualCycleLength}
-                className="w-16 px-2 py-1 border border-gray-300 rounded text-center"
-                onChange={(e) => {
-                  console.log(
-                    "Menstrual cycle length updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
+              <span className="font-medium">{periodInfo.menstrualCycleLength}</span>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Age of Menarche:</span>
-              <input
-                type="number"
-                value={periodInfo.ageOfMenarche}
-                className="w-16 px-2 py-1 border border-gray-300 rounded text-center"
-                onChange={(e) => {
-                  console.log("Age of menarche updated:", e.target.value);
-                }}
-                readOnly
-              />
+              <span className="font-medium">{periodInfo.ageOfMenarche}</span>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Length of Period/Menstrual Bleeding:
               </span>
-              <input
-                type="number"
-                value={periodInfo.periodBleedingLength}
-                className="w-16 px-2 py-1 border border-gray-300 rounded text-center"
-                onChange={(e) => {
-                  console.log(
-                    "Period bleeding length updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
+              <span className="font-medium">{periodInfo.periodBleedingLength}</span>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Regularity of Period:</span>
-              <input
-                type="number"
-                value={periodInfo.regularityOfPeriod}
-                className="w-16 px-2 py-1 border border-gray-300 rounded text-center"
-                onChange={(e) => {
-                  console.log("Regularity of period updated:", e.target.value);
-                }}
-                readOnly
-              />
+              <span className="font-medium">{periodInfo.regularityOfPeriod}</span>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-gray-600">
                 Heaviness of Menstrual Bleeding:
               </span>
-              <input
-                type="number"
-                value={periodInfo.menstrualBleedingHeaviness}
-                className="w-16 px-2 py-1 border border-gray-300 rounded text-center"
-                onChange={(e) => {
-                  console.log(
-                    "Menstrual bleeding heaviness updated:",
-                    e.target.value,
-                  );
-                }}
-                readOnly
-              />
+              <span className="font-medium">{periodInfo.menstrualBleedingHeaviness}</span>
             </div>
           </div>
 
@@ -592,32 +435,14 @@ export default function MedicalHistory({
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Any Signs and Symptoms:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={periodInfo.signsAndSymptoms}
-                onChange={(e) => {
-                  console.log("Signs and symptoms updated:", e.target.value);
-                }}
-                readOnly
-              />
+              <span className="text-gray-900 flex-1">{periodInfo.signsAndSymptoms}</span>
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Other Remarks:
               </span>
-              <input
-                type="text"
-                placeholder="Input Text Here"
-                className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
-                value={periodInfo.otherRemarks}
-                onChange={(e) => {
-                  console.log("Period remarks updated:", e.target.value);
-                }}
-                readOnly
-              />
+              <span className="text-gray-900 flex-1">{periodInfo.otherRemarks}</span>
             </div>
           </div>
         </div>
