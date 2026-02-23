@@ -218,6 +218,54 @@ export async function getLatestConsultationSession(athleteId) {
 }
 
 /**
+ * Get all consultation sessions for an athlete, ordered by date_of_consult DESC
+ * @param {string} athleteId - Athlete UUID
+ * @returns {Promise<Array>} All session card data rows
+ */
+export async function getAllConsultationSessions(athleteId) {
+    const query = `
+        SELECT
+            s.id,
+            s.nutritionist_id,
+            n.name AS nutritionist_name,
+            s.athlete_id,
+            a.athlete_name_abbr,
+            s.type_of_consult_id,
+            tl.type_of_consult,
+            s.title_description,
+            s.venue,
+            s.date_of_consult,
+            s.time_of_consult,
+            s.date_of_next_follow_up,
+            s.time_of_next_follow_up,
+            sn.consultation_objective,
+            sup.supplement_name,
+            ib.batch_number,
+            sp.dosage,
+            sp.dosage_unit,
+            sp.dosage_frequency
+        FROM consultation.sessions s
+        LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
+        LEFT JOIN ams.athlete a ON s.athlete_id = a.id
+        LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
+        LEFT JOIN consultation.session_note sn ON sn.sessions_id = s.id
+        LEFT JOIN LATERAL (
+            SELECT sp2.dosage, sp2.dosage_unit, sp2.dosage_frequency, sp2.batch_id
+            FROM consultation.session_prescription sp2
+            WHERE sp2.sessions_id = s.id
+            LIMIT 1
+        ) sp ON true
+        LEFT JOIN sss.inventory_batch ib ON sp.batch_id = ib.id
+        LEFT JOIN sss.supplement sup ON ib.supplement_id = sup.id
+        WHERE s.athlete_id = $1
+        ORDER BY s.date_of_consult DESC NULLS LAST
+    `;
+
+    const result = await pool.query(query, [athleteId]);
+    return result.rows;
+}
+
+/**
  * Get nutritionist ID by auth user ID
  * @param {string} userId - UUID from auth.users
  * @returns {Promise<string|null>} Nutritionist UUID or null

@@ -5,6 +5,7 @@ interface OpenItemsProps {
   sessionId: string;
   isNewConsultation?: boolean;
   newSessionId?: string;
+  readOnly?: boolean;
 }
 
 interface OpenItem {
@@ -35,6 +36,7 @@ export default function OpenItems({
   sessionId,
   isNewConsultation,
   newSessionId,
+  readOnly,
 }: OpenItemsProps) {
   const targetSessionId =
     isNewConsultation && newSessionId ? newSessionId : sessionId;
@@ -244,29 +246,33 @@ export default function OpenItems({
           <span className="text-sm text-gray-600">
             All Actions ({openItems.length})
           </span>
-          <button
-            onClick={handleMarkCompleted}
-            disabled={selectedIds.size === 0 || saving}
-            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Mark as Completed
-          </button>
-          <button
-            onClick={() => {
-              setShowAddForm((v) => !v);
-              setSaveError("");
-            }}
-            className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
-          >
-            {showAddForm ? "Cancel" : "Add New Action"}
-          </button>
+          {!readOnly && (
+            <>
+              <button
+                onClick={handleMarkCompleted}
+                disabled={selectedIds.size === 0 || saving}
+                className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Mark as Completed
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddForm((v) => !v);
+                  setSaveError("");
+                }}
+                className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+              >
+                {showAddForm ? "Cancel" : "Add New Action"}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {saveError && <p className="text-red-600 text-sm mb-3">{saveError}</p>}
 
       {/* Add New Item Form */}
-      {showAddForm && (
+      {!readOnly && showAddForm && (
         <div className="mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50 space-y-3">
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
@@ -346,17 +352,19 @@ export default function OpenItems({
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-gray-200">
-              <th className="py-3 px-2">
-                <input
-                  type="checkbox"
-                  checked={
-                    openItems.length > 0 &&
-                    selectedIds.size === openItems.length
-                  }
-                  onChange={toggleSelectAll}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded"
-                />
-              </th>
+              {!readOnly && (
+                <th className="py-3 px-2">
+                  <input
+                    type="checkbox"
+                    checked={
+                      openItems.length > 0 &&
+                      selectedIds.size === openItems.length
+                    }
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+                  />
+                </th>
+              )}
               <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
                 Due Date
               </th>
@@ -380,14 +388,16 @@ export default function OpenItems({
                 key={item.id}
                 className="border-b border-gray-100 hover:bg-gray-50"
               >
-                <td className="py-3 px-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(item.id)}
-                    onChange={() => toggleSelect(item.id)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                </td>
+                {!readOnly && (
+                  <td className="py-3 px-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(item.id)}
+                      onChange={() => toggleSelect(item.id)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                  </td>
+                )}
                 <td className="py-3 px-4 text-sm text-gray-900">
                   {item.due_date
                     ? new Date(item.due_date).toLocaleDateString()

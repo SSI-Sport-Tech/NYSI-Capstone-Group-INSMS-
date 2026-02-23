@@ -6,6 +6,7 @@ interface MedicalHistoryProps {
   sessionId: string;
   isNewConsultation?: boolean;
   newSessionId?: string;
+  readOnly?: boolean;
 }
 
 // ---- API response shape ----
@@ -183,6 +184,7 @@ export default function MedicalHistory({
   sessionId,
   isNewConsultation,
   newSessionId,
+  readOnly,
 }: MedicalHistoryProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -207,7 +209,7 @@ export default function MedicalHistory({
   // Show Period section only for female athletes; show as fallback when gender unknown
   const isFemale = gender === null || gender.toLowerCase().startsWith("f");
 
-  const effectiveEditing = isEditing || !!isNewConsultation;
+  const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
   const targetSessionId =
     isNewConsultation && newSessionId ? newSessionId : sessionId;
 
@@ -385,22 +387,24 @@ export default function MedicalHistory({
     <section id="medical-history" className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Medical History</h2>
-        <div className="flex items-center gap-2">
-          {effectiveEditing && !isNewConsultation && (
+        {!readOnly && (
+          <div className="flex items-center gap-2">
+            {effectiveEditing && !isNewConsultation && (
+              <button
+                onClick={handleCancel}
+                className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+            )}
             <button
-              onClick={handleCancel}
-              className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+              onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
+              className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
             >
-              Cancel
+              {effectiveEditing ? "Save" : "Edit"}
             </button>
-          )}
-          <button
-            onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
-            className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
-          >
-            {effectiveEditing ? "Save" : "Edit"}
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}

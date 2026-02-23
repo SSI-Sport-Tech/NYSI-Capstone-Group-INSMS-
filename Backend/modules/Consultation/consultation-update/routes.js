@@ -89,6 +89,7 @@ const router = express.Router();
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.get('/consultation-update/athlete/:athleteId/latest', controller.getLatestConsultationSession);
+router.get('/consultation-update/athlete/:athleteId/all', controller.getAllConsultationSessions);
 
 /**
  * @swagger
