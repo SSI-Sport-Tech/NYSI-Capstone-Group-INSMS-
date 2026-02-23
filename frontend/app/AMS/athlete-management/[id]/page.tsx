@@ -63,6 +63,11 @@ export default function AthleteDetailPage() {
     type_of_consult: string | null;
     nutritionist_name: string | null;
     consultation_objective: string | null;
+    supplement_name: string | null;
+    batch_number: string | null;
+    dosage: number | null;
+    dosage_unit: string | null;
+    dosage_frequency: string | null;
   }
   const [historySessions, setHistorySessions] = useState<ConsultationSummary[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -509,7 +514,18 @@ export default function AthleteDetailPage() {
 
               {activeTab === "history" && (
                 <div className="p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Consultation History</h2>
+                  <div className="mb-4">
+                    <h2 className="text-xl font-semibold text-gray-900">View Athlete History</h2>
+                    <p className="text-sm text-gray-500 mt-1">Select each category to view athlete&apos;s history</p>
+                  </div>
+
+                  {/* Consultations sub-tab label */}
+                  <div className="mb-4">
+                    <span className="inline-block px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md bg-white">
+                      Consultations
+                    </span>
+                  </div>
+
                   {historyLoading ? (
                     <div className="flex items-center justify-center py-12">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-2"></div>
@@ -519,50 +535,82 @@ export default function AthleteDetailPage() {
                     <div className="text-center py-8">
                       <p className="text-red-600">{historyError}</p>
                     </div>
-                  ) : historySessions.length === 0 ? (
-                    <div className="text-center py-12">
-                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">No consultation history</h3>
-                      <p className="mt-1 text-sm text-gray-500">No past consultations found for this athlete.</p>
-                    </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="border-b border-gray-200 bg-gray-50">
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Date</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Consult Type</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Nutritionist</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Objective</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {historySessions.map((session) => (
-                            <tr
-                              key={session.id}
-                              onClick={() => router.push(`/AMS/athlete-management/${athleteId}/consultation/${session.id}`)}
-                              className="border-b border-gray-100 hover:bg-blue-50 cursor-pointer"
-                            >
-                              <td className="py-3 px-4 text-sm text-gray-900">
-                                {session.date_of_consult
-                                  ? new Date(session.date_of_consult).toLocaleDateString()
-                                  : "—"}
-                              </td>
-                              <td className="py-3 px-4 text-sm text-gray-900">
-                                {session.type_of_consult || "—"}
-                              </td>
-                              <td className="py-3 px-4 text-sm text-gray-900">
-                                {session.nutritionist_name || "—"}
-                              </td>
-                              <td className="py-3 px-4 text-sm text-gray-900 max-w-xs truncate">
-                                {session.consultation_objective || "—"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                      <div className="px-6 py-4 border-b border-gray-200">
+                        <h3 className="text-base font-semibold text-gray-900">
+                          All Consultations ({historySessions.length})
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-0.5">View past sessions</p>
+                      </div>
+
+                      {historySessions.length === 0 ? (
+                        <div className="text-center py-12">
+                          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <h3 className="mt-2 text-sm font-medium text-gray-900">No consultation history</h3>
+                          <p className="mt-1 text-sm text-gray-500">No past consultations found for this athlete.</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full border-collapse">
+                            <thead>
+                              <tr className="border-b border-gray-200 bg-gray-50 text-left">
+                                <th className="py-3 px-4 text-xs font-medium text-gray-600 uppercase tracking-wide">Date</th>
+                                <th className="py-3 px-4 text-xs font-medium text-gray-600 uppercase tracking-wide">By</th>
+                                <th className="py-3 px-4 text-xs font-medium text-gray-600 uppercase tracking-wide">Type of Consultation</th>
+                                <th className="py-3 px-4 text-xs font-medium text-gray-600 uppercase tracking-wide">Supplement</th>
+                                <th className="py-3 px-4 text-xs font-medium text-gray-600 uppercase tracking-wide">Batch Number</th>
+                                <th className="py-3 px-4 text-xs font-medium text-gray-600 uppercase tracking-wide">Dosage</th>
+                                <th className="py-3 px-4 text-xs font-medium text-gray-600 uppercase tracking-wide">Dosage Unit</th>
+                                <th className="py-3 px-4 text-xs font-medium text-gray-600 uppercase tracking-wide">Dosage Frequency</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {historySessions.map((session) => (
+                                <tr
+                                  key={session.id}
+                                  onClick={() => router.push(`/AMS/athlete-management/${athleteId}/consultation/${session.id}`)}
+                                  className="border-b border-gray-100 hover:bg-blue-50 cursor-pointer"
+                                >
+                                  <td className="py-3 px-4 text-sm text-gray-900 whitespace-nowrap">
+                                    {session.date_of_consult
+                                      ? new Date(session.date_of_consult).toLocaleDateString("en-CA")
+                                      : "—"}
+                                  </td>
+                                  <td className="py-3 px-4 text-sm text-gray-900">
+                                    {session.nutritionist_name || "—"}
+                                  </td>
+                                  <td className="py-3 px-4 text-sm">
+                                    {session.type_of_consult ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                        {session.type_of_consult}
+                                      </span>
+                                    ) : "—"}
+                                  </td>
+                                  <td className="py-3 px-4 text-sm text-gray-900">
+                                    {session.supplement_name || "—"}
+                                  </td>
+                                  <td className="py-3 px-4 text-sm text-gray-900">
+                                    {session.batch_number || "—"}
+                                  </td>
+                                  <td className="py-3 px-4 text-sm text-gray-900">
+                                    {session.dosage ?? "—"}
+                                  </td>
+                                  <td className="py-3 px-4 text-sm text-gray-900">
+                                    {session.dosage_unit || "—"}
+                                  </td>
+                                  <td className="py-3 px-4 text-sm text-gray-900">
+                                    {session.dosage_frequency || "—"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

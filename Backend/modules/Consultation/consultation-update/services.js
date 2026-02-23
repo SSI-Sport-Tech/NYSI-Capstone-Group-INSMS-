@@ -238,12 +238,25 @@ export async function getAllConsultationSessions(athleteId) {
             s.time_of_consult,
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
-            sn.consultation_objective
+            sn.consultation_objective,
+            sup.supplement_name,
+            ib.batch_number,
+            sp.dosage,
+            sp.dosage_unit,
+            sp.dosage_frequency
         FROM consultation.sessions s
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
         LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
         LEFT JOIN consultation.session_note sn ON sn.sessions_id = s.id
+        LEFT JOIN LATERAL (
+            SELECT sp2.dosage, sp2.dosage_unit, sp2.dosage_frequency, sp2.batch_id
+            FROM consultation.session_prescription sp2
+            WHERE sp2.sessions_id = s.id
+            LIMIT 1
+        ) sp ON true
+        LEFT JOIN sss.inventory_batch ib ON sp.batch_id = ib.id
+        LEFT JOIN sss.supplement sup ON ib.supplement_id = sup.id
         WHERE s.athlete_id = $1
         ORDER BY s.date_of_consult DESC NULLS LAST
     `;
