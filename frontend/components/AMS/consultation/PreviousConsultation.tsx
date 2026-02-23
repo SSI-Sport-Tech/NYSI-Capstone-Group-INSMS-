@@ -6,6 +6,7 @@ interface PreviousConsultationProps {
   sessionId: string;
   isNewConsultation?: boolean;
   newSessionId?: string;
+  readOnly?: boolean;
 }
 
 interface ConsultationData {
@@ -84,9 +85,10 @@ const emptyForm: CurrentConsultForm = {
 
 export default function PreviousConsultation({
   athleteId,
-  sessionId: _sessionId,
+  sessionId,
   isNewConsultation,
   newSessionId,
+  readOnly,
 }: PreviousConsultationProps) {
   const [consultationData, setConsultationData] =
     useState<ConsultationData | null>(null);
@@ -102,54 +104,80 @@ export default function PreviousConsultation({
         setLoading(true);
         setError(null);
 
-        const latestSession = (await consultationApi.getLatestConsultation(
-          athleteId,
-        )) as {
-          data: {
-            id: string;
-            athlete_id: string;
-            date_of_consult: string;
-            nutritionist_name: string;
+        let targetId: string;
+        let dateOfConsult: string;
+        let nutritionistName: string;
+        let athleteId_: string;
+
+        if (readOnly && sessionId) {
+          // In readOnly (history view), fetch the specific session by sessionId
+          const sessionRes = (await apiCall(
+            `/api/Consultation/consultation-update/${sessionId}`,
+          )) as {
+            data: {
+              id: string;
+              athlete_id: string;
+              date_of_consult: string;
+              nutritionist_name: string;
+            };
           };
+          targetId = sessionRes.data.id;
+          dateOfConsult = sessionRes.data.date_of_consult;
+          nutritionistName = sessionRes.data.nutritionist_name;
+          athleteId_ = sessionRes.data.athlete_id;
+        } else {
+          // Default: fetch latest consultation for athlete
+          const latestSession = (await consultationApi.getLatestConsultation(
+            athleteId,
+          )) as {
+            data: {
+              id: string;
+              athlete_id: string;
+              date_of_consult: string;
+              nutritionist_name: string;
+            };
+          };
+          if (!latestSession?.data) {
+            setLoading(false);
+            return;
+          }
+          targetId = latestSession.data.id;
+          dateOfConsult = latestSession.data.date_of_consult;
+          nutritionistName = latestSession.data.nutritionist_name;
+          athleteId_ = latestSession.data.athlete_id;
+        }
+
+        const [detailsResponse, prescriptionsResponse] =
+          await Promise.allSettled([
+            apiCall(`/api/Consultation/consultation-details/${targetId}`),
+            consultationApi.getPrescriptions(targetId),
+          ]);
+
+        const consultationData: ConsultationData = {
+          id: targetId,
+          athlete_id: athleteId_,
+          date_of_consult: dateOfConsult,
+          nutritionist_name: nutritionistName,
+          intervention_status: "Supplement Intake",
+          details:
+            detailsResponse.status === "fulfilled"
+              ? (
+                  detailsResponse.value as {
+                    data: ConsultationData["details"];
+                  }
+                ).data
+              : null,
+          prescriptions:
+            prescriptionsResponse.status === "fulfilled"
+              ? (
+                  prescriptionsResponse.value as {
+                    data: ConsultationData["prescriptions"];
+                  }
+                ).data || []
+              : [],
         };
 
-        if (latestSession?.data) {
-          const sessionData = latestSession.data;
-
-          const [detailsResponse, prescriptionsResponse] =
-            await Promise.allSettled([
-              apiCall(
-                `/api/Consultation/consultation-details/${sessionData.id}`,
-              ),
-              consultationApi.getPrescriptions(sessionData.id),
-            ]);
-
-          const consultationData: ConsultationData = {
-            id: sessionData.id,
-            athlete_id: sessionData.athlete_id,
-            date_of_consult: sessionData.date_of_consult,
-            nutritionist_name: sessionData.nutritionist_name,
-            intervention_status: "Supplement Intake",
-            details:
-              detailsResponse.status === "fulfilled"
-                ? (
-                    detailsResponse.value as {
-                      data: ConsultationData["details"];
-                    }
-                  ).data
-                : null,
-            prescriptions:
-              prescriptionsResponse.status === "fulfilled"
-                ? (
-                    prescriptionsResponse.value as {
-                      data: ConsultationData["prescriptions"];
-                    }
-                  ).data || []
-                : [],
-          };
-
-          setConsultationData(consultationData);
-        }
+        setConsultationData(consultationData);
       } catch (err) {
         console.error("Error fetching previous consultation:", err);
         setError("Failed to load previous consultation data");
@@ -158,10 +186,10 @@ export default function PreviousConsultation({
       }
     };
 
-    if (athleteId) {
+    if (readOnly ? sessionId : athleteId) {
       fetchPreviousConsultation();
     }
-  }, [athleteId]);
+  }, [athleteId, sessionId, readOnly]);
 
   const updateForm = (field: keyof CurrentConsultForm, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -224,8 +252,8 @@ export default function PreviousConsultation({
     }
   };
 
-  // Render "Current Consultation" form when isNewConsultation=true
-  if (isNewConsultation) {
+  // Render "Current Consultation" form when isNewConsultation=true (and not in readOnly mode)
+  if (isNewConsultation && !readOnly) {
     const today = new Date().toLocaleDateString();
 
     return (
@@ -457,7 +485,7 @@ export default function PreviousConsultation({
     >
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">
-          Previous Consultation
+          {readOnly ? "Consultation Notes" : "Previous Consultation"}
         </h2>
         <span className="text-sm text-gray-500">
           {new Date(consultationData.date_of_consult).toLocaleDateString()}

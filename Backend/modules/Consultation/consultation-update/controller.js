@@ -74,6 +74,42 @@ export async function getLatestConsultationSession(req, res) {
 }
 
 // ============================================================================
+// GET ALL CONSULTATION SESSIONS
+// ============================================================================
+
+export async function getAllConsultationSessions(req, res) {
+    try {
+        const { athleteId } = athleteIdParamSchema.parse(req.params);
+
+        // Verify athlete exists
+        const athleteCheck = await pool.query(
+            'SELECT id FROM ams.athlete WHERE id = $1',
+            [athleteId]
+        );
+        if (athleteCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Athlete not found' });
+        }
+
+        const sessions = await services.getAllConsultationSessions(athleteId);
+
+        res.json({ data: sessions });
+
+    } catch (error) {
+        if (error.name === 'ZodError') {
+            return res.status(400).json({
+                error: 'Invalid athlete ID format',
+                details: error.errors.map(e => ({
+                    field: e.path.join('.'),
+                    message: e.message,
+                })),
+            });
+        }
+        console.error('Error fetching all consultation sessions:', error);
+        res.status(500).json({ error: 'Failed to fetch consultation sessions', message: error.message });
+    }
+}
+
+// ============================================================================
 // CREATE CONSULTATION SESSION
 // ============================================================================
 

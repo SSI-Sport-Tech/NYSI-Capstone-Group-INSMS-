@@ -56,6 +56,18 @@ export default function AthleteDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("profile");
 
+  // History tab state
+  interface ConsultationSummary {
+    id: string;
+    date_of_consult: string;
+    type_of_consult: string | null;
+    nutritionist_name: string | null;
+    consultation_objective: string | null;
+  }
+  const [historySessions, setHistorySessions] = useState<ConsultationSummary[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string>("");
+
   useEffect(() => {
     if (athleteId) {
       fetchAthleteProfile();
@@ -71,6 +83,31 @@ export default function AthleteDetailPage() {
       setActiveTab("profile"); // Default to profile if no valid tab param
     }
   }, [searchParams]);
+
+  // Fetch all consultation sessions when history tab is active
+  useEffect(() => {
+    if (activeTab !== "history" || !athleteId) return;
+    const fetchHistory = async () => {
+      setHistoryLoading(true);
+      setHistoryError("");
+      try {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+        const token = localStorage.getItem("token");
+        const res = await fetch(
+          `${backendUrl}/api/Consultation/consultation-update/athlete/${athleteId}/all`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
+        const data = await res.json();
+        setHistorySessions(data.data || []);
+      } catch {
+        setHistoryError("Failed to load consultation history.");
+      } finally {
+        setHistoryLoading(false);
+      }
+    };
+    fetchHistory();
+  }, [activeTab, athleteId]);
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
@@ -471,27 +508,63 @@ export default function AthleteDetailPage() {
               )}
 
               {activeTab === "history" && (
-                <div className="text-center py-12">
-                  <svg
-                    className="mx-auto h-12 w-12 text-gray-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">
-                    No history data
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Historical information will be displayed here once
-                    available.
-                  </p>
+                <div className="p-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Consultation History</h2>
+                  {historyLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-2"></div>
+                      <span className="text-gray-600">Loading history...</span>
+                    </div>
+                  ) : historyError ? (
+                    <div className="text-center py-8">
+                      <p className="text-red-600">{historyError}</p>
+                    </div>
+                  ) : historySessions.length === 0 ? (
+                    <div className="text-center py-12">
+                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">No consultation history</h3>
+                      <p className="mt-1 text-sm text-gray-500">No past consultations found for this athlete.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="border-b border-gray-200 bg-gray-50">
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Date</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Consult Type</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Nutritionist</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Objective</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {historySessions.map((session) => (
+                            <tr
+                              key={session.id}
+                              onClick={() => router.push(`/AMS/athlete-management/${athleteId}/consultation/${session.id}`)}
+                              className="border-b border-gray-100 hover:bg-blue-50 cursor-pointer"
+                            >
+                              <td className="py-3 px-4 text-sm text-gray-900">
+                                {session.date_of_consult
+                                  ? new Date(session.date_of_consult).toLocaleDateString()
+                                  : "—"}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-900">
+                                {session.type_of_consult || "—"}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-900">
+                                {session.nutritionist_name || "—"}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-900 max-w-xs truncate">
+                                {session.consultation_objective || "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

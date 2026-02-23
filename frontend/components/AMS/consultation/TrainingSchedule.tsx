@@ -6,6 +6,7 @@ interface TrainingScheduleProps {
   sessionId: string;
   isNewConsultation?: boolean;
   newSessionId?: string;
+  readOnly?: boolean;
 }
 
 interface TrainingScheduleData {
@@ -133,9 +134,10 @@ export default function TrainingSchedule({
   sessionId,
   isNewConsultation,
   newSessionId,
+  readOnly,
 }: TrainingScheduleProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const effectiveEditing = isEditing || !!isNewConsultation;
+  const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
   const targetSessionId =
     isNewConsultation && newSessionId ? newSessionId : sessionId;
 
@@ -294,22 +296,24 @@ export default function TrainingSchedule({
         <h2 className="text-xl font-semibold text-gray-900">
           Training Schedule
         </h2>
-        <div className="flex items-center gap-2">
-          {effectiveEditing && !isNewConsultation && (
+        {!readOnly && (
+          <div className="flex items-center gap-2">
+            {effectiveEditing && !isNewConsultation && (
+              <button
+                onClick={handleCancel}
+                className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+            )}
             <button
-              onClick={handleCancel}
-              className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+              onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
+              className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
             >
-              Cancel
+              {effectiveEditing ? "Save" : "Edit"}
             </button>
-          )}
-          <button
-            onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
-            className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
-          >
-            {effectiveEditing ? "Save" : "Edit"}
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}

@@ -9,6 +9,7 @@ interface AnthropometryProps {
   sessionId: string;
   isNewConsultation?: boolean;
   newSessionId?: string;
+  readOnly?: boolean;
 }
 
 interface AnthropometryData {
@@ -90,6 +91,7 @@ export default function Anthropometry({
   sessionId,
   isNewConsultation,
   newSessionId,
+  readOnly,
 }: AnthropometryProps) {
   const [anthropometryData, setAnthropometryData] =
     useState<AnthropometryData | null>(null);
@@ -98,7 +100,7 @@ export default function Anthropometry({
   const [isEditing, setIsEditing] = useState(false);
   const [saveError, setSaveError] = useState<string>("");
 
-  const effectiveEditing = isEditing || !!isNewConsultation;
+  const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
 
   const emptyForm: EditForm = {
     height: "",
@@ -517,12 +519,14 @@ export default function Anthropometry({
     <section id="anthropometry" className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Anthropometry</h2>
-        <button
-          onClick={() => setIsEditing(true)}
-          className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
-        >
-          Edit
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
+          >
+            Edit
+          </button>
+        )}
       </div>
 
       <div className="space-y-6">

@@ -6,6 +6,7 @@ interface MealLogsProps {
   sessionId: string;
   isNewConsultation?: boolean;
   newSessionId?: string;
+  readOnly?: boolean;
 }
 
 interface MealSlot {
@@ -95,6 +96,7 @@ export default function MealLogs({
   sessionId,
   isNewConsultation,
   newSessionId,
+  readOnly,
 }: MealLogsProps) {
   const [mealLog, setMealLog] = useState<MealLogData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,7 +105,7 @@ export default function MealLogs({
   const [editLog, setEditLog] = useState<EditLog>(emptyEditLog);
   const [saveError, setSaveError] = useState<string>("");
 
-  const effectiveEditing = isEditing || !!isNewConsultation;
+  const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
   const targetSessionId =
     isNewConsultation && newSessionId ? newSessionId : sessionId;
 
@@ -232,22 +234,24 @@ export default function MealLogs({
     <section id="meal-logs" className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Meal Logs</h2>
-        <div className="flex items-center gap-2">
-          {effectiveEditing && !isNewConsultation && (
+        {!readOnly && (
+          <div className="flex items-center gap-2">
+            {effectiveEditing && !isNewConsultation && (
+              <button
+                onClick={handleCancel}
+                className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+            )}
             <button
-              onClick={handleCancel}
-              className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+              onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
+              className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
             >
-              Cancel
+              {effectiveEditing ? "Save" : "Edit"}
             </button>
-          )}
-          <button
-            onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
-            className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
-          >
-            {effectiveEditing ? "Save" : "Edit"}
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
