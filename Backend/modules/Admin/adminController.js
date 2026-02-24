@@ -573,3 +573,157 @@ export async function getUserActivity(req, res) {
         });
     }
 }
+// ============================================================================
+// GET AUDIT LOGS
+// ============================================================================
+
+/**
+ * Get audit logs with filters (admin only)
+ * GET /api/admin/audit-logs
+ */
+export async function getAuditLogs(req, res) {
+    try {
+        console.log('📋 Admin fetching audit logs...');
+        console.log('Requested by:', req.user.email, '(', req.user.role, ')');
+
+        // Optional filters from query params
+        const { user_id, table_name, action, limit } = req.query;
+
+        const logs = await adminservices.getAuditLogs({
+            user_id,
+            table_name,
+            action,
+            limit: limit ? parseInt(limit) : 50,
+        });
+
+        console.log(`Found ${logs.length} audit log entries`);
+
+        res.json({
+            message: 'Audit logs retrieved successfully',
+            count: logs.length,
+            data: logs,
+        });
+
+    } catch (error) {
+        console.error('Error fetching audit logs:', error);
+        res.status(500).json({
+            error: 'Failed to fetch audit logs',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
+        });
+    }
+}
+
+// ============================================================================
+// GET AUDIT LOG STATISTICS
+// ============================================================================
+
+/**
+ * Get audit log statistics (admin only)
+ * GET /api/admin/audit-logs/statistics
+ */
+export async function getAuditLogStatistics(req, res) {
+    try {
+        console.log('📊 Admin fetching audit log statistics...');
+        console.log('Requested by:', req.user.email);
+
+        const { user_id } = req.query;
+
+        const stats = await adminservices.getAuditLogStatistics(user_id);
+
+        console.log('Audit log statistics retrieved');
+
+        res.json({
+            message: 'Audit log statistics retrieved successfully',
+            statistics: {
+                total_logs: parseInt(stats.total_logs),
+                creates: parseInt(stats.creates),
+                updates: parseInt(stats.updates),
+                deletes: parseInt(stats.deletes),
+                tables_affected: parseInt(stats.tables_affected),
+                earliest_log: stats.earliest_log,
+                latest_log: stats.latest_log,
+            },
+        });
+
+    } catch (error) {
+        console.error('Error fetching audit log statistics:', error);
+        res.status(500).json({
+            error: 'Failed to fetch audit log statistics',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
+        });
+    }
+}
+
+// ============================================================================
+// GET AUDITED TABLES
+// ============================================================================
+
+/**
+ * Get list of unique table names in audit log (admin only)
+ * GET /api/admin/audit-logs/tables
+ */
+export async function getAuditedTables(req, res) {
+    try {
+        console.log('📋 Admin fetching audited tables...');
+        console.log('Requested by:', req.user.email);
+
+        const tables = await adminservices.getAuditedTables();
+
+        console.log(`Found ${tables.length} audited tables`);
+
+        res.json({
+            message: 'Audited tables retrieved successfully',
+            count: tables.length,
+            tables: tables,
+        });
+
+    } catch (error) {
+        console.error('Error fetching audited tables:', error);
+        res.status(500).json({
+            error: 'Failed to fetch audited tables',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
+        });
+    }
+}
+
+// ============================================================================
+// GET RECORD AUDIT HISTORY
+// ============================================================================
+
+/**
+ * Get audit history for a specific record (admin only)
+ * GET /api/admin/audit-logs/:tableName/:recordId
+ */
+export async function getRecordAuditHistory(req, res) {
+    try {
+        console.log('📝 Admin fetching record audit history...');
+        console.log('Table:', req.params.tableName);
+        console.log('Record ID:', req.params.recordId);
+        console.log('Requested by:', req.user.email);
+
+        const { limit } = req.query;
+
+        const logs = await adminservices.getRecordAuditHistory(
+            req.params.tableName,
+            req.params.recordId,
+            limit ? parseInt(limit) : 10
+        );
+
+        console.log(`Found ${logs.length} audit log entries for record`);
+
+        res.json({
+            message: 'Record audit history retrieved successfully',
+            table_name: req.params.tableName,
+            record_id: req.params.recordId,
+            count: logs.length,
+            data: logs,
+        });
+
+    } catch (error) {
+        console.error('Error fetching record audit history:', error);
+        res.status(500).json({
+            error: 'Failed to fetch record audit history',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
+        });
+    }
+}

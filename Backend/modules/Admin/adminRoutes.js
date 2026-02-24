@@ -14,6 +14,10 @@ import {
     updateUser,
     deleteUser,
     getUserActivity,
+    getAuditLogs,
+    getAuditLogStatistics,
+    getAuditedTables,
+    getRecordAuditHistory,
 } from './adminController.js';
 import { authenticateToken, requireAdmin } from '../Auth/authMiddleware.js';
 
@@ -359,5 +363,242 @@ router.delete('/users/:id', deleteUser);
  *          description: Admins can only manage Nutritionists
  */
 router.get('/users/:id/activity', getUserActivity);
+/**
+ * @swagger
+ * /api/admin/audit-logs:
+ *   get:
+ *     summary: Get audit logs
+ *     description: Get audit logs with optional filters for user, table, and action
+ *     tags: [Admin - Audit]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: user_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by user ID
+ *         example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+ *       - in: query
+ *         name: table_name
+ *         schema:
+ *           type: string
+ *         description: Filter by table name
+ *         example: users
+ *       - in: query
+ *         name: action
+ *         schema:
+ *           type: string
+ *           enum: [CREATE, UPDATE, DELETE]
+ *         description: Filter by action type
+ *         example: UPDATE
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *           maximum: 200
+ *         description: Number of logs to return (max 200)
+ *         example: 50
+ *     responses:
+ *       200:
+ *         description: List of audit logs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Audit logs retrieved successfully
+ *                 count:
+ *                   type: integer
+ *                   example: 15
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       user_id:
+ *                         type: string
+ *                         format: uuid
+ *                       table_name:
+ *                         type: string
+ *                       record_id:
+ *                         type: string
+ *                       action:
+ *                         type: string
+ *                         enum: [CREATE, UPDATE, DELETE]
+ *                       old_values:
+ *                         type: object
+ *                       new_values:
+ *                         type: object
+ *                       changed_on:
+ *                         type: string
+ *                         format: date-time
+ *             example:
+ *               message: Audit logs retrieved successfully
+ *               count: 2
+ *               data:
+ *                 - id: log-uuid-1
+ *                   user_id: user-uuid
+ *                   table_name: users
+ *                   record_id: record-uuid
+ *                   action: UPDATE
+ *                   old_values:
+ *                     first_name: John
+ *                     role: NUTRITIONIST
+ *                   new_values:
+ *                     first_name: Jonathan
+ *                     role: ADMIN
+ *                   changed_on: "2024-12-15T10:30:00Z"
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Not authorized (requires ADMIN or IT_ADMIN)
+ */
+router.get('/audit-logs', getAuditLogs);
+
+/**
+ * @swagger
+ * /api/admin/audit-logs/statistics:
+ *   get:
+ *     summary: Get audit log statistics
+ *     description: Get aggregate statistics about audit logs
+ *     tags: [Admin - Audit]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: user_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional - filter statistics by user ID
+ *     responses:
+ *       200:
+ *         description: Audit log statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 statistics:
+ *                   type: object
+ *                   properties:
+ *                     total_logs:
+ *                       type: integer
+ *                     creates:
+ *                       type: integer
+ *                     updates:
+ *                       type: integer
+ *                     deletes:
+ *                       type: integer
+ *                     tables_affected:
+ *                       type: integer
+ *                     earliest_log:
+ *                       type: string
+ *                       format: date-time
+ *                     latest_log:
+ *                       type: string
+ *                       format: date-time
+ */
+router.get('/audit-logs/statistics', getAuditLogStatistics);
+
+/**
+ * @swagger
+ * /api/admin/audit-logs/tables:
+ *   get:
+ *     summary: Get audited table names
+ *     description: Get list of unique table names that have audit logs
+ *     tags: [Admin - Audit]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of audited tables
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 count:
+ *                   type: integer
+ *                 tables:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *             example:
+ *               message: Audited tables retrieved successfully
+ *               count: 5
+ *               tables:
+ *                 - users
+ *                 - athlete
+ *                 - coach
+ *                 - supplement
+ *                 - batch
+ */
+router.get('/audit-logs/tables', getAuditedTables);
+
+/**
+ * @swagger
+ * /api/admin/audit-logs/{tableName}/{recordId}:
+ *   get:
+ *     summary: Get audit history for a specific record
+ *     description: Get all audit logs for a specific record in a table
+ *     tags: [Admin - Audit]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: tableName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Table name
+ *         example: users
+ *       - in: path
+ *         name: recordId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Record ID
+ *         example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Maximum number of logs to return
+ *     responses:
+ *       200:
+ *         description: Record audit history
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 table_name:
+ *                   type: string
+ *                 record_id:
+ *                   type: string
+ *                 count:
+ *                   type: integer
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ */
+router.get('/audit-logs/:tableName/:recordId', getRecordAuditHistory);
 
 export default router;

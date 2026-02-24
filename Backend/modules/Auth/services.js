@@ -47,7 +47,7 @@ export async function getUserById(userId) {
             id,
             email,
             first_name,
-            last_name,
+            last_name
         FROM auth.users
         WHERE id = $1
     `;

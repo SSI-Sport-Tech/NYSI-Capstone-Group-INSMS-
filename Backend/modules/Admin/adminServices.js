@@ -247,3 +247,135 @@ export async function getUserStatistics() {
     const result = await pool.query(query);
     return result.rows[0];
 }
+
+/**
+ * Get audit logs with optional filters
+ * @param {Object} filters - Optional filters
+ * @param {string} filters.user_id - Filter by user ID
+ * @param {string} filters.table_name - Filter by table name
+ * @param {string} filters.action - Filter by action (CREATE, UPDATE, DELETE)
+ * @param {number} filters.limit - Maximum number of logs to return (default: 50)
+ * @returns {Promise<Array>} Array of audit log entries
+ */
+export async function getAuditLogs(filters = {}) {
+    let query = `
+        SELECT 
+            id,
+            user_id,
+            table_name,
+            record_id,
+            action,
+            old_values,
+            new_values,
+            changed_on
+        FROM audit.audit_log
+        WHERE 1=1
+    `;
+
+    const values = [];
+    let paramCount = 0;
+
+    // Add user_id filter
+    if (filters.user_id) {
+        paramCount++;
+        query += ` AND user_id = $${paramCount}`;
+        values.push(filters.user_id);
+    }
+
+    // Add table_name filter
+    if (filters.table_name) {
+        paramCount++;
+        query += ` AND table_name = $${paramCount}`;
+        values.push(filters.table_name);
+    }
+
+    // Add action filter
+    if (filters.action) {
+        paramCount++;
+        query += ` AND action = $${paramCount}`;
+        values.push(filters.action);
+    }
+
+    // Order by most recent first
+    query += ` ORDER BY changed_on DESC`;
+
+    // Add limit
+    paramCount++;
+    query += ` LIMIT $${paramCount}`;
+    values.push(parseInt(filters.limit) || 50);
+
+    const result = await pool.query(query, values);
+    return result.rows;
+}
+
+/**
+ * Get audit log statistics
+ * @param {string} userId - Optional user ID to filter by
+ * @returns {Promise<Object>} Audit log statistics
+ */
+export async function getAuditLogStatistics(userId = null) {
+    let query = `
+        SELECT
+            COUNT(*) AS total_logs,
+            COUNT(*) FILTER (WHERE action = 'CREATE') AS creates,
+            COUNT(*) FILTER (WHERE action = 'UPDATE') AS updates,
+            COUNT(*) FILTER (WHERE action = 'DELETE') AS deletes,
+            COUNT(DISTINCT table_name) AS tables_affected,
+            MIN(changed_on) AS earliest_log,
+            MAX(changed_on) AS latest_log
+        FROM audit.audit_log
+    `;
+
+    const values = [];
+
+    if (userId) {
+        query += ` WHERE user_id = $1`;
+        values.push(userId);
+    }
+
+    const result = await pool.query(query, values);
+    return result.rows[0];
+}
+
+/**
+ * Get unique table names from audit log
+ * @returns {Promise<Array>} Array of unique table names
+ */
+export async function getAuditedTables() {
+    const query = `
+        SELECT DISTINCT table_name
+        FROM audit.audit_log
+        ORDER BY table_name
+    `;
+
+    const result = await pool.query(query);
+    return result.rows.map(row => row.table_name);
+}
+
+/**
+ * Get recent audit logs for a specific record
+ * @param {string} tableName - Table name
+ * @param {string} recordId - Record ID
+ * @param {number} limit - Maximum number of logs (default: 10)
+ * @returns {Promise<Array>} Array of audit logs for the record
+ */
+export async function getRecordAuditHistory(tableName, recordId, limit = 10) {
+    const query = `
+        SELECT 
+            id,
+            user_id,
+            table_name,
+            record_id,
+            action,
+            old_values,
+            new_values,
+            changed_on
+        FROM audit.audit_log
+        WHERE table_name = $1 AND record_id = $2
+        ORDER BY changed_on DESC
+        LIMIT $3
+    `;
+
+    const result = await pool.query(query, [tableName, recordId, limit]);
+    return result.rows;
+}
