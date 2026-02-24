@@ -1,5 +1,5 @@
 import * as services from './services.js';
-import { createSportSchema, bulkDeleteSchema } from './validation.js';
+import { createSportSchema, updateSportSchema, uuidParamSchema, bulkDeleteSchema } from './validation.js';
 
 // ============================================================================
 // LIST SPORTS
@@ -94,5 +94,45 @@ export async function deleteSports(req, res) {
         }
         console.error('Error deleting sports:', error);
         res.status(500).json({ error: 'Failed to delete sports', message: error.message });
+    }
+}
+
+// ============================================================================
+// UPDATE SPORT (toggle is_active)
+// ============================================================================
+
+export async function updateSport(req, res) {
+    try {
+        // Step 1: Validate ID
+        const { id } = uuidParamSchema.parse(req.params);
+
+        // Step 2: Check sport exists
+        const existing = await services.getSportById(id);
+        if (!existing) {
+            return res.status(404).json({ error: 'Sport not found' });
+        }
+
+        // Step 3: Validate body
+        const validated = updateSportSchema.parse(req.body);
+
+        // Step 4: Update
+        const updated = await services.updateSportStatus(id, validated.is_active);
+
+        res.json({
+            message: 'Sport updated successfully',
+            data: updated,
+        });
+    } catch (error) {
+        if (error.name === 'ZodError') {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.issues.map(e => ({
+                    field: e.path.join('.'),
+                    message: e.message,
+                })),
+            });
+        }
+        console.error('Error updating sport:', error);
+        res.status(500).json({ error: 'Failed to update sport', message: error.message });
     }
 }

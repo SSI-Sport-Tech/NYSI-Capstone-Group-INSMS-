@@ -48,7 +48,7 @@ const SportsSection: React.FC<SportsSectionProps> = ({
 
     const handleToggleActive = async (sport: Sport) => {
         try {
-            const token = localStorage.getItem("nysi_auth_token");
+            const token = localStorage.getItem("token");
             await axios.patch(
                 `http://localhost:8000/api/AMS/sports/${sport.id}`,
                 { is_active: !sport.is_active },
@@ -85,7 +85,7 @@ const SportsSection: React.FC<SportsSectionProps> = ({
         }
 
         try {
-            const token = localStorage.getItem("nysi_auth_token");
+            const token = localStorage.getItem("token");
             await axios.delete("http://localhost:8000/api/AMS/sports", {
                 data: { ids: selectedSports },
                 headers: {
@@ -212,8 +212,8 @@ const SportsSection: React.FC<SportsSectionProps> = ({
                                         <td className="px-6 py-4">
                                             <span
                                                 className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${sport.is_active
-                                                        ? "bg-green-100 text-green-800"
-                                                        : "bg-gray-100 text-gray-800"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : "bg-gray-100 text-gray-800"
                                                     }`}
                                             >
                                                 {sport.is_active ? "Active" : "Inactive"}
@@ -222,17 +222,10 @@ const SportsSection: React.FC<SportsSectionProps> = ({
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
-                                                    onClick={() => handleEdit(sport)}
-                                                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                    title="Edit"
-                                                >
-                                                    <Edit className="w-4 h-4" />
-                                                </button>
-                                                <button
                                                     onClick={() => handleToggleActive(sport)}
                                                     className={`p-1.5 rounded-lg transition-colors ${sport.is_active
-                                                            ? "text-orange-600 hover:bg-orange-50"
-                                                            : "text-green-600 hover:bg-green-50"
+                                                        ? "text-orange-600 hover:bg-orange-50"
+                                                        : "text-green-600 hover:bg-green-50"
                                                         }`}
                                                     title={sport.is_active ? "Deactivate" : "Activate"}
                                                 >

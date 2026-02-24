@@ -42,7 +42,7 @@ const EditSportModal: React.FC<EditSportModalProps> = ({
         setLoading(true);
 
         try {
-            const token = localStorage.getItem("nysi_auth_token");
+            const token = localStorage.getItem("token");
             await axios.patch(
                 `http://localhost:8000/api/AMS/sports/${sport.id}`,
                 { sport: sportName.trim() },

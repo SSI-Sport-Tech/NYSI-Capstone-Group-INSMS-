@@ -84,7 +84,7 @@ const CoachesSection: React.FC<CoachesSectionProps> = ({
         }
 
         try {
-            const token = localStorage.getItem("nysi_auth_token");
+            const token = localStorage.getItem("token");
             await axios.delete("http://localhost:8000/api/AMS/coaches", {
                 data: { ids: selectedCoaches },
                 headers: {

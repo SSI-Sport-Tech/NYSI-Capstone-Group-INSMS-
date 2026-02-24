@@ -132,7 +132,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
 
   const loadSports = async () => {
     try {
-      const token = localStorage.getItem("nysi_auth_token");
+      const token = localStorage.getItem("token");
       const response = await axios.get<{ data: Sport[] }>(
         "http://localhost:8000/api/AMS/sports",
         {
@@ -147,7 +147,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
 
   const loadCoaches = async () => {
     try {
-      const token = localStorage.getItem("nysi_auth_token");
+      const token = localStorage.getItem("token");
       const response = await axios.get<{ data: Coach[] }>(
         "http://localhost:8000/api/AMS/coaches",
         {
@@ -162,7 +162,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
 
   const loadNutritionists = async () => {
     try {
-      const token = localStorage.getItem("nysi_auth_token");
+      const token = localStorage.getItem("token");
       const response = await axios.get<{ data: Nutritionist[] }>(
         "http://localhost:8000/api/AMS/nutritionists/nutritionists",
         {
@@ -209,7 +209,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
     if (!newSportName.trim()) return;
     setAddingSport(true);
     try {
-      const authToken = localStorage.getItem("nysi_auth_token");
+      const authToken = localStorage.getItem("token");
       const response = await axios.post(
         "http://localhost:8000/api/AMS/sports",
         { sport: newSportName.trim() },
@@ -232,7 +232,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
     if (!newCoachName.trim() || !newCoachSportId) return;
     setAddingCoach(true);
     try {
-      const authToken = localStorage.getItem("nysi_auth_token");
+      const authToken = localStorage.getItem("token");
       const response = await axios.post(
         "http://localhost:8000/api/AMS/coaches",
         { name: newCoachName.trim(), sport_id: newCoachSportId },
@@ -297,8 +297,8 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
         // Nutritionist assignment (for admin users only)
         ...(isAdmin &&
           formData.nutritionist_id && {
-            nutritionist_id: formData.nutritionist_id,
-          }),
+          nutritionist_id: formData.nutritionist_id,
+        }),
       };
 
       // Choose the correct endpoint based on user role
@@ -591,11 +591,10 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                       coaches.map((coach) => (
                         <label
                           key={coach.id}
-                          className={`flex items-center space-x-2 py-1 ${
-                            formData.coach_ids.includes(coach.id)
+                          className={`flex items-center space-x-2 py-1 ${formData.coach_ids.includes(coach.id)
                               ? "text-black"
                               : "text-gray-400"
-                          }`}
+                            }`}
                         >
                           <input
                             type="checkbox"

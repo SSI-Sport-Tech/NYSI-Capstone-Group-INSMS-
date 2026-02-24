@@ -65,7 +65,7 @@ export default function SportsCoachesPage() {
         setError("");
 
         try {
-            const token = localStorage.getItem("nysi_auth_token");
+            const token = localStorage.getItem("token");
             const response = await axios.get<{ data: Sport[] }>(
                 "http://localhost:8000/api/AMS/sports",
                 {
@@ -95,7 +95,7 @@ export default function SportsCoachesPage() {
         setError("");
 
         try {
-            const token = localStorage.getItem("nysi_auth_token");
+            const token = localStorage.getItem("token");
             const response = await axios.get<{ data: Coach[] }>(
                 "http://localhost:8000/api/AMS/coaches",
                 {
