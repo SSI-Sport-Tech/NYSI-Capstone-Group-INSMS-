@@ -18,12 +18,12 @@ import NewPrescriptionForm from "./consultation/NewPrescriptionForm";
 interface LatestConsultation {
   id: string;
   athlete_id: string;
-  athlete_name: string;
+  athlete_name_abbr: string;
   date_of_consult: string;
-  follow_up_date: string;
+  date_of_next_follow_up: string;
   nutritionist_name: string;
   consultation_objective: string;
-  consult_type: string;
+  type_of_consult: string;
 }
 
 interface ConsultationViewProps {
@@ -187,7 +187,7 @@ export default function ConsultationView({
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-xl font-semibold text-gray-900">
-              {(latestConsultation?.athlete_name || athleteName)}&apos;s Details
+              {(latestConsultation?.athlete_name_abbr || athleteName)}&apos;s Details
             </h1>
             <div className="flex items-center gap-2">
               {isNewConsultation ? (
@@ -254,9 +254,9 @@ export default function ConsultationView({
                   <div>
                     <span className="text-gray-900">Follow Up Date:</span>
                     <span className="ml-2 font-medium">
-                      {displaySession.follow_up_date
+                      {displaySession.date_of_next_follow_up
                         ? new Date(
-                            displaySession.follow_up_date,
+                            displaySession.date_of_next_follow_up,
                           ).toLocaleDateString()
                         : "Not set"}
                     </span>
@@ -272,7 +272,7 @@ export default function ConsultationView({
                   <div>
                     <span className="text-gray-900">Consult Type:</span>
                     <span className="ml-2 font-medium">
-                      {displaySession.consult_type || "—"}
+                      {displaySession.type_of_consult || "—"}
                     </span>
                   </div>
 
