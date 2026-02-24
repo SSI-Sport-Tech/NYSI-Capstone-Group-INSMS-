@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   consultationApi,
   ConsultationApiError,
@@ -44,9 +44,70 @@ export default function ConsultationView({
 
   // New consultation state
   const [isNewConsultation, setIsNewConsultation] = useState(false);
-  const [newSessionId, setNewSessionId] = useState<string>("");
+  // newSessionId is kept only so ensureSession can update it for display;
+  // the authoritative value for saves is sessionIdRef.current
+  const [, setNewSessionId] = useState<string>("");
   const [newConsultation, setNewConsultation] =
     useState<LatestConsultation | null>(null);
+
+  // Refs for lazy session creation
+  const sessionIdRef = useRef<string>("");
+  const sessionCreationRef = useRef<Promise<string> | null>(null);
+
+  // Creates the consultation session on first card save (lazy).
+  // Concurrent callers all wait for the same in-flight promise.
+  const ensureSession = useCallback(async (): Promise<string> => {
+    if (sessionIdRef.current) return sessionIdRef.current;
+    if (sessionCreationRef.current) return sessionCreationRef.current;
+
+    sessionCreationRef.current = (async () => {
+      try {
+        const token = localStorage.getItem("token");
+
+        // Fetch a default consult type (required by DB — NOT NULL)
+        const typesRes = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/lookups/consult-types`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        const typesData = await typesRes.json();
+        const defaultTypeId = typesData.data?.[0]?.id as string | undefined;
+        if (!defaultTypeId) throw new Error("No active consult types found");
+
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              athlete_id: athleteId,
+              type_of_consult_id: defaultTypeId,
+            }),
+          },
+        );
+        const data = await response.json();
+        const detail = data?.details?.[0];
+        console.error("[ensureSession] status:", response.status, "body:", data, "| field:", detail?.field, "value sent:", { athlete_id: athleteId, type_of_consult_id: defaultTypeId });
+        const id = data?.data?.id as string;
+        if (!id) {
+          const d = data?.details?.[0];
+          throw new Error(
+            d ? `${d.field}: ${d.message}` : (data?.message ?? data?.error ?? `Session creation failed (${response.status})`),
+          );
+        }
+        sessionIdRef.current = id;
+        setNewSessionId(id);
+        setNewConsultation(data.data as LatestConsultation);
+        return id;
+      } finally {
+        sessionCreationRef.current = null;
+      }
+    })();
+
+    return sessionCreationRef.current;
+  }, [athleteId]);
 
   // Fetch latest consultation data for the athlete
   const fetchLatestConsultation = async () => {
@@ -79,35 +140,16 @@ export default function ConsultationView({
     }
   }, [athleteId]);
 
-  const handleStartNewConsultation = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ athlete_id: athleteId }),
-        },
-      );
-      const data = await response.json();
-      if (data?.data?.id) {
-        setNewSessionId(data.data.id);
-        setNewConsultation(data.data as LatestConsultation);
-      }
-      setIsNewConsultation(true);
-    } catch (err) {
-      console.error("Error starting new consultation:", err);
-    }
+  const handleStartNewConsultation = () => {
+    setIsNewConsultation(true);
   };
 
   const handleCancelNewConsultation = () => {
     setIsNewConsultation(false);
     setNewSessionId("");
     setNewConsultation(null);
+    sessionIdRef.current = "";
+    sessionCreationRef.current = null;
   };
 
   const handleSaveAll = () => {
@@ -160,7 +202,6 @@ export default function ConsultationView({
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center max-w-md">
-          <div className="text-gray-900 text-4xl mb-4">📋</div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
             No Consultation Records
           </h3>
@@ -294,7 +335,7 @@ export default function ConsultationView({
           athleteId={athleteId}
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
-          newSessionId={newSessionId}
+          ensureSession={ensureSession}
         />
 
         {/* 2. Previous Consultation */}
@@ -302,7 +343,7 @@ export default function ConsultationView({
           athleteId={athleteId}
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
-          newSessionId={newSessionId}
+          ensureSession={ensureSession}
         />
 
         {/* 3. Prescription (hidden in new consultation mode) */}
@@ -315,7 +356,7 @@ export default function ConsultationView({
           athleteId={athleteId}
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
-          newSessionId={newSessionId}
+          ensureSession={ensureSession}
         />
 
         {/* 5. Meal Logs */}
@@ -323,7 +364,7 @@ export default function ConsultationView({
           athleteId={athleteId}
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
-          newSessionId={newSessionId}
+          ensureSession={ensureSession}
         />
 
         {/* 6. Anthropometry */}
@@ -331,7 +372,7 @@ export default function ConsultationView({
           athleteId={athleteId}
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
-          newSessionId={newSessionId}
+          ensureSession={ensureSession}
         />
 
         {/* 7. Adherences */}
@@ -339,7 +380,7 @@ export default function ConsultationView({
           athleteId={athleteId}
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
-          newSessionId={newSessionId}
+          ensureSession={ensureSession}
         />
 
         {/* 9. Medical History */}
@@ -347,11 +388,11 @@ export default function ConsultationView({
           athleteId={athleteId}
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
-          newSessionId={newSessionId}
+          ensureSession={ensureSession}
         />
 
         {/* 10. New Prescription Form (only when starting a new consultation) */}
-        {isNewConsultation && <NewPrescriptionForm sessionId={newSessionId} />}
+        {isNewConsultation && <NewPrescriptionForm ensureSession={ensureSession} />}
       </div>
     </div>
   );

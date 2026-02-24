@@ -1,6 +1,15 @@
 import { z } from 'zod';
 import { uuidSchema, uuidParamSchema } from '../../SSS/shared/validation.js';
 
+// Accepts any 8-4-4-4-12 hex UUID regardless of version/variant bits.
+// Needed because the type_of_consult_lookup table was seeded with non-standard
+// UUIDs (e.g. 00000000-0000-0000-0000-000000000023) that Zod v4's strict
+// z.string().uuid() rejects.
+const uuidFormatSchema = z.string().trim().regex(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    'Must be a valid UUID'
+);
+
 // ============================================================================
 // REUSABLE DATE / TIME VALIDATORS
 // ============================================================================
@@ -21,7 +30,7 @@ const optionalTimeSchema = z.string()
 
 export const createSessionSchema = z.object({
     athlete_id: uuidSchema.describe('Athlete UUID'),
-    type_of_consult_id: uuidSchema.describe('Consult type UUID (must be active)'),
+    type_of_consult_id: uuidFormatSchema.describe('Consult type UUID (must be active)'),
     title_description: z.string().trim().optional(),
     venue: z.string().trim().optional(),
     date_of_consult: z.string().trim()
@@ -44,7 +53,7 @@ export const createSessionSchema = z.object({
 // ============================================================================
 
 export const updateSessionSchema = z.object({
-    type_of_consult_id: uuidSchema.optional(),
+    type_of_consult_id: uuidFormatSchema.optional(),
     title_description: z.string().trim().optional(),
     venue: z.string().trim().optional(),
     date_of_consult: optionalDateSchema,

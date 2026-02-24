@@ -47,7 +47,7 @@ export async function getOpenItems(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Invalid session ID format',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),
@@ -128,7 +128,7 @@ export async function createOpenItem(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),
@@ -186,7 +186,7 @@ export async function updateOpenItem(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),
@@ -217,7 +217,7 @@ export async function deleteOpenItems(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),

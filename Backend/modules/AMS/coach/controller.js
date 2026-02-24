@@ -94,7 +94,7 @@ export async function deleteCoaches(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),
@@ -187,7 +187,7 @@ export async function createMapping(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),
@@ -217,7 +217,7 @@ export async function deleteMappings(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),
@@ -269,7 +269,7 @@ export async function updateMapping(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),
@@ -324,7 +324,7 @@ export async function updateCoach(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),

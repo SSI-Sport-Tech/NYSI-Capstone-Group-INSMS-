@@ -6,6 +6,7 @@ import axios from "axios";
 import DashboardLayout from "@/components/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import ConsultationView from "@/components/AMS/ConsultationView";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AthleteProfile {
   athlete: {
@@ -43,6 +44,40 @@ interface AthleteProfile {
   }[];
 }
 
+interface EditForm {
+  athlete_name_abbr: string;
+  gender: string;
+  date_of_birth: string;
+  ethnicity: string;
+  sport_id: string;
+  target_event: string;
+  sport_start_date: string;
+  carding_status: string;
+  medical_clearance: boolean;
+  approved_start_date: string;
+  approved_end_date: string;
+  carding_start_date: string;
+  carding_end_date: string;
+  athlete_notified_on: string;
+  coach_ids: string[];
+  nutritionist_ids: string[];
+}
+
+interface SportOption {
+  id: string;
+  sport: string;
+}
+
+interface CoachOption {
+  id: string;
+  name: string;
+}
+
+interface NutritionistOption {
+  id: string;
+  name: string;
+}
+
 type TabType = "profile" | "consultation" | "history";
 
 export default function AthleteDetailPage() {
@@ -50,11 +85,24 @@ export default function AthleteDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const athleteId = params.id as string;
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN" || user?.role === "IT_ADMIN";
 
   const [profile, setProfile] = useState<AthleteProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("profile");
+
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<EditForm | null>(null);
+
+  // Dropdown data for edit mode
+  const [sports, setSports] = useState<SportOption[]>([]);
+  const [coaches, setCoaches] = useState<CoachOption[]>([]);
+  const [nutritionists, setNutritionists] = useState<NutritionistOption[]>([]);
 
   // History tab state
   interface ConsultationSummary {
@@ -79,13 +127,13 @@ export default function AthleteDetailPage() {
     }
   }, [athleteId]);
 
-  // Sync tab with URL parameters - listen for changes
+  // Sync tab with URL parameters
   useEffect(() => {
     const tabParam = searchParams.get("tab") as TabType;
     if (tabParam && ["profile", "consultation", "history"].includes(tabParam)) {
       setActiveTab(tabParam);
     } else {
-      setActiveTab("profile"); // Default to profile if no valid tab param
+      setActiveTab("profile");
     }
   }, [searchParams]);
 
@@ -148,6 +196,13 @@ export default function AthleteDetailPage() {
     return new Date(dateString).toLocaleDateString();
   };
 
+  const toInputDate = (dateString: string | null | undefined): string => {
+    if (!dateString) return "";
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return "";
+    return d.toISOString().split("T")[0];
+  };
+
   const getYearsInSport = (sportStartDate: string | null | undefined) => {
     if (!sportStartDate) return "-";
     const start = new Date(sportStartDate);
@@ -157,6 +212,127 @@ export default function AthleteDetailPage() {
     );
     if (years < 1) return "Less than 1 year";
     return years === 1 ? "1 year" : `${years} years`;
+  };
+
+  const handleEditStart = async () => {
+    if (!profile) return;
+
+    setEditForm({
+      athlete_name_abbr: profile.athlete.athlete_name_abbr || "",
+      gender: profile.athlete.gender || "",
+      date_of_birth: toInputDate(profile.athlete.date_of_birth),
+      ethnicity: profile.athlete.ethnicity || "",
+      sport_id: profile.athlete.sport_id || "",
+      target_event: profile.athlete.target_event || "",
+      sport_start_date: toInputDate(profile.athlete.sport_start_date),
+      carding_status: profile.registry?.carding_status || "",
+      medical_clearance: profile.registry?.medical_clearance ?? false,
+      approved_start_date: toInputDate(profile.registry?.approved_start_date),
+      approved_end_date: toInputDate(profile.registry?.approved_end_date),
+      carding_start_date: toInputDate(profile.registry?.carding_start_date),
+      carding_end_date: toInputDate(profile.registry?.carding_end_date),
+      athlete_notified_on: toInputDate(profile.registry?.athlete_notified_on),
+      coach_ids: profile.coaches.filter((c) => c.is_active).map((c) => c.coach_id),
+      nutritionist_ids: profile.nutritionists
+        .filter((n) => n.is_active)
+        .map((n) => n.nutritionist_id),
+    });
+
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+    const token = localStorage.getItem("token");
+    const headers: HeadersInit = { Authorization: `Bearer ${token}` };
+
+    try {
+      const [sportsRes, coachesRes, nutritionistsRes] = await Promise.all([
+        fetch(`${backendUrl}/api/AMS/sports`, { headers }),
+        fetch(`${backendUrl}/api/AMS/coaches`, { headers }),
+        fetch(`${backendUrl}/api/AMS/nutritionists/nutritionists`, { headers }),
+      ]);
+      const [sportsData, coachesData, nutritionistsData] = await Promise.all([
+        sportsRes.json(),
+        coachesRes.json(),
+        nutritionistsRes.json(),
+      ]);
+      setSports(sportsData.data || []);
+      setCoaches(coachesData.data || []);
+      setNutritionists(nutritionistsData.data || []);
+    } catch {
+      // Dropdown data failed — text fields still editable
+    }
+
+    setIsEditing(true);
+    setSaveError(null);
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditForm(null);
+    setSaveError(null);
+  };
+
+  const handleSave = async () => {
+    if (!editForm) return;
+    setSaving(true);
+    setSaveError(null);
+
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+    const token = localStorage.getItem("token");
+
+    const payload: Record<string, unknown> = {
+      athlete_name_abbr: editForm.athlete_name_abbr || undefined,
+      gender: editForm.gender || undefined,
+      date_of_birth: editForm.date_of_birth || undefined,
+      ethnicity: editForm.ethnicity || undefined,
+      sport_id: editForm.sport_id || undefined,
+      target_event: editForm.target_event || undefined,
+      sport_start_date: editForm.sport_start_date || undefined,
+      carding_status: editForm.carding_status || undefined,
+      medical_clearance: editForm.medical_clearance,
+      approved_start_date: editForm.approved_start_date || undefined,
+      approved_end_date: editForm.approved_end_date || undefined,
+      carding_start_date: editForm.carding_start_date || undefined,
+      carding_end_date: editForm.carding_end_date || undefined,
+      athlete_notified_on: editForm.athlete_notified_on || undefined,
+      coach_ids: editForm.coach_ids,
+    };
+
+    if (isAdmin) {
+      payload.nutritionist_ids = editForm.nutritionist_ids;
+    }
+
+    const endpoint = isAdmin
+      ? `${backendUrl}/api/AMS/athletes/${athleteId}/profile/admin`
+      : `${backendUrl}/api/AMS/athletes/${athleteId}/profile`;
+
+    try {
+      await axios.patch(endpoint, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setIsEditing(false);
+      setEditForm(null);
+      await fetchAthleteProfile();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setSaveError(e.response?.data?.message || "Failed to save changes. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleCoachId = (id: string) => {
+    if (!editForm) return;
+    const next = editForm.coach_ids.includes(id)
+      ? editForm.coach_ids.filter((c) => c !== id)
+      : [...editForm.coach_ids, id];
+    setEditForm({ ...editForm, coach_ids: next });
+  };
+
+  const toggleNutritionistId = (id: string) => {
+    if (!editForm) return;
+    const next = editForm.nutritionist_ids.includes(id)
+      ? editForm.nutritionist_ids.filter((n) => n !== id)
+      : [...editForm.nutritionist_ids, id];
+    setEditForm({ ...editForm, nutritionist_ids: next });
   };
 
   if (loading) {
@@ -229,30 +405,83 @@ export default function AthleteDetailPage() {
           <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  {profile.athlete.athlete_name_abbr.toUpperCase()}
-                </h1>
+                {isEditing && editForm ? (
+                  <input
+                    type="text"
+                    value={editForm.athlete_name_abbr}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, athlete_name_abbr: e.target.value })
+                    }
+                    className="text-3xl font-bold text-gray-900 mb-2 border-b-2 border-blue-400 bg-transparent focus:outline-none w-full uppercase"
+                  />
+                ) : (
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                    {profile.athlete.athlete_name_abbr.toUpperCase()}
+                  </h1>
+                )}
                 <p className="text-lg text-gray-600 mb-1">
                   {profile.athlete.sportsync_id} [
-                  {profile.athlete.sport_name?.toUpperCase()}]
+                  {isEditing && editForm
+                    ? sports.find((s) => s.id === editForm.sport_id)?.sport?.toUpperCase() ||
+                      profile.athlete.sport_name?.toUpperCase()
+                    : profile.athlete.sport_name?.toUpperCase()}
+                  ]
                 </p>
               </div>
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors">
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+
+              {/* Edit / Save / Cancel controls */}
+              {isEditing ? (
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  {saveError && (
+                    <p className="text-sm text-red-600 w-full text-right">{saveError}</p>
+                  )}
+                  <button
+                    onClick={handleCancel}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {saving ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Save Changes
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleEditStart}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                  />
-                </svg>
-                Edit
-              </button>
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                  Edit
+                </button>
+              )}
             </div>
           </div>
 
@@ -348,30 +577,102 @@ export default function AthleteDetailPage() {
                       Basic Information
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {/* Date of Birth */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Date of Birth
                         </label>
-                        <p className="text-sm text-gray-900">
-                          {formatDate(profile.athlete.date_of_birth)}
-                        </p>
+                        {isEditing && editForm ? (
+                          <input
+                            type="date"
+                            value={editForm.date_of_birth}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, date_of_birth: e.target.value })
+                            }
+                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-900">
+                            {formatDate(profile.athlete.date_of_birth)}
+                          </p>
+                        )}
                       </div>
+
+                      {/* Gender */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Sex
                         </label>
-                        <p className="text-sm text-gray-900">
-                          {profile.athlete.gender}
-                        </p>
+                        {isEditing && editForm ? (
+                          <select
+                            value={editForm.gender}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, gender: e.target.value })
+                            }
+                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">Select...</option>
+                            <option value="MALE">MALE</option>
+                            <option value="FEMALE">FEMALE</option>
+                            <option value="OTHER">OTHER</option>
+                          </select>
+                        ) : (
+                          <p className="text-sm text-gray-900">
+                            {profile.athlete.gender}
+                          </p>
+                        )}
                       </div>
+
+                      {/* Ethnicity */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Ethnicity
                         </label>
-                        <p className="text-sm text-gray-900">
-                          {profile.athlete.ethnicity || "-"}
-                        </p>
+                        {isEditing && editForm ? (
+                          <input
+                            type="text"
+                            value={editForm.ethnicity}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, ethnicity: e.target.value })
+                            }
+                            placeholder="e.g. Chinese"
+                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-900">
+                            {profile.athlete.ethnicity || "-"}
+                          </p>
+                        )}
                       </div>
+
+                      {/* Sport */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Sport
+                        </label>
+                        {isEditing && editForm ? (
+                          <select
+                            value={editForm.sport_id}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, sport_id: e.target.value })
+                            }
+                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">Select sport...</option>
+                            {sports.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.sport}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <p className="text-sm text-gray-900">
+                            {profile.athlete.sport_name || "-"}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Status (display-only) */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Status
@@ -388,83 +689,215 @@ export default function AthleteDetailPage() {
                         Registry Information
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {/* Nutritionist Assigned */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Nutritionist Assigned
+                            {isEditing && !isAdmin && (
+                              <span className="ml-2 text-xs text-gray-400 font-normal">(Admin only)</span>
+                            )}
                           </label>
-                          <p className="text-sm text-gray-900">
-                            {profile.nutritionists
-                              .filter((n) => n.is_active)
-                              .map((n) => n.nutritionist_name)
-                              .join(", ") || "Not Assigned"}
-                          </p>
+                          {isEditing && editForm && isAdmin ? (
+                            <div className="border border-gray-300 rounded-lg px-3 py-2 max-h-36 overflow-y-auto space-y-1 bg-white">
+                              {nutritionists.length === 0 ? (
+                                <p className="text-xs text-gray-400">Loading nutritionists...</p>
+                              ) : (
+                                nutritionists.map((n) => (
+                                  <label key={n.id} className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={editForm.nutritionist_ids.includes(n.id)}
+                                      onChange={() => toggleNutritionistId(n.id)}
+                                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm text-gray-900">{n.name}</span>
+                                  </label>
+                                ))
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-900">
+                              {profile.nutritionists
+                                .filter((n) => n.is_active)
+                                .map((n) => n.nutritionist_name)
+                                .join(", ") || "Not Assigned"}
+                            </p>
+                          )}
                         </div>
+
+                        {/* Number of Reminders (display-only) */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Number of Reminders
                           </label>
                           <p className="text-sm text-gray-900">-</p>
                         </div>
+
+                        {/* Carding Level */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Carding Level
                           </label>
-                          <p className="text-sm text-gray-900">
-                            {profile.registry.carding_status}
-                          </p>
+                          {isEditing && editForm ? (
+                            <input
+                              type="text"
+                              value={editForm.carding_status}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, carding_status: e.target.value })
+                              }
+                              placeholder="e.g. Active"
+                              className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          ) : (
+                            <p className="text-sm text-gray-900">
+                              {profile.registry.carding_status}
+                            </p>
+                          )}
                         </div>
+
+                        {/* Coach Assigned */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Coach Assigned
                           </label>
-                          <p className="text-sm text-gray-900">
-                            {profile.coaches
-                              .filter((c) => c.is_active)
-                              .map((c) => c.coach_name)
-                              .join(", ") || "Not Assigned"}
-                          </p>
+                          {isEditing && editForm ? (
+                            <div className="border border-gray-300 rounded-lg px-3 py-2 max-h-36 overflow-y-auto space-y-1 bg-white">
+                              {coaches.length === 0 ? (
+                                <p className="text-xs text-gray-400">Loading coaches...</p>
+                              ) : (
+                                coaches.map((c) => (
+                                  <label key={c.id} className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={editForm.coach_ids.includes(c.id)}
+                                      onChange={() => toggleCoachId(c.id)}
+                                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm text-gray-900">{c.name}</span>
+                                  </label>
+                                ))
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-900">
+                              {profile.coaches
+                                .filter((c) => c.is_active)
+                                .map((c) => c.coach_name)
+                                .join(", ") || "Not Assigned"}
+                            </p>
+                          )}
                         </div>
+
+                        {/* Medical Clearance */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Medical Clearance
                           </label>
-                          <p className="text-sm text-gray-900">
-                            {profile.registry.medical_clearance
-                              ? "Required"
-                              : "Not Required"}
-                          </p>
+                          {isEditing && editForm ? (
+                            <select
+                              value={editForm.medical_clearance ? "true" : "false"}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  medical_clearance: e.target.value === "true",
+                                })
+                              }
+                              className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="true">Required</option>
+                              <option value="false">Not Required</option>
+                            </select>
+                          ) : (
+                            <p className="text-sm text-gray-900">
+                              {profile.registry.medical_clearance
+                                ? "Required"
+                                : "Not Required"}
+                            </p>
+                          )}
                         </div>
+
+                        {/* Approved Start Date */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Approved Start Date
                           </label>
-                          <p className="text-sm text-gray-900">
-                            {formatDate(profile.registry.approved_start_date)}
-                          </p>
+                          {isEditing && editForm ? (
+                            <input
+                              type="date"
+                              value={editForm.approved_start_date}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, approved_start_date: e.target.value })
+                              }
+                              className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          ) : (
+                            <p className="text-sm text-gray-900">
+                              {formatDate(profile.registry.approved_start_date)}
+                            </p>
+                          )}
                         </div>
+
+                        {/* Carding Start Date */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Carding Start Date
                           </label>
-                          <p className="text-sm text-gray-900">
-                            {formatDate(profile.registry.carding_start_date)}
-                          </p>
+                          {isEditing && editForm ? (
+                            <input
+                              type="date"
+                              value={editForm.carding_start_date}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, carding_start_date: e.target.value })
+                              }
+                              className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          ) : (
+                            <p className="text-sm text-gray-900">
+                              {formatDate(profile.registry.carding_start_date)}
+                            </p>
+                          )}
                         </div>
+
+                        {/* Approved End Date */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Approved End Date
                           </label>
-                          <p className="text-sm text-gray-900">
-                            {formatDate(profile.registry.approved_end_date)}
-                          </p>
+                          {isEditing && editForm ? (
+                            <input
+                              type="date"
+                              value={editForm.approved_end_date}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, approved_end_date: e.target.value })
+                              }
+                              className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          ) : (
+                            <p className="text-sm text-gray-900">
+                              {formatDate(profile.registry.approved_end_date)}
+                            </p>
+                          )}
                         </div>
+
+                        {/* Carding End Date */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Carding End Date
                           </label>
-                          <p className="text-sm text-gray-900">
-                            {formatDate(profile.registry.carding_end_date)}
-                          </p>
+                          {isEditing && editForm ? (
+                            <input
+                              type="date"
+                              value={editForm.carding_end_date}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, carding_end_date: e.target.value })
+                              }
+                              className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          ) : (
+                            <p className="text-sm text-gray-900">
+                              {formatDate(profile.registry.carding_end_date)}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -476,28 +909,60 @@ export default function AthleteDetailPage() {
                       Sport Information
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {/* Target Event */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Target Event
                         </label>
-                        <p className="text-sm text-gray-900">
-                          {profile.athlete.target_event || "-"}
-                        </p>
+                        {isEditing && editForm ? (
+                          <input
+                            type="text"
+                            value={editForm.target_event}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, target_event: e.target.value })
+                            }
+                            placeholder="e.g. 100m Sprint"
+                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-900">
+                            {profile.athlete.target_event || "-"}
+                          </p>
+                        )}
                       </div>
+
+                      {/* Sport Start Date */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Sport Start Date
                         </label>
-                        <p className="text-sm text-gray-900">
-                          {formatDate(profile.athlete.sport_start_date)}
-                        </p>
+                        {isEditing && editForm ? (
+                          <input
+                            type="date"
+                            value={editForm.sport_start_date}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, sport_start_date: e.target.value })
+                            }
+                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-900">
+                            {formatDate(profile.athlete.sport_start_date)}
+                          </p>
+                        )}
                       </div>
+
+                      {/* Years in Sport (always display-only, computed) */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Years in Sport
                         </label>
                         <p className="text-sm text-gray-900">
-                          {getYearsInSport(profile.athlete.sport_start_date)}
+                          {getYearsInSport(
+                            isEditing && editForm
+                              ? editForm.sport_start_date || profile.athlete.sport_start_date
+                              : profile.athlete.sport_start_date,
+                          )}
                         </p>
                       </div>
                     </div>

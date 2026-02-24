@@ -56,7 +56,7 @@ export async function listAthletes(req, res) {
     if (error.name === "ZodError") {
       return res.status(400).json({
         error: "Invalid query parameters",
-        details: error.errors.map((e) => ({
+        details: error.issues.map((e) => ({
           field: e.path.join("."),
           message: e.message,
         })),
@@ -88,7 +88,7 @@ export async function getAthleteProfile(req, res) {
     if (error.name === "ZodError") {
       return res.status(400).json({
         error: "Invalid athlete ID format",
-        details: error.errors.map((e) => ({
+        details: error.issues.map((e) => ({
           field: e.path.join("."),
           message: e.message,
         })),
@@ -158,7 +158,7 @@ export async function createBasicAthlete(req, res) {
     if (error.name === "ZodError") {
       return res.status(400).json({
         error: "Validation failed",
-        details: error.errors.map((e) => ({
+        details: error.issues.map((e) => ({
           field: e.path.join("."),
           message: e.message,
         })),
@@ -301,7 +301,7 @@ export async function createCompleteAthlete(req, res) {
     if (error.name === "ZodError") {
       return res.status(400).json({
         error: "Validation failed",
-        details: error.errors.map((e) => ({
+        details: error.issues.map((e) => ({
           field: e.path.join("."),
           message: e.message,
         })),
@@ -454,7 +454,7 @@ export async function adminCreateCompleteAthlete(req, res) {
     if (error.name === "ZodError") {
       return res.status(400).json({
         error: "Validation failed",
-        details: error.errors.map((e) => ({
+        details: error.issues.map((e) => ({
           field: e.path.join("."),
           message: e.message,
         })),
@@ -555,7 +555,7 @@ export async function updateAthleteProfile(req, res) {
     if (error.name === "ZodError") {
       return res.status(400).json({
         error: "Validation failed",
-        details: error.errors.map((e) => ({
+        details: error.issues.map((e) => ({
           field: e.path.join("."),
           message: e.message,
         })),
@@ -680,7 +680,7 @@ export async function adminUpdateAthleteProfile(req, res) {
     if (error.name === "ZodError") {
       return res.status(400).json({
         error: "Validation failed",
-        details: error.errors.map((e) => ({
+        details: error.issues.map((e) => ({
           field: e.path.join("."),
           message: e.message,
         })),
@@ -716,7 +716,7 @@ export async function deleteAthletes(req, res) {
     if (error.name === "ZodError") {
       return res.status(400).json({
         error: "Validation failed",
-        details: error.errors.map((e) => ({
+        details: error.issues.map((e) => ({
           field: e.path.join("."),
           message: e.message,
         })),

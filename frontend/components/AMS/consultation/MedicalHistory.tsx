@@ -5,7 +5,7 @@ interface MedicalHistoryProps {
   athleteId: string;
   sessionId: string;
   isNewConsultation?: boolean;
-  newSessionId?: string;
+  ensureSession?: () => Promise<string>;
   readOnly?: boolean;
 }
 
@@ -183,7 +183,7 @@ export default function MedicalHistory({
   athleteId,
   sessionId,
   isNewConsultation,
-  newSessionId,
+  ensureSession,
   readOnly,
 }: MedicalHistoryProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -210,8 +210,6 @@ export default function MedicalHistory({
   const isFemale = gender === null || gender.toLowerCase().startsWith("f");
 
   const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
-  const targetSessionId =
-    isNewConsultation && newSessionId ? newSessionId : sessionId;
 
   const fetchMedicalHistory = async () => {
     if (!sessionId) {
@@ -268,9 +266,10 @@ export default function MedicalHistory({
   const handleSave = async () => {
     try {
       setSaveError("");
+      const id = isNewConsultation && ensureSession ? await ensureSession() : sessionId;
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/medical-history/${targetSessionId}`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/medical-history/${id}`,
         {
           method: "PATCH",
           headers: {

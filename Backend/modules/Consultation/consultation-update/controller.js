@@ -22,7 +22,7 @@ export async function getConsultationUpdate(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Invalid session ID format',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),
@@ -62,7 +62,7 @@ export async function getLatestConsultationSession(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Invalid athlete ID format',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),
@@ -98,7 +98,7 @@ export async function getAllConsultationSessions(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Invalid athlete ID format',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),
@@ -122,10 +122,29 @@ export async function createConsultationSession(req, res) {
         if (!nutritionistId) {
             nutritionistId = await services.getNutritionistIdByUserId(req.user.userId);
             if (!nutritionistId) {
-                return res.status(400).json({
-                    error: 'Nutritionist not linked',
-                    details: [{ field: 'user', message: 'Your account is not linked to a nutritionist profile' }],
-                });
+                // Auto-create nutritionist profile for NUTRITIONIST/ADMIN users whose
+                // profile was not created during registration (e.g. legacy accounts)
+                if (req.user.role === 'NUTRITIONIST' || req.user.role === 'ADMIN' || req.user.role === 'IT_ADMIN') {
+                    const userRow = await pool.query(
+                        'SELECT first_name, last_name FROM auth.users WHERE id = $1',
+                        [req.user.userId]
+                    );
+                    if (userRow.rows.length > 0) {
+                        const { first_name, last_name } = userRow.rows[0];
+                        const profile = await pool.query(
+                            'INSERT INTO ams.nutritionist (name, user_id) VALUES ($1, $2) RETURNING id',
+                            [`${first_name} ${last_name}`, req.user.userId]
+                        );
+                        nutritionistId = profile.rows[0].id;
+                        console.log(`Auto-created nutritionist profile ${nutritionistId} for user ${req.user.userId}`);
+                    }
+                }
+                if (!nutritionistId) {
+                    return res.status(400).json({
+                        error: 'Nutritionist not linked',
+                        details: [{ field: 'user', message: 'Your account is not linked to a nutritionist profile' }],
+                    });
+                }
             }
         }
 
@@ -189,7 +208,7 @@ export async function createConsultationSession(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),
@@ -244,7 +263,7 @@ export async function updateConsultationSession(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),

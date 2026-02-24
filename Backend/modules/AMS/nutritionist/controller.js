@@ -45,7 +45,7 @@ export async function createNutritionist(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),
@@ -71,7 +71,7 @@ export async function deleteNutritionists(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),
@@ -126,7 +126,7 @@ export async function togglePin(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({ 
                 error: 'Validation failed', 
-                details: error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
+                details: error.issues.map(e => ({ field: e.path.join('.'), message: e.message }))
             });
         }
         res.status(500).json({ error: 'Failed to toggle pin' });
@@ -239,7 +239,7 @@ export async function createMapping(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),
@@ -265,7 +265,7 @@ export async function deleteMappings(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),
