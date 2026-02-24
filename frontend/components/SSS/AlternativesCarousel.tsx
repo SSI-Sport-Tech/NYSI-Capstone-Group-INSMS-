@@ -19,26 +19,29 @@ interface AlternativesCarouselProps {
   supplementId: string;
   supplementName: string;
   onAlternativeSelect?: (supplement: Alternative) => void;
-  onFilterToggle?: (show: boolean) => void;
+  prefetchedAlternatives?: Alternative[];
 }
 
 const AlternativesCarousel: React.FC<AlternativesCarouselProps> = ({
   supplementId,
   supplementName,
   onAlternativeSelect,
-  onFilterToggle,
+  prefetchedAlternatives,
 }) => {
   const [alternatives, setAlternatives] = useState<Alternative[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [scrollPosition, setScrollPosition] = useState(0);
-  const [showFiltered, setShowFiltered] = useState(false);
 
   useEffect(() => {
+    if (prefetchedAlternatives) {
+      setAlternatives(prefetchedAlternatives);
+      return;
+    }
     if (supplementId) {
       fetchAlternatives();
     }
-  }, [supplementId]);
+  }, [supplementId, prefetchedAlternatives]);
 
   const fetchAlternatives = async () => {
     setLoading(true);
@@ -120,7 +123,7 @@ const AlternativesCarousel: React.FC<AlternativesCarouselProps> = ({
         <div className="flex items-center gap-2">
           <Zap className="w-5 h-5 text-blue-600" />
           <h2 className="text-lg font-semibold text-gray-900">
-            Similar Alternatives to &quot;{supplementName}&quot;
+            Similar Alternatives
           </h2>
           {alternatives.length > 0 && (
             <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
@@ -128,23 +131,6 @@ const AlternativesCarousel: React.FC<AlternativesCarouselProps> = ({
             </span>
           )}
         </div>
-        {alternatives.length > 0 && (
-          <button
-            onClick={() => {
-              setShowFiltered(!showFiltered);
-              onFilterToggle?.(!showFiltered);
-            }}
-            className={`text-sm px-4 py-2 rounded-md font-medium transition-colors ${
-              showFiltered
-                ? "bg-blue-600 text-white hover:bg-blue-700"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            {showFiltered
-              ? "Showing Alternatives Only"
-              : "Show Only Alternatives"}
-          </button>
-        )}
       </div>
 
       {/* Error Message */}

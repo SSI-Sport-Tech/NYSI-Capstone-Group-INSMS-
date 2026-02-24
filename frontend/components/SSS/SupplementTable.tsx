@@ -6,8 +6,11 @@ import {
   ExternalLink,
   Plus,
   Upload,
+  Camera,
+  Trash2,
 } from "lucide-react";
 import axios from "axios";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Supplement {
   id: string;
@@ -28,6 +31,9 @@ interface SupplementTableProps {
   currentPage?: number;
   totalPages?: number;
   onPageChange?: (page: number) => void;
+  onRowSelect?: (supplement: Supplement) => void;
+  selectedSupplementId?: string;
+  onOpenOCR?: () => void;
 }
 
 const getStatusBadgeClass = (status: string) => {
@@ -51,14 +57,52 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
   currentPage = 1,
   totalPages = 1,
   onPageChange,
+  onRowSelect,
+  selectedSupplementId,
+  onOpenOCR,
 }) => {
-  console.log("SupplementTable props:", {
-    supplements,
-    total,
-    loading,
-    searchQuery,
-  });
-  const [selectedSupplements, setSelectedSupplements] = useState<number[]>([]);
+  const { token, user } = useAuth();
+  const isAdmin = user?.role === "ADMIN" || user?.role === "IT_ADMIN";
+  const [selectedSupplements, setSelectedSupplements] = useState<string[]>([]);
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedSupplements(supplements.map((s) => s.id));
+    } else {
+      setSelectedSupplements([]);
+    }
+  };
+
+  const handleSelectSupplement = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedSupplements((prev) => [...prev, id]);
+    } else {
+      setSelectedSupplements((prev) => prev.filter((sid) => sid !== id));
+    }
+  };
+
+  const handleDelete = async () => {
+    if (selectedSupplements.length === 0) return;
+
+    if (
+      !confirm(
+        `Are you sure you want to delete ${selectedSupplements.length} supplement(s)? This cannot be undone.`,
+      )
+    )
+      return;
+
+    try {
+      await axios.delete("/api/SSS/supplements", {
+        data: { ids: selectedSupplements },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSelectedSupplements([]);
+      if (onRefresh) onRefresh();
+    } catch (error) {
+      console.error("Error deleting supplements:", error);
+      alert("Failed to delete supplements");
+    }
+  };
 
   // Handle export
   const handleExport = () => {
@@ -114,12 +158,34 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
           </p>
         </div>
         <div className="flex items-center space-x-3">
+          {isAdmin && (
+            <button
+              onClick={handleDelete}
+              disabled={selectedSupplements.length === 0}
+              className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-lg px-3.5 py-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Delete</span>
+              {selectedSupplements.length > 0 && (
+                <span className="ml-1 bg-gray-100 text-gray-600 text-xs px-1.5 py-0.5 rounded">
+                  {selectedSupplements.length}
+                </span>
+              )}
+            </button>
+          )}
           <button
             onClick={handleExport}
             className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded px-3 py-1.5"
           >
             <Upload className="w-4 h-4" />
             <span>Export</span>
+          </button>
+          <button
+            onClick={onOpenOCR}
+            className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded px-3 py-1.5"
+          >
+            <Camera className="w-4 h-4" />
+            <span>Label OCR</span>
           </button>
           <button
             onClick={handleAddSupplement}
@@ -139,6 +205,11 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
               <th className="px-6 py-3 text-left w-12">
                 <input
                   type="checkbox"
+                  checked={
+                    selectedSupplements.length === supplements.length &&
+                    supplements.length > 0
+                  }
+                  onChange={(e) => handleSelectAll(e.target.checked)}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
               </th>
@@ -184,10 +255,23 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
               </tr>
             ) : supplements.length > 0 ? (
               supplements.map((supplement, index) => (
-                <tr key={supplement.id} className="hover:bg-gray-50">
+                <tr
+                  key={supplement.id}
+                  onClick={() => onRowSelect?.(supplement)}
+                  className={`${onRowSelect ? "cursor-pointer" : ""} ${
+                    selectedSupplementId === supplement.id
+                      ? "bg-blue-50 border-l-2 border-l-blue-500"
+                      : "hover:bg-gray-50"
+                  }`}
+                >
                   <td className="px-6 py-4">
                     <input
                       type="checkbox"
+                      checked={selectedSupplements.includes(supplement.id)}
+                      onChange={(e) =>
+                        handleSelectSupplement(supplement.id, e.target.checked)
+                      }
+                      onClick={(e) => e.stopPropagation()}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                   </td>
