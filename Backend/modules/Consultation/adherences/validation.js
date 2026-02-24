@@ -32,9 +32,9 @@ export const validatePatchAdherences = [
   body("estimatedProteinG").optional().isFloat({ min: 0, max: 9999 }).withMessage("estimatedProteinG must be a number"),
   body("estimatedFatG").optional().isFloat({ min: 0, max: 9999 }).withMessage("estimatedFatG must be a number"),
 
-  body("commentsWeekday").optional().isString().isLength({ max: 4000 }).withMessage("commentsWeekday must be <= 4000 chars"),
-  body("commentsWeekend").optional().isString().isLength({ max: 4000 }).withMessage("commentsWeekend must be <= 4000 chars"),
-  body("otherRemarks").optional().isString().isLength({ max: 4000 }).withMessage("otherRemarks must be <= 4000 chars"),
+  body("commentsWeekday").optional({ nullable: true }).isString().isLength({ max: 4000 }).withMessage("commentsWeekday must be <= 4000 chars"),
+  body("commentsWeekend").optional({ nullable: true }).isString().isLength({ max: 4000 }).withMessage("commentsWeekend must be <= 4000 chars"),
+  body("otherRemarks").optional({ nullable: true }).isString().isLength({ max: 4000 }).withMessage("otherRemarks must be <= 4000 chars"),
 
   handleValidation,
 ];

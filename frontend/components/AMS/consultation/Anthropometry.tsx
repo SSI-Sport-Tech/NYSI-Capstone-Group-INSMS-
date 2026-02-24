@@ -239,40 +239,23 @@ export default function Anthropometry({
       const targetId = isNewConsultation && ensureSession ? await ensureSession() : sessionId;
       const token = localStorage.getItem("token");
 
-      const payload = {
-        height: editForm.height ? parseFloat(editForm.height) : null,
-        weight: editForm.weight ? parseFloat(editForm.weight) : null,
-        fat_mass: editForm.fat_mass ? parseFloat(editForm.fat_mass) : null,
-        skeletal_muscle_mass: editForm.skeletal_muscle_mass
-          ? parseFloat(editForm.skeletal_muscle_mass)
-          : null,
-        sum_of_skinfold: editForm.sum_of_skinfold
-          ? parseFloat(editForm.sum_of_skinfold)
-          : null,
-        target_weight: editForm.target_weight
-          ? parseFloat(editForm.target_weight)
-          : null,
-        mothers_height: editForm.mothers_height
-          ? parseFloat(editForm.mothers_height)
-          : null,
-        fathers_height: editForm.fathers_height
-          ? parseFloat(editForm.fathers_height)
-          : null,
-        bmi: calcedBMI ? parseFloat(calcedBMI) : null,
-        bmi_category: calcedBMICategory || null,
-        fat_mass_percentage: calcedFatMassPercent
-          ? parseFloat(calcedFatMassPercent)
-          : null,
-        skeletal_muscle_mass_percentage: calcedSMMPercent
-          ? parseFloat(calcedSMMPercent)
-          : null,
-        target_bmi: calcedTargetBMI ? parseFloat(calcedTargetBMI) : null,
-        athlete_potential_adult_height: calcedPotentialHeight
-          ? parseFloat(calcedPotentialHeight)
-          : null,
-        date_recorded: editForm.date_recorded || null,
-        measured_by: editForm.measured_by || null,
-      };
+      // Use the camelCase field names that the backend service expects.
+      // Omit null values so empty fields don't overwrite existing measurements.
+      const payload: Record<string, number | string> = {};
+      if (editForm.height) payload.heightCm = parseFloat(editForm.height);
+      if (editForm.weight) payload.weightKg = parseFloat(editForm.weight);
+      if (editForm.fat_mass) payload.fatMassKg = parseFloat(editForm.fat_mass);
+      if (editForm.skeletal_muscle_mass)
+        payload.skeletalMuscleMassKg = parseFloat(editForm.skeletal_muscle_mass);
+      if (editForm.sum_of_skinfold)
+        payload.sumOf8Skinfold = parseFloat(editForm.sum_of_skinfold);
+      if (editForm.target_weight)
+        payload.targetWeightKg = parseFloat(editForm.target_weight);
+      if (editForm.mothers_height)
+        payload.motherHeightCm = parseFloat(editForm.mothers_height);
+      if (editForm.fathers_height)
+        payload.fatherHeightCm = parseFloat(editForm.fathers_height);
+      if (calcedBMICategory) payload.bmiCategory = calcedBMICategory;
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${targetId}/anthropometry`,
