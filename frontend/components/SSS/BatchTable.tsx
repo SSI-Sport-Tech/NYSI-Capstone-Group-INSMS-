@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import AddSupplementModal from "./AddSupplementModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Batch {
   id: number;
@@ -65,6 +66,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
   totalPages = 1,
   onPageChange,
 }) => {
+  const { token } = useAuth();
   const [selectedBatches, setSelectedBatches] = useState<number[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>("");
@@ -103,6 +105,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
       try {
         await axios.delete("/api/SSS/batches", {
           data: { ids: selectedBatches },
+          headers: { Authorization: `Bearer ${token}` },
         });
         setSelectedBatches([]);
         if (onRefresh) onRefresh();

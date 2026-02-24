@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool, { withUserContext } from "../../../config/db.js";
 import { DUPLICATE_SIMILARITY_THRESHOLD, normalizeForComparison } from './validation.js';
 
 // Configuration
@@ -98,9 +98,10 @@ export async function getStagingSupplementById(stagingId) {
  * Update supplement staging entry with partial data
  * @param {string} stagingId - UUID of staging supplement
  * @param {Object} updateData - Fields to update
+ * @param {string|null} userId - auth.users.id for audit log
  * @returns {Promise<Object|null>} Updated staging supplement or null if not found
  */
-export async function updateStagingSupplement(stagingId, updateData) {
+export async function updateStagingSupplement(stagingId, updateData, userId) {
   const fields = [];
   const values = [];
   let paramCounter = 1;
@@ -158,24 +159,29 @@ export async function updateStagingSupplement(stagingId, updateData) {
         RETURNING *
     `;
 
-  const result = await pool.query(query, values);
-  return result.rows.length > 0 ? result.rows[0] : null;
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, values);
+    return result.rows.length > 0 ? result.rows[0] : null;
+  });
 }
 
 /**
  * Delete multiple supplement staging entries
  * @param {Array<string>} stagingIds - Array of UUIDs to delete
+ * @param {string|null} userId - auth.users.id for audit log
  * @returns {Promise<Array>} Array of deleted row objects with ids
  */
-export async function deleteStagingSupplements(stagingIds) {
+export async function deleteStagingSupplements(stagingIds, userId) {
   const query = `
         DELETE FROM SSS.Supplement_Staging
         WHERE id = ANY($1::uuid[])
         RETURNING id
     `;
 
-  const result = await pool.query(query, [stagingIds]);
-  return result.rows;
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, [stagingIds]);
+    return result.rows;
+  });
 }
 
 /**
@@ -360,9 +366,10 @@ async function checkForDuplicate(vectors, name, brand) {
  * Duplicates are auto-removed from staging.
  *
  * @param {Array<string>} stagingIds - Array of staging UUIDs to approve
+ * @param {string|null} userId - auth.users.id for audit log
  * @returns {Promise<Object>} Approval results with success/failure/duplicate details
  */
-export async function approveStagingSupplements(stagingIds) {
+export async function approveStagingSupplements(stagingIds, userId) {
   const results = [];
 
   for (const stagingId of stagingIds) {
@@ -445,10 +452,12 @@ export async function approveStagingSupplements(stagingIds) {
           // Duplicate found - delete from staging and report
           console.log(`Duplicate detected for "${staging.supplement_name}" - matches existing supplement ${duplicate.id}`);
 
-          await pool.query(
-            'DELETE FROM SSS.Supplement_Staging WHERE id = $1',
-            [stagingId]
-          );
+          await withUserContext(userId, async (client) => {
+            await client.query(
+              'DELETE FROM SSS.Supplement_Staging WHERE id = $1',
+              [stagingId]
+            );
+          });
 
           results.push({
             staging_id: stagingId,
@@ -472,7 +481,7 @@ export async function approveStagingSupplements(stagingIds) {
         }
       }
 
-      // 6. No duplicate found - Create Supplement record
+      // 6. No duplicate found - Create Supplement record and mark staging as reviewed (atomic)
       const insertQuery = `
                 INSERT INTO SSS.Supplement (
                     supplement_name,
@@ -534,14 +543,16 @@ export async function approveStagingSupplements(stagingIds) {
           : null
       ];
 
-      const supplementResult = await pool.query(insertQuery, insertValues);
-      const newSupplement = supplementResult.rows[0];
-
-      // 7. Mark staging as reviewed and link to promoted supplement
-      await pool.query(
-        'UPDATE SSS.Supplement_Staging SET is_reviewed = true, promoted_to_supplement_id = $1 WHERE id = $2',
-        [newSupplement.id, stagingId]
-      );
+      // 7. Insert supplement + mark staging as reviewed in one transaction
+      const newSupplement = await withUserContext(userId, async (client) => {
+        const supplementResult = await client.query(insertQuery, insertValues);
+        const newSup = supplementResult.rows[0];
+        await client.query(
+          'UPDATE SSS.Supplement_Staging SET is_reviewed = true, promoted_to_supplement_id = $1 WHERE id = $2',
+          [newSup.id, stagingId]
+        );
+        return newSup;
+      });
 
       if (vectorizationResult.success) {
         console.log(`Supplement ${newSupplement.id} created with vectors`);
@@ -646,9 +657,10 @@ export async function getCatalogUrlById(catalogUrlId) {
 /**
  * Create new catalog URL
  * @param {Object} catalogUrlData - Catalog URL data
+ * @param {string|null} userId - auth.users.id for audit log
  * @returns {Promise<Object>} Created catalog URL
  */
-export async function createCatalogUrl(catalogUrlData) {
+export async function createCatalogUrl(catalogUrlData, userId) {
   const query = `
         INSERT INTO SSS.webscraper_catalog_url (
             product_catalog_website,
@@ -666,8 +678,10 @@ export async function createCatalogUrl(catalogUrlData) {
     catalogUrlData.is_active !== undefined ? catalogUrlData.is_active : true
   ];
 
-  const result = await pool.query(query, values);
-  return result.rows[0];
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, values);
+    return result.rows[0];
+  });
 }
 
 /**
@@ -699,9 +713,10 @@ export async function checkDuplicateCatalogUrl(websiteUrl, excludeId = null) {
  * Update catalog URL
  * @param {string} catalogUrlId - UUID of catalog URL
  * @param {Object} updateData - Fields to update
+ * @param {string|null} userId - auth.users.id for audit log
  * @returns {Promise<Object|null>} Updated catalog URL or null
  */
-export async function updateCatalogUrl(catalogUrlId, updateData) {
+export async function updateCatalogUrl(catalogUrlId, updateData, userId) {
   const fields = [];
   const values = [];
   let paramCounter = 1;
@@ -736,24 +751,29 @@ export async function updateCatalogUrl(catalogUrlId, updateData) {
             is_active
     `;
 
-  const result = await pool.query(query, values);
-  return result.rows.length > 0 ? result.rows[0] : null;
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, values);
+    return result.rows.length > 0 ? result.rows[0] : null;
+  });
 }
 
 /**
  * Delete catalog URLs (bulk)
  * @param {Array<string>} catalogUrlIds - Array of UUIDs to delete
+ * @param {string|null} userId - auth.users.id for audit log
  * @returns {Promise<Array>} Array of deleted row objects
  */
-export async function deleteCatalogUrls(catalogUrlIds) {
+export async function deleteCatalogUrls(catalogUrlIds, userId) {
   const query = `
         DELETE FROM SSS.webscraper_catalog_url
         WHERE id = ANY($1::uuid[])
         RETURNING id, product_catalog_website
     `;
 
-  const result = await pool.query(query, [catalogUrlIds]);
-  return result.rows;
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, [catalogUrlIds]);
+    return result.rows;
+  });
 }
 
 /**

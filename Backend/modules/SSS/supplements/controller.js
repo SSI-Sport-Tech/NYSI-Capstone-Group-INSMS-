@@ -270,7 +270,7 @@ export async function createSupplement(req, res) {
 
         // STEP 8: Insert supplement into database
         console.log('Step 8: Inserting into database...');
-        const newSupplement = await services.createSupplement(validatedData);
+        const newSupplement = await services.createSupplement(validatedData, req.user?.userId);
         console.log('Supplement created with ID:', newSupplement.id);
 
         // STEP 9: Return success response
@@ -444,7 +444,7 @@ export async function updateSupplement(req, res) {
 
         // STEP 6: Update supplement in database
         console.log('Step 6: Updating database...');
-        const updatedSupplement = await services.updateSupplement(id, validatedData);
+        const updatedSupplement = await services.updateSupplement(id, validatedData, req.user?.userId);
 
         if (!updatedSupplement) {
             console.log('Update failed');
@@ -505,7 +505,7 @@ export async function deleteSupplements(req, res) {
 
         // STEP 2: Delete supplements from database
         console.log('Step 2: Deleting from database...');
-        const deletedSupplements = await services.deleteSupplements(ids);
+        const deletedSupplements = await services.deleteSupplements(ids, req.user?.userId);
         console.log(`Deleted ${deletedSupplements.length} supplement(s)`);
 
         // STEP 3: Return success response

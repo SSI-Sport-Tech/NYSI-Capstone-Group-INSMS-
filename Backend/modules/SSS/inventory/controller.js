@@ -113,7 +113,7 @@ export async function createBatch(req, res) {
 
         // STEP 5: Insert batch into database
         console.log('Step 5: Inserting batch into database...');
-        const newBatch = await services.createBatch(validatedData);
+        const newBatch = await services.createBatch(validatedData, req.user?.userId);
         console.log('Batch created with ID:', newBatch.id);
 
         // STEP 6: Return success response
@@ -229,7 +229,7 @@ export async function updateBatch(req, res) {
 
         // STEP 6: Update batch in database
         console.log('Step 6: Updating database...');
-        const updatedBatch = await services.updateBatch(id, validatedData);
+        const updatedBatch = await services.updateBatch(id, validatedData, req.user?.userId);
 
         if (!updatedBatch) {
             console.log('Update failed');
@@ -311,7 +311,7 @@ export async function deleteBatches(req, res) {
 
         // STEP 3: Delete batches from database
         console.log('Step 3: Deleting from database...');
-        const deletedBatches = await services.deleteBatches(ids);
+        const deletedBatches = await services.deleteBatches(ids, req.user?.userId);
         console.log(`Deleted ${deletedBatches.length} batch(es)`);
 
         // STEP 4: Return success response
