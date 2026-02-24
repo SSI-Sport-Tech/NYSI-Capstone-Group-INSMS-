@@ -37,7 +37,7 @@ export const createMedicalHistorySchema = z.object({
 
     // Bowel movement section (consultation.session_bowel_movement)
     bowel_movement: z.object({
-        regular_bowel_movement: z.boolean().optional(),
+        regular_bowel_movement: z.boolean().nullable().optional(),
         frequency_of_bowel_movement: z.string().trim().optional(),
         stool_visual: z.string().trim().optional(),
         other_remarks: z.string().trim().optional(),
@@ -45,7 +45,7 @@ export const createMedicalHistorySchema = z.object({
 
     // Hydration section (consultation.session_hydration)
     hydration: z.object({
-        water_intake_per_day: z.number().optional(),
+        water_intake_per_day: z.number().nullable().optional(),
         urine_colour: z.string().trim().optional(),
         hydration_status: z.string().trim().optional(),
         other_remarks: z.string().trim().optional(),
@@ -53,12 +53,12 @@ export const createMedicalHistorySchema = z.object({
 
     // Period section (consultation.session_period)
     period: z.object({
-        date_of_first_period: z.string().trim().optional(),
-        age_of_menarchy: z.number().optional(),
-        regularity_of_period: z.number().optional(),
-        length_of_typical_menstrual_cycle: z.number().optional(),
-        length_of_period: z.number().optional(),
-        heaviness_of_menstrual_bleeding: z.number().optional(),
+        date_of_first_period: z.string().trim().nullable().optional(),
+        age_of_menarchy: z.number().nullable().optional(),
+        regularity_of_period: z.number().nullable().optional(),
+        length_of_typical_menstrual_cycle: z.number().nullable().optional(),
+        length_of_period: z.number().nullable().optional(),
+        heaviness_of_menstrual_bleeding: z.number().nullable().optional(),
         any_signs_and_symptoms: z.string().trim().optional(),
         other_remarks: z.string().trim().optional(),
     }).optional(),
@@ -89,7 +89,7 @@ export const updateMedicalHistorySchema = z.object({
 
     // Bowel movement section
     bowel_movement: z.object({
-        regular_bowel_movement: z.boolean().optional(),
+        regular_bowel_movement: z.boolean().nullable().optional(),
         frequency_of_bowel_movement: z.string().trim().optional(),
         stool_visual: z.string().trim().optional(),
         other_remarks: z.string().trim().optional(),
@@ -97,7 +97,7 @@ export const updateMedicalHistorySchema = z.object({
 
     // Hydration section
     hydration: z.object({
-        water_intake_per_day: z.number().optional(),
+        water_intake_per_day: z.number().nullable().optional(),
         urine_colour: z.string().trim().optional(),
         hydration_status: z.string().trim().optional(),
         other_remarks: z.string().trim().optional(),
@@ -105,12 +105,12 @@ export const updateMedicalHistorySchema = z.object({
 
     // Period section
     period: z.object({
-        date_of_first_period: z.string().trim().optional(),
-        age_of_menarchy: z.number().optional(),
-        regularity_of_period: z.number().optional(),
-        length_of_typical_menstrual_cycle: z.number().optional(),
-        length_of_period: z.number().optional(),
-        heaviness_of_menstrual_bleeding: z.number().optional(),
+        date_of_first_period: z.string().trim().nullable().optional(),
+        age_of_menarchy: z.number().nullable().optional(),
+        regularity_of_period: z.number().nullable().optional(),
+        length_of_typical_menstrual_cycle: z.number().nullable().optional(),
+        length_of_period: z.number().nullable().optional(),
+        heaviness_of_menstrual_bleeding: z.number().nullable().optional(),
         any_signs_and_symptoms: z.string().trim().optional(),
         other_remarks: z.string().trim().optional(),
     }).optional(),
