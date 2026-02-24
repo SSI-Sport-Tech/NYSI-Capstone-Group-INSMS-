@@ -879,7 +879,7 @@ router.post(
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/athletes", controller.createBasicAthlete);
+router.post("/athletes", authenticateToken, controller.createBasicAthlete);
 
 /**
  * @swagger
@@ -929,6 +929,6 @@ router.post("/athletes", controller.createBasicAthlete);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete("/athletes", controller.deleteAthletes);
+router.delete("/athletes", authenticateToken, requireAdmin, controller.deleteAthletes);
 
 export default router;

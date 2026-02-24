@@ -39,3 +39,32 @@ pool.on("error", (err) => {
 })();
 
 export default pool;
+
+/**
+ * Runs a callback inside a transaction with the current user ID set
+ * for the audit trigger (app.current_user_id). Use for all INSERT/UPDATE/DELETE.
+ *
+ * SET LOCAL scopes the variable to the current transaction only,
+ * so it never leaks across pool connections.
+ *
+ * @param {string|null} userId - auth.users.id UUID from req.user.userId
+ * @param {Function} callback - async (client) => { return await client.query(...) }
+ * @returns {Promise<*>} Whatever the callback returns
+ */
+export async function withUserContext(userId, callback) {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        if (userId) {
+            await client.query('SELECT set_config($1, $2, true)', ['app.current_user_id', userId]);
+        }
+        const result = await callback(client);
+        await client.query('COMMIT');
+        return result;
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
+}

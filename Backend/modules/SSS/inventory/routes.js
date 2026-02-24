@@ -1,5 +1,6 @@
 import express from 'express';
 import * as controller from './controller.js';
+import { authenticateToken } from '../../../modules/Auth/authMiddleware.js';
 
 const router = express.Router();
 
@@ -79,7 +80,7 @@ router.get('/batches', controller.listBatches);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/batches', controller.createBatch);
+router.post('/batches', authenticateToken, controller.createBatch);
 
 /**
  * @swagger
@@ -129,7 +130,7 @@ router.post('/batches', controller.createBatch);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch('/batches/:id', controller.updateBatch);
+router.patch('/batches/:id', authenticateToken, controller.updateBatch);
 
 /**
  * @swagger
@@ -163,6 +164,6 @@ router.patch('/batches/:id', controller.updateBatch);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete('/batches', controller.deleteBatches);
+router.delete('/batches', authenticateToken, controller.deleteBatches);
 
 export default router;

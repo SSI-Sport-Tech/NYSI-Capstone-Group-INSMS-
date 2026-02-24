@@ -33,7 +33,7 @@ export async function createSport(req, res) {
             });
         }
 
-        const created = await services.createSport(validated.sport);
+        const created = await services.createSport(validated.sport, req.user?.userId);
 
         res.status(201).json({
             message: 'Sport created successfully',
@@ -75,7 +75,7 @@ export async function deleteSports(req, res) {
             });
         }
 
-        const deleted = await services.deleteSports(ids);
+        const deleted = await services.deleteSports(ids, req.user?.userId);
 
         res.json({
             message: `Successfully deleted ${deleted.length} sport(s)`,
@@ -116,7 +116,7 @@ export async function updateSport(req, res) {
         const validated = updateSportSchema.parse(req.body);
 
         // Step 4: Update
-        const updated = await services.updateSportStatus(id, validated.is_active);
+        const updated = await services.updateSportStatus(id, validated.is_active, req.user?.userId);
 
         res.json({
             message: 'Sport updated successfully',

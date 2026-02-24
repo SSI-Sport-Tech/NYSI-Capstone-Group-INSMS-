@@ -171,7 +171,7 @@ export async function updateStagingSupplement(req, res) {
 
         // STEP 4: Update staging supplement in database
         console.log('Step 4: Updating database...');
-        const updatedStagingSupplement = await services.updateStagingSupplement(id, validatedData);
+        const updatedStagingSupplement = await services.updateStagingSupplement(id, validatedData, req.user?.userId);
 
         if (!updatedStagingSupplement) {
             console.log('Update failed');
@@ -230,7 +230,7 @@ export async function deleteStagingSupplements(req, res) {
 
         // STEP 2: Delete staging supplements from database
         console.log('Step 2: Deleting from database...');
-        const deletedStagingSupplements = await services.deleteStagingSupplements(ids);
+        const deletedStagingSupplements = await services.deleteStagingSupplements(ids, req.user?.userId);
         console.log(`Deleted ${deletedStagingSupplements.length} staging supplement(s)`);
 
         // STEP 3: Return success response
@@ -283,7 +283,7 @@ export async function approveStagingSupplements(req, res) {
 
         // STEP 2: Process approval (service handles all business logic)
         console.log('Step 2: Processing approvals...');
-        const approvalResults = await services.approveStagingSupplements(ids);
+        const approvalResults = await services.approveStagingSupplements(ids, req.user?.userId);
         console.log(`Processed ${approvalResults.totalProcessed} entries`);
         console.log(`Succeeded: ${approvalResults.succeeded}, Failed: ${approvalResults.failed}, Duplicates: ${approvalResults.duplicates}`);
 
@@ -460,7 +460,7 @@ export async function createCatalogUrl(req, res) {
         }
 
         // Create catalog URL
-        const newCatalogUrl = await services.createCatalogUrl(validatedData);
+        const newCatalogUrl = await services.createCatalogUrl(validatedData, req.user?.userId);
 
         console.log('Catalog URL created:', newCatalogUrl.id);
 
@@ -537,7 +537,7 @@ export async function updateCatalogUrl(req, res) {
         }
 
         // Update catalog URL
-        const updatedCatalogUrl = await services.updateCatalogUrl(id, validatedData);
+        const updatedCatalogUrl = await services.updateCatalogUrl(id, validatedData, req.user?.userId);
 
         console.log('Catalog URL updated successfully');
 
@@ -579,7 +579,7 @@ export async function deleteCatalogUrls(req, res) {
         const { ids } = bulkDeleteSchema.parse(req.body);
 
         // Delete catalog URLs
-        const deletedCatalogUrls = await services.deleteCatalogUrls(ids);
+        const deletedCatalogUrls = await services.deleteCatalogUrls(ids, req.user?.userId);
 
         console.log(`Deleted ${deletedCatalogUrls.length} catalog URL(s)`);
 

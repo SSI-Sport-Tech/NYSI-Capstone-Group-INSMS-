@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import axios from "axios";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface StagingSupplement {
   id: string;
@@ -63,6 +64,7 @@ const tabs = [
 ];
 
 export default function WebScraperPage() {
+  const { token } = useAuth();
   const [stagingSupplements, setStagingSupplements] = useState<
     StagingSupplement[]
   >([]);
@@ -118,9 +120,11 @@ export default function WebScraperPage() {
   const handleStartScraping = async (selectedUrlIds: string[]) => {
     setLoading(true);
     try {
-      await axios.post("/api/SSS/scraping/start", {
-        catalog_url_ids: selectedUrlIds,
-      });
+      await axios.post(
+        "/api/SSS/scraping/start",
+        { catalog_url_ids: selectedUrlIds },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
       alert("Scraping started successfully!");
       setShowUrlModal(false);
       // Refresh staging supplements after a delay
@@ -143,6 +147,7 @@ export default function WebScraperPage() {
     try {
       await axios.delete("/api/SSS/staging-supplements", {
         data: { ids: Array.from(selectedItems) },
+        headers: { Authorization: `Bearer ${token}` },
       });
       await loadStagingSupplements();
       setSelectedItems(new Set());
@@ -167,9 +172,8 @@ export default function WebScraperPage() {
       );
       const response = await axios.post(
         "/api/SSS/staging-supplements/approve",
-        {
-          ids: Array.from(selectedItems),
-        },
+        { ids: Array.from(selectedItems) },
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       console.log("Approval response:", response.data);
       await loadStagingSupplements();

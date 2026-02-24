@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool, { withUserContext } from "../../../config/db.js";
 import { SIMILARITY_THRESHOLD } from './validation.js';
 
 // ============================================================================
@@ -275,7 +275,7 @@ export async function getBatchCountBySupplementId(supplementId) {
 }
 
 //Use Case: Create New Supplement
-export async function createSupplement(supplementData) {
+export async function createSupplement(supplementData, userId) {
   const query = `
     INSERT INTO SSS.Supplement (
       supplement_name,
@@ -348,8 +348,10 @@ export async function createSupplement(supplementData) {
       : null, // $18 - vector: stringify array for pgvector
   ];
 
-  const result = await pool.query(query, values);
-  return result.rows[0];
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, values);
+    return result.rows[0];
+  });
 }
 
 //Use Case: Create New Supplement
@@ -383,7 +385,7 @@ export async function checkDuplicateSupplement(name, brand, excludeId = null) {
 }
 
 //Use Case: Edit Supplement (Partial Update)
-export async function updateSupplement(supplementId, updateData) {
+export async function updateSupplement(supplementId, updateData, userId) {
   // Build dynamic UPDATE query based on provided fields
   const fields = [];
   const values = [];
@@ -462,20 +464,24 @@ export async function updateSupplement(supplementId, updateData) {
       product_source_url
   `;
 
-  const result = await pool.query(query, values);
-  return result.rows.length > 0 ? result.rows[0] : null;
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, values);
+    return result.rows.length > 0 ? result.rows[0] : null;
+  });
 }
 
 //Use Case: Delete Supplement (Hard Delete - Bulk)
-export async function deleteSupplements(supplementIds) {
+export async function deleteSupplements(supplementIds, userId) {
   const query = `
     DELETE FROM SSS.Supplement
     WHERE id = ANY($1::uuid[])
     RETURNING id
   `;
 
-  const result = await pool.query(query, [supplementIds]);
-  return result.rows;
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, [supplementIds]);
+    return result.rows;
+  });
 }
 
 // ============================================================================

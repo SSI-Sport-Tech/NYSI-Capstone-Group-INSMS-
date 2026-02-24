@@ -1,5 +1,6 @@
 import express from 'express';
 import * as controller from './controller.js';
+import { authenticateToken } from '../../Auth/authMiddleware.js';
 
 const router = express.Router();
 
@@ -108,7 +109,7 @@ router.get('/coaches', controller.listCoaches);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/coaches', controller.createCoach);
+router.post('/coaches', authenticateToken, controller.createCoach);
 
 // ============================================================================
 // COACH-ATHLETE MAPPING ROUTES
@@ -278,7 +279,7 @@ router.get('/coaches/mappings/athlete/:athleteId', controller.listMappingsByAthl
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/coaches/mappings', controller.createMapping);
+router.post('/coaches/mappings', authenticateToken, controller.createMapping);
 
 /**
  * @swagger
@@ -340,7 +341,7 @@ router.post('/coaches/mappings', controller.createMapping);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete('/coaches/mappings', controller.deleteMappings);
+router.delete('/coaches/mappings', authenticateToken, controller.deleteMappings);
 
 /**
  * @swagger
@@ -392,7 +393,7 @@ router.delete('/coaches/mappings', controller.deleteMappings);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete('/coaches', controller.deleteCoaches);
+router.delete('/coaches', authenticateToken, controller.deleteCoaches);
 
 /**
  * @swagger
@@ -463,7 +464,7 @@ router.delete('/coaches', controller.deleteCoaches);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch('/coaches/mappings/:athleteId/:coachId', controller.updateMapping);
+router.patch('/coaches/mappings/:athleteId/:coachId', authenticateToken, controller.updateMapping);
 
 /**
  * @swagger
@@ -528,7 +529,7 @@ router.patch('/coaches/mappings/:athleteId/:coachId', controller.updateMapping);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch('/coaches/:id', controller.updateCoach);
+router.patch('/coaches/:id', authenticateToken, controller.updateCoach);
 
 
 export default router;

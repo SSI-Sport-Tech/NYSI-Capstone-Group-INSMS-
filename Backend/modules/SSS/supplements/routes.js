@@ -1,5 +1,6 @@
 import express from 'express';
 import * as controller from './controller.js';
+import { authenticateToken } from '../../../modules/Auth/authMiddleware.js';
 
 const router = express.Router();
 
@@ -587,7 +588,7 @@ router.get('/supplements/:id/alternatives', controller.getAlternativeSupplements
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/supplements', controller.createSupplement);
+router.post('/supplements', authenticateToken, controller.createSupplement);
 
 /**
  * @swagger
@@ -694,7 +695,7 @@ router.post('/supplements', controller.createSupplement);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch('/supplements/:id', controller.updateSupplement);
+router.patch('/supplements/:id', authenticateToken, controller.updateSupplement);
 
 
 
@@ -804,7 +805,7 @@ router.patch('/supplements/:id', controller.updateSupplement);
  *               error: "Failed to delete supplements"
  *               message: "Cannot delete supplement because it has associated inventory batches"
  */
-router.delete('/supplements', controller.deleteSupplements);
+router.delete('/supplements', authenticateToken, controller.deleteSupplements);
 
 // ============================================================================
 // LOOKUP ROUTES

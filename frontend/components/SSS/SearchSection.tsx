@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, Upload } from "lucide-react";
+import { Search } from "lucide-react";
 
 interface SearchSectionProps {
   query: string;
@@ -7,7 +7,6 @@ interface SearchSectionProps {
   onSearch: () => void;
   onClear: () => void;
   loading: boolean;
-  onOpenOCR: () => void;
 }
 
 const SearchSection: React.FC<SearchSectionProps> = ({
@@ -16,7 +15,6 @@ const SearchSection: React.FC<SearchSectionProps> = ({
   onSearch,
   onClear,
   loading,
-  onOpenOCR,
 }) => {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -48,14 +46,6 @@ const SearchSection: React.FC<SearchSectionProps> = ({
             disabled={loading}
           />
         </div>
-
-        <button
-          onClick={onOpenOCR}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors"
-        >
-          <Upload className="w-4 h-4" />
-          <span>Upload Image</span>
-        </button>
 
         <button
           onClick={onSearch}

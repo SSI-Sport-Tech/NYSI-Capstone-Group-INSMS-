@@ -41,7 +41,7 @@ export async function createCoach(req, res) {
             });
         }
 
-        const created = await services.createCoach(validated.name, validated.sport_id);
+        const created = await services.createCoach(validated.name, validated.sport_id, req.user?.userId);
 
         res.status(201).json({
             message: 'Coach created successfully',
@@ -83,7 +83,7 @@ export async function deleteCoaches(req, res) {
             });
         }
 
-        const deleted = await services.deleteCoaches(ids);
+        const deleted = await services.deleteCoaches(ids, req.user?.userId);
 
         res.json({
             message: `Successfully deleted ${deleted.length} coach(es)`,
@@ -177,7 +177,7 @@ export async function createMapping(req, res) {
             });
         }
 
-        const created = await services.createMapping(validated.athlete_id, validated.coach_id, validated.is_active);
+        const created = await services.createMapping(validated.athlete_id, validated.coach_id, validated.is_active, req.user?.userId);
 
         res.status(201).json({
             message: 'Coach-athlete mapping created successfully',
@@ -206,7 +206,7 @@ export async function deleteMappings(req, res) {
     try {
         const validated = deleteMappingSchema.parse(req.body);
 
-        const deleted = await services.deleteMappings(validated);
+        const deleted = await services.deleteMappings(validated, req.user?.userId);
 
         res.json({
             message: `Successfully deleted ${deleted.length} mapping(s)`,
@@ -259,7 +259,7 @@ export async function updateMapping(req, res) {
             return res.status(404).json({ error: 'Mapping not found' });
         }
 
-        const updated = await services.updateMapping(athleteId, coachId, validated.is_active);
+        const updated = await services.updateMapping(athleteId, coachId, validated.is_active, req.user?.userId);
 
         res.json({
             message: 'Mapping updated successfully',
@@ -311,7 +311,7 @@ export async function updateCoach(req, res) {
                 details: [{ field: 'name', message: `Coach "${checkName}" already exists for this sport` }],
             });
         }
-        const updated = await services.updateCoach(id, validated);
+        const updated = await services.updateCoach(id, validated, req.user?.userId);
         if (!updated) {
             return res.status(400).json({ error: 'No fields to update' });
         }

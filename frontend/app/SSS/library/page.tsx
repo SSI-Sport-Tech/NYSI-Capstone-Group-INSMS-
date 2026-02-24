@@ -6,7 +6,6 @@ import DashboardLayout from "@/components/DashboardLayout";
 import SupplementTable from "@/components/SSS/SupplementTable";
 import ViewTabs from "@/components/SSS/ViewTabs";
 import SearchSection from "@/components/SSS/SearchSection";
-import AlternativesCarousel from "@/components/SSS/AlternativesCarousel";
 import OCRModal from "@/components/SSS/OCRModal";
 
 interface Supplement {
@@ -54,12 +53,7 @@ export default function LibraryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedSupplement, setSelectedSupplement] =
-    useState<Supplement | null>(null);
-  const [showAlternativesOnly, setShowAlternativesOnly] = useState(false);
-  const [alternativeIds, setAlternativeIds] = useState<string[]>([]);
   const [ocrModalOpen, setOcrModalOpen] = useState(false);
-  const [searchPerformed, setSearchPerformed] = useState(false);
 
   useEffect(() => {
     loadSupplements();
@@ -82,18 +76,11 @@ export default function LibraryPage() {
         setTotal(response.data.totalCount || 0);
         setCurrentPage(response.data.currentPage || 1);
         setTotalPages(response.data.totalPages || 1);
-        setShowAlternativesOnly(false);
-        setAlternativeIds([]);
-
-        if (response.data.data.length > 0 && searchPerformed) {
-          setSelectedSupplement(response.data.data[0]);
-        }
       } else {
         setSupplements([]);
         setTotal(0);
         setCurrentPage(1);
         setTotalPages(1);
-        setSelectedSupplement(null);
       }
     } catch (err) {
       console.error("API Error:", err);
@@ -102,55 +89,22 @@ export default function LibraryPage() {
       setTotal(0);
       setCurrentPage(1);
       setTotalPages(1);
-      setSelectedSupplement(null);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSearch = () => {
-    setSearchPerformed(true);
     loadSupplements(searchQuery, 1);
   };
 
   const handleClearSearch = () => {
     setSearchQuery("");
-    setSearchPerformed(false);
-    setSelectedSupplement(null);
-    setShowAlternativesOnly(false);
-    setAlternativeIds([]);
     loadSupplements("", 1);
   };
 
   const handlePageChange = (page: number) => {
     loadSupplements(searchQuery, page);
-  };
-
-  const handleFilterToggle = (show: boolean) => {
-    setShowAlternativesOnly(show);
-  };
-
-  const getFilteredSupplements = () => {
-    if (!showAlternativesOnly || alternativeIds.length === 0) {
-      return supplements;
-    }
-
-    return supplements.filter(
-      (sup) =>
-        sup.id === selectedSupplement?.id || alternativeIds.includes(sup.id),
-    );
-  };
-
-  const handleOCRComplete = (data: any) => {
-    setSearchPerformed(true);
-    if (data.supplement_name) {
-      setSearchQuery(data.supplement_name);
-      loadSupplements(data.supplement_name, 1);
-    } else if (data.supplement_brand) {
-      setSearchQuery(data.supplement_brand);
-      loadSupplements(data.supplement_brand, 1);
-    }
-    setOcrModalOpen(false);
   };
 
   return (
@@ -192,44 +146,25 @@ export default function LibraryPage() {
             onSearch={handleSearch}
             onClear={handleClearSearch}
             loading={loading}
-            onOpenOCR={() => setOcrModalOpen(true)}
           />
-
-          {/* Alternatives Carousel */}
-          {selectedSupplement && searchPerformed && (
-            <AlternativesCarousel
-              supplementId={selectedSupplement.id}
-              supplementName={selectedSupplement.supplement_name}
-              onFilterToggle={handleFilterToggle}
-              onAlternativeSelect={(alternative) => {
-                setAlternativeIds((prev) =>
-                  prev.includes(alternative.id)
-                    ? prev.filter((id) => id !== alternative.id)
-                    : [...prev, alternative.id],
-                );
-              }}
-            />
-          )}
 
           {/* Supplement Table */}
           <SupplementTable
-            supplements={getFilteredSupplements()}
-            total={
-              showAlternativesOnly ? getFilteredSupplements().length : total
-            }
+            supplements={supplements}
+            total={total}
             loading={loading}
             searchQuery={searchQuery}
             onRefresh={() => loadSupplements(searchQuery, currentPage)}
-            currentPage={showAlternativesOnly ? 1 : currentPage}
-            totalPages={showAlternativesOnly ? 1 : totalPages}
+            currentPage={currentPage}
+            totalPages={totalPages}
             onPageChange={handlePageChange}
+            onOpenOCR={() => setOcrModalOpen(true)}
           />
 
           {/* OCR Modal */}
           <OCRModal
             isOpen={ocrModalOpen}
             onClose={() => setOcrModalOpen(false)}
-            onAnalysisComplete={handleOCRComplete}
           />
         </div>
       </div>

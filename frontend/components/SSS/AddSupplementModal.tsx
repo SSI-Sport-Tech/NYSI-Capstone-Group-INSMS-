@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { X, Search, Loader2 } from "lucide-react";
 import axios from "axios";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Supplement {
   id: string;
@@ -48,6 +49,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
   onSuccess,
   preselectedSupplement,
 }) => {
+  const { token } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Supplement[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -162,9 +164,9 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
     setFormData((prev) => ({
       ...prev,
       supplementId: supplement.id,
-      name: supplement.supplement_name,
-      brand: supplement.supplement_brand,
-      type: supplement.supplement_packaging_form,
+      name: supplement.supplement_name || "",
+      brand: supplement.supplement_brand || "",
+      type: supplement.supplement_packaging_form || "",
       servingSize: supplement.serving_size || "",
       description: supplement.description || "",
       additionalNotes: supplement.notes || "",
@@ -229,6 +231,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
         const supplementResponse = await axios.post(
           "/api/SSS/supplements",
           supplementData,
+          { headers: { Authorization: `Bearer ${token}` } },
         );
         const newSupplementId = supplementResponse.data.id;
 
@@ -241,7 +244,9 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
           batch_expiration_date: formData.expirationDate || null,
         };
 
-        await axios.post("/api/SSS/batches", batchData);
+        await axios.post("/api/SSS/batches", batchData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       } else {
         // Just create batch for existing supplement
         const batchData = {
@@ -252,7 +257,9 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
           batch_expiration_date: formData.expirationDate || null,
         };
 
-        await axios.post("/api/SSS/batches", batchData);
+        await axios.post("/api/SSS/batches", batchData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       }
 
       onSuccess();

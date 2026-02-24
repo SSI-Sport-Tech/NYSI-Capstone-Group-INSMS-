@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool, { withUserContext } from "../../../config/db.js";
 
 // ============================================================================
 // BATCH/INVENTORY FUNCTIONS
@@ -222,7 +222,7 @@ export async function checkBatchHasTickets(batchId) {
 /**
  * Add a new inventory batch to the database
  */
-export async function createBatch(batchData) {
+export async function createBatch(batchData, userId) {
   const query = `
         INSERT INTO SSS.Inventory_Batch (
             supplement_id,
@@ -257,14 +257,16 @@ export async function createBatch(batchData) {
     batchData.batch_manufacture_date || null,
   ];
 
-  const result = await pool.query(query, values);
-  return result.rows[0];
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, values);
+    return result.rows[0];
+  });
 }
 
 /**
  * Update one or more fields of an existing batch (partial update)
  */
-export async function updateBatch(batchId, updateData) {
+export async function updateBatch(batchId, updateData, userId) {
   const fields = [];
   const values = [];
   let paramCounter = 1;
@@ -307,20 +309,24 @@ export async function updateBatch(batchId, updateData) {
             batch_manufacture_date
     `;
 
-  const result = await pool.query(query, values);
-  return result.rows.length > 0 ? result.rows[0] : null;
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, values);
+    return result.rows.length > 0 ? result.rows[0] : null;
+  });
 }
 
 /**
  * Permanently delete one or more batches from database (hard delete, bulk)
  */
-export async function deleteBatches(batchIds) {
+export async function deleteBatches(batchIds, userId) {
   const query = `
         DELETE FROM SSS.Inventory_Batch
         WHERE id = ANY($1::uuid[])
         RETURNING id
     `;
 
-  const result = await pool.query(query, [batchIds]);
-  return result.rows;
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, [batchIds]);
+    return result.rows;
+  });
 }

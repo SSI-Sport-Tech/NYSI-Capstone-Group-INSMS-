@@ -35,7 +35,7 @@ export async function createNutritionist(req, res) {
             });
         }
 
-        const created = await services.createNutritionist(validated.name);
+        const created = await services.createNutritionist(validated.name, req.user?.userId);
 
         res.status(201).json({
             message: 'Nutritionist created successfully',
@@ -60,7 +60,7 @@ export async function deleteNutritionists(req, res) {
     try {
         const { ids } = bulkDeleteSchema.parse(req.body);
 
-        const deleted = await services.deleteNutritionists(ids);
+        const deleted = await services.deleteNutritionists(ids, req.user?.userId);
 
         res.json({
             message: `Successfully deleted ${deleted.length} nutritionist(s)`,
@@ -229,7 +229,7 @@ export async function createMapping(req, res) {
             });
         }
 
-        const created = await services.createMapping(validated.athlete_id, validated.nutritionist_id, validated.is_active);
+        const created = await services.createMapping(validated.athlete_id, validated.nutritionist_id, validated.is_active, req.user?.userId);
 
         res.status(201).json({
             message: 'Nutritionist-athlete mapping created successfully',
@@ -254,7 +254,7 @@ export async function deleteMappings(req, res) {
     try {
         const validated = deleteMappingSchema.parse(req.body);
 
-        const deleted = await services.deleteMappings(validated);
+        const deleted = await services.deleteMappings(validated, req.user?.userId);
 
         res.json({
             message: `Successfully deleted ${deleted.length} mapping(s)`,

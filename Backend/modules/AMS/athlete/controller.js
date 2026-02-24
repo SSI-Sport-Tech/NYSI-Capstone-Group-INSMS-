@@ -146,7 +146,7 @@ export async function createBasicAthlete(req, res) {
 
     // Step 4: Create athlete
     console.log("Step 4: Creating basic athlete");
-    const athlete = await services.createBasicAthlete(validated);
+    const athlete = await services.createBasicAthlete(validated, req.user?.userId);
 
     console.log(`Step 5: Athlete ${athlete.id} created successfully`);
 
@@ -286,6 +286,7 @@ export async function createCompleteAthlete(req, res) {
       medicalData,
       validated.coach_ids,
       nutritionistIds,
+      req.user?.userId,
     );
 
     console.log(
@@ -438,6 +439,7 @@ export async function adminCreateCompleteAthlete(req, res) {
       medicalData,
       validated.coach_ids,
       nutritionistIds,
+      req.user?.userId,
     );
 
     console.log(
@@ -543,7 +545,7 @@ export async function updateAthleteProfile(req, res) {
 
     const result = await services.updateAthleteProfile(id, validated, {
       updateNutritionists: false,
-    });
+    }, req.user?.userId);
 
     res.json({
       message: "Athlete profile updated successfully",
@@ -668,7 +670,7 @@ export async function adminUpdateAthleteProfile(req, res) {
 
     const result = await services.updateAthleteProfile(id, validated, {
       updateNutritionists: true,
-    });
+    }, req.user?.userId);
 
     res.json({
       message: "Athlete profile updated successfully",
@@ -703,7 +705,7 @@ export async function deleteAthletes(req, res) {
 
     // Step 2: Delete (CASCADE handles registry/medical)
     console.log(`Step 2: Deleting ${ids.length} athlete(s)`);
-    const deleted = await services.deleteAthletes(ids);
+    const deleted = await services.deleteAthletes(ids, req.user?.userId);
 
     res.json({
       message: `Successfully deleted ${deleted.length} athlete(s)`,

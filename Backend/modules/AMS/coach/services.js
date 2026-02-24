@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool, { withUserContext } from "../../../config/db.js";
 
 // ============================================================================
 // COACH CRUD SERVICES
@@ -83,15 +83,17 @@ export async function checkSportExists(sportId) {
  * @param {string} sportId - Sport UUID
  * @returns {Promise<Object>} Created coach row
  */
-export async function createCoach(name, sportId) {
+export async function createCoach(name, sportId, userId) {
     const query = `
         INSERT INTO AMS.Coach (name, sport_id)
         VALUES ($1, $2)
         RETURNING *
     `;
 
-    const result = await pool.query(query, [name, sportId]);
-    return result.rows[0];
+    return withUserContext(userId, async (client) => {
+        const result = await client.query(query, [name, sportId]);
+        return result.rows[0];
+    });
 }
 
 /**
@@ -100,7 +102,7 @@ export async function createCoach(name, sportId) {
  * @param {Object} updateData - Fields to update
  * @returns {Promise<Object|null>} Updated coach or null
  */
-export async function updateCoach(coachId, updateData) {
+export async function updateCoach(coachId, updateData, userId) {
     const fields = [];
     const values = [];
     let paramCounter = 1;
@@ -131,8 +133,10 @@ export async function updateCoach(coachId, updateData) {
         RETURNING *
     `;
 
-    const result = await pool.query(query, values);
-    return result.rows.length > 0 ? result.rows[0] : null;
+    return withUserContext(userId, async (client) => {
+        const result = await client.query(query, values);
+        return result.rows.length > 0 ? result.rows[0] : null;
+    });
 }
 
 /**
@@ -156,15 +160,17 @@ export async function getReferencedCoachIds(coachIds) {
  * @param {Array<string>} coachIds - Array of UUIDs
  * @returns {Promise<Array>} Array of deleted rows
  */
-export async function deleteCoaches(coachIds) {
+export async function deleteCoaches(coachIds, userId) {
     const query = `
         DELETE FROM AMS.Coach
         WHERE id = ANY($1::uuid[])
         RETURNING id
     `;
 
-    const result = await pool.query(query, [coachIds]);
-    return result.rows;
+    return withUserContext(userId, async (client) => {
+        const result = await client.query(query, [coachIds]);
+        return result.rows;
+    });
 }
 
 /**
@@ -247,15 +253,17 @@ export async function checkMappingExists(athleteId, coachId) {
  * @param {boolean} isActive - Whether the mapping is active
  * @returns {Promise<Object>} Created mapping row
  */
-export async function createMapping(athleteId, coachId, isActive) {
+export async function createMapping(athleteId, coachId, isActive, userId) {
     const query = `
         INSERT INTO AMS.Coach_Athlete_Mapping (athlete_id, coach_id, is_active)
         VALUES ($1, $2, $3)
         RETURNING *
     `;
 
-    const result = await pool.query(query, [athleteId, coachId, isActive]);
-    return result.rows[0];
+    return withUserContext(userId, async (client) => {
+        const result = await client.query(query, [athleteId, coachId, isActive]);
+        return result.rows[0];
+    });
 }
 
 /**
@@ -263,7 +271,7 @@ export async function createMapping(athleteId, coachId, isActive) {
  * @param {Array<{athlete_id: string, coach_id: string}>} pairs - Array of composite key pairs
  * @returns {Promise<Array>} Array of deleted rows
  */
-export async function deleteMappings(pairs) {
+export async function deleteMappings(pairs, userId) {
     const valueClauses = [];
     const params = [];
     let paramCounter = 1;
@@ -280,8 +288,10 @@ export async function deleteMappings(pairs) {
         RETURNING id, athlete_id, coach_id
     `;
 
-    const result = await pool.query(query, params);
-    return result.rows;
+    return withUserContext(userId, async (client) => {
+        const result = await client.query(query, params);
+        return result.rows;
+    });
 }
 
 /**
@@ -291,7 +301,7 @@ export async function deleteMappings(pairs) {
  * @param {boolean} isActive - New is_active status
  * @returns {Promise<Object|null>} Updated mapping or null if not found
  */
-export async function updateMapping(athleteId, coachId, isActive) {
+export async function updateMapping(athleteId, coachId, isActive, userId) {
     const query = `
         UPDATE AMS.Coach_Athlete_Mapping
         SET is_active = $3
@@ -299,6 +309,8 @@ export async function updateMapping(athleteId, coachId, isActive) {
         RETURNING *
     `;
 
-    const result = await pool.query(query, [athleteId, coachId, isActive]);
-    return result.rows.length > 0 ? result.rows[0] : null;
+    return withUserContext(userId, async (client) => {
+        const result = await client.query(query, [athleteId, coachId, isActive]);
+        return result.rows.length > 0 ? result.rows[0] : null;
+    });
 }

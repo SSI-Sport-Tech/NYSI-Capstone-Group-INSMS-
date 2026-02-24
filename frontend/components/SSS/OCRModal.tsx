@@ -1,28 +1,40 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import { X, Upload, Loader } from "lucide-react";
 
 interface OCRModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAnalysisComplete?: (data: OCRAnalysisResult) => void;
+}
+
+interface SimilarSupplement {
+  supplement_id: string;
+  supplement_name: string;
+  supplement_brand: string;
+  supplement_status: string;
+  supplement_packaging_form: string;
+  batch_testing_org: string | null;
+  similarity_score: string;
+  matched_vector: string;
 }
 
 interface OCRAnalysisResult {
-  supplement_name?: string;
-  supplement_brand?: string;
-  supplement_ingredient?: string[];
-  nutritional_info_per_serving?: Record<string, string>;
-  nutritional_info_per_100g?: Record<string, string>;
+  similar_supplements: {
+    data: SimilarSupplement[];
+    pagination: {
+      page: number;
+      per_page: number;
+      total: number;
+      total_pages: number;
+    };
+  };
 }
 
-const OCRModal: React.FC<OCRModalProps> = ({
-  isOpen,
-  onClose,
-  onAnalysisComplete,
-}) => {
+const OCRModal: React.FC<OCRModalProps> = ({ isOpen, onClose }) => {
+  const router = useRouter();
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -68,10 +80,15 @@ const OCRModal: React.FC<OCRModalProps> = ({
         timeout: 120000,
       });
 
-      if (response.data?.success && response.data?.extracted) {
-        setAnalysisResult(response.data.extracted);
+      if (response.data?.success) {
+        const result: OCRAnalysisResult = {
+          similar_supplements: response.data.similar_supplements || {
+            data: [],
+            pagination: { page: 1, per_page: 10, total: 0, total_pages: 0 },
+          },
+        };
+        setAnalysisResult(result);
         setStep("result");
-        onAnalysisComplete?.(response.data.extracted);
       } else {
         setError("Failed to analyze OCR data");
         setStep("upload");
@@ -107,9 +124,9 @@ const OCRModal: React.FC<OCRModalProps> = ({
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-900">
-            {step === "upload" && "Upload Supplement Label"}
-            {step === "processing" && "Searching..."}
-            {step === "result" && "Search Results"}
+            {step === "upload" && "Upload Nutritional Label"}
+            {step === "processing" && "Analysing Label..."}
+            {step === "result" && "Similar Supplements Found"}
           </h2>
           <button
             onClick={handleClose}
@@ -200,89 +217,76 @@ const OCRModal: React.FC<OCRModalProps> = ({
           {/* Result Step */}
           {step === "result" && analysisResult && (
             <div className="space-y-4">
-              {/* Supplement Info */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 mb-2">
-                  Supplement Information
-                </h3>
-                <div className="space-y-2 text-sm">
-                  {analysisResult.supplement_name && (
-                    <p>
-                      <span className="font-medium text-gray-700">Name:</span>{" "}
-                      {analysisResult.supplement_name}
-                    </p>
-                  )}
-                  {analysisResult.supplement_brand && (
-                    <p>
-                      <span className="font-medium text-gray-700">Brand:</span>{" "}
-                      {analysisResult.supplement_brand}
-                    </p>
-                  )}
-                  {analysisResult.supplement_ingredient && (
-                    <p>
-                      <span className="font-medium text-gray-700">
-                        Ingredients:
-                      </span>{" "}
-                      {Array.isArray(analysisResult.supplement_ingredient)
-                        ? analysisResult.supplement_ingredient.join(", ")
-                        : analysisResult.supplement_ingredient}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Nutritional Info */}
-              {analysisResult.nutritional_info_per_serving && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2">
-                    Per Serving
-                  </h3>
-                  <div className="space-y-1 text-sm">
-                    {Object.entries(
-                      analysisResult.nutritional_info_per_serving,
-                    ).map(([key, value]) => (
-                      <p key={key}>
-                        <span className="font-medium text-gray-700 capitalize">
-                          {key.replace(/_/g, " ")}:
-                        </span>{" "}
-                        {value}
-                      </p>
+              {analysisResult.similar_supplements.data.length > 0 ? (
+                <>
+                  <p className="text-sm text-gray-600">
+                    Found{" "}
+                    <span className="font-semibold text-gray-900">
+                      {analysisResult.similar_supplements.pagination.total}
+                    </span>{" "}
+                    supplement
+                    {analysisResult.similar_supplements.pagination.total !== 1
+                      ? "s"
+                      : ""}{" "}
+                    with a similar nutritional profile. Click a row to view
+                    details.
+                  </p>
+                  <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                    {analysisResult.similar_supplements.data.map((s) => (
+                      <div
+                        key={s.supplement_id}
+                        onClick={() => {
+                          handleClose();
+                          router.push(`/SSS/supplements/${s.supplement_id}`);
+                        }}
+                        className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                      >
+                        <div>
+                          <p className="font-medium text-gray-900 text-sm">
+                            {s.supplement_name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {s.supplement_brand}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0 ml-4">
+                          <p className="text-sm font-semibold text-blue-600">
+                            {Math.round(parseFloat(s.similarity_score) * 100)}%
+                            match
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {s.supplement_status}
+                          </p>
+                        </div>
+                      </div>
                     ))}
                   </div>
-                </div>
-              )}
-
-              {analysisResult.nutritional_info_per_100g && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2">Per 100g</h3>
-                  <div className="space-y-1 text-sm">
-                    {Object.entries(
-                      analysisResult.nutritional_info_per_100g,
-                    ).map(([key, value]) => (
-                      <p key={key}>
-                        <span className="font-medium text-gray-700 capitalize">
-                          {key.replace(/_/g, " ")}:
-                        </span>{" "}
-                        {value}
-                      </p>
-                    ))}
-                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-600 font-medium">
+                    No matching supplements found
+                  </p>
+                  <p className="text-gray-500 text-sm mt-1">
+                    No supplements in the library match this nutritional
+                    profile.
+                  </p>
                 </div>
               )}
 
               {/* Action Buttons */}
-              <div className="space-y-2 pt-4">
-                <button
-                  onClick={handleReset}
-                  className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Search Another Image
-                </button>
+              <div className="space-y-2 pt-2">
                 <button
                   onClick={handleClose}
-                  className="w-full px-4 py-2 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-colors"
+                  className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   Close
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="w-full px-4 py-2 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Scan Another
                 </button>
               </div>
             </div>

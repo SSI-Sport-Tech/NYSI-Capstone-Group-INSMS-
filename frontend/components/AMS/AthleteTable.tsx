@@ -150,6 +150,7 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
       try {
         await axios.delete("/api/AMS/athletes", {
           data: { ids: selectedAthletes },
+          headers: { Authorization: `Bearer ${token}` },
         });
         setSelectedAthletes([]);
         if (onRefresh) onRefresh();

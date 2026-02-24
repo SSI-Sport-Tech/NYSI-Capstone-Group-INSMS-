@@ -1,7 +1,8 @@
-// Routes for CRUD for staging, CRUD for Catalog Url, and starting scraping job 
+// Routes for CRUD for staging, CRUD for Catalog Url, and starting scraping job
 
 import express from 'express';
 import * as controller from './controller.js';
+import { authenticateToken } from '../../../modules/Auth/authMiddleware.js';
 
 const router = express.Router();
 
@@ -210,7 +211,7 @@ router.get('/staging-supplements/:id', controller.getStagingSupplementDetails);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch('/staging-supplements/:id', controller.updateStagingSupplement);
+router.patch('/staging-supplements/:id', authenticateToken, controller.updateStagingSupplement);
 
 /**
  * @swagger
@@ -280,7 +281,7 @@ router.patch('/staging-supplements/:id', controller.updateStagingSupplement);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete('/staging-supplements', controller.deleteStagingSupplements);
+router.delete('/staging-supplements', authenticateToken, controller.deleteStagingSupplements);
 
 /**
  * @swagger
@@ -405,7 +406,7 @@ router.delete('/staging-supplements', controller.deleteStagingSupplements);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/staging-supplements/approve', controller.approveStagingSupplements);
+router.post('/staging-supplements/approve', authenticateToken, controller.approveStagingSupplements);
 
 // ============================================================================
 // CATALOG URL MANAGEMENT ROUTES
@@ -569,7 +570,7 @@ router.get('/catalog-urls/:id', controller.getCatalogUrlDetails);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/catalog-urls', controller.createCatalogUrl);
+router.post('/catalog-urls', authenticateToken, controller.createCatalogUrl);
 
 /**
  * @swagger
@@ -617,7 +618,7 @@ router.post('/catalog-urls', controller.createCatalogUrl);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch('/catalog-urls/:id', controller.updateCatalogUrl);
+router.patch('/catalog-urls/:id', authenticateToken, controller.updateCatalogUrl);
 
 /**
  * @swagger
@@ -670,7 +671,7 @@ router.patch('/catalog-urls/:id', controller.updateCatalogUrl);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete('/catalog-urls', controller.deleteCatalogUrls);
+router.delete('/catalog-urls', authenticateToken, controller.deleteCatalogUrls);
 
 // ============================================================================
 // SCRAPING ROUTE

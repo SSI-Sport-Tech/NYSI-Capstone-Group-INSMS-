@@ -6,11 +6,13 @@ import {
   Trash2,
   Settings,
   Upload,
+  Camera,
   Plus,
   MoreVertical,
 } from "lucide-react";
 import axios from "axios";
 import AddSupplementModal from "./AddSupplementModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Batch {
   id: number;
@@ -36,6 +38,7 @@ interface BatchTableProps {
   currentPage?: number;
   totalPages?: number;
   onPageChange?: (page: number) => void;
+  onOpenOCR?: () => void;
 }
 
 const getStatusBadgeClass = (status: string) => {
@@ -64,7 +67,9 @@ const BatchTable: React.FC<BatchTableProps> = ({
   currentPage = 1,
   totalPages = 1,
   onPageChange,
+  onOpenOCR,
 }) => {
+  const { token } = useAuth();
   const [selectedBatches, setSelectedBatches] = useState<number[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>("");
@@ -103,6 +108,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
       try {
         await axios.delete("/api/SSS/batches", {
           data: { ids: selectedBatches },
+          headers: { Authorization: `Bearer ${token}` },
         });
         setSelectedBatches([]);
         if (onRefresh) onRefresh();
@@ -211,6 +217,13 @@ const BatchTable: React.FC<BatchTableProps> = ({
           >
             <Upload className="w-4 h-4" />
             <span>Export</span>
+          </button>
+          <button
+            onClick={onOpenOCR}
+            className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-lg px-3.5 py-2 transition-colors hover:bg-gray-50"
+          >
+            <Camera className="w-4 h-4" />
+            <span>Label OCR</span>
           </button>
           <button
             onClick={() => setShowAddModal(true)}
