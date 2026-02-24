@@ -43,7 +43,7 @@ const CreateCoachModal: React.FC<CreateCoachModalProps> = ({
         setLoading(true);
 
         try {
-            const token = localStorage.getItem("nysi_auth_token");
+            const token = localStorage.getItem("token");
             await axios.post(
                 "http://localhost:8000/api/AMS/coaches",
                 {

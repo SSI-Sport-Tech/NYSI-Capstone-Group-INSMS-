@@ -161,4 +161,63 @@ router.post('/sports', controller.createSport);
  */
 router.delete('/sports', controller.deleteSports);
 
+/**
+ * @swagger
+ * /api/AMS/sports/{id}:
+ *   patch:
+ *     summary: Update Sport Status [ADMIN ONLY]
+ *     description: |
+ *       Toggle the is_active status of a sport.
+ *     tags: [AMS - Sports]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Sport UUID
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [is_active]
+ *             properties:
+ *               is_active:
+ *                 type: boolean
+ *                 description: New active status
+ *           example:
+ *             is_active: false
+ *     responses:
+ *       200:
+ *         description: Sport updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Sport updated successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     sport:
+ *                       type: string
+ *                     is_active:
+ *                       type: boolean
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.patch('/sports/:id', controller.updateSport);
+
 export default router;

@@ -58,7 +58,7 @@ const EditCoachModal: React.FC<EditCoachModalProps> = ({
         setLoading(true);
 
         try {
-            const token = localStorage.getItem("nysi_auth_token");
+            const token = localStorage.getItem("token");
 
             const updates: any = {};
             if (coachName.trim() !== coach.name) {
