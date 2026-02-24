@@ -5,7 +5,7 @@ interface MealLogsProps {
   athleteId: string;
   sessionId: string;
   isNewConsultation?: boolean;
-  newSessionId?: string;
+  ensureSession?: () => Promise<string>;
   readOnly?: boolean;
 }
 
@@ -95,7 +95,7 @@ export default function MealLogs({
   athleteId: _athleteId,
   sessionId,
   isNewConsultation,
-  newSessionId,
+  ensureSession,
   readOnly,
 }: MealLogsProps) {
   const [mealLog, setMealLog] = useState<MealLogData | null>(null);
@@ -106,8 +106,6 @@ export default function MealLogs({
   const [saveError, setSaveError] = useState<string>("");
 
   const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
-  const targetSessionId =
-    isNewConsultation && newSessionId ? newSessionId : sessionId;
 
   const fetchMealLogs = async () => {
     if (!sessionId) {
@@ -143,9 +141,10 @@ export default function MealLogs({
   const handleSave = async () => {
     try {
       setSaveError("");
+      const id = isNewConsultation && ensureSession ? await ensureSession() : sessionId;
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${targetSessionId}/meal-log`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${id}/meal-log`,
         {
           method: "PUT",
           headers: {

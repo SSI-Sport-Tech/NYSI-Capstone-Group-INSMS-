@@ -5,7 +5,7 @@ interface TrainingScheduleProps {
   athleteId: string;
   sessionId: string;
   isNewConsultation?: boolean;
-  newSessionId?: string;
+  ensureSession?: () => Promise<string>;
   readOnly?: boolean;
 }
 
@@ -133,13 +133,11 @@ export default function TrainingSchedule({
   athleteId: _athleteId,
   sessionId,
   isNewConsultation,
-  newSessionId,
+  ensureSession,
   readOnly,
 }: TrainingScheduleProps) {
   const [isEditing, setIsEditing] = useState(false);
   const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
-  const targetSessionId =
-    isNewConsultation && newSessionId ? newSessionId : sessionId;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -161,6 +159,7 @@ export default function TrainingSchedule({
   const handleSave = async () => {
     try {
       setSaveError("");
+      const id = isNewConsultation && ensureSession ? await ensureSession() : sessionId;
       const token = localStorage.getItem("token");
       const dayPayload = (key: DayKey) => ({
         am: editForm.days[key].am || null,
@@ -173,7 +172,7 @@ export default function TrainingSchedule({
           : null,
       });
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${targetSessionId}/training-schedule`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${id}/training-schedule`,
         {
           method: "PUT",
           headers: {

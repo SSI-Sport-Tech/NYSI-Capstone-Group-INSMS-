@@ -52,7 +52,7 @@ export async function listBatches(req, res) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({
                 error: 'Invalid query parameters',
-                details: error.errors.map(err => ({
+                details: error.issues.map(err => ({
                     field: err.path.join('.'),
                     message: err.message
                 }))

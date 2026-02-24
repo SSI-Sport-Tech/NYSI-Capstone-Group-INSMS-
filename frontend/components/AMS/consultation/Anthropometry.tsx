@@ -8,7 +8,7 @@ interface AnthropometryProps {
   athleteId: string;
   sessionId: string;
   isNewConsultation?: boolean;
-  newSessionId?: string;
+  ensureSession?: () => Promise<string>;
   readOnly?: boolean;
 }
 
@@ -90,7 +90,7 @@ export default function Anthropometry({
   athleteId,
   sessionId,
   isNewConsultation,
-  newSessionId,
+  ensureSession,
   readOnly,
 }: AnthropometryProps) {
   const [anthropometryData, setAnthropometryData] =
@@ -236,8 +236,7 @@ export default function Anthropometry({
   const handleSave = async () => {
     try {
       setSaveError("");
-      const targetId =
-        isNewConsultation && newSessionId ? newSessionId : sessionId;
+      const targetId = isNewConsultation && ensureSession ? await ensureSession() : sessionId;
       const token = localStorage.getItem("token");
 
       const payload = {

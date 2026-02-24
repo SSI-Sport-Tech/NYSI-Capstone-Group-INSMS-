@@ -50,7 +50,7 @@ export async function listStagingSupplements(req, res) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({
                 error: 'Invalid query parameters',
-                details: error.errors.map(err => ({
+                details: error.issues.map(err => ({
                     field: err.path.join('.'),
                     message: err.message
                 }))
@@ -113,7 +113,7 @@ export async function getStagingSupplementDetails(req, res) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({
                 error: 'Invalid parameters',
-                details: error.errors.map(err => ({
+                details: error.issues.map(err => ({
                     field: err.path.join('.'),
                     message: err.message
                 }))
@@ -384,7 +384,7 @@ export async function listCatalogUrls(req, res) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({
                 error: 'Invalid query parameters',
-                details: error.errors.map(err => ({
+                details: error.issues.map(err => ({
                     field: err.path.join('.'),
                     message: err.message
                 }))
@@ -423,7 +423,7 @@ export async function getCatalogUrlDetails(req, res) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({
                 error: 'Invalid parameters',
-                details: error.errors.map(err => ({
+                details: error.issues.map(err => ({
                     field: err.path.join('.'),
                     message: err.message
                 }))
@@ -475,7 +475,7 @@ export async function createCatalogUrl(req, res) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(err => ({
+                details: error.issues.map(err => ({
                     field: err.path.join('.'),
                     message: err.message
                 }))
@@ -552,7 +552,7 @@ export async function updateCatalogUrl(req, res) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(err => ({
+                details: error.issues.map(err => ({
                     field: err.path.join('.'),
                     message: err.message
                 }))
@@ -595,7 +595,7 @@ export async function deleteCatalogUrls(req, res) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(err => ({
+                details: error.issues.map(err => ({
                     field: err.path.join('.'),
                     message: err.message
                 }))
@@ -683,7 +683,7 @@ export async function startScrapingJob(req, res) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(err => ({
+                details: error.issues.map(err => ({
                     field: err.path.join('.'),
                     message: err.message
                 }))

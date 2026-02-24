@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 
 interface NewPrescriptionFormProps {
-  sessionId: string;
+  ensureSession: () => Promise<string>;
 }
 
 interface SupplementResult {
@@ -476,7 +476,7 @@ function PrescriptionEntryCard({
 // ─── Parent form ─────────────────────────────────────────────────────────────
 
 export default function NewPrescriptionForm({
-  sessionId,
+  ensureSession,
 }: NewPrescriptionFormProps) {
   const [entries, setEntries] = useState<PrescriptionEntry[]>([emptyEntry()]);
   const [saving, setSaving] = useState(false);
@@ -493,12 +493,12 @@ export default function NewPrescriptionForm({
     setEntries((prev) => prev.filter((_, i) => i !== index));
 
   const handleSave = async () => {
-    if (!sessionId) return;
     setSaving(true);
     setSaveError("");
     setSaved(false);
 
     try {
+      const id = await ensureSession();
       const token = localStorage.getItem("token");
 
       for (const entry of entries) {
@@ -514,7 +514,7 @@ export default function NewPrescriptionForm({
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              session_id: sessionId,
+              session_id: id,
               supplement_name: entry.name,
               brand: entry.brand,
               type: entry.type,

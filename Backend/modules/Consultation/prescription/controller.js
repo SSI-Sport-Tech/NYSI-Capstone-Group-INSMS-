@@ -31,7 +31,7 @@ export async function getPrescriptions(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Invalid session ID format',
-                details: error.errors.map(e => ({ field: e.path.join('.'), message: e.message })),
+                details: error.issues.map(e => ({ field: e.path.join('.'), message: e.message })),
             });
         }
         console.error('Error fetching prescriptions:', error);
@@ -81,7 +81,7 @@ export async function createPrescription(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({ field: e.path.join('.'), message: e.message })),
+                details: error.issues.map(e => ({ field: e.path.join('.'), message: e.message })),
             });
         }
         if (error instanceof InsufficientStockError) {
@@ -142,7 +142,7 @@ export async function updatePrescription(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({ field: e.path.join('.'), message: e.message })),
+                details: error.issues.map(e => ({ field: e.path.join('.'), message: e.message })),
             });
         }
         console.error('Error updating prescription:', error);
@@ -174,7 +174,7 @@ export async function deletePrescription(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Invalid prescription ID format',
-                details: error.errors.map(e => ({ field: e.path.join('.'), message: e.message })),
+                details: error.issues.map(e => ({ field: e.path.join('.'), message: e.message })),
             });
         }
         console.error('Error deleting prescription:', error);

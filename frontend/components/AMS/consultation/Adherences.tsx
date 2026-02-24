@@ -5,7 +5,7 @@ interface AdherencesProps {
   athleteId: string;
   sessionId: string;
   isNewConsultation?: boolean;
-  newSessionId?: string;
+  ensureSession?: () => Promise<string>;
   readOnly?: boolean;
 }
 
@@ -146,7 +146,7 @@ export default function Adherences({
   athleteId,
   sessionId,
   isNewConsultation,
-  newSessionId,
+  ensureSession,
   readOnly,
 }: AdherencesProps) {
   const [adherencesData, setAdherencesData] = useState<AdherencesData | null>(
@@ -163,8 +163,6 @@ export default function Adherences({
   const [gender, setGender] = useState<string | null>(null);
 
   const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
-  const targetSessionId =
-    isNewConsultation && newSessionId ? newSessionId : sessionId;
 
   const fetchData = async () => {
     if (!sessionId) {
@@ -311,6 +309,7 @@ export default function Adherences({
   const handleSave = async () => {
     try {
       setSaveError("");
+      const id = isNewConsultation && ensureSession ? await ensureSession() : sessionId;
       const token = localStorage.getItem("token");
       const body: Record<string, number | string | null> = {};
       if (editForm.pal !== "") body.pal = parseFloat(editForm.pal);
@@ -328,7 +327,7 @@ export default function Adherences({
       body.otherRemarks = editForm.otherRemarks || null;
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${targetSessionId}/adherences`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${id}/adherences`,
         {
           method: "PATCH",
           headers: {

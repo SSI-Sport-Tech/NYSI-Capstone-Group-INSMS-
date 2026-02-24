@@ -43,7 +43,7 @@ export async function createSport(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),
@@ -86,7 +86,7 @@ export async function deleteSports(req, res) {
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: error.errors.map(e => ({
+                details: error.issues.map(e => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),

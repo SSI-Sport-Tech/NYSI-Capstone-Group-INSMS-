@@ -58,7 +58,7 @@ export async function listSupplements(req, res) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({
                 error: 'Invalid query parameters',
-                details: error.errors.map(err => ({
+                details: error.issues.map(err => ({
                     field: err.path.join('.'),
                     message: err.message
                 }))
@@ -152,7 +152,7 @@ export async function getSupplementDetails(req, res) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({
                 error: 'Invalid parameters',
-                details: error.errors.map(err => ({
+                details: error.issues.map(err => ({
                     field: err.path.join('.'),
                     message: err.message
                 }))
@@ -634,7 +634,7 @@ export async function getAlternativeSupplements(req, res) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({
                 error: 'Invalid parameters',
-                details: error.errors.map(err => ({
+                details: error.issues.map(err => ({
                     field: err.path.join('.'),
                     message: err.message
                 }))

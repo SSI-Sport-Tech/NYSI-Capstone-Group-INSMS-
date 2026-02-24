@@ -5,7 +5,7 @@ interface PreviousConsultationProps {
   athleteId: string;
   sessionId: string;
   isNewConsultation?: boolean;
-  newSessionId?: string;
+  ensureSession?: () => Promise<string>;
   readOnly?: boolean;
 }
 
@@ -41,13 +41,34 @@ interface ConsultationData {
 }
 
 const REVIEW_OPTIONS = ["Adequate", "Inadequate", "Excessive", "Not Assessed"];
-const CONSULT_TYPES = ["Initial", "Review", "Follow-up", "Emergency"];
 const INTERVENTION_STATUSES = [
   "Supplement Intake",
   "Dietary Modification",
   "Referral",
   "No Change",
 ];
+
+// Maps form field names to nutrition_diagnosis_lookup category codes
+const REVIEW_FIELD_CATEGORY: Record<string, string> = {
+  carbohydrates_review: "CARB",
+  protein_review: "PROTEIN",
+  fat_review: "FAT",
+  fibre_review: "FIBRE",
+  iron_review: "IRON",
+  calcium_review: "CALCIUM",
+  micronutrients_review: "MICRO",
+};
+
+interface ConsultType {
+  id: string;
+  type_of_consult: string;
+}
+
+interface NutritionDiagnosis {
+  id: string;
+  category: string;
+  diagnosis: string;
+}
 
 interface CurrentConsultForm {
   consult_type: string;
@@ -87,7 +108,7 @@ export default function PreviousConsultation({
   athleteId,
   sessionId,
   isNewConsultation,
-  newSessionId,
+  ensureSession,
   readOnly,
 }: PreviousConsultationProps) {
   const [consultationData, setConsultationData] =
@@ -97,6 +118,10 @@ export default function PreviousConsultation({
   const [form, setForm] = useState<CurrentConsultForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string>("");
+  const [consultTypes, setConsultTypes] = useState<ConsultType[]>([]);
+  const [nutritionDiagnoses, setNutritionDiagnoses] = useState<
+    NutritionDiagnosis[]
+  >([]);
 
   useEffect(() => {
     const fetchPreviousConsultation = async () => {
@@ -191,56 +216,126 @@ export default function PreviousConsultation({
     }
   }, [athleteId, sessionId, readOnly]);
 
+  // Fetch lookup tables needed for saving new consultation data
+  useEffect(() => {
+    if (!isNewConsultation || readOnly) return;
+    const fetchLookups = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const headers = { Authorization: `Bearer ${token}` };
+        const [typesRes, diagRes] = await Promise.all([
+          fetch(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/lookups/consult-types`,
+            { headers },
+          ),
+          fetch(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/lookups/nutrition-diagnoses`,
+            { headers },
+          ),
+        ]);
+        if (typesRes.ok) {
+          const d = await typesRes.json();
+          setConsultTypes(d.data ?? []);
+        }
+        if (diagRes.ok) {
+          const d = await diagRes.json();
+          setNutritionDiagnoses(d.data ?? []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch consultation lookups:", err);
+      }
+    };
+    fetchLookups();
+  }, [isNewConsultation, readOnly]);
+
   const updateForm = (field: keyof CurrentConsultForm, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Resolves a diagnosis text (e.g. "Adequate") to its UUID for a given category
+  const resolveReviewId = (
+    category: string,
+    text: string,
+  ): string | null => {
+    if (!text) return null;
+    const match = nutritionDiagnoses.find(
+      (d) => d.category === category && d.diagnosis === text,
+    );
+    return match?.id ?? null;
+  };
+
   const handleSave = async () => {
-    if (!newSessionId) return;
+    if (!isNewConsultation || !ensureSession) return;
     setSaving(true);
     setSaveError("");
     try {
+      const id = await ensureSession();
       const token = localStorage.getItem("token");
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      };
 
-      // PATCH consult_type and intervention_status
-      await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/${newSessionId}`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            consult_type: form.consult_type,
-            intervention_status: form.intervention_status,
-          }),
-        },
-      );
+      // PATCH type_of_consult_id if a consult type was selected
+      if (form.consult_type) {
+        const typeMatch = consultTypes.find(
+          (t) => t.type_of_consult === form.consult_type,
+        );
+        if (typeMatch) {
+          await fetch(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/${id}`,
+            {
+              method: "PATCH",
+              headers,
+              body: JSON.stringify({ type_of_consult_id: typeMatch.id }),
+            },
+          );
+        }
+      }
 
-      // POST consultation details
+      // POST consultation details — use sessions_id (not session_id) and resolve
+      // review text values to their UUID FKs in nutrition_diagnosis_lookup
       await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-details`,
         {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+          headers,
           body: JSON.stringify({
-            session_id: newSessionId,
-            main_nutrition_diagnosis: form.main_nutrition_diagnosis,
-            carbohydrates_review_diagnosis: form.carbohydrates_review,
-            protein_review_diagnosis: form.protein_review,
-            fat_review_diagnosis: form.fat_review,
-            fibre_review_diagnosis: form.fibre_review,
-            iron_review_diagnosis: form.iron_review,
-            calcium_review_diagnosis: form.calcium_review,
-            micronutrients_review_diagnosis: form.micronutrients_review,
-            other_review: form.other_review,
-            intervention_note: form.intervention_note,
-            follow_up_note: form.follow_up_note,
-            other_remarks: form.other_remarks,
+            sessions_id: id,
+            main_nutrition_diagnosis:
+              form.main_nutrition_diagnosis || undefined,
+            carbohydrates_review_id: resolveReviewId(
+              REVIEW_FIELD_CATEGORY.carbohydrates_review,
+              form.carbohydrates_review,
+            ),
+            protein_review_id: resolveReviewId(
+              REVIEW_FIELD_CATEGORY.protein_review,
+              form.protein_review,
+            ),
+            fat_review_id: resolveReviewId(
+              REVIEW_FIELD_CATEGORY.fat_review,
+              form.fat_review,
+            ),
+            fibre_review_id: resolveReviewId(
+              REVIEW_FIELD_CATEGORY.fibre_review,
+              form.fibre_review,
+            ),
+            iron_review_id: resolveReviewId(
+              REVIEW_FIELD_CATEGORY.iron_review,
+              form.iron_review,
+            ),
+            calcium_review_id: resolveReviewId(
+              REVIEW_FIELD_CATEGORY.calcium_review,
+              form.calcium_review,
+            ),
+            micronutrients_review_id: resolveReviewId(
+              REVIEW_FIELD_CATEGORY.micronutrients_review,
+              form.micronutrients_review,
+            ),
+            other_review: form.other_review || undefined,
+            intervention_note: form.intervention_note || undefined,
+            follow_up_note: form.follow_up_note || undefined,
+            other_remarks: form.other_remarks || undefined,
           }),
         },
       );
@@ -294,9 +389,9 @@ export default function PreviousConsultation({
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
               >
                 <option className="text-gray-500" value="">Select type...</option>
-                {CONSULT_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
+                {consultTypes.map((t) => (
+                  <option key={t.id} value={t.type_of_consult}>
+                    {t.type_of_consult}
                   </option>
                 ))}
               </select>

@@ -4,7 +4,7 @@ interface OpenItemsProps {
   athleteId: string;
   sessionId: string;
   isNewConsultation?: boolean;
-  newSessionId?: string;
+  ensureSession?: () => Promise<string>;
   readOnly?: boolean;
 }
 
@@ -35,11 +35,9 @@ export default function OpenItems({
   athleteId: _athleteId,
   sessionId,
   isNewConsultation,
-  newSessionId,
+  ensureSession,
   readOnly,
 }: OpenItemsProps) {
-  const targetSessionId =
-    isNewConsultation && newSessionId ? newSessionId : sessionId;
 
   const [openItems, setOpenItems] = useState<OpenItem[]>([]);
   const [statuses, setStatuses] = useState<StatusLookup[]>([]);
@@ -74,8 +72,9 @@ export default function OpenItems({
     }
   };
 
-  const fetchOpenItems = async () => {
-    if (!targetSessionId) {
+  const fetchOpenItems = async (overrideId?: string) => {
+    const effectiveId = overrideId ?? sessionId;
+    if (!effectiveId) {
       setOpenItems([]);
       setLoading(false);
       return;
@@ -85,7 +84,7 @@ export default function OpenItems({
       setError("");
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/open-items/session/${targetSessionId}`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/open-items/session/${effectiveId}`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
@@ -105,7 +104,7 @@ export default function OpenItems({
   useEffect(() => {
     fetchOpenItems();
     setSelectedIds(new Set());
-  }, [targetSessionId]);
+  }, [sessionId]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -160,10 +159,12 @@ export default function OpenItems({
   };
 
   const handleAddItem = async () => {
-    if (!targetSessionId || !newItem.statusId) return;
+    if (!newItem.statusId) return;
     try {
       setSaving(true);
       setSaveError("");
+      const id = isNewConsultation && ensureSession ? await ensureSession() : sessionId;
+      if (!id) { setSaveError("No session available."); setSaving(false); return; }
       const token = localStorage.getItem("token");
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/open-items`,
@@ -174,7 +175,7 @@ export default function OpenItems({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            sessions_id: targetSessionId,
+            sessions_id: id,
             open_item_status_id: newItem.statusId,
             description: newItem.description || null,
             open_item: newItem.openItem || null,
@@ -191,7 +192,7 @@ export default function OpenItems({
             s.open_item_status.toLowerCase().includes("in progress"),
           )?.id ?? "",
       });
-      await fetchOpenItems();
+      await fetchOpenItems(id);
     } catch {
       setSaveError("Failed to add item. Please try again.");
     } finally {
@@ -225,7 +226,7 @@ export default function OpenItems({
         <div className="text-center py-4">
           <p className="text-red-600">{error}</p>
           <button
-            onClick={fetchOpenItems}
+            onClick={() => fetchOpenItems()}
             className="mt-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             Retry
