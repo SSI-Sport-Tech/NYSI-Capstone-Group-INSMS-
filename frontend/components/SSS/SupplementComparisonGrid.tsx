@@ -176,7 +176,7 @@ const SupplementComparisonGrid: React.FC<SupplementComparisonGridProps> = ({
       supplement.similarity_score_100g;
 
     const handleCardClick = () => {
-      router.push(`/supplements/${supplement.id}`);
+      router.push(`/SSS/supplements/${supplement.id}`);
     };
 
     return (
