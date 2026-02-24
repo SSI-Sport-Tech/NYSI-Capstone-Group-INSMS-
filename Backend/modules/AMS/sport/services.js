@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool, { withUserContext } from "../../../config/db.js";
 
 /**
  * Get all sports from lookup table
@@ -37,15 +37,17 @@ export async function checkDuplicateSport(sportName) {
  * @param {string} sportName - Sport name
  * @returns {Promise<Object>} Created sport row
  */
-export async function createSport(sportName) {
+export async function createSport(sportName, userId) {
     const query = `
         INSERT INTO AMS.Sport_Lookup (sport)
         VALUES ($1)
         RETURNING id, sport, is_active
     `;
 
-    const result = await pool.query(query, [sportName]);
-    return result.rows[0];
+    return withUserContext(userId, async (client) => {
+        const result = await client.query(query, [sportName]);
+        return result.rows[0];
+    });
 }
 
 /**
@@ -70,7 +72,7 @@ export async function getSportById(sportId) {
  * @param {boolean} isActive - New is_active value
  * @returns {Promise<Object|null>} Updated sport or null
  */
-export async function updateSportStatus(sportId, isActive) {
+export async function updateSportStatus(sportId, isActive, userId) {
     const query = `
         UPDATE AMS.Sport_Lookup
         SET is_active = $1
@@ -78,8 +80,10 @@ export async function updateSportStatus(sportId, isActive) {
         RETURNING id, sport, is_active
     `;
 
-    const result = await pool.query(query, [isActive, sportId]);
-    return result.rows.length > 0 ? result.rows[0] : null;
+    return withUserContext(userId, async (client) => {
+        const result = await client.query(query, [isActive, sportId]);
+        return result.rows.length > 0 ? result.rows[0] : null;
+    });
 }
 
 /**
@@ -107,13 +111,15 @@ export async function getReferencedSportIds(sportIds) {
  * @param {Array<string>} sportIds - Array of UUIDs
  * @returns {Promise<Array>} Array of deleted rows
  */
-export async function deleteSports(sportIds) {
+export async function deleteSports(sportIds, userId) {
     const query = `
         DELETE FROM AMS.Sport_Lookup
         WHERE id = ANY($1::uuid[])
         RETURNING id, sport
     `;
 
-    const result = await pool.query(query, [sportIds]);
-    return result.rows;
+    return withUserContext(userId, async (client) => {
+        const result = await client.query(query, [sportIds]);
+        return result.rows;
+    });
 }

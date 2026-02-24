@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool, { withUserContext } from "../../../config/db.js";
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -317,27 +317,29 @@ export async function checkDuplicateAthlete(sportsync_id, excludeId = null) {
  * @param {Object} athleteData - Athlete base fields
  * @returns {Promise<Object>} Created athlete record
  */
-export async function createBasicAthlete(athleteData) {
-  const result = await pool.query(
-    `
+export async function createBasicAthlete(athleteData, userId) {
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(
+      `
         INSERT INTO AMS.Athlete (
             sport_id, sportsync_id, athlete_name_abbr, gender, date_of_birth,
             ethnicity, target_event, sport_start_date
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *
     `,
-    [
-      athleteData.sport_id,
-      athleteData.sportsync_id,
-      athleteData.athlete_name_abbr,
-      athleteData.gender,
-      athleteData.date_of_birth,
-      athleteData.ethnicity || null,
-      athleteData.target_event || null,
-      athleteData.sport_start_date || null,
-    ],
-  );
-  return result.rows[0];
+      [
+        athleteData.sport_id,
+        athleteData.sportsync_id,
+        athleteData.athlete_name_abbr,
+        athleteData.gender,
+        athleteData.date_of_birth,
+        athleteData.ethnicity || null,
+        athleteData.target_event || null,
+        athleteData.sport_start_date || null,
+      ],
+    );
+    return result.rows[0];
+  });
 }
 
 /**
@@ -355,10 +357,9 @@ export async function createCompleteAthlete(
   medicalData,
   coachIds,
   nutritionistIds,
+  userId,
 ) {
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
+  return withUserContext(userId, async (client) => {
 
     // 1. Insert athlete
     const athleteResult = await client.query(
@@ -511,14 +512,8 @@ export async function createCompleteAthlete(
       }
     }
 
-    await client.query("COMMIT");
     return { athlete, registry, medical, coachMappings, nutritionistMappings };
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 /**
@@ -527,7 +522,7 @@ export async function createCompleteAthlete(
  * @param {Object} updateData - Fields to update
  * @returns {Promise<Object|null>} Updated athlete or null
  */
-export async function updateAthlete(athleteId, updateData) {
+export async function updateAthlete(athleteId, updateData, userId) {
   const fields = [];
   const values = [];
   let paramCounter = 1;
@@ -564,8 +559,10 @@ export async function updateAthlete(athleteId, updateData) {
         RETURNING *
     `;
 
-  const result = await pool.query(query, values);
-  return result.rows.length > 0 ? result.rows[0] : null;
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, values);
+    return result.rows.length > 0 ? result.rows[0] : null;
+  });
 }
 
 /**
@@ -573,15 +570,17 @@ export async function updateAthlete(athleteId, updateData) {
  * @param {Array<string>} athleteIds - Array of UUIDs
  * @returns {Promise<Array>} Array of deleted rows
  */
-export async function deleteAthletes(athleteIds) {
+export async function deleteAthletes(athleteIds, userId) {
   const query = `
         DELETE FROM AMS.Athlete
         WHERE id = ANY($1::uuid[])
         RETURNING id
     `;
 
-  const result = await pool.query(query, [athleteIds]);
-  return result.rows;
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, [athleteIds]);
+    return result.rows;
+  });
 }
 
 // ============================================================================
@@ -740,7 +739,7 @@ export async function getRegistryByAthleteId(athleteId) {
  * @param {Object} updateData - Fields to update
  * @returns {Promise<Object|null>} Updated registry or null
  */
-export async function updateRegistry(athleteId, updateData) {
+export async function updateRegistry(athleteId, updateData, userId) {
   const fields = [];
   const values = [];
   let paramCounter = 1;
@@ -776,8 +775,10 @@ export async function updateRegistry(athleteId, updateData) {
         RETURNING *
     `;
 
-  const result = await pool.query(query, values);
-  return result.rows.length > 0 ? result.rows[0] : null;
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, values);
+    return result.rows.length > 0 ? result.rows[0] : null;
+  });
 }
 
 // ============================================================================
@@ -806,7 +807,7 @@ export async function getMedicalByAthleteId(athleteId) {
  * @param {Object} updateData - Fields to update
  * @returns {Promise<Object|null>} Updated medical or null
  */
-export async function updateMedical(athleteId, updateData) {
+export async function updateMedical(athleteId, updateData, userId) {
   const fields = [];
   const values = [];
   let paramCounter = 1;
@@ -841,8 +842,10 @@ export async function updateMedical(athleteId, updateData) {
         RETURNING *
     `;
 
-  const result = await pool.query(query, values);
-  return result.rows.length > 0 ? result.rows[0] : null;
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, values);
+    return result.rows.length > 0 ? result.rows[0] : null;
+  });
 }
 
 // ============================================================================
@@ -862,10 +865,8 @@ export async function updateMedical(athleteId, updateData) {
  * @param {Object} options - { updateNutritionists: boolean }
  * @returns {Promise<Object>} Updated profile
  */
-export async function updateAthleteProfile(athleteId, data, options = {}) {
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
+export async function updateAthleteProfile(athleteId, data, options = {}, userId) {
+  return withUserContext(userId, async (client) => {
 
     // 1. Update athlete base fields
     const athleteFields = {
@@ -1039,8 +1040,6 @@ export async function updateAthleteProfile(athleteId, data, options = {}) {
       }
     }
 
-    await client.query("COMMIT");
-
     return {
       athlete: athlete || null,
       registry: registry || null,
@@ -1048,10 +1047,5 @@ export async function updateAthleteProfile(athleteId, data, options = {}) {
       coachMappings: coachMappings || null,
       nutritionistMappings: nutritionistMappings || null,
     };
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }

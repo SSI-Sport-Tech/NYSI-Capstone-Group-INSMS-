@@ -1,5 +1,6 @@
 import express from 'express';
 import * as controller from './controller.js';
+import { authenticateToken } from '../../Auth/authMiddleware.js';
 
 const router = express.Router();
 
@@ -107,7 +108,7 @@ router.get('/sports', controller.listSports);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/sports', controller.createSport);
+router.post('/sports', authenticateToken, controller.createSport);
 
 /**
  * @swagger
@@ -159,7 +160,7 @@ router.post('/sports', controller.createSport);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete('/sports', controller.deleteSports);
+router.delete('/sports', authenticateToken, controller.deleteSports);
 
 /**
  * @swagger
@@ -218,6 +219,6 @@ router.delete('/sports', controller.deleteSports);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch('/sports/:id', controller.updateSport);
+router.patch('/sports/:id', authenticateToken, controller.updateSport);
 
 export default router;

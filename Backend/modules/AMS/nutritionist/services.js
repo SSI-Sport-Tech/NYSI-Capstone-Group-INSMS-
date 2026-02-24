@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool, { withUserContext } from "../../../config/db.js";
 
 // ============================================================================
 // NUTRITIONIST CRUD SERVICES
@@ -39,15 +39,17 @@ export async function checkDuplicateNutritionist(name) {
  * @param {string} name - Nutritionist name
  * @returns {Promise<Object>} Created nutritionist row
  */
-export async function createNutritionist(name) {
+export async function createNutritionist(name, userId) {
   const query = `
         INSERT INTO AMS.Nutritionist (name)
         VALUES ($1)
         RETURNING *
     `;
 
-  const result = await pool.query(query, [name]);
-  return result.rows[0];
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, [name]);
+    return result.rows[0];
+  });
 }
 
 /**
@@ -73,15 +75,17 @@ export async function updateNutritionist(id, name) {
  * @param {Array<string>} nutritionistIds - Array of UUIDs
  * @returns {Promise<Array>} Array of deleted rows
  */
-export async function deleteNutritionists(nutritionistIds) {
+export async function deleteNutritionists(nutritionistIds, userId) {
   const query = `
         DELETE FROM AMS.Nutritionist
         WHERE id = ANY($1::uuid[])
         RETURNING id
     `;
 
-  const result = await pool.query(query, [nutritionistIds]);
-  return result.rows;
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, [nutritionistIds]);
+    return result.rows;
+  });
 }
 
 /**
@@ -174,21 +178,25 @@ export async function toggleAthletePin(userId, athleteId, isPinned) {
   const query = `
         INSERT INTO AMS.User_Athlete_Pins (user_id, athlete_id, is_pinned, updated_at)
         VALUES ($1, $2, $3, now())
-        ON CONFLICT (user_id, athlete_id) 
+        ON CONFLICT (user_id, athlete_id)
         DO UPDATE SET is_pinned = $3, updated_at = now()
         RETURNING is_pinned
     `;
 
   try {
-    const result = await pool.query(query, [userId, athleteId, isPinned]);
-    return result.rows[0];
+    return withUserContext(userId, async (client) => {
+      const result = await client.query(query, [userId, athleteId, isPinned]);
+      return result.rows[0];
+    });
   } catch (error) {
     // If table doesn't exist, create it and retry
     if (error.code === "42P01") {
       // relation does not exist
       await createUserAthletePinsTable();
-      const result = await pool.query(query, [userId, athleteId, isPinned]);
-      return result.rows[0];
+      return withUserContext(userId, async (client) => {
+        const result = await client.query(query, [userId, athleteId, isPinned]);
+        return result.rows[0];
+      });
     }
     throw error;
   }
@@ -270,14 +278,17 @@ export async function checkMappingExists(athleteId, nutritionistId) {
  * @param {boolean} isActive - Whether the mapping is active
  * @returns {Promise<Object>} Created mapping row
  */
-export async function createMapping(athleteId, nutritionistId, isActive) {
+export async function createMapping(athleteId, nutritionistId, isActive, userId) {
   const query = `
         INSERT INTO AMS.Nutritionist_Athlete_Mapping (athlete_id, nutritionist_id, is_active)
         VALUES ($1, $2, $3)
         RETURNING *
     `;
 
-  const result = await pool.query(query, [athleteId, nutritionistId, isActive]);
+  const result = await withUserContext(userId, async (client) => {
+    const r = await client.query(query, [athleteId, nutritionistId, isActive]);
+    return r;
+  });
   
   // Auto-pin the athlete for the nutritionist when assignment is created
   if (result.rows.length > 0 && isActive) {
@@ -312,7 +323,7 @@ export async function createMapping(athleteId, nutritionistId, isActive) {
  * @param {boolean} isActive - New is_active status
  * @returns {Promise<Object|null>} Updated mapping or null if not found
  */
-export async function updateMapping(athleteId, nutritionistId, isActive) {
+export async function updateMapping(athleteId, nutritionistId, isActive, userId) {
   const query = `
         UPDATE AMS.Nutritionist_Athlete_Mapping
         SET is_active = $3
@@ -320,7 +331,10 @@ export async function updateMapping(athleteId, nutritionistId, isActive) {
         RETURNING *
     `;
 
-  const result = await pool.query(query, [athleteId, nutritionistId, isActive]);
+  const result = await withUserContext(userId, async (client) => {
+    const r = await client.query(query, [athleteId, nutritionistId, isActive]);
+    return r;
+  });
   
   // Auto-pin the athlete when assignment is reactivated
   if (result.rows.length > 0 && isActive) {
@@ -353,7 +367,7 @@ export async function updateMapping(athleteId, nutritionistId, isActive) {
  * @param {Array<{athlete_id: string, nutritionist_id: string}>} pairs - Array of composite key pairs
  * @returns {Promise<Array>} Array of deleted rows
  */
-export async function deleteMappings(pairs) {
+export async function deleteMappings(pairs, userId) {
   const valueClauses = [];
   const params = [];
   let paramCounter = 1;
@@ -370,8 +384,10 @@ export async function deleteMappings(pairs) {
         RETURNING id, athlete_id, nutritionist_id
     `;
 
-  const result = await pool.query(query, params);
-  return result.rows;
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, params);
+    return result.rows;
+  });
 }
 
 /**

@@ -200,7 +200,7 @@ router.get('/nutritionists', controller.listNutritionists);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/nutritionists', controller.createNutritionist);
+router.post('/nutritionists', authenticateToken, controller.createNutritionist);
 
 /**
  * @swagger
@@ -247,7 +247,7 @@ router.post('/nutritionists', controller.createNutritionist);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete('/nutritionists', controller.deleteNutritionists);
+router.delete('/nutritionists', authenticateToken, controller.deleteNutritionists);
 
 // ============================================================================
 // NUTRITIONIST-ATHLETE MAPPING ROUTES
@@ -419,7 +419,7 @@ router.get('/nutritionists/mappings/athlete/:athleteId', controller.listMappings
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/nutritionists/mappings', controller.createMapping);
+router.post('/nutritionists/mappings', authenticateToken, controller.createMapping);
 
 /**
  * @swagger
@@ -478,6 +478,6 @@ router.post('/nutritionists/mappings', controller.createMapping);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete('/nutritionists/mappings', controller.deleteMappings);
+router.delete('/nutritionists/mappings', authenticateToken, controller.deleteMappings);
 
 export default router;
