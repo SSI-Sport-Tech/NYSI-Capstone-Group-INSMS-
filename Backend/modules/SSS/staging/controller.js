@@ -352,6 +352,27 @@ export async function approveStagingSupplements(req, res) {
 }
 
 // ============================================================================
+// LOOKUP FUNCTIONS
+// ============================================================================
+
+/**
+ * Get packaging form and status lookup values for forms/dropdowns
+ * GET /api/SSS/staging-lookups
+ */
+export async function listStagingLookups(req, res) {
+    try {
+        const [packagingForms, statuses] = await Promise.all([
+            services.getPackagingFormLookups(),
+            services.getStatusLookups(),
+        ]);
+        res.json({ packagingForms, statuses });
+    } catch (error) {
+        console.error('Error fetching staging lookups:', error);
+        res.status(500).json({ error: error.message });
+    }
+}
+
+// ============================================================================
 // CATALOG URL MANAGEMENT FUNCTIONS
 // ============================================================================
 

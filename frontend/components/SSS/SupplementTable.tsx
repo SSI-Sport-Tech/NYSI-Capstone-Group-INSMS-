@@ -34,6 +34,7 @@ interface SupplementTableProps {
   onRowSelect?: (supplement: Supplement) => void;
   selectedSupplementId?: string;
   onOpenOCR?: () => void;
+  onAddSupplement?: () => void;
 }
 
 const getStatusBadgeClass = (status: string) => {
@@ -60,6 +61,7 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
   onRowSelect,
   selectedSupplementId,
   onOpenOCR,
+  onAddSupplement,
 }) => {
   const { token, user } = useAuth();
   const isAdmin = user?.role === "ADMIN" || user?.role === "IT_ADMIN";
@@ -100,7 +102,11 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
       if (onRefresh) onRefresh();
     } catch (error) {
       console.error("Error deleting supplements:", error);
-      alert("Failed to delete supplements");
+      if (axios.isAxiosError(error) && error.response?.data?.message) {
+        alert(error.response.data.message);
+      } else {
+        alert("Failed to delete supplements");
+      }
     }
   };
 
@@ -141,8 +147,7 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
 
   // Handle add supplement
   const handleAddSupplement = () => {
-    // Navigate to add supplement form or open modal
-    window.location.href = "/supplements/add";
+    onAddSupplement?.();
   };
 
   return (

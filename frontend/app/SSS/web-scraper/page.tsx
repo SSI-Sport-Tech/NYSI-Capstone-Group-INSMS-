@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import ViewTabs from "@/components/SSS/ViewTabs";
 import PageHeader from "@/components/PageHeader";
 import UrlSelectionModal from "@/components/SSS/UrlSelectionModal";
+import StagingDetailModal from "@/components/SSS/StagingDetailModal";
 import {
   Play,
   Clock,
@@ -22,12 +23,9 @@ interface StagingSupplement {
   supplement_name: string;
   supplement_brand: string;
   supplement_packaging_form: string;
-  serving_size: string;
-  product_source_url: string;
-  price: number;
-  description?: string;
-  ingredients?: string;
-  created_at?: string;
+  supplement_status: string;
+  batch_testing_org: string | null;
+  product_source_url: string | string[] | null;
 }
 
 interface CatalogUrl {
@@ -64,28 +62,77 @@ const tabs = [
 ];
 
 export default function WebScraperPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const isAdmin = user?.role === "ADMIN" || user?.role === "IT_ADMIN";
   const [stagingSupplements, setStagingSupplements] = useState<
     StagingSupplement[]
   >([]);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [showUrlModal, setShowUrlModal] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const loadingMoreRef = useRef(false);
+  const [selectedDetailId, setSelectedDetailId] = useState<string | null>(null);
   const [scrapingStatus, setScrapingStatus] = useState({
     lastRun: "Today at 9:14 PM",
     scheduled: "Weekly on Mondays",
     nextRun: "Nov 18, 2025",
   });
 
-  // Load staging supplements
+  // Initial / refresh load — resets accumulated list back to page 1
   const loadStagingSupplements = async () => {
     try {
-      const response = await axios.get("/api/SSS/staging-supplements");
-      setStagingSupplements(response.data.data || []);
+      const response = await axios.get("/api/SSS/staging-supplements?page=1");
+      const { data, totalPages, totalCount: count } = response.data;
+      setStagingSupplements(data || []);
+      setTotalCount(count ?? 0);
+      setHasMore((totalPages ?? 1) > 1);
+      setPage(1);
     } catch (error) {
       console.error("Error loading staging supplements:", error);
     }
   };
+
+  // Append next page to existing list
+  const loadMoreSupplements = useCallback(async () => {
+    if (loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const response = await axios.get(
+        `/api/SSS/staging-supplements?page=${nextPage}`,
+      );
+      const { data, totalPages } = response.data;
+      setStagingSupplements((prev) => [...prev, ...(data || [])]);
+      setHasMore(nextPage < (totalPages ?? 1));
+      setPage(nextPage);
+    } catch (error) {
+      console.error("Error loading more supplements:", error);
+    } finally {
+      setLoadingMore(false);
+      loadingMoreRef.current = false;
+    }
+  }, [page]);
+
+  // Watch sentinel div — fire loadMore when it scrolls into view
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMoreSupplements();
+        }
+      },
+      { rootMargin: "100px" },
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loadMoreSupplements]);
 
   useEffect(() => {
     loadStagingSupplements();
@@ -227,12 +274,18 @@ export default function WebScraperPage() {
           {/* Manual Run Button */}
           <button
             onClick={handleManualScraping}
-            disabled={loading}
+            disabled={loading || !isAdmin}
+            title={!isAdmin ? "Only admins can run the scraper" : undefined}
             className="w-full bg-black text-white py-3 px-4 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
             <Play className="w-4 h-4 mr-2" />
             {loading ? "Starting Scraper..." : "Manually Run Scraper Now"}
           </button>
+          {!isAdmin && (
+            <p className="text-xs text-gray-400 mt-2 text-center">
+              Admin access required to run the scraper.
+            </p>
+          )}
 
           <div className="flex items-center text-sm text-gray-500 mt-3">
             <Clock className="w-4 h-4 mr-2" />
@@ -246,7 +299,7 @@ export default function WebScraperPage() {
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">
-                Supplement Findings
+                Supplement Findings ({totalCount})
               </h2>
               <p className="text-sm text-gray-600">
                 Manage Supplement Findings
@@ -305,17 +358,12 @@ export default function WebScraperPage() {
                   </th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
                     <div className="flex items-center">
-                      Serving Size <ChevronDown className="w-4 h-4 ml-1" />
+                      Batch Testing Org <ChevronDown className="w-4 h-4 ml-1" />
                     </div>
                   </th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
                     <div className="flex items-center">
                       Product Link <ChevronDown className="w-4 h-4 ml-1" />
-                    </div>
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
-                    <div className="flex items-center">
-                      Price <ChevronDown className="w-4 h-4 ml-1" />
                     </div>
                   </th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
@@ -328,7 +376,7 @@ export default function WebScraperPage() {
               <tbody className="divide-y divide-gray-200">
                 {stagingSupplements.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-gray-500">
+                    <td colSpan={7} className="p-8 text-center text-gray-500">
                       No supplement findings available. Run the scraper to
                       populate this table.
                     </td>
@@ -353,33 +401,37 @@ export default function WebScraperPage() {
                         {supplement.supplement_brand}
                       </td>
                       <td className="p-4 text-sm font-medium text-gray-900">
-                        {supplement.supplement_packaging_form}
+                        {supplement.supplement_packaging_form || "-"}
                       </td>
                       <td className="p-4 text-sm font-medium text-gray-900">
-                        {supplement.serving_size || "-"}
+                        {supplement.batch_testing_org || "-"}
                       </td>
                       <td className="p-4">
-                        {supplement.product_source_url ? (
-                          <a
-                            href={supplement.product_source_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 text-sm font-medium hover:text-blue-800 underline flex items-center"
-                          >
-                            bodybuilding.com
-                            <ExternalLink className="w-3 h-3 ml-1" />
-                          </a>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td className="p-4 text-gray-900">
-                        {supplement.price
-                          ? `$${supplement.price.toFixed(2)}`
-                          : "-"}
+                        {(() => {
+                          const firstUrl = Array.isArray(supplement.product_source_url)
+                            ? supplement.product_source_url[0]
+                            : supplement.product_source_url;
+                          if (!firstUrl) return <span className="text-sm text-gray-400">-</span>;
+                          let domain = firstUrl;
+                          try { domain = new URL(firstUrl).hostname.replace(/^www\./, ""); } catch { /* keep raw */ }
+                          return (
+                            <a
+                              href={firstUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 text-sm font-medium hover:text-blue-800 underline flex items-center"
+                            >
+                              {domain}
+                              <ExternalLink className="w-3 h-3 ml-1" />
+                            </a>
+                          );
+                        })()}
                       </td>
                       <td className="p-4">
-                        <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                        <button
+                          onClick={() => setSelectedDetailId(supplement.id)}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
                           Details
                         </button>
                       </td>
@@ -390,11 +442,42 @@ export default function WebScraperPage() {
             </table>
           </div>
 
-          {/* Footer with pagination if needed */}
-          {stagingSupplements.length > 0 && (
-            <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-700">
-              {stagingSupplements.length} supplement
-              {stagingSupplements.length !== 1 ? "s" : ""} found
+          {/* Sentinel — triggers next page load when scrolled into view */}
+          <div ref={sentinelRef} />
+
+          {/* Footer */}
+          {(stagingSupplements.length > 0 || loadingMore) && (
+            <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-700 flex items-center gap-2">
+              {loadingMore ? (
+                <>
+                  <svg
+                    className="animate-spin h-4 w-4 text-gray-500"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8H4z"
+                    />
+                  </svg>
+                  Loading more...
+                </>
+              ) : (
+                <>
+                  Showing {stagingSupplements.length} of {totalCount} supplement
+                  {totalCount !== 1 ? "s" : ""}
+                </>
+              )}
             </div>
           )}
         </div>
@@ -405,6 +488,27 @@ export default function WebScraperPage() {
           onClose={() => setShowUrlModal(false)}
           onStartScraping={handleStartScraping}
           loading={loading}
+        />
+
+        {/* Staging Detail / Edit Modal */}
+        <StagingDetailModal
+          supplementId={selectedDetailId}
+          onClose={() => setSelectedDetailId(null)}
+          onUpdated={(id, changes) => {
+            setStagingSupplements((prev) =>
+              prev.map((s) => (s.id === id ? { ...s, ...changes } : s)),
+            );
+          }}
+          onApproved={(id) => {
+            setStagingSupplements((prev) => prev.filter((s) => s.id !== id));
+            setTotalCount((c) => c - 1);
+            setSelectedItems((prev) => {
+              const next = new Set(prev);
+              next.delete(id);
+              return next;
+            });
+            setSelectedDetailId(null);
+          }}
         />
       </div>
     </DashboardLayout>

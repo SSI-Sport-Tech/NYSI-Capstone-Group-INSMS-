@@ -7,6 +7,7 @@ import SupplementTable from "@/components/SSS/SupplementTable";
 import ViewTabs from "@/components/SSS/ViewTabs";
 import SearchSection from "@/components/SSS/SearchSection";
 import OCRModal from "@/components/SSS/OCRModal";
+import AddSupplementModal from "@/components/SSS/AddSupplementModal";
 
 interface Supplement {
   id: string;
@@ -54,6 +55,7 @@ export default function LibraryPage() {
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [ocrModalOpen, setOcrModalOpen] = useState(false);
+  const [addModalOpen, setAddModalOpen] = useState(false);
 
   useEffect(() => {
     loadSupplements();
@@ -159,12 +161,24 @@ export default function LibraryPage() {
             totalPages={totalPages}
             onPageChange={handlePageChange}
             onOpenOCR={() => setOcrModalOpen(true)}
+            onAddSupplement={() => setAddModalOpen(true)}
           />
 
           {/* OCR Modal */}
           <OCRModal
             isOpen={ocrModalOpen}
             onClose={() => setOcrModalOpen(false)}
+          />
+
+          {/* Add Supplement Modal */}
+          <AddSupplementModal
+            isOpen={addModalOpen}
+            onClose={() => setAddModalOpen(false)}
+            onSuccess={() => {
+              setAddModalOpen(false);
+              loadSupplements(searchQuery, currentPage);
+            }}
+            supplementOnly
           />
         </div>
       </div>

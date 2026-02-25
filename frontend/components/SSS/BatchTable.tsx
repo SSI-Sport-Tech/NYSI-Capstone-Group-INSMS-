@@ -184,7 +184,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
       <div className="px-6 py-5 flex items-center justify-between">
         <div>
           <h3 className="text-base font-semibold text-gray-900">
-            All Supplements ({total})
+            All Inventory Batches ({total})
           </h3>
           <p className="text-sm text-gray-500 mt-0.5">
             Manage and view supplements
@@ -465,6 +465,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
           setShowAddModal(false);
           if (onRefresh) onRefresh();
         }}
+        title="Add Batch to Inventory"
       />
     </div>
   );

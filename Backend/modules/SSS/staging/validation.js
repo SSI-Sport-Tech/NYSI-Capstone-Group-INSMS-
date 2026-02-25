@@ -42,7 +42,6 @@ export const updateStagingSupplementSchema = z.object({
     supplement_ingredient: jsonbArraySchema
         .optional()
         .nullable()
-        .default([])
         .describe('Array of ingredient names, e.g., ["Vitamin D3", "Calcium"]'),
 
     nutritional_info_per_100g: z.record(z.string(), z.any())

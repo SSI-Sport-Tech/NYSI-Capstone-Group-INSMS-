@@ -43,10 +43,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     useState(isAthleteProfilePage);
   const [athleteName, setAthleteName] = useState<string>("");
   const { isAuthenticated, loading, user, logout } = useAuth();
+  const router = useRouter();
 
   // Get current tab from URL parameters
   const currentTab = searchParams.get("tab") || "profile";
-  const router = useRouter();
 
   // Update section states when pathname changes
   useEffect(() => {
@@ -87,7 +87,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
-  if (loading) {
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [loading, isAuthenticated, router]);
+
+  if (loading || !isAuthenticated) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900" />
