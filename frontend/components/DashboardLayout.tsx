@@ -47,7 +47,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // Get current tab from URL parameters
   const currentTab = searchParams.get("tab") || "profile";
-  const router = useRouter();
 
   // Update section states when pathname changes
   useEffect(() => {
