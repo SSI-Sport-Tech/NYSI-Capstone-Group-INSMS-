@@ -249,11 +249,13 @@ export async function getUserStatistics() {
 }
 
 /**
- * Get audit logs with optional filters
+ * Get audit logs with optional filters (ENHANCED with date filtering)
  * @param {Object} filters - Optional filters
  * @param {string} filters.user_id - Filter by user ID
  * @param {string} filters.table_name - Filter by table name
  * @param {string} filters.action - Filter by action (CREATE, UPDATE, DELETE)
+ * @param {string} filters.start_date - Filter by start date (YYYY-MM-DD)
+ * @param {string} filters.end_date - Filter by end date (YYYY-MM-DD)
  * @param {number} filters.limit - Maximum number of logs to return (default: 50)
  * @returns {Promise<Array>} Array of audit log entries
  */
@@ -294,6 +296,20 @@ export async function getAuditLogs(filters = {}) {
         paramCount++;
         query += ` AND action = $${paramCount}`;
         values.push(filters.action);
+    }
+
+    // Add start_date filter (>= start of day)
+    if (filters.start_date) {
+        paramCount++;
+        query += ` AND changed_on >= $${paramCount}::date`;
+        values.push(filters.start_date);
+    }
+
+    // Add end_date filter (<= end of day)
+    if (filters.end_date) {
+        paramCount++;
+        query += ` AND changed_on < ($${paramCount}::date + interval '1 day')`;
+        values.push(filters.end_date);
     }
 
     // Order by most recent first
