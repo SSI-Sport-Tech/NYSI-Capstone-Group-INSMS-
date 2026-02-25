@@ -84,12 +84,11 @@ export default function ConsultationView({
             body: JSON.stringify({
               athlete_id: athleteId,
               type_of_consult_id: defaultTypeId,
+              date_of_consult: new Date().toISOString().split("T")[0],
             }),
           },
         );
         const data = await response.json();
-        const detail = data?.details?.[0];
-        console.error("[ensureSession] status:", response.status, "body:", data, "| field:", detail?.field, "value sent:", { athlete_id: athleteId, type_of_consult_id: defaultTypeId });
         const id = data?.data?.id as string;
         if (!id) {
           const d = data?.details?.[0];

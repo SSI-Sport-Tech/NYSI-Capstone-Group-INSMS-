@@ -482,6 +482,7 @@ export default function Adherences({
                   onChange={(e) =>
                     setEditForm((p) => ({ ...p, minCarbGkg: e.target.value }))
                   }
+                  style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
@@ -509,6 +510,7 @@ export default function Adherences({
                   onChange={(e) =>
                     setEditForm((p) => ({ ...p, maxCarbGkg: e.target.value }))
                   }
+                  style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
@@ -540,6 +542,7 @@ export default function Adherences({
                       minProteinGkg: e.target.value,
                     }))
                   }
+                  style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
@@ -570,6 +573,7 @@ export default function Adherences({
                       maxProteinGkg: e.target.value,
                     }))
                   }
+                  style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
@@ -598,6 +602,7 @@ export default function Adherences({
                   onChange={(e) =>
                     setEditForm((p) => ({ ...p, minFatGkg: e.target.value }))
                   }
+                  style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
@@ -625,6 +630,7 @@ export default function Adherences({
                   onChange={(e) =>
                     setEditForm((p) => ({ ...p, maxFatGkg: e.target.value }))
                   }
+                  style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
@@ -661,6 +667,7 @@ export default function Adherences({
                   onChange={(e) =>
                     setEditForm((p) => ({ ...p, targetMinCarbGkg: e.target.value }))
                   }
+                  style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
@@ -686,6 +693,7 @@ export default function Adherences({
                   onChange={(e) =>
                     setEditForm((p) => ({ ...p, targetMaxCarbGkg: e.target.value }))
                   }
+                  style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
@@ -712,6 +720,7 @@ export default function Adherences({
                   onChange={(e) =>
                     setEditForm((p) => ({ ...p, targetMinProteinGkg: e.target.value }))
                   }
+                  style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
@@ -737,6 +746,7 @@ export default function Adherences({
                   onChange={(e) =>
                     setEditForm((p) => ({ ...p, targetMaxProteinGkg: e.target.value }))
                   }
+                  style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
@@ -763,6 +773,7 @@ export default function Adherences({
                   onChange={(e) =>
                     setEditForm((p) => ({ ...p, targetMinFatGkg: e.target.value }))
                   }
+                  style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
@@ -788,6 +799,7 @@ export default function Adherences({
                   onChange={(e) =>
                     setEditForm((p) => ({ ...p, targetMaxFatGkg: e.target.value }))
                   }
+                  style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
@@ -820,7 +832,8 @@ export default function Adherences({
                         estimatedCarbG: e.target.value,
                       }))
                     }
-                    className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                    style={{ color: "#111827" }}
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                   />
                 ) : (
                   <span className="font-medium">
@@ -850,7 +863,8 @@ export default function Adherences({
                         estimatedProteinG: e.target.value,
                       }))
                     }
-                    className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                    style={{ color: "#111827" }}
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                   />
                 ) : (
                   <span className="font-medium">
@@ -880,7 +894,8 @@ export default function Adherences({
                         estimatedFatG: e.target.value,
                       }))
                     }
-                    className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                    style={{ color: "#111827" }}
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                   />
                 ) : (
                   <span className="font-medium">
@@ -901,7 +916,8 @@ export default function Adherences({
                 </label>
                 {effectiveEditing ? (
                   <textarea
-                    className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
+                    style={{ color: "#111827" }}
+                  className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
                     placeholder="Input Text Here"
                     value={editForm.commentsWeekday}
                     onChange={(e) =>
@@ -923,7 +939,8 @@ export default function Adherences({
                 </label>
                 {effectiveEditing ? (
                   <textarea
-                    className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
+                    style={{ color: "#111827" }}
+                  className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
                     placeholder="Input Text Here"
                     value={editForm.commentsWeekend}
                     onChange={(e) =>
@@ -955,7 +972,8 @@ export default function Adherences({
               onChange={(e) =>
                 setEditForm((p) => ({ ...p, pal: e.target.value }))
               }
-              className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+              style={{ color: "#111827" }}
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
             />
           ) : (
             <span className="font-medium">
@@ -1056,7 +1074,8 @@ export default function Adherences({
           </label>
           {effectiveEditing ? (
             <textarea
-              className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
+              style={{ color: "#111827" }}
+                  className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
               placeholder="Input Text Here"
               value={editForm.otherRemarks}
               onChange={(e) =>

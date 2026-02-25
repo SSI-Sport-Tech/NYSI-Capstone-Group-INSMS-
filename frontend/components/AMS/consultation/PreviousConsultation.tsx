@@ -40,7 +40,6 @@ interface ConsultationData {
   }>;
 }
 
-const REVIEW_OPTIONS = ["Adequate", "Inadequate", "Excessive", "Not Assessed"];
 const INTERVENTION_STATUSES = [
   "Supplement Intake",
   "Dietary Modification",
@@ -48,16 +47,6 @@ const INTERVENTION_STATUSES = [
   "No Change",
 ];
 
-// Maps form field names to nutrition_diagnosis_lookup category codes
-const REVIEW_FIELD_CATEGORY: Record<string, string> = {
-  carbohydrates_review: "CARB",
-  protein_review: "PROTEIN",
-  fat_review: "FAT",
-  fibre_review: "FIBRE",
-  iron_review: "IRON",
-  calcium_review: "CALCIUM",
-  micronutrients_review: "MICRO",
-};
 
 interface ConsultType {
   id: string;
@@ -257,18 +246,6 @@ export default function PreviousConsultation({
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Resolves a diagnosis text (e.g. "Adequate") to its UUID for a given category
-  const resolveReviewId = (
-    category: string,
-    text: string,
-  ): string | null => {
-    if (!text) return null;
-    const match = nutritionDiagnoses.find(
-      (d) => d.category === category && d.diagnosis === text,
-    );
-    return match?.id ?? null;
-  };
-
   const handleSave = async () => {
     if (!isNewConsultation || !ensureSession) return;
     setSaving(true);
@@ -309,34 +286,13 @@ export default function PreviousConsultation({
             sessions_id: id,
             main_nutrition_diagnosis:
               form.main_nutrition_diagnosis || undefined,
-            carbohydrates_review_id: resolveReviewId(
-              REVIEW_FIELD_CATEGORY.carbohydrates_review,
-              form.carbohydrates_review,
-            ),
-            protein_review_id: resolveReviewId(
-              REVIEW_FIELD_CATEGORY.protein_review,
-              form.protein_review,
-            ),
-            fat_review_id: resolveReviewId(
-              REVIEW_FIELD_CATEGORY.fat_review,
-              form.fat_review,
-            ),
-            fibre_review_id: resolveReviewId(
-              REVIEW_FIELD_CATEGORY.fibre_review,
-              form.fibre_review,
-            ),
-            iron_review_id: resolveReviewId(
-              REVIEW_FIELD_CATEGORY.iron_review,
-              form.iron_review,
-            ),
-            calcium_review_id: resolveReviewId(
-              REVIEW_FIELD_CATEGORY.calcium_review,
-              form.calcium_review,
-            ),
-            micronutrients_review_id: resolveReviewId(
-              REVIEW_FIELD_CATEGORY.micronutrients_review,
-              form.micronutrients_review,
-            ),
+            carbohydrates_review_id: form.carbohydrates_review || null,
+            protein_review_id: form.protein_review || null,
+            fat_review_id: form.fat_review || null,
+            fibre_review_id: form.fibre_review || null,
+            iron_review_id: form.iron_review || null,
+            calcium_review_id: form.calcium_review || null,
+            micronutrients_review_id: form.micronutrients_review || null,
             other_review: form.other_review || undefined,
             intervention_note: form.intervention_note || undefined,
             follow_up_note: form.follow_up_note || undefined,
@@ -444,15 +400,15 @@ export default function PreviousConsultation({
             <div className="grid grid-cols-4 gap-3 text-sm">
               {(
                 [
-                  { label: "Carbohydrate", field: "carbohydrates_review" as const },
-                  { label: "Protein", field: "protein_review" as const },
-                  { label: "Fat", field: "fat_review" as const },
-                  { label: "Fibre", field: "fibre_review" as const },
-                  { label: "Iron", field: "iron_review" as const },
-                  { label: "Calcium", field: "calcium_review" as const },
-                  { label: "Micronutrients", field: "micronutrients_review" as const },
-                ] as { label: string; field: keyof CurrentConsultForm }[]
-              ).map(({ label, field }) => (
+                  { label: "Carbohydrate", field: "carbohydrates_review" as const, category: "CARB" },
+                  { label: "Protein", field: "protein_review" as const, category: "PROTEIN" },
+                  { label: "Fat", field: "fat_review" as const, category: "FAT" },
+                  { label: "Fibre", field: "fibre_review" as const, category: "FIBRE" },
+                  { label: "Iron", field: "iron_review" as const, category: "IRON" },
+                  { label: "Calcium", field: "calcium_review" as const, category: "CALCIUM" },
+                  { label: "Micronutrients", field: "micronutrients_review" as const, category: "MICRO" },
+                ] as { label: string; field: keyof CurrentConsultForm; category: string }[]
+              ).map(({ label, field, category }) => (
                 <div key={field}>
                   <label className="block text-xs text-gray-500 mb-1">
                     {label}
@@ -463,11 +419,13 @@ export default function PreviousConsultation({
                     className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-900"
                   >
                     <option value="">—</option>
-                    {REVIEW_OPTIONS.map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
+                    {nutritionDiagnoses
+                      .filter((d) => d.category === category)
+                      .map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.diagnosis}
+                        </option>
+                      ))}
                   </select>
                 </div>
               ))}

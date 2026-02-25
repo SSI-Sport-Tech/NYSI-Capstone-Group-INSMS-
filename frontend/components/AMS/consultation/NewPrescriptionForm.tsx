@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useRef } from "react";
 
 interface NewPrescriptionFormProps {
   ensureSession: () => Promise<string>;
@@ -11,10 +11,6 @@ interface SupplementResult {
   supplement_name: string;
   supplement_brand: string;
   supplement_packaging_form: string;
-  supplement_status: string;
-  description?: string;
-  serving_size?: string;
-  notes?: string;
 }
 
 interface BatchOption {
@@ -31,20 +27,9 @@ interface PrescriptionEntry {
   supplementId: string | null;
   batchId: string | null;
   batchCurrentQty: number | null;
-  // Supplement fields
-  name: string;
-  brand: string;
-  type: string;
-  serving_size: string;
-  description: string;
-  additional_notes: string;
-  // Batch / prescription fields
-  batch_number: string;
+  supplementName: string;
+  batchNumber: string;
   quantity: string;
-  price: string;
-  expiration_date: string;
-  testing_organisation: string;
-  classification: string;
   dosage: string;
   dosage_unit: string;
   dosage_frequency: string;
@@ -54,24 +39,15 @@ const emptyEntry = (): PrescriptionEntry => ({
   supplementId: null,
   batchId: null,
   batchCurrentQty: null,
-  name: "",
-  brand: "",
-  type: "",
-  serving_size: "",
-  description: "",
-  additional_notes: "",
-  batch_number: "",
+  supplementName: "",
+  batchNumber: "",
   quantity: "",
-  price: "",
-  expiration_date: "",
-  testing_organisation: "",
-  classification: "",
   dosage: "",
   dosage_unit: "",
   dosage_frequency: "",
 });
 
-// ─── Per-entry card (owns its own search/batch state) ────────────────────────
+// ─── Per-entry card ───────────────────────────────────────────────────────────
 
 function PrescriptionEntryCard({
   index,
@@ -86,92 +62,72 @@ function PrescriptionEntryCard({
   onRemove: () => void;
   showRemove: boolean;
 }) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SupplementResult[]>([]);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
+  // Supplement search state
+  const [suppQuery, setSuppQuery] = useState("");
+  const [suppResults, setSuppResults] = useState<SupplementResult[]>([]);
+  const [showSuppDropdown, setShowSuppDropdown] = useState(false);
+  const [suppLoading, setSuppLoading] = useState(false);
+
+  // Batches for selected supplement (auto-loaded)
   const [batches, setBatches] = useState<BatchOption[]>([]);
   const [batchesLoading, setBatchesLoading] = useState(false);
 
-  // Debounced search — same pattern as AddSupplementModal
-  const debouncedSearch = useCallback(
-    (() => {
-      let timeout: ReturnType<typeof setTimeout>;
-      return (query: string) => {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => performSearch(query), 300);
-      };
-    })(),
-    [],
-  );
+  const suppTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const performSearch = async (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      setShowDropdown(false);
-      setSearchLoading(false);
+  const handleSuppSearchChange = (value: string) => {
+    setSuppQuery(value);
+    if (suppTimeoutRef.current) clearTimeout(suppTimeoutRef.current);
+
+    if (!value.trim()) {
+      setSuppResults([]);
+      setShowSuppDropdown(false);
+      setSuppLoading(false);
       return;
     }
-    setSearchLoading(true);
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/SSS/supplements?search=${encodeURIComponent(query)}&limit=10`,
-      );
-      const data = await res.json();
-      setSearchResults(data.data || []);
-      setShowDropdown(true);
-    } catch {
-      setSearchResults([]);
-    } finally {
-      setSearchLoading(false);
-    }
+
+    setSuppLoading(true);
+    setShowSuppDropdown(true);
+    suppTimeoutRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/SSS/supplements?search=${encodeURIComponent(value)}&limit=10`,
+        );
+        const data = await res.json();
+        setSuppResults(data.data || []);
+      } catch {
+        setSuppResults([]);
+      } finally {
+        setSuppLoading(false);
+      }
+    }, 300);
   };
 
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-    if (value.trim()) {
-      setSearchLoading(true);
-      setShowDropdown(true);
-      debouncedSearch(value);
-    } else {
-      setSearchResults([]);
-      setShowDropdown(false);
-      setSearchLoading(false);
-    }
-  };
+  const handleSupplementSelect = async (supp: SupplementResult) => {
+    setSuppQuery(`${supp.supplement_brand} ${supp.supplement_name}`);
+    setShowSuppDropdown(false);
+    setSuppResults([]);
 
-  const handleSupplementSelect = async (supplement: SupplementResult) => {
-    setSearchQuery(
-      `${supplement.supplement_brand} ${supplement.supplement_name}`,
-    );
-    setShowDropdown(false);
+    // Reset batch selection
     onChange({
       ...entry,
-      supplementId: supplement.id,
-      name: supplement.supplement_name,
-      brand: supplement.supplement_brand,
-      type: supplement.supplement_packaging_form,
-      serving_size: supplement.serving_size || "",
-      description: supplement.description || "",
-      additional_notes: supplement.notes || "",
-      // Reset batch selection
+      supplementId: supp.id,
+      supplementName: supp.supplement_name,
       batchId: null,
       batchCurrentQty: null,
-      batch_number: "",
-      price: "",
-      expiration_date: "",
+      batchNumber: "",
     });
-    // Fetch batches for this supplement
+
+    // Auto-load batches for this supplement
     setBatches([]);
     setBatchesLoading(true);
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/SSS/batches?search=${encodeURIComponent(supplement.supplement_name)}&page=1`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/SSS/batches?search=${encodeURIComponent(supp.supplement_name)}&page=1`,
       );
       const data = await res.json();
       const all: BatchOption[] = data.data || [];
-      // Filter client-side to only batches belonging to this supplement
-      setBatches(all.filter((b) => b.supplement_id === supplement.id));
+      // Only batches belonging to this supplement
+      setBatches(all.filter((b) => b.supplement_id === supp.id));
     } catch {
       setBatches([]);
     } finally {
@@ -184,11 +140,7 @@ function PrescriptionEntryCard({
       ...entry,
       batchId: batch.id,
       batchCurrentQty: batch.batch_initial_quantity,
-      batch_number: batch.batch_number,
-      price: batch.batch_price?.toString() ?? "",
-      expiration_date: batch.batch_expiration_date
-        ? new Date(batch.batch_expiration_date).toISOString().split("T")[0]
-        : "",
+      batchNumber: batch.batch_number,
     });
   };
 
@@ -196,13 +148,11 @@ function PrescriptionEntryCard({
     onChange({ ...entry, [field]: value });
   };
 
-  const isAutofilled = !!entry.supplementId;
-
   return (
-    <div className="border border-gray-200 rounded-lg p-5">
+    <div className="border border-gray-200 rounded-lg p-5 text-gray-900">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-medium text-gray-800">
+        <h3 className="text-base font-semibold text-gray-900">
           Prescription #{index + 1}
         </h3>
         {showRemove && (
@@ -215,255 +165,146 @@ function PrescriptionEntryCard({
         )}
       </div>
 
-      {/* Quick Search */}
-      <div className="mb-5">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">
-          Add Prescription
-        </h4>
+      {/* Step 1: Supplement Search */}
+      <div className="mb-4">
+        <label className="block text-xs font-medium text-gray-700 mb-1">
+          Supplement <span className="text-red-500">*</span>
+        </label>
         <div className="relative">
           <input
             type="text"
-            value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
-            onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
-            placeholder="Quick Search (supplement name)..."
-            className="w-full px-3 py-2 border border-gray-300 rounded text-sm pr-8"
+            value={suppQuery}
+            onChange={(e) => handleSuppSearchChange(e.target.value)}
+            onFocus={() => suppResults.length > 0 && setShowSuppDropdown(true)}
+            onBlur={() => setTimeout(() => setShowSuppDropdown(false), 150)}
+            placeholder="Type to search supplement..."
+            style={{ color: "#111827" }}
+            className="w-full px-3 py-2 border border-gray-300 rounded text-sm placeholder-gray-400 bg-white"
           />
-          {searchLoading && (
+          {suppLoading && (
             <div className="absolute right-3 top-2.5">
               <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
             </div>
           )}
-
-          {/* Dropdown results */}
-          {showDropdown && (
+          {showSuppDropdown && (
             <div className="absolute z-20 w-full bg-white border border-gray-200 rounded shadow-lg mt-1 max-h-60 overflow-y-auto">
-              {searchLoading ? (
+              {suppLoading ? (
                 <div className="px-3 py-4 text-center text-sm text-gray-500">
                   Searching...
                 </div>
-              ) : searchResults.length > 0 ? (
-                <>
-                  {searchResults.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onMouseDown={() => handleSupplementSelect(s)}
-                      className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-gray-100 last:border-0 transition-colors"
-                    >
-                      <div className="text-sm font-medium text-gray-900">
-                        {s.supplement_name}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {s.supplement_brand} · {s.supplement_packaging_form}
-                        {s.supplement_status && (
-                          <span
-                            className={`ml-2 px-1.5 py-0.5 rounded-full text-xs ${
-                              s.supplement_status === "Active" ||
-                              s.supplement_status === "Available"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-gray-100 text-gray-600"
-                            }`}
-                          >
-                            {s.supplement_status}
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </>
+              ) : suppResults.length > 0 ? (
+                suppResults.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onMouseDown={() => handleSupplementSelect(s)}
+                    className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-gray-100 last:border-0"
+                  >
+                    <div className="text-sm font-medium text-gray-900">
+                      {s.supplement_name}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {s.supplement_brand} · {s.supplement_packaging_form}
+                    </div>
+                  </button>
+                ))
               ) : (
-                searchQuery.trim() && (
+                suppQuery.trim() && (
                   <div className="px-3 py-3 text-sm text-gray-500 text-center">
-                    No supplements found for &quot;{searchQuery}&quot;
+                    No supplements found for &quot;{suppQuery}&quot;
                   </div>
                 )
               )}
             </div>
           )}
         </div>
-
-        {isAutofilled && (
-          <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
-            ✓ Supplement details autofilled from existing record
-          </div>
+        {entry.supplementId && (
+          <p className="text-xs text-green-600 mt-1">
+            ✓ {entry.supplementName} selected
+          </p>
         )}
       </div>
 
-      {/* Supplement Information */}
-      <div className="mb-5">
-        <h4 className="text-sm font-medium text-gray-700 mb-3">
-          Supplement Information
-        </h4>
-        <div className="grid grid-cols-4 gap-3 text-sm mb-3">
-          {(
-            [
-              { label: "Name", field: "name" as const },
-              { label: "Brand", field: "brand" as const },
-              { label: "Type", field: "type" as const },
-              { label: "Serving Size", field: "serving_size" as const },
-            ] as { label: string; field: keyof PrescriptionEntry }[]
-          ).map(({ label, field }) => (
-            <div key={field}>
-              <label className="block text-xs text-gray-500 mb-1">
-                {label}
-              </label>
-              <input
-                type="text"
-                value={entry[field] as string}
-                onChange={(e) => update(field, e.target.value)}
-                disabled={isAutofilled}
-                placeholder={label}
-                className="w-full px-2 py-1 border border-gray-300 rounded text-sm disabled:bg-gray-50 disabled:text-gray-500"
-              />
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">
-              Description
-            </label>
-            <textarea
-              value={entry.description}
-              onChange={(e) => update("description", e.target.value)}
-              disabled={isAutofilled}
-              placeholder="Description..."
-              className="w-full h-16 px-2 py-1 border border-gray-300 rounded text-sm disabled:bg-gray-50 disabled:text-gray-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">
-              Additional Notes
-            </label>
-            <textarea
-              value={entry.additional_notes}
-              onChange={(e) => update("additional_notes", e.target.value)}
-              disabled={isAutofilled}
-              placeholder="Additional notes..."
-              className="w-full h-16 px-2 py-1 border border-gray-300 rounded text-sm disabled:bg-gray-50 disabled:text-gray-500"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Batch Selector (shown after supplement is picked) */}
+      {/* Step 2: Available Batches (auto-loaded after supplement selected) */}
       {entry.supplementId && (
-        <div className="mb-5">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">
-            Select Inventory Batch
-          </h4>
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-gray-700 mb-2">
+            Select Batch <span className="text-red-500">*</span>
+          </label>
           {batchesLoading ? (
-            <p className="text-xs text-gray-500">Loading batches...</p>
+            <div className="flex items-center gap-2 py-2">
+              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs text-gray-500">Loading batches...</span>
+            </div>
           ) : batches.length > 0 ? (
-            <div className="space-y-1 max-h-36 overflow-y-auto border border-gray-200 rounded p-2 bg-gray-50">
+            <div className="space-y-1.5 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-2 bg-gray-50">
               {batches.map((b) => (
                 <button
                   key={b.id}
                   type="button"
                   onClick={() => handleBatchSelect(b)}
-                  className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                  className={`w-full text-left px-3 py-2.5 rounded-md text-sm transition-colors border ${
                     entry.batchId === b.id
-                      ? "bg-blue-50 border border-blue-300 text-blue-900"
-                      : "bg-white border border-gray-200 hover:bg-gray-50"
+                      ? "bg-blue-50 border-blue-400 text-blue-900"
+                      : "bg-white border-gray-200 hover:bg-gray-50 text-gray-900"
                   }`}
                 >
-                  <span className="font-medium">{b.batch_number}</span>
-                  <span className="ml-3 text-xs text-gray-500">
-                    Available:{" "}
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{b.batch_number}</span>
                     <span
-                      className={
-                        b.available <= 0 ? "text-red-600 font-medium" : ""
-                      }
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        b.available <= 0
+                          ? "bg-red-100 text-red-700"
+                          : "bg-green-100 text-green-700"
+                      }`}
                     >
-                      {b.available}
-                    </span>{" "}
-                    units
-                  </span>
-                  {b.batch_expiration_date && (
-                    <span className="ml-2 text-xs text-gray-400">
-                      Exp:{" "}
-                      {new Date(b.batch_expiration_date).toLocaleDateString()}
+                      {b.available} available
                     </span>
+                  </div>
+                  {b.batch_expiration_date && (
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      Exp: {new Date(b.batch_expiration_date).toLocaleDateString()}
+                    </div>
                   )}
                 </button>
               ))}
             </div>
           ) : (
-            <p className="text-xs text-gray-500 italic">
+            <p className="text-xs text-gray-500 italic py-1">
               No inventory batches found for this supplement.
             </p>
           )}
           {entry.batchId && (
-            <p className="text-xs text-green-600 mt-1">
-              ✓ Batch selected — inventory will be updated on save.
+            <p className="text-xs text-green-600 mt-1.5">
+              ✓ Batch <span className="font-medium">{entry.batchNumber}</span> selected — inventory will be updated on save.
             </p>
           )}
         </div>
       )}
 
-      {/* Batch / Prescription Details */}
+      {/* Step 3: Prescription Details */}
       <div>
-        <h4 className="text-sm font-medium text-gray-700 mb-3">
-          Batch Information
-        </h4>
-        <div className="grid grid-cols-4 gap-3 text-sm">
+        <label className="block text-xs font-medium text-gray-700 mb-2">
+          Prescription Details
+        </label>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {(
             [
-              {
-                label: "Batch Number",
-                field: "batch_number" as const,
-                type: "text",
-              },
-              {
-                label: "Qty to Prescribe",
-                field: "quantity" as const,
-                type: "number",
-              },
-              { label: "Price", field: "price" as const, type: "number" },
-              {
-                label: "Expiration Date",
-                field: "expiration_date" as const,
-                type: "date",
-              },
-              {
-                label: "Testing Organisation",
-                field: "testing_organisation" as const,
-                type: "text",
-              },
-              {
-                label: "Classification",
-                field: "classification" as const,
-                type: "text",
-              },
-              { label: "Dosage", field: "dosage" as const, type: "number" },
-              {
-                label: "Dosage Unit",
-                field: "dosage_unit" as const,
-                type: "text",
-              },
-              {
-                label: "Dosage Frequency",
-                field: "dosage_frequency" as const,
-                type: "text",
-              },
-            ] as {
-              label: string;
-              field: keyof PrescriptionEntry;
-              type: string;
-            }[]
-          ).map(({ label, field, type }) => (
+              { label: "Qty to Prescribe", field: "quantity" as const, type: "number", placeholder: "e.g. 2" },
+              { label: "Dosage", field: "dosage" as const, type: "number", placeholder: "e.g. 500" },
+              { label: "Dosage Unit", field: "dosage_unit" as const, type: "text", placeholder: "e.g. mg, capsule, g" },
+              { label: "Dosage Frequency", field: "dosage_frequency" as const, type: "text", placeholder: "e.g. once daily" },
+            ] as { label: string; field: keyof PrescriptionEntry; type: string; placeholder: string }[]
+          ).map(({ label, field, type, placeholder }) => (
             <div key={field}>
-              <label className="block text-xs text-gray-500 mb-1">
-                {label}
-              </label>
+              <label className="block text-xs text-gray-500 mb-1">{label}</label>
               <input
                 type={type}
                 value={entry[field] as string}
                 onChange={(e) => update(field, e.target.value)}
-                placeholder={label}
-                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                placeholder={placeholder}
+                style={{ color: "#111827" }}
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm placeholder-gray-400 bg-white"
               />
             </div>
           ))}
@@ -502,9 +343,8 @@ export default function NewPrescriptionForm({
       const token = localStorage.getItem("token");
 
       for (const entry of entries) {
-        if (!entry.name) continue; // skip empty entries
+        if (!entry.batchId) continue; // skip incomplete entries
 
-        // 1. POST prescription record
         const prescRes = await fetch(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/prescription`,
           {
@@ -514,34 +354,20 @@ export default function NewPrescriptionForm({
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              session_id: id,
-              supplement_name: entry.name,
-              brand: entry.brand,
-              type: entry.type,
-              serving_size: entry.serving_size,
-              description: entry.description,
-              additional_notes: entry.additional_notes,
-              batch_number: entry.batch_number,
-              quantity: entry.quantity ? parseFloat(entry.quantity) : null,
-              price: entry.price ? parseFloat(entry.price) : null,
-              expiration_date: entry.expiration_date || null,
-              testing_organisation: entry.testing_organisation,
-              classification: entry.classification,
-              dosage: entry.dosage ? parseFloat(entry.dosage) : null,
-              dosage_unit: entry.dosage_unit,
-              dosage_frequency: entry.dosage_frequency,
+              sessions_id: id,
+              batch_id: entry.batchId,
+              prescribed_quantity: entry.quantity ? parseInt(entry.quantity, 10) : 1,
+              dosage: entry.dosage ? parseInt(entry.dosage, 10) : undefined,
+              dosage_unit: entry.dosage_unit || undefined,
+              dosage_frequency: entry.dosage_frequency || undefined,
             }),
           },
         );
         if (!prescRes.ok)
           throw new Error(`Prescription save failed: ${prescRes.status}`);
 
-        // 2. Deduct from batch inventory if a batch was selected
-        if (
-          entry.batchId &&
-          entry.quantity &&
-          entry.batchCurrentQty !== null
-        ) {
+        // Deduct from batch inventory
+        if (entry.batchId && entry.quantity && entry.batchCurrentQty !== null) {
           const prescribed = parseFloat(entry.quantity);
           if (prescribed > 0) {
             const newQty = Math.max(0, entry.batchCurrentQty - prescribed);

@@ -430,7 +430,8 @@ export default function Anthropometry({
                 value={editForm[field]}
                 onChange={(e) => updateField(field, e.target.value)}
                 placeholder="—"
-                className="text-gray-300 flex-1 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                style={{ color: editForm[field] ? "#111827" : undefined }}
+                className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm text-right placeholder-gray-300"
               />
             </div>
           ))}
@@ -481,6 +482,7 @@ export default function Anthropometry({
                 type="date"
                 value={editForm.date_recorded}
                 onChange={(e) => updateField("date_recorded", e.target.value)}
+                style={{ color: editForm.date_recorded ? "#111827" : undefined }}
                 className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
               />
             </div>
@@ -493,6 +495,7 @@ export default function Anthropometry({
                 value={editForm.measured_by}
                 onChange={(e) => updateField("measured_by", e.target.value)}
                 placeholder="Name"
+                style={{ color: editForm.measured_by ? "#111827" : undefined }}
                 className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
               />
             </div>
