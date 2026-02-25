@@ -205,6 +205,11 @@ export default function MedicalHistory({
 
   // Snapshot of last-saved values — used to detect unsaved changes (text color)
   const [savedState, setSavedState] = useState(emptyState());
+  const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    setIsSaved(false);
+  }, [generalInfo, pubertyInfo, bowelMovement, hydrationInfo, periodInfo]);
 
   // Show Period section only for female athletes; show as fallback when gender unknown
   const isFemale = gender === null || gender.toLowerCase().startsWith("f");
@@ -334,6 +339,7 @@ export default function MedicalHistory({
       );
       if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
       setIsEditing(false);
+      setIsSaved(true);
     } catch (err) {
       console.error("Error saving medical history:", err);
       setSaveError("Failed to save. Please try again.");
@@ -398,9 +404,9 @@ export default function MedicalHistory({
             )}
             <button
               onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
-              className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
+              className={`px-3 py-1 text-white text-sm rounded ${effectiveEditing && isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
             >
-              {effectiveEditing ? "Save" : "Edit"}
+              {effectiveEditing ? (isSaved ? "Saved" : "Save") : "Edit"}
             </button>
           </div>
         )}

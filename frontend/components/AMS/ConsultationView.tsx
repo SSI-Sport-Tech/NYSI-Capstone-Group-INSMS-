@@ -243,7 +243,7 @@ export default function ConsultationView({
                     onClick={handleSaveAll}
                     className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
                   >
-                    Save All
+                    Save and Finish Consultation
                   </button>
                 </>
               ) : (
@@ -286,8 +286,9 @@ export default function ConsultationView({
                   <div>
                     <span className="text-gray-900">{dateLabel}:</span>
                     <span className="ml-2 font-medium">
-                      {new Date(
-                        displaySession.date_of_consult,
+                      {(displaySession.date_of_consult
+                        ? new Date(displaySession.date_of_consult)
+                        : new Date()
                       ).toLocaleDateString()}
                     </span>
                   </div>

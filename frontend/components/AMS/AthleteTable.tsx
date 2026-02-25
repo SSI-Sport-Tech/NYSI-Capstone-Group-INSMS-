@@ -156,7 +156,11 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
         if (onRefresh) onRefresh();
       } catch (error) {
         console.error("Error deleting athletes:", error);
-        alert("Failed to delete athletes");
+        if (axios.isAxiosError(error) && error.response?.status === 403) {
+          alert("Access denied: deleting athletes requires Admin privileges.");
+        } else {
+          alert("Failed to delete athletes. Please try again.");
+        }
       }
     }
   };

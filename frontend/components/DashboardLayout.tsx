@@ -327,7 +327,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 {user?.first_name} {user?.last_name}
               </p>
               <div className="flex items-center gap-1.5">
-                <p className="text-gray-500 text-xs truncate">{user?.role}</p>
+                <p className="text-gray-500 text-xs truncate">
+                  {user?.role
+                    ? user.role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+                    : ""}
+                </p>
                 {/* NEW: Admin badge */}
                 {isAdmin && (
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
