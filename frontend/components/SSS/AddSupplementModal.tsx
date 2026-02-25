@@ -3,6 +3,11 @@ import { X, Search, Loader2 } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 
+interface LookupOption {
+  id: string;
+  label: string;
+}
+
 interface Supplement {
   id: string;
   supplement_name: string;
@@ -21,7 +26,14 @@ interface AddSupplementModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  title?: string;
+  supplementOnly?: boolean;
   preselectedSupplement?: { id: string; name: string; brand: string };
+}
+
+interface NutritionalRow {
+  nutrient: string;
+  amount: string;
 }
 
 interface FormData {
@@ -29,24 +41,34 @@ interface FormData {
   supplementId: string | null;
   name: string;
   brand: string;
-  type: string;
-  servingSize: string;
+  packagingFormId: string;
+  statusId: string;
+  ingredients: string;
   description: string;
+  warningLabel: string;
+  certifications: string;
   additionalNotes: string;
+  testingOrganisation: string;
+  productSourceUrl: string;
+
+  // Nutritional Information
+  servingDefinition: string;
+  nutritionalPerServing: NutritionalRow[];
+  nutritionalPer100g: NutritionalRow[];
 
   // Batch Information
   batchNumber: string;
   quantity: number;
   price: number;
   expirationDate: string;
-  testingOrganisation: string;
-  classification: string;
 }
 
 const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  title = "Add Supplement to Inventory",
+  supplementOnly = false,
   preselectedSupplement,
 }) => {
   const { token } = useAuth();
@@ -54,53 +76,73 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
   const [searchResults, setSearchResults] = useState<Supplement[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [isNewSupplement, setIsNewSupplement] = useState(false);
+  const [includeBatch, setIncludeBatch] = useState(true);
   const [loading, setLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [packagingOptions, setPackagingOptions] = useState<LookupOption[]>([]);
+  const [statusOptions, setStatusOptions] = useState<LookupOption[]>([]);
 
-  const [formData, setFormData] = useState<FormData>({
+  const emptyForm: FormData = {
     supplementId: null,
     name: "",
     brand: "",
-    type: "",
-    servingSize: "",
+    packagingFormId: "",
+    statusId: "",
+    ingredients: "",
     description: "",
+    warningLabel: "",
+    certifications: "",
     additionalNotes: "",
+    testingOrganisation: "",
+    productSourceUrl: "",
+    servingDefinition: "",
+    nutritionalPerServing: [{ nutrient: "", amount: "" }],
+    nutritionalPer100g: [{ nutrient: "", amount: "" }],
     batchNumber: "",
     quantity: 100,
     price: 0,
     expirationDate: "",
-    testingOrganisation: "",
-    classification: "",
-  });
+  };
+
+  const [formData, setFormData] = useState<FormData>(emptyForm);
+
+  // Load lookup options once
+  useEffect(() => {
+    axios.get("/api/SSS/staging-lookups").then((res) => {
+      setPackagingOptions(
+        (res.data.packagingForms ?? []).map(
+          (r: { id: string; supplement_packaging_form: string }) => ({
+            id: r.id,
+            label: r.supplement_packaging_form,
+          }),
+        ),
+      );
+      setStatusOptions(
+        (res.data.statuses ?? []).map(
+          (r: { id: string; supplement_status: string }) => ({
+            id: r.id,
+            label: r.supplement_status,
+          }),
+        ),
+      );
+    });
+  }, []);
 
   // Reset form when modal opens/closes
   useEffect(() => {
     if (!isOpen) {
-      setFormData({
-        supplementId: null,
-        name: "",
-        brand: "",
-        type: "",
-        servingSize: "",
-        description: "",
-        additionalNotes: "",
-        batchNumber: "",
-        quantity: 100,
-        price: 0,
-        expirationDate: "",
-        testingOrganisation: "",
-        classification: "",
-      });
+      setFormData(emptyForm);
       setSearchQuery("");
       setSearchResults([]);
       setShowResults(false);
-      setIsNewSupplement(false);
+      setIsNewSupplement(supplementOnly);
+      setIncludeBatch(true);
     } else if (isOpen && preselectedSupplement) {
       setFormData((prev) => ({
         ...prev,
         supplementId: preselectedSupplement.id,
         name: preselectedSupplement.name,
-        brand: preselectedSupplement.brand,
+        brand: preselectedSupplement.brand ?? "",
       }));
       setSearchQuery(`${preselectedSupplement.brand} ${preselectedSupplement.name}`);
       setIsNewSupplement(false);
@@ -166,10 +208,6 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
       supplementId: supplement.id,
       name: supplement.supplement_name || "",
       brand: supplement.supplement_brand || "",
-      type: supplement.supplement_packaging_form || "",
-      servingSize: supplement.serving_size || "",
-      description: supplement.description || "",
-      additionalNotes: supplement.notes || "",
     }));
     setSearchQuery(
       `${supplement.supplement_brand} ${supplement.supplement_name}`,
@@ -187,8 +225,6 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
       supplementId: null,
       name: searchQuery.trim() || "",
       brand: "",
-      type: "",
-      servingSize: "",
       description: "",
       additionalNotes: "",
     }));
@@ -213,19 +249,34 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
     setLoading(true);
 
     try {
+      // Convert nutritional rows to a plain object, or null if all rows are empty
+      const rowsToObj = (rows: NutritionalRow[]) => {
+        const entries = rows
+          .filter((r) => r.nutrient.trim())
+          .map((r) => [r.nutrient.trim(), r.amount.trim()] as [string, string]);
+        return entries.length > 0 ? Object.fromEntries(entries) : null;
+      };
+
       if (isNewSupplement) {
         // First create the supplement, then create the batch
         const supplementData = {
           supplement_name: formData.name,
-          supplement_brand: formData.brand,
-          supplement_packaging_form: formData.type,
-          serving_size: formData.servingSize || null,
-          description: formData.description || null,
-          notes: formData.additionalNotes || null,
-          // Set default required fields for new supplements
-          supplement_status: "Active",
+          supplement_brand: formData.brand || null,
+          supplement_packaging_form_id: formData.packagingFormId,
+          supplement_status_id: formData.statusId,
+          supplement_ingredient: formData.ingredients
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+          supplement_description: formData.description || null,
+          supplement_warning_label: formData.warningLabel || null,
+          supplement_certifications: formData.certifications || null,
+          supplement_additional_information: formData.additionalNotes || null,
           batch_testing_org: formData.testingOrganisation || null,
-          product_source_url: null,
+          product_source_url: formData.productSourceUrl || null,
+          nutritional_info_per_serving_definition: formData.servingDefinition || null,
+          nutritional_info_per_serving: rowsToObj(formData.nutritionalPerServing),
+          nutritional_info_per_100g: rowsToObj(formData.nutritionalPer100g),
         };
 
         const supplementResponse = await axios.post(
@@ -233,33 +284,33 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
           supplementData,
           { headers: { Authorization: `Bearer ${token}` } },
         );
-        const newSupplementId = supplementResponse.data.id;
 
-        // Create batch for the new supplement
-        const batchData = {
-          supplement_id: newSupplementId,
-          batch_number: formData.batchNumber,
-          batch_initial_quantity: formData.quantity,
-          batch_price: formData.price || null,
-          batch_expiration_date: formData.expirationDate || null,
-        };
-
-        await axios.post("/api/SSS/batches", batchData, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        if (!supplementOnly && includeBatch) {
+          const batchData = {
+            supplement_id: supplementResponse.data.id,
+            batch_number: formData.batchNumber,
+            batch_initial_quantity: formData.quantity,
+            batch_price: formData.price || null,
+            batch_expiration_date: formData.expirationDate || null,
+          };
+          await axios.post("/api/SSS/batches", batchData, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        }
       } else {
-        // Just create batch for existing supplement
-        const batchData = {
-          supplement_id: formData.supplementId,
-          batch_number: formData.batchNumber,
-          batch_initial_quantity: formData.quantity,
-          batch_price: formData.price || null,
-          batch_expiration_date: formData.expirationDate || null,
-        };
-
-        await axios.post("/api/SSS/batches", batchData, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        // Add batch for existing supplement
+        if (includeBatch) {
+          const batchData = {
+            supplement_id: formData.supplementId,
+            batch_number: formData.batchNumber,
+            batch_initial_quantity: formData.quantity,
+            batch_price: formData.price || null,
+            batch_expiration_date: formData.expirationDate || null,
+          };
+          await axios.post("/api/SSS/batches", batchData, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        }
       }
 
       onSuccess();
@@ -285,7 +336,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white">
             <h2 className="text-lg font-semibold text-gray-900">
-              Add Supplement to Inventory
+              {title}
             </h2>
             <button
               onClick={onClose}
@@ -307,8 +358,8 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                   Supplement Information
                 </h3>
 
-                {/* Quick Search */}
-                <div className="mb-4 search-container">
+                {/* Quick Search — hidden in supplement-only mode */}
+                {!supplementOnly && <div className="mb-4 search-container">
                   <label className="block text-sm text-gray-600 mb-2">
                     Quick Search (Name, Brand, Type)
                   </label>
@@ -408,10 +459,10 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                       </div>
                     )}
                   </div>
-                </div>
+                </div>}
 
-                {/* Autofilled message or new supplement option */}
-                {formData.supplementId ? (
+                {/* Autofilled message or new supplement option — hidden in supplement-only mode */}
+                {!supplementOnly && (formData.supplementId ? (
                   <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
                     <p className="text-sm text-green-700">
                       ✓ Supplement details autofilled from existing record
@@ -437,28 +488,23 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                       </p>
                     )}
                   </div>
-                )}
+                ))}
 
                 {/* Supplement Details Form */}
                 {(isNewSupplement || formData.supplementId) && (
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm text-gray-700 mb-1">
-                        Name
+                        Name <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
                         value={formData.name}
                         onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            name: e.target.value,
-                          }))
+                          setFormData((prev) => ({ ...prev, name: e.target.value }))
                         }
                         required
-                        disabled={
-                          !isNewSupplement && formData.supplementId !== null
-                        }
+                        disabled={!isNewSupplement && formData.supplementId !== null}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 text-gray-900 placeholder-gray-500"
                         placeholder="Supplement Name"
                       />
@@ -471,130 +517,358 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                         type="text"
                         value={formData.brand}
                         onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            brand: e.target.value,
-                          }))
+                          setFormData((prev) => ({ ...prev, brand: e.target.value }))
                         }
-                        required
-                        disabled={
-                          !isNewSupplement && formData.supplementId !== null
-                        }
+                        disabled={!isNewSupplement && formData.supplementId !== null}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 text-gray-900 placeholder-gray-500"
                         placeholder="Brand Name"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm text-gray-700 mb-1">
-                        Type
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.type}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            type: e.target.value,
-                          }))
-                        }
-                        required
-                        disabled={
-                          !isNewSupplement && formData.supplementId !== null
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 text-gray-900 placeholder-gray-500"
-                        placeholder="Supplement Type"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-700 mb-1">
-                        Serving Size
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.servingSize}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            servingSize: e.target.value,
-                          }))
-                        }
-                        disabled={
-                          !isNewSupplement && formData.supplementId !== null
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 text-gray-900 placeholder-gray-500"
-                        placeholder="100g"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-sm text-gray-700 mb-1">
-                        Description
-                      </label>
-                      <textarea
-                        value={formData.description}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            description: e.target.value,
-                          }))
-                        }
-                        disabled={
-                          !isNewSupplement && formData.supplementId !== null
-                        }
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 text-gray-900 placeholder-gray-500"
-                        placeholder="Supplement description here"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-sm text-gray-700 mb-1">
-                        Additional Notes
-                      </label>
-                      <textarea
-                        value={formData.additionalNotes}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            additionalNotes: e.target.value,
-                          }))
-                        }
-                        disabled={
-                          !isNewSupplement && formData.supplementId !== null
-                        }
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 text-gray-900 placeholder-gray-500"
-                        placeholder="Allergen information or any other additional information"
-                      />
-                    </div>
+                    {isNewSupplement && (
+                      <>
+                        <div>
+                          <label className="block text-sm text-gray-700 mb-1">
+                            Packaging Form <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={formData.packagingFormId}
+                            onChange={(e) =>
+                              setFormData((prev) => ({ ...prev, packagingFormId: e.target.value }))
+                            }
+                            required
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                          >
+                            <option value="">— Select packaging form —</option>
+                            {packagingOptions.map((o) => (
+                              <option key={o.id} value={o.id}>{o.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-700 mb-1">
+                            Status <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={formData.statusId}
+                            onChange={(e) =>
+                              setFormData((prev) => ({ ...prev, statusId: e.target.value }))
+                            }
+                            required
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                          >
+                            <option value="">— Select status —</option>
+                            {statusOptions.map((o) => (
+                              <option key={o.id} value={o.id}>{o.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-700 mb-1">
+                            Batch Testing Org
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.testingOrganisation}
+                            onChange={(e) =>
+                              setFormData((prev) => ({ ...prev, testingOrganisation: e.target.value }))
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
+                            placeholder="e.g. Informed-Sport"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-700 mb-1">
+                            Ingredients <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.ingredients}
+                            onChange={(e) =>
+                              setFormData((prev) => ({ ...prev, ingredients: e.target.value }))
+                            }
+                            required
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
+                            placeholder="Vitamin D3, Calcium, Zinc (comma-separated)"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-sm text-gray-700 mb-1">
+                            Description
+                          </label>
+                          <textarea
+                            value={formData.description}
+                            onChange={(e) =>
+                              setFormData((prev) => ({ ...prev, description: e.target.value }))
+                            }
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
+                            placeholder="Supplement description"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-sm text-gray-700 mb-1">
+                            Additional Information
+                          </label>
+                          <textarea
+                            value={formData.additionalNotes}
+                            onChange={(e) =>
+                              setFormData((prev) => ({ ...prev, additionalNotes: e.target.value }))
+                            }
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
+                            placeholder="Allergen information or any other notes"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-sm text-gray-700 mb-1">
+                            Warning Label
+                          </label>
+                          <textarea
+                            value={formData.warningLabel}
+                            onChange={(e) =>
+                              setFormData((prev) => ({ ...prev, warningLabel: e.target.value }))
+                            }
+                            rows={2}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
+                            placeholder="e.g. Keep out of reach of children."
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-700 mb-1">
+                            Certifications
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.certifications}
+                            onChange={(e) =>
+                              setFormData((prev) => ({ ...prev, certifications: e.target.value }))
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
+                            placeholder="e.g. NSF Certified, Informed-Sport"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-700 mb-1">
+                            Product Source URL
+                          </label>
+                          <input
+                            type="url"
+                            value={formData.productSourceUrl}
+                            onChange={(e) =>
+                              setFormData((prev) => ({ ...prev, productSourceUrl: e.target.value }))
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
+                            placeholder="https://example.com/product"
+                          />
+                        </div>
+                        {/* Nutritional Information */}
+                        <div className="col-span-2 pt-2 border-t border-gray-100">
+                          <p className="text-sm font-medium text-gray-700 mb-3">Nutritional Information</p>
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-sm text-gray-700 mb-1">
+                            Serving Size Definition
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.servingDefinition}
+                            onChange={(e) =>
+                              setFormData((prev) => ({ ...prev, servingDefinition: e.target.value }))
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
+                            placeholder='e.g. "1 capsule (500mg)"'
+                          />
+                        </div>
+                        {/* Nutritional Info per Serving table */}
+                        <div className="col-span-2">
+                          <label className="block text-sm text-gray-700 mb-2">
+                            Nutritional Info per Serving
+                          </label>
+                          <table className="w-full text-sm border border-gray-200 rounded-md overflow-hidden">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-1/2">Nutrient</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-1/2">Amount</th>
+                                <th className="w-8"></th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {formData.nutritionalPerServing.map((row, i) => (
+                                <tr key={i}>
+                                  <td className="px-2 py-1">
+                                    <input
+                                      type="text"
+                                      value={row.nutrient}
+                                      onChange={(e) =>
+                                        setFormData((prev) => {
+                                          const rows = [...prev.nutritionalPerServing];
+                                          rows[i] = { ...rows[i], nutrient: e.target.value };
+                                          return { ...prev, nutritionalPerServing: rows };
+                                        })
+                                      }
+                                      placeholder="e.g. Protein"
+                                      className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
+                                    />
+                                  </td>
+                                  <td className="px-2 py-1">
+                                    <input
+                                      type="text"
+                                      value={row.amount}
+                                      onChange={(e) =>
+                                        setFormData((prev) => {
+                                          const rows = [...prev.nutritionalPerServing];
+                                          rows[i] = { ...rows[i], amount: e.target.value };
+                                          return { ...prev, nutritionalPerServing: rows };
+                                        })
+                                      }
+                                      placeholder="e.g. 10g"
+                                      className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
+                                    />
+                                  </td>
+                                  <td className="px-1 py-1 text-center">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setFormData((prev) => ({
+                                          ...prev,
+                                          nutritionalPerServing: prev.nutritionalPerServing.filter((_, idx) => idx !== i),
+                                        }))
+                                      }
+                                      disabled={formData.nutritionalPerServing.length === 1}
+                                      className="text-gray-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                nutritionalPerServing: [...prev.nutritionalPerServing, { nutrient: "", amount: "" }],
+                              }))
+                            }
+                            className="mt-2 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            + Add Row
+                          </button>
+                        </div>
+
+                        {/* Nutritional Info per 100g table */}
+                        <div className="col-span-2">
+                          <label className="block text-sm text-gray-700 mb-2">
+                            Nutritional Info per 100g
+                          </label>
+                          <table className="w-full text-sm border border-gray-200 rounded-md overflow-hidden">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-1/2">Nutrient</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-1/2">Amount</th>
+                                <th className="w-8"></th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {formData.nutritionalPer100g.map((row, i) => (
+                                <tr key={i}>
+                                  <td className="px-2 py-1">
+                                    <input
+                                      type="text"
+                                      value={row.nutrient}
+                                      onChange={(e) =>
+                                        setFormData((prev) => {
+                                          const rows = [...prev.nutritionalPer100g];
+                                          rows[i] = { ...rows[i], nutrient: e.target.value };
+                                          return { ...prev, nutritionalPer100g: rows };
+                                        })
+                                      }
+                                      placeholder="e.g. Protein"
+                                      className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
+                                    />
+                                  </td>
+                                  <td className="px-2 py-1">
+                                    <input
+                                      type="text"
+                                      value={row.amount}
+                                      onChange={(e) =>
+                                        setFormData((prev) => {
+                                          const rows = [...prev.nutritionalPer100g];
+                                          rows[i] = { ...rows[i], amount: e.target.value };
+                                          return { ...prev, nutritionalPer100g: rows };
+                                        })
+                                      }
+                                      placeholder="e.g. 20g"
+                                      className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
+                                    />
+                                  </td>
+                                  <td className="px-1 py-1 text-center">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setFormData((prev) => ({
+                                          ...prev,
+                                          nutritionalPer100g: prev.nutritionalPer100g.filter((_, idx) => idx !== i),
+                                        }))
+                                      }
+                                      disabled={formData.nutritionalPer100g.length === 1}
+                                      className="text-gray-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                nutritionalPer100g: [...prev.nutritionalPer100g, { nutrient: "", amount: "" }],
+                              }))
+                            }
+                            className="mt-2 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            + Add Row
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Batch Information Section */}
-              {(isNewSupplement || formData.supplementId) && (
+              {/* Batch Information Section — hidden in supplement-only mode */}
+              {!supplementOnly && (isNewSupplement || formData.supplementId) && (
                 <div>
                   <h3 className="text-sm font-medium text-gray-900 mb-4">
                     Batch Information
                   </h3>
 
                   <div className="mb-4">
-                    <label className="flex items-center">
+                    <label className="flex items-center cursor-pointer">
                       <input
                         type="checkbox"
-                        checked
-                        readOnly
+                        checked={includeBatch}
+                        onChange={(e) => setIncludeBatch(e.target.checked)}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
                       />
                       <span className="text-sm text-gray-700">
                         Input Batch Information
                       </span>
                     </label>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Default save with N.A. values. You can add batch details
-                      later from the supplement details page.
-                    </p>
+                    {!includeBatch && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        No batch will be created. You can add a batch later from the supplement details page.
+                      </p>
+                    )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  {includeBatch && <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm text-gray-700 mb-1">
                         Batch Number
@@ -680,41 +954,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                       />
                       <p className="text-xs text-gray-400 mt-1">Auto-set to today on save</p>
                     </div>
-                    <div>
-                      <label className="block text-sm text-gray-700 mb-1">
-                        Testing Organisation
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.testingOrganisation}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            testingOrganisation: e.target.value,
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
-                        placeholder="Informed-Sport"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-700 mb-1">
-                        Classification
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.classification}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            classification: e.target.value,
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
-                        placeholder="NSF Certified (Safe for Sport)"
-                      />
-                    </div>
-                  </div>
+                  </div>}
                 </div>
               )}
             </form>
@@ -732,7 +972,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
             <button
               type="submit"
               onClick={handleSubmit}
-              disabled={loading || (!isNewSupplement && !formData.supplementId)}
+              disabled={loading || (!supplementOnly && !isNewSupplement && !formData.supplementId)}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Saving..." : "Save Supplement"}

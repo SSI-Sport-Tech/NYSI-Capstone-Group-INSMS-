@@ -53,6 +53,9 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
+// Lookup values for packaging form and status dropdowns (no auth required)
+router.get('/staging-lookups', controller.listStagingLookups);
+
 router.get('/staging-supplements', controller.listStagingSupplements);
 
 /**

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, redirect, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import {
   ChevronDown,
@@ -43,6 +43,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     useState(isAthleteProfilePage);
   const [athleteName, setAthleteName] = useState<string>("");
   const { isAuthenticated, loading, user, logout } = useAuth();
+  const router = useRouter();
 
   // Get current tab from URL parameters
   const currentTab = searchParams.get("tab") || "profile";
@@ -80,16 +81,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
-  if (loading) {
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [loading, isAuthenticated, router]);
+
+  if (loading || !isAuthenticated) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900" />
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    redirect("/login");
   }
 
   // NEW: Check if user is admin
