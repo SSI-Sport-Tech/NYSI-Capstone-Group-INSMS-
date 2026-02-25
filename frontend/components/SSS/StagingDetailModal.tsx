@@ -51,8 +51,8 @@ interface EditForm {
   batch_testing_org: string;
   product_source_url: string;
   nutritional_info_per_serving_definition: string;
-  // JSON textarea string
-  supplement_ingredient: string;
+  // Ingredient list as editable rows
+  supplement_ingredient: string[];
   // Nutritional info as editable rows
   nutritional_info_per_100g: NutritionalRow[];
   nutritional_info_per_serving: NutritionalRow[];
@@ -320,6 +320,65 @@ function NutritionalTableEdit({
   );
 }
 
+// View-mode ingredient list
+function IngredientListView({ value }: { value: string[] | null }) {
+  if (!value || value.length === 0)
+    return <p className="text-sm text-gray-400">-</p>;
+  return (
+    <ul className="text-sm text-gray-800 space-y-0.5 list-disc list-inside">
+      {value.map((item, i) => (
+        <li key={i}>{item}</li>
+      ))}
+    </ul>
+  );
+}
+
+// Edit-mode ingredient table (Nx1)
+function IngredientTableEdit({
+  rows,
+  onChange,
+}: {
+  rows: string[];
+  onChange: (rows: string[]) => void;
+}) {
+  return (
+    <div>
+      <div className="space-y-1">
+        {rows.map((item, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input
+              type="text"
+              value={item}
+              onChange={(e) => {
+                const next = [...rows];
+                next[i] = e.target.value;
+                onChange(next);
+              }}
+              placeholder="e.g. Vitamin D3"
+              className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
+            />
+            <button
+              type="button"
+              onClick={() => onChange(rows.filter((_, idx) => idx !== i))}
+              disabled={rows.length === 1}
+              className="text-gray-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange([...rows, ""])}
+        className="mt-2 text-xs text-blue-600 hover:text-blue-800 font-medium"
+      >
+        + Add Row
+      </button>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const StagingDetailModal: React.FC<StagingDetailModalProps> = ({
@@ -338,7 +397,6 @@ const StagingDetailModal: React.FC<StagingDetailModalProps> = ({
 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
-  const [jsonErrors, setJsonErrors] = useState<Partial<Record<keyof EditForm, string>>>({});
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
 
@@ -372,7 +430,6 @@ const StagingDetailModal: React.FC<StagingDetailModalProps> = ({
       setDetail(null);
       setIsEditing(false);
       setEditForm(null);
-      setJsonErrors({});
       return;
     }
     setLoadingDetail(true);
@@ -401,45 +458,23 @@ const StagingDetailModal: React.FC<StagingDetailModalProps> = ({
       product_source_url: toDisplay(detail.product_source_url),
       nutritional_info_per_serving_definition:
         detail.nutritional_info_per_serving_definition ?? "",
-      supplement_ingredient: jsonStr(detail.supplement_ingredient ?? [], "[]"),
+      supplement_ingredient: [...(detail.supplement_ingredient ?? [])],
       nutritional_info_per_100g: recordToRows(detail.nutritional_info_per_100g),
       nutritional_info_per_serving: recordToRows(detail.nutritional_info_per_serving),
     });
-    setJsonErrors({});
     setIsEditing(true);
   };
 
   const cancelEdit = () => {
     setIsEditing(false);
     setEditForm(null);
-    setJsonErrors({});
   };
 
   const setField = <K extends keyof EditForm>(key: K, value: EditForm[K]) =>
     setEditForm((f) => (f ? { ...f, [key]: value } : f));
 
-  const clearJsonError = (key: keyof EditForm) =>
-    setJsonErrors((e) => ({ ...e, [key]: undefined }));
-
   const handleSave = async () => {
     if (!detail || !editForm) return;
-
-    // ── Validate JSON fields ────────────────────────────────────────────────
-    const errors: Partial<Record<keyof EditForm, string>> = {};
-    let parsedIngredients: unknown;
-
-    try {
-      parsedIngredients = JSON.parse(editForm.supplement_ingredient || "[]");
-      if (!Array.isArray(parsedIngredients))
-        errors.supplement_ingredient = "Must be a JSON array";
-    } catch {
-      errors.supplement_ingredient = "Invalid JSON";
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setJsonErrors(errors);
-      return;
-    }
 
     // Convert nutritional rows to records
     const newPer100g = rowsToRecord(editForm.nutritional_info_per_100g);
@@ -474,9 +509,10 @@ const StagingDetailModal: React.FC<StagingDetailModalProps> = ({
     if (editForm.supplement_status_id !== (detail.supplement_status_id ?? ""))
       payload.supplement_status_id = editForm.supplement_status_id || null;
 
-    // JSONB — compare by re-stringifying original with same format
-    if (editForm.supplement_ingredient !== jsonStr(detail.supplement_ingredient ?? [], "[]"))
-      payload.supplement_ingredient = parsedIngredients;
+    // Ingredients — filter empty rows, compare with original
+    const filteredIngredients = editForm.supplement_ingredient.filter((s) => s.trim());
+    if (JSON.stringify(filteredIngredients) !== JSON.stringify(detail.supplement_ingredient ?? []))
+      payload.supplement_ingredient = filteredIngredients;
 
     if (JSON.stringify(newPer100g) !== JSON.stringify(detail.nutritional_info_per_100g ?? null))
       payload.nutritional_info_per_100g = newPer100g;
@@ -838,18 +874,16 @@ const StagingDetailModal: React.FC<StagingDetailModalProps> = ({
                       )}
                     </FieldRow>
 
-                    <FieldRow label="Ingredients (JSON array)">
+                    <FieldRow label="Ingredients">
                       {isEditing && f ? (
-                        <JsonTextarea
-                          value={f.supplement_ingredient}
-                          onChange={(v) => {
-                            setField("supplement_ingredient", v);
-                            clearJsonError("supplement_ingredient");
-                          }}
-                          error={jsonErrors.supplement_ingredient}
+                        <IngredientTableEdit
+                          rows={f.supplement_ingredient}
+                          onChange={(rows) =>
+                            setField("supplement_ingredient", rows)
+                          }
                         />
                       ) : (
-                        <JsonDisplay value={detail.supplement_ingredient} />
+                        <IngredientListView value={detail.supplement_ingredient} />
                       )}
                     </FieldRow>
 

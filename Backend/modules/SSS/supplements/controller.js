@@ -531,7 +531,15 @@ export async function deleteSupplements(req, res) {
             });
         }
 
-        // Handle database errors
+        // FK violation — supplement still has inventory batches
+        if (error.code === '23503' && error.constraint === 'fk_inventory_batch_supplement') {
+            return res.status(409).json({
+                error: 'Cannot delete supplement',
+                message: 'This supplement has existing inventory batches. Delete all batches first before removing the supplement.'
+            });
+        }
+
+        // Handle other database errors
         res.status(500).json({
             error: 'Failed to delete supplements',
             message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'

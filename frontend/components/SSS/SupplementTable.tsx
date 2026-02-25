@@ -102,7 +102,11 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
       if (onRefresh) onRefresh();
     } catch (error) {
       console.error("Error deleting supplements:", error);
-      alert("Failed to delete supplements");
+      if (axios.isAxiosError(error) && error.response?.data?.message) {
+        alert(error.response.data.message);
+      } else {
+        alert("Failed to delete supplements");
+      }
     }
   };
 

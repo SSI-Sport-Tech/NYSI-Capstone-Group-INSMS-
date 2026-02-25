@@ -43,7 +43,7 @@ interface FormData {
   brand: string;
   packagingFormId: string;
   statusId: string;
-  ingredients: string;
+  ingredients: string[];
   description: string;
   warningLabel: string;
   certifications: string;
@@ -88,7 +88,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
     brand: "",
     packagingFormId: "",
     statusId: "",
-    ingredients: "",
+    ingredients: [""],
     description: "",
     warningLabel: "",
     certifications: "",
@@ -264,10 +264,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
           supplement_brand: formData.brand || null,
           supplement_packaging_form_id: formData.packagingFormId,
           supplement_status_id: formData.statusId,
-          supplement_ingredient: formData.ingredients
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean),
+          supplement_ingredient: formData.ingredients.filter((s) => s.trim()),
           supplement_description: formData.description || null,
           supplement_warning_label: formData.warningLabel || null,
           supplement_certifications: formData.certifications || null,
@@ -576,20 +573,54 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                             placeholder="e.g. Informed-Sport"
                           />
                         </div>
-                        <div>
+                        <div className="col-span-2">
                           <label className="block text-sm text-gray-700 mb-1">
                             Ingredients <span className="text-red-500">*</span>
                           </label>
-                          <input
-                            type="text"
-                            value={formData.ingredients}
-                            onChange={(e) =>
-                              setFormData((prev) => ({ ...prev, ingredients: e.target.value }))
+                          <div className="space-y-1">
+                            {formData.ingredients.map((item, i) => (
+                              <div key={i} className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={item}
+                                  onChange={(e) =>
+                                    setFormData((prev) => {
+                                      const rows = [...prev.ingredients];
+                                      rows[i] = e.target.value;
+                                      return { ...prev, ingredients: rows };
+                                    })
+                                  }
+                                  placeholder="e.g. Vitamin D3"
+                                  className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      ingredients: prev.ingredients.filter((_, idx) => idx !== i),
+                                    }))
+                                  }
+                                  disabled={formData.ingredients.length === 1}
+                                  className="text-gray-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                ingredients: [...prev.ingredients, ""],
+                              }))
                             }
-                            required
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
-                            placeholder="Vitamin D3, Calcium, Zinc (comma-separated)"
-                          />
+                            className="mt-2 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            + Add Row
+                          </button>
                         </div>
                         <div className="col-span-2">
                           <label className="block text-sm text-gray-700 mb-1">
