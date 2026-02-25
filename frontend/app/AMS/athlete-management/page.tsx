@@ -30,7 +30,7 @@ interface SearchResponse {
 }
 
 export default function AthleteManagementPage() {
-  const { token } = useAuth();
+  const { token, loading: authLoading } = useAuth();
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -80,8 +80,9 @@ export default function AthleteManagementPage() {
   };
 
   useEffect(() => {
+    if (authLoading) return;
     fetchAthletes();
-  }, []);
+  }, [authLoading]);
 
   const handleSearch = async () => {
     fetchAthletes(1, query);

@@ -574,7 +574,7 @@ export async function getUserActivity(req, res) {
     }
 }
 // ============================================================================
-// GET AUDIT LOGS
+// GET AUDIT LOGS (ENHANCED with date filtering)
 // ============================================================================
 
 /**
@@ -587,12 +587,19 @@ export async function getAuditLogs(req, res) {
         console.log('Requested by:', req.user.email, '(', req.user.role, ')');
 
         // Optional filters from query params
-        const { user_id, table_name, action, limit } = req.query;
+        const { user_id, table_name, action, limit, start_date, end_date } = req.query;
+
+        // Log date filters if provided
+        if (start_date || end_date) {
+            console.log('Date filters:', { start_date, end_date });
+        }
 
         const logs = await adminservices.getAuditLogs({
             user_id,
             table_name,
             action,
+            start_date,
+            end_date,
             limit: limit ? parseInt(limit) : 50,
         });
 
@@ -601,6 +608,13 @@ export async function getAuditLogs(req, res) {
         res.json({
             message: 'Audit logs retrieved successfully',
             count: logs.length,
+            filters_applied: {
+                user_id: user_id || null,
+                table_name: table_name || null,
+                action: action || null,
+                start_date: start_date || null,
+                end_date: end_date || null,
+            },
             data: logs,
         });
 
@@ -612,6 +626,7 @@ export async function getAuditLogs(req, res) {
         });
     }
 }
+
 
 // ============================================================================
 // GET AUDIT LOG STATISTICS

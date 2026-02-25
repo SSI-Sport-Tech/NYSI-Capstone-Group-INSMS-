@@ -125,7 +125,7 @@ function VerifyForm() {
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
             required
             placeholder="Enter 6-digit code"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition text-center text-2xl tracking-widest"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition text-center text-2xl tracking-widest text-gray-900"
           />
         </div>
 

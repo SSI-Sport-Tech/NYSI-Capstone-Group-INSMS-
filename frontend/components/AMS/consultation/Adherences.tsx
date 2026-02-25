@@ -161,8 +161,13 @@ export default function Adherences({
   const [editForm, setEditForm] = useState<EditForm>(emptyForm);
   const [saveError, setSaveError] = useState<string>("");
   const [gender, setGender] = useState<string | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
 
   const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
+
+  useEffect(() => {
+    setIsSaved(false);
+  }, [editForm]);
 
   const fetchData = async () => {
     if (!sessionId) {
@@ -237,6 +242,41 @@ export default function Adherences({
       }
     })();
   }, [athleteId]);
+
+  // For new consultations: seed weight/height from the athlete's most recent
+  // session's anthropometry so right-column calculations work while editing.
+  useEffect(() => {
+    if (!isNewConsultation || !athleteId || weight !== null) return;
+    (async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const headers = { Authorization: `Bearer ${token}` };
+        const latestRes = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/athlete/${athleteId}/latest`,
+          { headers },
+        );
+        if (!latestRes.ok) return;
+        const latestData = await latestRes.json();
+        const prevSessionId = latestData?.data?.id as string | undefined;
+        if (!prevSessionId) return;
+
+        const anthroRes = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${prevSessionId}/anthropometry`,
+          { headers },
+        );
+        if (!anthroRes.ok) return;
+        const anthroData = await anthroRes.json();
+        const a = anthroData?.data;
+        if (!a) return;
+
+        if (a.weightKg != null) setWeight(Number(a.weightKg));
+        if (a.heightCm != null) setHeight(Number(a.heightCm));
+        if (a.targetWeightKg != null) setTargetWeight(Number(a.targetWeightKg));
+      } catch {
+        // non-critical — calculations will show "—" if unavailable
+      }
+    })();
+  }, [isNewConsultation, athleteId, weight]);
 
   // ── Live-calculated values ──────────────────────────────────────────────
   // In edit mode: compute from form inputs + anthropometry data
@@ -340,8 +380,9 @@ export default function Adherences({
       if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
       const updated = (await response.json()) as { data: AdherencesData };
       setAdherencesData(updated.data);
-      setEditForm(toEditForm(updated.data));
+      if (!isNewConsultation) setEditForm(toEditForm(updated.data));
       setIsEditing(false);
+      setIsSaved(true);
     } catch (err) {
       console.error("Error saving adherences:", err);
       setSaveError("Failed to save. Please try again.");
@@ -411,9 +452,9 @@ export default function Adherences({
             )}
             <button
               onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
-              className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
+              className={`px-3 py-1 text-white text-sm rounded ${effectiveEditing && isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
             >
-              {effectiveEditing ? "Save" : "Edit"}
+              {effectiveEditing ? (isSaved ? "Saved" : "Save") : "Edit"}
             </button>
           </div>
         )}

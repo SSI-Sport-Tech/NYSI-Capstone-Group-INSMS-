@@ -118,6 +118,11 @@ export default function PreviousConsultation({
   const [form, setForm] = useState<CurrentConsultForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string>("");
+  const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    setIsSaved(false);
+  }, [form]);
   const [consultTypes, setConsultTypes] = useState<ConsultType[]>([]);
   const [nutritionDiagnoses, setNutritionDiagnoses] = useState<
     NutritionDiagnosis[]
@@ -339,6 +344,7 @@ export default function PreviousConsultation({
           }),
         },
       );
+      setIsSaved(true);
     } catch (err) {
       console.error("Error saving current consultation:", err);
       setSaveError("Failed to save. Please try again.");
@@ -366,9 +372,9 @@ export default function PreviousConsultation({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700 disabled:opacity-50"
+            className={`px-3 py-1 text-white text-sm rounded disabled:opacity-50 ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
           >
-            {saving ? "Saving..." : "Save"}
+            {saving ? "Saving..." : isSaved ? "Saved" : "Save"}
           </button>
         </div>
 
@@ -386,7 +392,7 @@ export default function PreviousConsultation({
               <select
                 value={form.consult_type}
                 onChange={(e) => updateForm("consult_type", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
               >
                 <option className="text-gray-500" value="">Select type...</option>
                 {consultTypes.map((t) => (
@@ -405,7 +411,7 @@ export default function PreviousConsultation({
                 onChange={(e) =>
                   updateForm("intervention_status", e.target.value)
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
               >
                 <option value="">Select status...</option>
                 {INTERVENTION_STATUSES.map((s) => (
@@ -428,7 +434,7 @@ export default function PreviousConsultation({
                 updateForm("main_nutrition_diagnosis", e.target.value)
               }
               placeholder="Enter main nutrition diagnosis..."
-              className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm"
+              className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
             />
           </div>
 
@@ -454,7 +460,7 @@ export default function PreviousConsultation({
                   <select
                     value={form[field]}
                     onChange={(e) => updateForm(field, e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-900"
                   >
                     <option value="">—</option>
                     {REVIEW_OPTIONS.map((o) => (
@@ -474,7 +480,7 @@ export default function PreviousConsultation({
                   value={form.other_review}
                   onChange={(e) => updateForm("other_review", e.target.value)}
                   placeholder="Other..."
-                  className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                  className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-900"
                 />
               </div>
             </div>
@@ -494,7 +500,7 @@ export default function PreviousConsultation({
                     updateForm("intervention_note", e.target.value)
                   }
                   placeholder="Input Text Here"
-                  className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm"
+                  className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
                 />
               </div>
               <div>
@@ -505,7 +511,7 @@ export default function PreviousConsultation({
                   value={form.follow_up_note}
                   onChange={(e) => updateForm("follow_up_note", e.target.value)}
                   placeholder="Input Text Here"
-                  className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm"
+                  className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
                 />
               </div>
               <div>
@@ -516,7 +522,7 @@ export default function PreviousConsultation({
                   value={form.other_remarks}
                   onChange={(e) => updateForm("other_remarks", e.target.value)}
                   placeholder="Input Text Here"
-                  className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm"
+                  className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
                 />
               </div>
             </div>

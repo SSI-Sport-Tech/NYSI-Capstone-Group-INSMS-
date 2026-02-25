@@ -99,6 +99,7 @@ export default function Anthropometry({
   const [error, setError] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
   const [saveError, setSaveError] = useState<string>("");
+  const [isSaved, setIsSaved] = useState(false);
 
   const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
 
@@ -116,6 +117,10 @@ export default function Anthropometry({
   };
 
   const [editForm, setEditForm] = useState<EditForm>(emptyForm);
+
+  useEffect(() => {
+    setIsSaved(false);
+  }, [editForm]);
 
   // Derived calculated fields from editForm
   const w = parseFloat(editForm.weight);
@@ -274,6 +279,7 @@ export default function Anthropometry({
       }
 
       setIsEditing(false);
+      setIsSaved(true);
       if (!isNewConsultation) {
         fetchAnthropometry();
       }
@@ -359,9 +365,9 @@ export default function Anthropometry({
             )}
             <button
               onClick={handleSave}
-              className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
+              className={`px-3 py-1 text-white text-sm rounded ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
             >
-              Save
+              {isSaved ? "Saved" : "Save"}
             </button>
           </div>
         </div>

@@ -43,11 +43,12 @@ export async function getUserByEmail(email) {
  */
 export async function getUserById(userId) {
   const query = `
-        SELECT 
+        SELECT
             id,
             email,
             first_name,
-            last_name
+            last_name,
+            role
         FROM auth.users
         WHERE id = $1
     `;

@@ -47,6 +47,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // Get current tab from URL parameters
   const currentTab = searchParams.get("tab") || "profile";
+  const router = useRouter();
 
   // Update section states when pathname changes
   useEffect(() => {
@@ -64,6 +65,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       setAthleteName("");
     }
   }, [isAthleteProfilePage, athleteId]);
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [loading, isAuthenticated, router]);
 
   const fetchAthleteName = async (id: string) => {
     try {
@@ -95,6 +102,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
+  if (!isAuthenticated) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2" />
+      </div>
+    );
+  }
+
   // NEW: Check if user is admin
   const isAdmin = user?.role === "ADMIN" || user?.role === "IT_ADMIN";
 
@@ -116,11 +131,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           <Link
             href="/"
-            className={`flex items-center space-x-3 px-4 py-2 rounded-lg ${
-              pathname === "/"
-                ? "bg-gray-100 text-gray-900"
-                : "text-gray-600 hover:bg-gray-50"
-            }`}
+            className={`flex items-center space-x-3 px-4 py-2 rounded-lg ${pathname === "/"
+              ? "bg-gray-100 text-gray-900"
+              : "text-gray-600 hover:bg-gray-50"
+              }`}
           >
             <span className="font-medium">Dashboard</span>
           </Link>
@@ -143,44 +157,40 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className="mt-2 space-y-1">
                 <Link
                   href="/SSS/inventory"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                    pathname === "/SSS/inventory"
-                      ? "bg-gray-100 text-gray-900 font-medium"
-                      : "text-gray-600 hover:bg-gray-50"
-                  }`}
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/SSS/inventory"
+                    ? "bg-gray-100 text-gray-900 font-medium"
+                    : "text-gray-600 hover:bg-gray-50"
+                    }`}
                 >
                   <Archive className="w-4 h-4" />
                   <span>Inventory</span>
                 </Link>
                 <Link
                   href="/SSS/web-scraper"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                    pathname === "/SSS/web-scraper"
-                      ? "bg-gray-100 text-gray-900 font-medium"
-                      : "text-gray-600 hover:bg-gray-50"
-                  }`}
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/SSS/web-scraper"
+                    ? "bg-gray-100 text-gray-900 font-medium"
+                    : "text-gray-600 hover:bg-gray-50"
+                    }`}
                 >
                   <Globe className="w-4 h-4" />
                   <span>Web Scraper</span>
                 </Link>
                 <Link
                   href="/SSS/library"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                    pathname === "/SSS/library"
-                      ? "bg-gray-100 text-gray-900 font-medium"
-                      : "text-gray-600 hover:bg-gray-50"
-                  }`}
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/SSS/library"
+                    ? "bg-gray-100 text-gray-900 font-medium"
+                    : "text-gray-600 hover:bg-gray-50"
+                    }`}
                 >
                   <BookOpenText className="w-4 h-4" />
                   <span>Library</span>
                 </Link>
                 <Link
                   href="/SSS/batch-testing"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                    pathname === "/SSS/batch-testing"
-                      ? "bg-gray-100 text-gray-900 font-medium"
-                      : "text-gray-600 hover:bg-gray-50"
-                  }`}
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/SSS/batch-testing"
+                    ? "bg-gray-100 text-gray-900 font-medium"
+                    : "text-gray-600 hover:bg-gray-50"
+                    }`}
                 >
                   <TestTube className="w-4 h-4" />
                   <span>Batch Testing</span>
@@ -206,11 +216,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className="mt-2 space-y-1">
                 <Link
                   href="/AMS/athlete-management"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                    pathname === "/AMS/athlete-management"
-                      ? "bg-gray-100 text-gray-900 font-medium"
-                      : "text-gray-600 hover:bg-gray-50"
-                  }`}
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/AMS/athlete-management"
+                    ? "bg-gray-100 text-gray-900 font-medium"
+                    : "text-gray-600 hover:bg-gray-50"
+                    }`}
                 >
                   <Users className="w-4 h-4" />
                   <span>Athletes</span>
@@ -240,33 +249,30 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <div className="mt-2 space-y-1">
                   <Link
                     href={`/AMS/athlete-management/${athleteId}?tab=profile`}
-                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                      isAthleteProfilePage && currentTab === "profile"
-                        ? "bg-blue-100 text-blue-900 font-medium"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${isAthleteProfilePage && currentTab === "profile"
+                      ? "bg-blue-100 text-blue-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                      }`}
                   >
                     <UserCog className="w-4 h-4" />
                     <span>Current Profile</span>
                   </Link>
                   <Link
                     href={`/AMS/athlete-management/${athleteId}?tab=consultation`}
-                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                      isAthleteProfilePage && currentTab === "consultation"
-                        ? "bg-blue-100 text-blue-900 font-medium"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${isAthleteProfilePage && currentTab === "consultation"
+                      ? "bg-blue-100 text-blue-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                      }`}
                   >
                     <BookOpenText className="w-4 h-4" />
                     <span>Consultation</span>
                   </Link>
                   <Link
                     href={`/AMS/athlete-management/${athleteId}?tab=history`}
-                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                      isAthleteProfilePage && currentTab === "history"
-                        ? "bg-blue-100 text-blue-900 font-medium"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${isAthleteProfilePage && currentTab === "history"
+                      ? "bg-blue-100 text-blue-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                      }`}
                   >
                     <Archive className="w-4 h-4" />
                     <span>History</span>
@@ -296,22 +302,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <div className="mt-2 space-y-1">
                   <Link
                     href="/admin/users"
-                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                      pathname === "/admin/users"
-                        ? "bg-indigo-100 text-indigo-900 font-medium"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/admin/users"
+                      ? "bg-indigo-100 text-indigo-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                      }`}
                   >
                     <UserCog className="w-4 h-4" />
                     <span>User Management</span>
                   </Link>
                   <Link
                     href="/admin/sports-coaches"
-                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${
-                      pathname === "/admin/sports-coaches"
-                        ? "bg-indigo-100 text-indigo-900 font-medium"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/admin/sports-coaches"
+                      ? "bg-indigo-100 text-indigo-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                      }`}
                   >
                     <UserCog className="w-4 h-4" />
                     <span>Sports & Coaches</span>
@@ -330,7 +334,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 {user?.first_name} {user?.last_name}
               </p>
               <div className="flex items-center gap-1.5">
-                <p className="text-gray-500 text-xs truncate">{user?.role}</p>
+                <p className="text-gray-500 text-xs truncate">
+                  {user?.role
+                    ? user.role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+                    : ""}
+                </p>
                 {/* NEW: Admin badge */}
                 {isAdmin && (
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
