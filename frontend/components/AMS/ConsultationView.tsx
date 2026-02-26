@@ -42,6 +42,20 @@ export default function ConsultationView({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
+  // Live anthropometry values shared from Anthropometry card to Adherences
+  const [liveAnthro, setLiveAnthro] = useState<{
+    weight: number | null;
+    height: number | null;
+    targetWeight: number | null;
+  }>({ weight: null, height: null, targetWeight: null });
+
+  const handleAnthroChange = useCallback(
+    (weight: number | null, height: number | null, targetWeight: number | null) => {
+      setLiveAnthro({ weight, height, targetWeight });
+    },
+    [],
+  );
+
   // New consultation state
   const [isNewConsultation, setIsNewConsultation] = useState(false);
   // newSessionId is kept only so ensureSession can update it for display;
@@ -84,7 +98,10 @@ export default function ConsultationView({
             body: JSON.stringify({
               athlete_id: athleteId,
               type_of_consult_id: defaultTypeId,
-              date_of_consult: new Date().toISOString().split("T")[0],
+              date_of_consult: (() => {
+                const d = new Date();
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+              })(),
             }),
           },
         );
@@ -373,6 +390,7 @@ export default function ConsultationView({
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
           ensureSession={ensureSession}
+          onAnthroChange={handleAnthroChange}
         />
 
         {/* 7. Adherences */}
@@ -381,6 +399,9 @@ export default function ConsultationView({
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
           ensureSession={ensureSession}
+          liveWeight={liveAnthro.weight}
+          liveHeight={liveAnthro.height}
+          liveTargetWeight={liveAnthro.targetWeight}
         />
 
         {/* 9. Medical History */}

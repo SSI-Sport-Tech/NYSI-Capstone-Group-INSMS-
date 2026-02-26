@@ -275,9 +275,8 @@ export default function PreviousConsultation({
         }
       }
 
-      // POST consultation details — use sessions_id (not session_id) and resolve
-      // review text values to their UUID FKs in nutrition_diagnosis_lookup
-      await fetch(
+      // POST consultation details
+      const detailsRes = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-details`,
         {
           method: "POST",
@@ -300,6 +299,15 @@ export default function PreviousConsultation({
           }),
         },
       );
+      if (!detailsRes.ok) {
+        const errData = await detailsRes.json().catch(() => ({}));
+        const msg =
+          errData?.details?.[0]?.message ||
+          errData?.error ||
+          errData?.message ||
+          `Save failed (${detailsRes.status})`;
+        throw new Error(msg);
+      }
       setIsSaved(true);
     } catch (err) {
       console.error("Error saving current consultation:", err);

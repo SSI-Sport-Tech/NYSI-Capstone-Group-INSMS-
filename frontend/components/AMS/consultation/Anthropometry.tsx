@@ -10,6 +10,7 @@ interface AnthropometryProps {
   isNewConsultation?: boolean;
   ensureSession?: () => Promise<string>;
   readOnly?: boolean;
+  onAnthroChange?: (weight: number | null, height: number | null, targetWeight: number | null) => void;
 }
 
 interface AnthropometryData {
@@ -92,6 +93,7 @@ export default function Anthropometry({
   isNewConsultation,
   ensureSession,
   readOnly,
+  onAnthroChange,
 }: AnthropometryProps) {
   const [anthropometryData, setAnthropometryData] =
     useState<AnthropometryData | null>(null);
@@ -121,6 +123,19 @@ export default function Anthropometry({
   useEffect(() => {
     setIsSaved(false);
   }, [editForm]);
+
+  // Notify parent of live weight/height/targetWeight as user types
+  useEffect(() => {
+    if (!onAnthroChange) return;
+    const w = editForm.weight !== "" ? parseFloat(editForm.weight) : null;
+    const h = editForm.height !== "" ? parseFloat(editForm.height) : null;
+    const tw = editForm.target_weight !== "" ? parseFloat(editForm.target_weight) : null;
+    onAnthroChange(
+      w !== null && !isNaN(w) ? w : null,
+      h !== null && !isNaN(h) ? h : null,
+      tw !== null && !isNaN(tw) ? tw : null,
+    );
+  }, [editForm.weight, editForm.height, editForm.target_weight]);
 
   // Derived calculated fields from editForm
   const w = parseFloat(editForm.weight);
@@ -642,7 +657,7 @@ export default function Anthropometry({
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Mother's Height:</span>
+                <span className="text-gray-600">Mother&apos;s Height:</span>
                 <div className="flex text-gray-900 items-center gap-2">
                   <span className="font-medium">
                     {anthropometryData.mothers_height || "N/A"}
@@ -654,7 +669,7 @@ export default function Anthropometry({
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Father's Height:</span>
+                <span className="text-gray-600">Father&apos;s Height:</span>
                 <div className="flex text-gray-900 items-center gap-2">
                   <span className="font-medium">
                     {anthropometryData.fathers_height || "N/A"}
@@ -667,7 +682,7 @@ export default function Anthropometry({
 
               <div className="flex justify-between items-center col-span-2">
                 <span className="text-gray-600">
-                  Athlete's Potential Adult Height:
+                  Athlete&apos;s Potential Adult Height:
                 </span>
                 <div className="flex text-gray-900 items-center gap-2">
                   <span className="font-medium">

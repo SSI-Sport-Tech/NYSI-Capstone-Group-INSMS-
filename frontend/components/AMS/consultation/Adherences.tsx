@@ -7,6 +7,10 @@ interface AdherencesProps {
   isNewConsultation?: boolean;
   ensureSession?: () => Promise<string>;
   readOnly?: boolean;
+  // Live values streamed from the Anthropometry card in real time
+  liveWeight?: number | null;
+  liveHeight?: number | null;
+  liveTargetWeight?: number | null;
 }
 
 interface AdherencesData {
@@ -148,6 +152,9 @@ export default function Adherences({
   isNewConsultation,
   ensureSession,
   readOnly,
+  liveWeight,
+  liveHeight,
+  liveTargetWeight,
 }: AdherencesProps) {
   const [adherencesData, setAdherencesData] = useState<AdherencesData | null>(
     null,
@@ -282,6 +289,12 @@ export default function Adherences({
   // In edit mode: compute from form inputs + anthropometry data
   // In view mode: use DB-computed values returned by the API
 
+  // Prefer live values streamed from the Anthropometry card (updated as user
+  // types). Fall back to internally derived values when props are null.
+  const effectiveWeight = liveWeight ?? weight;
+  const effectiveHeight = liveHeight ?? height;
+  const effectiveTargetWeight = liveTargetWeight ?? targetWeight;
+
   const livePal = effectiveEditing ? n(editForm.pal) : (adherencesData?.pal ?? null);
   const liveMinCarbGkg = effectiveEditing ? n(editForm.minCarbGkg) : (adherencesData?.minCarbGkg ?? null);
   const liveMaxCarbGkg = effectiveEditing ? n(editForm.maxCarbGkg) : (adherencesData?.maxCarbGkg ?? null);
@@ -297,12 +310,12 @@ export default function Adherences({
   const calcG = (gkg: number | null, w: number | null) =>
     gkg !== null && w !== null ? +(gkg * w).toFixed(1) : null;
 
-  const minCarbG = effectiveEditing ? calcG(liveMinCarbGkg, weight) : (adherencesData?.minCarbG ?? null);
-  const maxCarbG = effectiveEditing ? calcG(liveMaxCarbGkg, weight) : (adherencesData?.maxCarbG ?? null);
-  const minProteinG = effectiveEditing ? calcG(liveMinProteinGkg, weight) : (adherencesData?.minProteinG ?? null);
-  const maxProteinG = effectiveEditing ? calcG(liveMaxProteinGkg, weight) : (adherencesData?.maxProteinG ?? null);
-  const minFatG = effectiveEditing ? calcG(liveMinFatGkg, weight) : (adherencesData?.minFatG ?? null);
-  const maxFatG = effectiveEditing ? calcG(liveMaxFatGkg, weight) : (adherencesData?.maxFatG ?? null);
+  const minCarbG = effectiveEditing ? calcG(liveMinCarbGkg, effectiveWeight) : (adherencesData?.minCarbG ?? null);
+  const maxCarbG = effectiveEditing ? calcG(liveMaxCarbGkg, effectiveWeight) : (adherencesData?.maxCarbG ?? null);
+  const minProteinG = effectiveEditing ? calcG(liveMinProteinGkg, effectiveWeight) : (adherencesData?.minProteinG ?? null);
+  const maxProteinG = effectiveEditing ? calcG(liveMaxProteinGkg, effectiveWeight) : (adherencesData?.maxProteinG ?? null);
+  const minFatG = effectiveEditing ? calcG(liveMinFatGkg, effectiveWeight) : (adherencesData?.minFatG ?? null);
+  const maxFatG = effectiveEditing ? calcG(liveMaxFatGkg, effectiveWeight) : (adherencesData?.maxFatG ?? null);
 
   // Derived g values — target weight (use independent target g/kg/bw inputs)
   const liveTgtMinCarbGkg = effectiveEditing ? n(editForm.targetMinCarbGkg) : (adherencesData?.minCarbGkg ?? null);
@@ -312,12 +325,12 @@ export default function Adherences({
   const liveTgtMinFatGkg = effectiveEditing ? n(editForm.targetMinFatGkg) : (adherencesData?.minFatGkg ?? null);
   const liveTgtMaxFatGkg = effectiveEditing ? n(editForm.targetMaxFatGkg) : (adherencesData?.maxFatGkg ?? null);
 
-  const targetMinCarbG = effectiveEditing ? calcG(liveTgtMinCarbGkg, targetWeight) : (adherencesData?.targetMinCarbG ?? null);
-  const targetMaxCarbG = effectiveEditing ? calcG(liveTgtMaxCarbGkg, targetWeight) : (adherencesData?.targetMaxCarbG ?? null);
-  const targetMinProteinG = effectiveEditing ? calcG(liveTgtMinProteinGkg, targetWeight) : (adherencesData?.targetMinProteinG ?? null);
-  const targetMaxProteinG = effectiveEditing ? calcG(liveTgtMaxProteinGkg, targetWeight) : (adherencesData?.targetMaxProteinG ?? null);
-  const targetMinFatG = effectiveEditing ? calcG(liveTgtMinFatGkg, targetWeight) : (adherencesData?.targetMinFatG ?? null);
-  const targetMaxFatG = effectiveEditing ? calcG(liveTgtMaxFatGkg, targetWeight) : (adherencesData?.targetMaxFatG ?? null);
+  const targetMinCarbG = effectiveEditing ? calcG(liveTgtMinCarbGkg, effectiveTargetWeight) : (adherencesData?.targetMinCarbG ?? null);
+  const targetMaxCarbG = effectiveEditing ? calcG(liveTgtMaxCarbGkg, effectiveTargetWeight) : (adherencesData?.targetMaxCarbG ?? null);
+  const targetMinProteinG = effectiveEditing ? calcG(liveTgtMinProteinGkg, effectiveTargetWeight) : (adherencesData?.targetMinProteinG ?? null);
+  const targetMaxProteinG = effectiveEditing ? calcG(liveTgtMaxProteinGkg, effectiveTargetWeight) : (adherencesData?.targetMaxProteinG ?? null);
+  const targetMinFatG = effectiveEditing ? calcG(liveTgtMinFatGkg, effectiveTargetWeight) : (adherencesData?.targetMinFatG ?? null);
+  const targetMaxFatG = effectiveEditing ? calcG(liveTgtMaxFatGkg, effectiveTargetWeight) : (adherencesData?.targetMaxFatG ?? null);
 
   // % of minimum required
   const calcPct = (estimated: number | null, minG: number | null) =>
@@ -335,15 +348,15 @@ export default function Adherences({
   const calcTEE = (rmr: number | null, pal: number | null) =>
     rmr !== null && pal !== null ? +(rmr * pal).toFixed(0) : null;
 
-  const rmrMale = effectiveEditing ? calcRMR(weight, height, 340) : (adherencesData?.rmrMale ?? null);
+  const rmrMale = effectiveEditing ? calcRMR(effectiveWeight, effectiveHeight, 340) : (adherencesData?.rmrMale ?? null);
   const teeMale = effectiveEditing ? calcTEE(rmrMale, livePal) : (adherencesData?.teeMale ?? null);
-  const targetRmrMale = effectiveEditing ? calcRMR(targetWeight, height, 340) : (adherencesData?.targetRmrMale ?? null);
+  const targetRmrMale = effectiveEditing ? calcRMR(effectiveTargetWeight, effectiveHeight, 340) : (adherencesData?.targetRmrMale ?? null);
   const targetTeeMale = effectiveEditing ? calcTEE(targetRmrMale, livePal) : (adherencesData?.targetTeeMale ?? null);
 
   // RMR/TEE — Female (formula: 11.1 × weight + 8.4 × height − 540)
-  const rmrFemale = effectiveEditing ? calcRMR(weight, height, 540) : (adherencesData?.rmrFemale ?? null);
+  const rmrFemale = effectiveEditing ? calcRMR(effectiveWeight, effectiveHeight, 540) : (adherencesData?.rmrFemale ?? null);
   const teeFemale = effectiveEditing ? calcTEE(rmrFemale, livePal) : (adherencesData?.teeFemale ?? null);
-  const targetRmrFemale = effectiveEditing ? calcRMR(targetWeight, height, 540) : (adherencesData?.targetRmrFemale ?? null);
+  const targetRmrFemale = effectiveEditing ? calcRMR(effectiveTargetWeight, effectiveHeight, 540) : (adherencesData?.targetRmrFemale ?? null);
   const targetTeeFemale = effectiveEditing ? calcTEE(targetRmrFemale, livePal) : (adherencesData?.targetTeeFemale ?? null);
 
   const handleSave = async () => {

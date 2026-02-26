@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface NewPrescriptionFormProps {
   ensureSession: () => Promise<string>;
@@ -324,6 +324,10 @@ export default function NewPrescriptionForm({
   const [saveError, setSaveError] = useState<string>("");
   const [saved, setSaved] = useState(false);
 
+  useEffect(() => {
+    setSaved(false);
+  }, [entries]);
+
   const updateEntry = (index: number, updated: PrescriptionEntry) => {
     setEntries((prev) => prev.map((e, i) => (i === index ? updated : e)));
   };
@@ -410,9 +414,9 @@ export default function NewPrescriptionForm({
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700 disabled:opacity-50"
+          className={`px-3 py-1 text-white text-sm rounded disabled:opacity-50 ${saved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
         >
-          {saving ? "Saving..." : "Save"}
+          {saving ? "Saving..." : saved ? "Saved" : "Save"}
         </button>
       </div>
 
