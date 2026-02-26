@@ -145,6 +145,11 @@ export default function TrainingSchedule({
   const [trainingData, setTrainingData] =
     useState<TrainingScheduleData | null>(null);
   const [editForm, setEditForm] = useState<EditForm>(emptyEditForm);
+  const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    setIsSaved(false);
+  }, [editForm]);
 
   const updateDay = (key: DayKey, field: keyof DayEdit, value: string) => {
     setEditForm((prev) => ({
@@ -209,8 +214,9 @@ export default function TrainingSchedule({
       if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
       const updated = (await response.json()) as { data: TrainingScheduleData };
       setTrainingData(updated.data);
-      setEditForm(toEditForm(updated.data));
+      if (!isNewConsultation) setEditForm(toEditForm(updated.data));
       setIsEditing(false);
+      setIsSaved(true);
     } catch (err) {
       console.error("Error saving training schedule:", err);
       setSaveError("Failed to save. Please try again.");
@@ -307,9 +313,9 @@ export default function TrainingSchedule({
             )}
             <button
               onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
-              className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
+              className={`px-3 py-1 text-white text-sm rounded ${effectiveEditing && isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
             >
-              {effectiveEditing ? "Save" : "Edit"}
+              {effectiveEditing ? (isSaved ? "Saved" : "Save") : "Edit"}
             </button>
           </div>
         )}

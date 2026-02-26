@@ -327,8 +327,12 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
       resetForm();
     } catch (error: any) {
       console.error("Error creating athlete:", error);
+      const data = error.response?.data;
       const errorMessage =
-        error.response?.data?.message || "Failed to create athlete";
+        data?.details?.[0]?.message ||
+        data?.error ||
+        data?.message ||
+        "Failed to create athlete";
       onError(errorMessage);
     } finally {
       setLoading(false);

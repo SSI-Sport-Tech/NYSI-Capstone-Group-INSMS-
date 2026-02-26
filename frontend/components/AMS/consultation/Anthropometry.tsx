@@ -10,6 +10,7 @@ interface AnthropometryProps {
   isNewConsultation?: boolean;
   ensureSession?: () => Promise<string>;
   readOnly?: boolean;
+  onAnthroChange?: (weight: number | null, height: number | null, targetWeight: number | null) => void;
 }
 
 interface AnthropometryData {
@@ -92,6 +93,7 @@ export default function Anthropometry({
   isNewConsultation,
   ensureSession,
   readOnly,
+  onAnthroChange,
 }: AnthropometryProps) {
   const [anthropometryData, setAnthropometryData] =
     useState<AnthropometryData | null>(null);
@@ -99,6 +101,7 @@ export default function Anthropometry({
   const [error, setError] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
   const [saveError, setSaveError] = useState<string>("");
+  const [isSaved, setIsSaved] = useState(false);
 
   const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
 
@@ -116,6 +119,23 @@ export default function Anthropometry({
   };
 
   const [editForm, setEditForm] = useState<EditForm>(emptyForm);
+
+  useEffect(() => {
+    setIsSaved(false);
+  }, [editForm]);
+
+  // Notify parent of live weight/height/targetWeight as user types
+  useEffect(() => {
+    if (!onAnthroChange) return;
+    const w = editForm.weight !== "" ? parseFloat(editForm.weight) : null;
+    const h = editForm.height !== "" ? parseFloat(editForm.height) : null;
+    const tw = editForm.target_weight !== "" ? parseFloat(editForm.target_weight) : null;
+    onAnthroChange(
+      w !== null && !isNaN(w) ? w : null,
+      h !== null && !isNaN(h) ? h : null,
+      tw !== null && !isNaN(tw) ? tw : null,
+    );
+  }, [editForm.weight, editForm.height, editForm.target_weight]);
 
   // Derived calculated fields from editForm
   const w = parseFloat(editForm.weight);
@@ -274,6 +294,7 @@ export default function Anthropometry({
       }
 
       setIsEditing(false);
+      setIsSaved(true);
       if (!isNewConsultation) {
         fetchAnthropometry();
       }
@@ -359,9 +380,9 @@ export default function Anthropometry({
             )}
             <button
               onClick={handleSave}
-              className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
+              className={`px-3 py-1 text-white text-sm rounded ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
             >
-              Save
+              {isSaved ? "Saved" : "Save"}
             </button>
           </div>
         </div>
@@ -424,7 +445,8 @@ export default function Anthropometry({
                 value={editForm[field]}
                 onChange={(e) => updateField(field, e.target.value)}
                 placeholder="—"
-                className="text-gray-300 flex-1 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                style={{ color: editForm[field] ? "#111827" : undefined }}
+                className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm text-right placeholder-gray-300"
               />
             </div>
           ))}
@@ -475,6 +497,7 @@ export default function Anthropometry({
                 type="date"
                 value={editForm.date_recorded}
                 onChange={(e) => updateField("date_recorded", e.target.value)}
+                style={{ color: editForm.date_recorded ? "#111827" : undefined }}
                 className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
               />
             </div>
@@ -487,6 +510,7 @@ export default function Anthropometry({
                 value={editForm.measured_by}
                 onChange={(e) => updateField("measured_by", e.target.value)}
                 placeholder="Name"
+                style={{ color: editForm.measured_by ? "#111827" : undefined }}
                 className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
               />
             </div>
@@ -633,7 +657,7 @@ export default function Anthropometry({
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Mother's Height:</span>
+                <span className="text-gray-600">Mother&apos;s Height:</span>
                 <div className="flex text-gray-900 items-center gap-2">
                   <span className="font-medium">
                     {anthropometryData.mothers_height || "N/A"}
@@ -645,7 +669,7 @@ export default function Anthropometry({
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Father's Height:</span>
+                <span className="text-gray-600">Father&apos;s Height:</span>
                 <div className="flex text-gray-900 items-center gap-2">
                   <span className="font-medium">
                     {anthropometryData.fathers_height || "N/A"}
@@ -658,7 +682,7 @@ export default function Anthropometry({
 
               <div className="flex justify-between items-center col-span-2">
                 <span className="text-gray-600">
-                  Athlete's Potential Adult Height:
+                  Athlete&apos;s Potential Adult Height:
                 </span>
                 <div className="flex text-gray-900 items-center gap-2">
                   <span className="font-medium">

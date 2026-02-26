@@ -23,6 +23,11 @@ export default function Assessment({ athleteId, sessionId, isNewConsultation, ne
     totalFatIntake: 82,
     otherRemarks: "",
   });
+  const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    setIsSaved(false);
+  }, [assessmentData]);
 
   const handleSave = async () => {
     try {
@@ -34,6 +39,7 @@ export default function Assessment({ athleteId, sessionId, isNewConsultation, ne
       //   body: JSON.stringify({ sessionId, athleteId, ...assessmentData })
       // });
       setIsEditing(false);
+      setIsSaved(true);
     } catch (error) {
       console.error("Error saving assessment:", error);
     }
@@ -59,9 +65,9 @@ export default function Assessment({ athleteId, sessionId, isNewConsultation, ne
           )}
           <button
             onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
-            className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
+            className={`px-3 py-1 text-white text-sm rounded ${effectiveEditing && isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
           >
-            {effectiveEditing ? "Save" : "Edit"}
+            {effectiveEditing ? (isSaved ? "Saved" : "Save") : "Edit"}
           </button>
         </div>
       </div>

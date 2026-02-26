@@ -209,7 +209,7 @@ export async function getLatestConsultationSession(athleteId) {
         LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
         LEFT JOIN consultation.session_note sn ON sn.sessions_id = s.id
         WHERE s.athlete_id = $1
-        ORDER BY s.date_of_consult DESC NULLS LAST
+        ORDER BY s.date_of_consult DESC NULLS LAST, s.id DESC
         LIMIT 1
     `;
 

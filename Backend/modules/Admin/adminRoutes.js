@@ -25,10 +25,10 @@ const router = express.Router();
 
 // ==================== RATE LIMITERS ====================
 
-// Rate limit for admin operations (30 per minute)
+// Rate limit for admin operations (100 per minute)
 const adminLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 30,
+    max: 100,
     message: {
         error: 'Too many admin requests',
         message: 'Please slow down',
@@ -363,12 +363,13 @@ router.delete('/users/:id', deleteUser);
  *          description: Admins can only manage Nutritionists
  */
 router.get('/users/:id/activity', getUserActivity);
+
 /**
  * @swagger
  * /api/admin/audit-logs:
  *   get:
  *     summary: Get audit logs
- *     description: Get audit logs with optional filters for user, table, and action
+ *     description: Get audit logs with optional filters for user, table, action, and date range
  *     tags: [Admin - Audit]
  *     security:
  *       - bearerAuth: []
@@ -394,6 +395,20 @@ router.get('/users/:id/activity', getUserActivity);
  *         description: Filter by action type
  *         example: UPDATE
  *       - in: query
+ *         name: start_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter logs from this date (inclusive, YYYY-MM-DD)
+ *         example: "2024-01-01"
+ *       - in: query
+ *         name: end_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter logs until this date (inclusive, YYYY-MM-DD)
+ *         example: "2024-12-31"
+ *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
@@ -415,6 +430,24 @@ router.get('/users/:id/activity', getUserActivity);
  *                 count:
  *                   type: integer
  *                   example: 15
+ *                 filters_applied:
+ *                   type: object
+ *                   properties:
+ *                     user_id:
+ *                       type: string
+ *                       nullable: true
+ *                     table_name:
+ *                       type: string
+ *                       nullable: true
+ *                     action:
+ *                       type: string
+ *                       nullable: true
+ *                     start_date:
+ *                       type: string
+ *                       nullable: true
+ *                     end_date:
+ *                       type: string
+ *                       nullable: true
  *                 data:
  *                   type: array
  *                   items:
@@ -443,6 +476,12 @@ router.get('/users/:id/activity', getUserActivity);
  *             example:
  *               message: Audit logs retrieved successfully
  *               count: 2
+ *               filters_applied:
+ *                 user_id: null
+ *                 table_name: "users"
+ *                 action: "UPDATE"
+ *                 start_date: "2024-12-01"
+ *                 end_date: "2024-12-15"
  *               data:
  *                 - id: log-uuid-1
  *                   user_id: user-uuid
@@ -451,10 +490,10 @@ router.get('/users/:id/activity', getUserActivity);
  *                   action: UPDATE
  *                   old_values:
  *                     first_name: John
- *                     role: NUTRITIONIST
+ *                     sport_id: abc-123
  *                   new_values:
  *                     first_name: Jonathan
- *                     role: ADMIN
+ *                     sport_id: def-456
  *                   changed_on: "2024-12-15T10:30:00Z"
  *       401:
  *         description: Not authenticated

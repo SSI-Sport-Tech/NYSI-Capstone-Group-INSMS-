@@ -42,6 +42,20 @@ export default function ConsultationView({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
+  // Live anthropometry values shared from Anthropometry card to Adherences
+  const [liveAnthro, setLiveAnthro] = useState<{
+    weight: number | null;
+    height: number | null;
+    targetWeight: number | null;
+  }>({ weight: null, height: null, targetWeight: null });
+
+  const handleAnthroChange = useCallback(
+    (weight: number | null, height: number | null, targetWeight: number | null) => {
+      setLiveAnthro({ weight, height, targetWeight });
+    },
+    [],
+  );
+
   // New consultation state
   const [isNewConsultation, setIsNewConsultation] = useState(false);
   // newSessionId is kept only so ensureSession can update it for display;
@@ -84,12 +98,14 @@ export default function ConsultationView({
             body: JSON.stringify({
               athlete_id: athleteId,
               type_of_consult_id: defaultTypeId,
+              date_of_consult: (() => {
+                const d = new Date();
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+              })(),
             }),
           },
         );
         const data = await response.json();
-        const detail = data?.details?.[0];
-        console.error("[ensureSession] status:", response.status, "body:", data, "| field:", detail?.field, "value sent:", { athlete_id: athleteId, type_of_consult_id: defaultTypeId });
         const id = data?.data?.id as string;
         if (!id) {
           const d = data?.details?.[0];
@@ -243,7 +259,7 @@ export default function ConsultationView({
                     onClick={handleSaveAll}
                     className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
                   >
-                    Save All
+                    Save and Finish Consultation
                   </button>
                 </>
               ) : (
@@ -286,8 +302,9 @@ export default function ConsultationView({
                   <div>
                     <span className="text-gray-900">{dateLabel}:</span>
                     <span className="ml-2 font-medium">
-                      {new Date(
-                        displaySession.date_of_consult,
+                      {(displaySession.date_of_consult
+                        ? new Date(displaySession.date_of_consult)
+                        : new Date()
                       ).toLocaleDateString()}
                     </span>
                   </div>
@@ -373,6 +390,7 @@ export default function ConsultationView({
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
           ensureSession={ensureSession}
+          onAnthroChange={handleAnthroChange}
         />
 
         {/* 7. Adherences */}
@@ -381,6 +399,9 @@ export default function ConsultationView({
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
           ensureSession={ensureSession}
+          liveWeight={liveAnthro.weight}
+          liveHeight={liveAnthro.height}
+          liveTargetWeight={liveAnthro.targetWeight}
         />
 
         {/* 9. Medical History */}

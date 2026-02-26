@@ -104,8 +104,13 @@ export default function MealLogs({
   const [isEditing, setIsEditing] = useState(false);
   const [editLog, setEditLog] = useState<EditLog>(emptyEditLog);
   const [saveError, setSaveError] = useState<string>("");
+  const [isSaved, setIsSaved] = useState(false);
 
   const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
+
+  useEffect(() => {
+    setIsSaved(false);
+  }, [editLog]);
 
   const fetchMealLogs = async () => {
     if (!sessionId) {
@@ -174,8 +179,9 @@ export default function MealLogs({
       if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
       const updated = (await response.json()) as { data: MealLogData };
       setMealLog(updated.data);
-      setEditLog(toEditLog(updated.data));
+      if (!isNewConsultation) setEditLog(toEditLog(updated.data));
       setIsEditing(false);
+      setIsSaved(true);
     } catch (err) {
       console.error("Error saving meal logs:", err);
       setSaveError("Failed to save. Please try again.");
@@ -245,9 +251,9 @@ export default function MealLogs({
             )}
             <button
               onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
-              className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
+              className={`px-3 py-1 text-white text-sm rounded ${effectiveEditing && isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
             >
-              {effectiveEditing ? "Save" : "Edit"}
+              {effectiveEditing ? (isSaved ? "Saved" : "Save") : "Edit"}
             </button>
           </div>
         )}

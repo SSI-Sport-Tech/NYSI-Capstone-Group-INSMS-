@@ -40,7 +40,6 @@ interface ConsultationData {
   }>;
 }
 
-const REVIEW_OPTIONS = ["Adequate", "Inadequate", "Excessive", "Not Assessed"];
 const INTERVENTION_STATUSES = [
   "Supplement Intake",
   "Dietary Modification",
@@ -48,16 +47,6 @@ const INTERVENTION_STATUSES = [
   "No Change",
 ];
 
-// Maps form field names to nutrition_diagnosis_lookup category codes
-const REVIEW_FIELD_CATEGORY: Record<string, string> = {
-  carbohydrates_review: "CARB",
-  protein_review: "PROTEIN",
-  fat_review: "FAT",
-  fibre_review: "FIBRE",
-  iron_review: "IRON",
-  calcium_review: "CALCIUM",
-  micronutrients_review: "MICRO",
-};
 
 interface ConsultType {
   id: string;
@@ -118,6 +107,11 @@ export default function PreviousConsultation({
   const [form, setForm] = useState<CurrentConsultForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string>("");
+  const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    setIsSaved(false);
+  }, [form]);
   const [consultTypes, setConsultTypes] = useState<ConsultType[]>([]);
   const [nutritionDiagnoses, setNutritionDiagnoses] = useState<
     NutritionDiagnosis[]
@@ -252,18 +246,6 @@ export default function PreviousConsultation({
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Resolves a diagnosis text (e.g. "Adequate") to its UUID for a given category
-  const resolveReviewId = (
-    category: string,
-    text: string,
-  ): string | null => {
-    if (!text) return null;
-    const match = nutritionDiagnoses.find(
-      (d) => d.category === category && d.diagnosis === text,
-    );
-    return match?.id ?? null;
-  };
-
   const handleSave = async () => {
     if (!isNewConsultation || !ensureSession) return;
     setSaving(true);
@@ -293,9 +275,8 @@ export default function PreviousConsultation({
         }
       }
 
-      // POST consultation details — use sessions_id (not session_id) and resolve
-      // review text values to their UUID FKs in nutrition_diagnosis_lookup
-      await fetch(
+      // POST consultation details
+      const detailsRes = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-details`,
         {
           method: "POST",
@@ -304,34 +285,13 @@ export default function PreviousConsultation({
             sessions_id: id,
             main_nutrition_diagnosis:
               form.main_nutrition_diagnosis || undefined,
-            carbohydrates_review_id: resolveReviewId(
-              REVIEW_FIELD_CATEGORY.carbohydrates_review,
-              form.carbohydrates_review,
-            ),
-            protein_review_id: resolveReviewId(
-              REVIEW_FIELD_CATEGORY.protein_review,
-              form.protein_review,
-            ),
-            fat_review_id: resolveReviewId(
-              REVIEW_FIELD_CATEGORY.fat_review,
-              form.fat_review,
-            ),
-            fibre_review_id: resolveReviewId(
-              REVIEW_FIELD_CATEGORY.fibre_review,
-              form.fibre_review,
-            ),
-            iron_review_id: resolveReviewId(
-              REVIEW_FIELD_CATEGORY.iron_review,
-              form.iron_review,
-            ),
-            calcium_review_id: resolveReviewId(
-              REVIEW_FIELD_CATEGORY.calcium_review,
-              form.calcium_review,
-            ),
-            micronutrients_review_id: resolveReviewId(
-              REVIEW_FIELD_CATEGORY.micronutrients_review,
-              form.micronutrients_review,
-            ),
+            carbohydrates_review_id: form.carbohydrates_review || null,
+            protein_review_id: form.protein_review || null,
+            fat_review_id: form.fat_review || null,
+            fibre_review_id: form.fibre_review || null,
+            iron_review_id: form.iron_review || null,
+            calcium_review_id: form.calcium_review || null,
+            micronutrients_review_id: form.micronutrients_review || null,
             other_review: form.other_review || undefined,
             intervention_note: form.intervention_note || undefined,
             follow_up_note: form.follow_up_note || undefined,
@@ -339,6 +299,16 @@ export default function PreviousConsultation({
           }),
         },
       );
+      if (!detailsRes.ok) {
+        const errData = await detailsRes.json().catch(() => ({}));
+        const msg =
+          errData?.details?.[0]?.message ||
+          errData?.error ||
+          errData?.message ||
+          `Save failed (${detailsRes.status})`;
+        throw new Error(msg);
+      }
+      setIsSaved(true);
     } catch (err) {
       console.error("Error saving current consultation:", err);
       setSaveError("Failed to save. Please try again.");
@@ -366,9 +336,9 @@ export default function PreviousConsultation({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700 disabled:opacity-50"
+            className={`px-3 py-1 text-white text-sm rounded disabled:opacity-50 ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
           >
-            {saving ? "Saving..." : "Save"}
+            {saving ? "Saving..." : isSaved ? "Saved" : "Save"}
           </button>
         </div>
 
@@ -386,7 +356,7 @@ export default function PreviousConsultation({
               <select
                 value={form.consult_type}
                 onChange={(e) => updateForm("consult_type", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
               >
                 <option className="text-gray-500" value="">Select type...</option>
                 {consultTypes.map((t) => (
@@ -405,7 +375,7 @@ export default function PreviousConsultation({
                 onChange={(e) =>
                   updateForm("intervention_status", e.target.value)
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
               >
                 <option value="">Select status...</option>
                 {INTERVENTION_STATUSES.map((s) => (
@@ -428,7 +398,7 @@ export default function PreviousConsultation({
                 updateForm("main_nutrition_diagnosis", e.target.value)
               }
               placeholder="Enter main nutrition diagnosis..."
-              className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm"
+              className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
             />
           </div>
 
@@ -438,15 +408,15 @@ export default function PreviousConsultation({
             <div className="grid grid-cols-4 gap-3 text-sm">
               {(
                 [
-                  { label: "Carbohydrate", field: "carbohydrates_review" as const },
-                  { label: "Protein", field: "protein_review" as const },
-                  { label: "Fat", field: "fat_review" as const },
-                  { label: "Fibre", field: "fibre_review" as const },
-                  { label: "Iron", field: "iron_review" as const },
-                  { label: "Calcium", field: "calcium_review" as const },
-                  { label: "Micronutrients", field: "micronutrients_review" as const },
-                ] as { label: string; field: keyof CurrentConsultForm }[]
-              ).map(({ label, field }) => (
+                  { label: "Carbohydrate", field: "carbohydrates_review" as const, category: "CARB" },
+                  { label: "Protein", field: "protein_review" as const, category: "PROTEIN" },
+                  { label: "Fat", field: "fat_review" as const, category: "FAT" },
+                  { label: "Fibre", field: "fibre_review" as const, category: "FIBRE" },
+                  { label: "Iron", field: "iron_review" as const, category: "IRON" },
+                  { label: "Calcium", field: "calcium_review" as const, category: "CALCIUM" },
+                  { label: "Micronutrients", field: "micronutrients_review" as const, category: "MICRO" },
+                ] as { label: string; field: keyof CurrentConsultForm; category: string }[]
+              ).map(({ label, field, category }) => (
                 <div key={field}>
                   <label className="block text-xs text-gray-500 mb-1">
                     {label}
@@ -454,14 +424,16 @@ export default function PreviousConsultation({
                   <select
                     value={form[field]}
                     onChange={(e) => updateForm(field, e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-900"
                   >
                     <option value="">—</option>
-                    {REVIEW_OPTIONS.map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
+                    {nutritionDiagnoses
+                      .filter((d) => d.category === category)
+                      .map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.diagnosis}
+                        </option>
+                      ))}
                   </select>
                 </div>
               ))}
@@ -474,7 +446,7 @@ export default function PreviousConsultation({
                   value={form.other_review}
                   onChange={(e) => updateForm("other_review", e.target.value)}
                   placeholder="Other..."
-                  className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                  className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-900"
                 />
               </div>
             </div>
@@ -494,7 +466,7 @@ export default function PreviousConsultation({
                     updateForm("intervention_note", e.target.value)
                   }
                   placeholder="Input Text Here"
-                  className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm"
+                  className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
                 />
               </div>
               <div>
@@ -505,7 +477,7 @@ export default function PreviousConsultation({
                   value={form.follow_up_note}
                   onChange={(e) => updateForm("follow_up_note", e.target.value)}
                   placeholder="Input Text Here"
-                  className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm"
+                  className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
                 />
               </div>
               <div>
@@ -516,7 +488,7 @@ export default function PreviousConsultation({
                   value={form.other_remarks}
                   onChange={(e) => updateForm("other_remarks", e.target.value)}
                   placeholder="Input Text Here"
-                  className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm"
+                  className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
                 />
               </div>
             </div>

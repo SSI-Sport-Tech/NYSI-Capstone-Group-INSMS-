@@ -24,6 +24,7 @@ export async function getStagingSupplementsByPage(pageNumber, pageSize = 10) {
             ss.supplement_brand,
             spf.supplement_packaging_form,
             ssl.supplement_status,
+            ss.batch_testing_org,
             ss.product_source_url,
             ss.is_reviewed
         FROM SSS.Supplement_Staging ss
@@ -774,6 +775,36 @@ export async function deleteCatalogUrls(catalogUrlIds, userId) {
     const result = await client.query(query, [catalogUrlIds]);
     return result.rows;
   });
+}
+
+// ============================================================================
+// LOOKUP SERVICES
+// ============================================================================
+
+/**
+ * Get all supplement packaging form lookup values
+ * @returns {Promise<Array>} Array of { id, supplement_packaging_form }
+ */
+export async function getPackagingFormLookups() {
+  const result = await pool.query(`
+    SELECT id, supplement_packaging_form
+    FROM SSS.Supplement_Packaging_Form_Lookup
+    ORDER BY supplement_packaging_form
+  `);
+  return result.rows;
+}
+
+/**
+ * Get all supplement status lookup values
+ * @returns {Promise<Array>} Array of { id, supplement_status }
+ */
+export async function getStatusLookups() {
+  const result = await pool.query(`
+    SELECT id, supplement_status
+    FROM SSS.Supplement_Status_Lookup
+    ORDER BY supplement_status
+  `);
+  return result.rows;
 }
 
 /**

@@ -25,7 +25,7 @@ export const validatePatchAnthropometry = [
   body("fatMassKg").optional().isFloat({ min: 0, max: 300 }).withMessage("fatMassKg must be a valid number"),
   body("skeletalMuscleMassKg").optional().isFloat({ min: 0, max: 300 }).withMessage("skeletalMuscleMassKg must be a valid number"),
 
-  body("bmiCategory").optional().isIn(["Normal", "Underweight", "Overweight"]).withMessage("bmiCategory must be Normal/Underweight/Overweight"),
+  body("bmiCategory").optional().isIn(["Normal", "Underweight", "Overweight", "Obese"]).withMessage("bmiCategory must be Normal/Underweight/Overweight/Obese"),
   body("sumOf8Skinfold").optional().isFloat({ min: 0, max: 500 }).withMessage("sumOf8Skinfold must be a valid number"),
   body("motherHeightCm").optional().isFloat({ min: 0, max: 300 }).withMessage("motherHeightCm must be a valid number"),
   body("fatherHeightCm").optional().isFloat({ min: 0, max: 300 }).withMessage("fatherHeightCm must be a valid number"),
