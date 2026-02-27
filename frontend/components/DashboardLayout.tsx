@@ -71,6 +71,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [loading, isAuthenticated, router]);
 
+  const isDashboardUser = user?.role === "DASHBOARD";
+
+  // Redirect DASHBOARD users away from any non-dashboard route
+  useEffect(() => {
+    if (!loading && isDashboardUser && pathname !== "/") {
+      router.push("/unauthorized");
+    }
+  }, [loading, isDashboardUser, pathname]);
+
   const fetchAthleteName = async (id: string) => {
     try {
       const backendUrl =
@@ -139,6 +148,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </Link>
 
           {/* Supplement Support Section */}
+          {!isDashboardUser && (
           <div>
             <button
               onClick={() => setSupplementOpen(!supplementOpen)}
@@ -197,8 +207,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             )}
           </div>
+          )}
 
           {/* Athlete Management Section */}
+          {!isDashboardUser && (
           <div>
             <button
               onClick={() => setAmsOpen(!amsOpen)}
@@ -226,6 +238,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             )}
           </div>
+          )}
 
           {/* Athlete Profile Section (Only when viewing athlete profile) */}
           {isAthleteProfilePage && (
@@ -282,7 +295,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           )}
 
           {/* NEW: Admin Section (Only for ADMIN and IT_ADMIN) */}
-          {isAdmin && (
+          {isAdmin && !isDashboardUser && (
             <div>
               <button
                 onClick={() => setAdminOpen(!adminOpen)}

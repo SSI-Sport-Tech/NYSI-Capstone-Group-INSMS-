@@ -18,7 +18,7 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
     const [confirmPassword, setConfirmPassword] = useState("");
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
-    const [role, setRole] = useState<"IT_ADMIN" | "ADMIN" | "NUTRITIONIST" | "COACH" | "ATHLETE">("NUTRITIONIST");
+    const [role, setRole] = useState<"IT_ADMIN" | "ADMIN" | "NUTRITIONIST" | "COACH" | "ATHLETE" | "DASHBOARD">("NUTRITIONIST");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
@@ -220,13 +220,16 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
                                     )}
                                     <option value="COACH">Coach (Phase 2)</option>
                                     <option value="ATHLETE">Athlete (Phase 2)</option>
+                                    <option value="DASHBOARD">Dashboard (View dashboard only)</option>
                                 </select>
                                 <p className="mt-1 text-xs text-gray-500">
                                     {role === "ADMIN" || role === "NUTRITIONIST"
                                         ? "✓ AMS nutritionist profile will be created automatically"
                                         : role === "IT_ADMIN"
                                             ? "⚠️ Full system access - use with caution"
-                                            : "No AMS profile will be created"}
+                                            : role === "DASHBOARD"
+                                                ? "Dashboard access only — cannot view AMS, SSS, or Admin pages"
+                                                : "No AMS profile will be created"}
                                 </p>
                             </div>
 
