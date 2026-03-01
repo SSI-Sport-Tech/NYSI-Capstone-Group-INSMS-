@@ -14,6 +14,7 @@ interface Batch {
   batch_expiration_date: string;
   batch_price: number;
   date_added: string;
+  inv_batch_testing_org: string | null;
 }
 
 interface InventoryBatchesProps {
@@ -152,6 +153,9 @@ const InventoryBatches: React.FC<InventoryBatchesProps> = ({
               <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
                 Date Added
               </th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
+                Testing Org
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
@@ -198,11 +202,14 @@ const InventoryBatches: React.FC<InventoryBatchesProps> = ({
                       ? new Date(batch.date_added).toLocaleDateString("en-US")
                       : "-"}
                   </td>
+                  <td className="px-3 py-4 text-sm text-gray-900">
+                    {batch.inv_batch_testing_org || "-"}
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={10} className="px-6 py-8 text-center text-gray-500">
                   No batches available for this supplement
                 </td>
               </tr>

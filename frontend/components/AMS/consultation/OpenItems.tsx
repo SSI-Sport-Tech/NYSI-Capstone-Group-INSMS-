@@ -12,7 +12,7 @@ interface OpenItem {
   id: string;
   due_date: string | null;
   owner: string | null;
-  status: string;
+  open_item_status: string;
   open_item_status_id: string;
   description: string | null;
   open_item: string | null;
@@ -158,6 +158,34 @@ export default function OpenItems({
     }
   };
 
+  const handleDeleteItems = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.size} item(s)? This cannot be undone.`)) return;
+    try {
+      setSaving(true);
+      setSaveError("");
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/Consultation/open-items`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ ids: [...selectedIds] }),
+        },
+      );
+      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+      setSelectedIds(new Set());
+      await fetchOpenItems();
+    } catch {
+      setSaveError("Failed to delete item(s).");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleAddItem = async () => {
     if (!newItem.statusId) return;
     try {
@@ -255,6 +283,13 @@ export default function OpenItems({
                 className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Mark as Completed
+              </button>
+              <button
+                onClick={handleDeleteItems}
+                disabled={selectedIds.size === 0 || saving}
+                className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Delete
               </button>
               <button
                 onClick={() => {
@@ -410,12 +445,12 @@ export default function OpenItems({
                 <td className="py-3 px-4">
                   <span
                     className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      item.status?.toLowerCase().includes("completed")
+                      item.open_item_status?.toLowerCase().includes("completed")
                         ? "bg-green-100 text-green-800"
                         : "bg-yellow-100 text-yellow-800"
                     }`}
                   >
-                    • {item.status}
+                    • {item.open_item_status}
                   </span>
                 </td>
                 <td className="py-3 px-4 text-sm text-gray-700 max-w-xs">

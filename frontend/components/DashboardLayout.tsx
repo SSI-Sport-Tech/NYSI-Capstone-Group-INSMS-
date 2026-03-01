@@ -48,6 +48,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Get current tab from URL parameters
   const currentTab = searchParams.get("tab") || "profile";
 
+  const fetchAthleteName = async (id: string) => {
+    try {
+      const backendUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+      const response = await axios.get(
+        `${backendUrl}/api/AMS/athletes/${id}/profile`,
+      );
+      if (response.data?.athlete?.athlete_name_abbr) {
+        setAthleteName(response.data.athlete.athlete_name_abbr);
+      }
+    } catch (error) {
+      console.error("Error fetching athlete name:", error);
+      setAthleteName("Athlete");
+    }
+  };
+
   // Update section states when pathname changes
   useEffect(() => {
     setSupplementOpen(pathname.startsWith("/SSS"));
@@ -71,27 +87,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [loading, isAuthenticated, router]);
 
-  const fetchAthleteName = async (id: string) => {
-    try {
-      const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
-      const response = await axios.get(
-        `${backendUrl}/api/AMS/athletes/${id}/profile`,
-      );
-      if (response.data?.athlete?.athlete_name_abbr) {
-        setAthleteName(response.data.athlete.athlete_name_abbr);
-      }
-    } catch (error) {
-      console.error("Error fetching athlete name:", error);
-      setAthleteName("Athlete");
-    }
-  };
+  const isDashboardUser = user?.role === "DASHBOARD";
 
+  // Redirect DASHBOARD users away from any non-dashboard route
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push("/login");
+    if (!loading && isDashboardUser && pathname !== "/") {
+      router.push("/unauthorized");
     }
-  }, [loading, isAuthenticated, router]);
+  }, [loading, isDashboardUser, pathname]);
 
   if (loading || !isAuthenticated) {
     return (
@@ -101,15 +104,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2" />
-      </div>
-    );
-  }
-
-  // NEW: Check if user is admin
+  // Check if user is admin
   const isAdmin = user?.role === "ADMIN" || user?.role === "IT_ADMIN";
 
   return (
@@ -139,6 +134,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </Link>
 
           {/* Supplement Support Section */}
+          {!isDashboardUser && (
           <div>
             <button
               onClick={() => setSupplementOpen(!supplementOpen)}
@@ -197,8 +193,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             )}
           </div>
+          )}
 
           {/* Athlete Management Section */}
+          {!isDashboardUser && (
           <div>
             <button
               onClick={() => setAmsOpen(!amsOpen)}
@@ -226,6 +224,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             )}
           </div>
+          )}
 
           {/* Athlete Profile Section (Only when viewing athlete profile) */}
           {isAthleteProfilePage && (
@@ -282,7 +281,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           )}
 
           {/* NEW: Admin Section (Only for ADMIN and IT_ADMIN) */}
-          {isAdmin && (
+          {isAdmin && !isDashboardUser && (
             <div>
               <button
                 onClick={() => setAdminOpen(!adminOpen)}

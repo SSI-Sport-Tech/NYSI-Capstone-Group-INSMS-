@@ -39,8 +39,8 @@ const nameSchema = z.string()
     .trim();
 
 // UPDATED: Role validator matching database schema
-const roleSchema = z.enum(['IT_ADMIN', 'ADMIN', 'NUTRITIONIST', 'COACH', 'ATHLETE'], {
-    errorMap: () => ({ message: 'Role must be IT_ADMIN, ADMIN, NUTRITIONIST, COACH, or ATHLETE' }),
+const roleSchema = z.enum(['IT_ADMIN', 'ADMIN', 'NUTRITIONIST', 'COACH', 'ATHLETE', 'DASHBOARD'], {
+    errorMap: () => ({ message: 'Role must be IT_ADMIN, ADMIN, NUTRITIONIST, COACH, ATHLETE, or DASHBOARD' }),
 });
 
 // 6-digit code validator
