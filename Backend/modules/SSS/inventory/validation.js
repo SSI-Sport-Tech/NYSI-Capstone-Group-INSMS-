@@ -39,6 +39,12 @@ export const createBatchSchema = z.object({
         .optional()
         .nullable(),
 
+    inv_batch_testing_org: z.string()
+        .max(255, 'Testing organisation must be less than 255 characters')
+        .trim()
+        .optional()
+        .nullable(),
+
     // ---- FIELDS NOT ACCEPTED (handled by system) ----
 
     id: z.never().optional(),

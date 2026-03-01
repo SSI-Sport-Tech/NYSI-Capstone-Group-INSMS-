@@ -27,6 +27,7 @@ interface Batch {
   batch_expiration_date: string;
   batch_price: number;
   date_added: string;
+  inv_batch_testing_org: string | null;
 }
 
 interface BatchTableProps {
@@ -133,6 +134,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
       "Expiration",
       "Price",
       "Date Added",
+      "Testing Org",
     ];
     const csvContent = [
       headers.join(","),
@@ -154,6 +156,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
           batch.date_added
             ? new Date(batch.date_added).toLocaleDateString()
             : "-",
+          batch.inv_batch_testing_org || "-",
         ].join(","),
       ),
     ].join("\n");
@@ -273,6 +276,9 @@ const BatchTable: React.FC<BatchTableProps> = ({
                     <ArrowUpDown className="w-3 h-3" />
                   </div>
                 </th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
+                  <span className="whitespace-nowrap">Testing Org</span>
+                </th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
                   <div className="flex items-center gap-1">
                     <span className="whitespace-nowrap">Stock Status</span>
@@ -322,7 +328,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
               {loading ? (
                 <tr>
                   <td
-                    colSpan={12}
+                    colSpan={13}
                     className="px-6 py-8 text-center text-gray-500"
                   >
                     Loading batches...
@@ -362,6 +368,9 @@ const BatchTable: React.FC<BatchTableProps> = ({
                     </td>
                     <td className="px-3 py-4 text-sm text-gray-900">
                       {batch.supplement_brand}
+                    </td>
+                    <td className="px-3 py-4 text-sm text-gray-900">
+                      {batch.inv_batch_testing_org || "-"}
                     </td>
                     <td className="px-3 py-4">
                       <span
@@ -409,7 +418,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
               ) : (
                 <tr>
                   <td
-                    colSpan={12}
+                    colSpan={13}
                     className="px-6 py-8 text-center text-gray-500"
                   >
                     {searchQuery

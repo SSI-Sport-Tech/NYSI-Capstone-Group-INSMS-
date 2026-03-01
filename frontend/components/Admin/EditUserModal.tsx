@@ -7,7 +7,7 @@ interface User {
     email: string;
     first_name: string;
     last_name: string;
-    role: "IT_ADMIN" | "ADMIN" | "NUTRITIONIST" | "COACH" | "ATHLETE";
+    role: "IT_ADMIN" | "ADMIN" | "NUTRITIONIST" | "COACH" | "ATHLETE" | "DASHBOARD";
     is_active: boolean;
     is_email_verified: boolean;
 }
@@ -189,13 +189,16 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                                     )}
                                     <option value="COACH">Coach</option>
                                     <option value="ATHLETE">Athlete</option>
+                                    <option value="DASHBOARD">Dashboard (View dashboard only)</option>
                                 </select>
                                 <p className="mt-1 text-xs text-gray-500">
                                     {role === "ADMIN" || role === "NUTRITIONIST"
                                         ? "AMS profile will be created automatically if needed"
                                         : role === "IT_ADMIN"
                                             ? "⚠️ Full system access - use with caution"
-                                            : ""}
+                                            : role === "DASHBOARD"
+                                                ? "Dashboard access only — cannot view AMS, SSS, or Admin pages"
+                                                : ""}
                                 </p>
                             </div>
 

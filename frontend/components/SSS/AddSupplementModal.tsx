@@ -61,6 +61,7 @@ interface FormData {
   quantity: number;
   price: number;
   expirationDate: string;
+  batchTestingOrg: string;
 }
 
 const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
@@ -102,6 +103,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
     quantity: 100,
     price: 0,
     expirationDate: "",
+    batchTestingOrg: "",
   };
 
   const [formData, setFormData] = useState<FormData>(emptyForm);
@@ -289,6 +291,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
             batch_initial_quantity: formData.quantity,
             batch_price: formData.price || null,
             batch_expiration_date: formData.expirationDate || null,
+            inv_batch_testing_org: formData.batchTestingOrg || null,
           };
           await axios.post("/api/SSS/batches", batchData, {
             headers: { Authorization: `Bearer ${token}` },
@@ -303,6 +306,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
             batch_initial_quantity: formData.quantity,
             batch_price: formData.price || null,
             batch_expiration_date: formData.expirationDate || null,
+            inv_batch_testing_org: formData.batchTestingOrg || null,
           };
           await axios.post("/api/SSS/batches", batchData, {
             headers: { Authorization: `Bearer ${token}` },
@@ -984,6 +988,23 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                         className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-500 cursor-not-allowed"
                       />
                       <p className="text-xs text-gray-400 mt-1">Auto-set to today on save</p>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-sm text-gray-700 mb-1">
+                        Batch Testing Organisation
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.batchTestingOrg}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            batchTestingOrg: e.target.value,
+                          }))
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
+                        placeholder="e.g. Informed Sport"
+                      />
                     </div>
                   </div>}
                 </div>
