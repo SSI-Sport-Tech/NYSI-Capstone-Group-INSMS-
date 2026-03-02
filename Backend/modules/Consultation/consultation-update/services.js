@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool, { withUserContext } from "../../../config/db.js";
 
 // ============================================================================
 // CONSULTATION UPDATE CARD SERVICES
@@ -44,11 +44,8 @@ export async function getConsultationUpdate(sessionId) {
  * @param {Object} data - { nutritionist_id, athlete_id, type_of_consult_id, date_of_consult, date_of_next_follow_up }
  * @returns {Promise<Object>} Created session row
  */
-export async function createConsultationSession(data) {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-
+export async function createConsultationSession(data, userId) {
+    const sessionId = await withUserContext(userId, async (client) => {
         // 1. Insert session
         const sessionResult = await client.query(`
             INSERT INTO consultation.sessions (
@@ -72,24 +69,18 @@ export async function createConsultationSession(data) {
         const session = sessionResult.rows[0];
 
         // 2. Insert session_note with consultation_objective (if provided)
-        let note = null;
         if (data.consultation_objective !== undefined) {
-            const noteResult = await client.query(`
+            await client.query(`
                 INSERT INTO consultation.session_note (sessions_id, consultation_objective)
                 VALUES ($1, $2)
                 RETURNING *
             `, [session.id, data.consultation_objective || null]);
-            note = noteResult.rows[0];
         }
 
-        await client.query('COMMIT');
-        return getConsultationUpdate(session.id);
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
-    }
+        return session.id;
+    });
+
+    return getConsultationUpdate(sessionId);
 }
 
 /**
@@ -98,11 +89,8 @@ export async function createConsultationSession(data) {
  * @param {Object} updateData - Fields to update
  * @returns {Promise<Object|null>} Updated session or null
  */
-export async function updateConsultationSession(sessionId, updateData) {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-
+export async function updateConsultationSession(sessionId, updateData, userId) {
+    return withUserContext(userId, async (client) => {
         // 1. Update session fields (if any provided)
         const fields = [];
         const values = [];
@@ -141,7 +129,6 @@ export async function updateConsultationSession(sessionId, updateData) {
         // 2. Upsert consultation_objective on session_note (if provided)
         let note = null;
         if (updateData.consultation_objective !== undefined) {
-            // Check if session_note exists
             const noteCheck = await client.query(
                 'SELECT id FROM consultation.session_note WHERE sessions_id = $1',
                 [sessionId]
@@ -165,20 +152,13 @@ export async function updateConsultationSession(sessionId, updateData) {
             }
         }
 
-        await client.query('COMMIT');
-
         if (!session && !note) return null;
 
         return {
             session: session || null,
             note: note ? { consultation_objective: note.consultation_objective } : null,
         };
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
-    }
+    });
 }
 
 /**

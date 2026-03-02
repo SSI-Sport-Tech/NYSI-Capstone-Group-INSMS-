@@ -1,8 +1,6 @@
 // Backend/modules/Consultation/trainingSchedule/services.js
 
-// NOTE: adjust this import to match your existing DB helper export.
-// Many projects use: `import pool from "../../../config/db.js";`
-import pool from "../../../config/db.js";
+import pool, { withUserContext } from "../../../config/db.js";
 
 function toNumberOrNull(v) {
   if (v === null || v === undefined) return null;
@@ -89,9 +87,9 @@ export async function getPal(sessionId) {
   return rows[0]?.training_physical_activity_level_pal ?? null;
 }
 
-export async function upsertPal(sessionId, pal) {
+async function upsertPal(client, sessionId, pal) {
   // application-level upsert (no guaranteed unique constraint)
-  const { rows: existing } = await pool.query(
+  const { rows: existing } = await client.query(
     `SELECT id FROM consultation.session_nutrition_review
      WHERE sessions_id = $1
      LIMIT 1`,
@@ -99,13 +97,13 @@ export async function upsertPal(sessionId, pal) {
   );
 
   if (existing.length === 0) {
-    await pool.query(
+    await client.query(
       `INSERT INTO consultation.session_nutrition_review (sessions_id, training_physical_activity_level_pal)
        VALUES ($1, $2)`,
       [sessionId, pal]
     );
   } else {
-    await pool.query(
+    await client.query(
       `UPDATE consultation.session_nutrition_review
        SET training_physical_activity_level_pal = $2
        WHERE id = $1`,
@@ -127,18 +125,10 @@ export async function getTrainingScheduleBySessionId(sessionId) {
   return mapRowToApi(rows[0] ?? null, pal);
 }
 
-export async function upsertTrainingScheduleBySessionId(sessionId, payload) {
+export async function upsertTrainingScheduleBySessionId(sessionId, payload, userId) {
   await assertSessionExists(sessionId);
 
   const flat = flattenPayload(sessionId, payload);
-
-  const { rows: existing } = await pool.query(
-    `SELECT id
-     FROM consultation.session_training_schedule
-     WHERE sessions_id = $1
-     LIMIT 1`,
-    [sessionId]
-  );
 
   const cols = [
     "mon_am","mon_pm","mon_training_hours","mon_rpe",
@@ -152,37 +142,49 @@ export async function upsertTrainingScheduleBySessionId(sessionId, payload) {
     "current_performance","coach_performance_goals","athlete_performance_goals","other_remarks",
   ];
 
-  let savedRow;
-
-  if (existing.length === 0) {
-    const insertCols = ["sessions_id", ...cols];
-    const values = [flat.sessions_id, ...cols.map((c) => flat[c] ?? null)];
-    const placeholders = insertCols.map((_, i) => `$${i + 1}`).join(", ");
-
-    const { rows } = await pool.query(
-      `INSERT INTO consultation.session_training_schedule (${insertCols.join(", ")})
-       VALUES (${placeholders})
-       RETURNING *`,
-      values
+  const savedRow = await withUserContext(userId, async (client) => {
+    const { rows: existing } = await client.query(
+      `SELECT id
+       FROM consultation.session_training_schedule
+       WHERE sessions_id = $1
+       LIMIT 1`,
+      [sessionId]
     );
-    savedRow = rows[0];
-  } else {
-    const values = [...cols.map((c) => flat[c] ?? null), existing[0].id];
-    const setExpr = cols.map((c, i) => `${c} = $${i + 1}`).join(", ");
 
-    const { rows } = await pool.query(
-      `UPDATE consultation.session_training_schedule
-       SET ${setExpr}
-       WHERE id = $${cols.length + 1}
-       RETURNING *`,
-      values
-    );
-    savedRow = rows[0];
-  }
+    let row;
 
-  if (payload.pal !== undefined) {
-    await upsertPal(sessionId, payload.pal);
-  }
+    if (existing.length === 0) {
+      const insertCols = ["sessions_id", ...cols];
+      const values = [flat.sessions_id, ...cols.map((c) => flat[c] ?? null)];
+      const placeholders = insertCols.map((_, i) => `$${i + 1}`).join(", ");
+
+      const { rows } = await client.query(
+        `INSERT INTO consultation.session_training_schedule (${insertCols.join(", ")})
+         VALUES (${placeholders})
+         RETURNING *`,
+        values
+      );
+      row = rows[0];
+    } else {
+      const values = [...cols.map((c) => flat[c] ?? null), existing[0].id];
+      const setExpr = cols.map((c, i) => `${c} = $${i + 1}`).join(", ");
+
+      const { rows } = await client.query(
+        `UPDATE consultation.session_training_schedule
+         SET ${setExpr}
+         WHERE id = $${cols.length + 1}
+         RETURNING *`,
+        values
+      );
+      row = rows[0];
+    }
+
+    if (payload.pal !== undefined) {
+      await upsertPal(client, sessionId, payload.pal);
+    }
+
+    return row;
+  });
 
   const pal = await getPal(sessionId);
   return mapRowToApi(savedRow, pal);

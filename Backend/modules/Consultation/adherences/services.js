@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool, { withUserContext } from "../../../config/db.js";
 
 async function assertSessionExists(sessionId) {
   const { rows } = await pool.query(
@@ -93,8 +93,10 @@ export async function getAdherencesBySessionId(sessionId) {
   return mapResponse(rows[0]);
 }
 
-export async function patchAdherencesBySessionId(sessionId, payload) {
+export async function patchAdherencesBySessionId(sessionId, payload, userId) {
   await assertSessionExists(sessionId);
+
+  // Lazy-init row (pool-based; acceptable for GET-style initialisation)
   await getOrCreateNutritionReview(sessionId);
 
   const fields = {
@@ -128,12 +130,14 @@ export async function patchAdherencesBySessionId(sessionId, payload) {
   }
 
   if (setParts.length) {
-    await pool.query(
-      `UPDATE consultation.session_nutrition_review
-       SET ${setParts.join(", ")}
-       WHERE sessions_id = $1`,
-      values
-    );
+    await withUserContext(userId, async (client) => {
+      await client.query(
+        `UPDATE consultation.session_nutrition_review
+         SET ${setParts.join(", ")}
+         WHERE sessions_id = $1`,
+        values
+      );
+    });
   }
 
   return getAdherencesBySessionId(sessionId);

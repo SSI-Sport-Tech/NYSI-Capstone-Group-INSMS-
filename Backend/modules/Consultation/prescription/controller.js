@@ -71,7 +71,7 @@ export async function createPrescription(req, res) {
             });
         }
 
-        const prescription = await services.createPrescription(validated);
+        const prescription = await services.createPrescription(validated, req.user.userId);
         res.status(201).json({
             message: 'Prescription created successfully',
             data: prescription,
@@ -128,7 +128,7 @@ export async function updatePrescription(req, res) {
             }
         }
 
-        const updated = await services.updatePrescription(id, validated);
+        const updated = await services.updatePrescription(id, validated, req.user.userId);
         if (!updated) {
             return res.status(400).json({ error: 'No fields to update' });
         }
@@ -167,7 +167,7 @@ export async function deletePrescription(req, res) {
             return res.status(404).json({ error: 'Prescription not found' });
         }
 
-        await services.deletePrescription(id);
+        await services.deletePrescription(id, req.user.userId);
         res.json({ message: 'Prescription deleted successfully', id });
 
     } catch (error) {

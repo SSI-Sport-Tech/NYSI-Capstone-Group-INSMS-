@@ -54,7 +54,7 @@ export async function createMedicalHistory(req, res) {
         }
 
         const { sessions_id, ...restData } = validated;
-        const data = await services.upsertMedicalHistory(sessions_id, restData);
+        const data = await services.upsertMedicalHistory(sessions_id, restData, req.user.userId);
 
         res.status(201).json({
             message: 'Medical history saved successfully',
@@ -97,7 +97,7 @@ export async function updateMedicalHistory(req, res) {
             return res.status(400).json({ error: 'No fields to update' });
         }
 
-        const data = await services.upsertMedicalHistory(sessionId, validated);
+        const data = await services.upsertMedicalHistory(sessionId, validated, req.user.userId);
 
         res.json({
             message: 'Medical history updated successfully',

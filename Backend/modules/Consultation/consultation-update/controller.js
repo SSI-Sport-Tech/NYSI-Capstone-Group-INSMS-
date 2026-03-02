@@ -197,7 +197,7 @@ export async function createConsultationSession(req, res) {
             date_of_next_follow_up: validated.date_of_next_follow_up,
             time_of_next_follow_up: validated.time_of_next_follow_up,
             consultation_objective: validated.consultation_objective,
-        });
+        }, req.user.userId);
 
         res.status(201).json({
             message: 'Consultation session created successfully',
@@ -248,7 +248,7 @@ export async function updateConsultationSession(req, res) {
             }
         }
 
-        const updated = await services.updateConsultationSession(id, validated);
+        const updated = await services.updateConsultationSession(id, validated, req.user.userId);
 
         if (!updated) {
             return res.status(400).json({ error: 'No fields to update' });
