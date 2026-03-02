@@ -85,49 +85,17 @@ export async function apiCall<T>(
 
 // Dashboard-specific API functions
 export const dashboardApi = {
-  // Get all consultation sessions for a date range
-  getConsultationSessions: async (
-    startDate?: string,
-    endDate?: string,
-  ): Promise<{ data: ConsultationSession[] }> => {
-    const params = new URLSearchParams();
-    if (startDate) params.append("start_date", startDate);
-    if (endDate) params.append("end_date", endDate);
-
-    return apiCall(
-      `/api/Consultation/sessions${params.toString() ? `?${params.toString()}` : ""}`,
-    );
-  },
-
-  // Get today's sessions
-  getTodaySessions: async (): Promise<{ data: ConsultationSession[] }> => {
-    const today = new Date().toISOString().split("T")[0];
-    return dashboardApi.getConsultationSessions(today, today);
-  },
-
-  // Get upcoming sessions (next 7 days)
-  getUpcomingSessions: async (): Promise<{ data: ConsultationSession[] }> => {
-    const today = new Date();
-    const nextWeek = new Date(today);
-    nextWeek.setDate(today.getDate() + 7);
-
-    return dashboardApi.getConsultationSessions(
-      today.toISOString().split("T")[0],
-      nextWeek.toISOString().split("T")[0],
-    );
-  },
-
-  // Get all athletes for booking
+  // Get all athletes for booking (this endpoint exists)
   getAthletes: async (): Promise<{ data: Athlete[] }> => {
     return apiCall("/api/AMS/athletes");
   },
 
-  // Get consultation types
+  // Get consultation types (this endpoint exists)
   getConsultationTypes: async (): Promise<{ data: ConsultationType[] }> => {
     return apiCall("/api/Consultation/lookups/consult-types");
   },
 
-  // Create new consultation session
+  // Create new consultation session (this endpoint exists)
   createConsultationSession: async (sessionData: {
     athlete_id: string;
     type_of_consult_id: string;
@@ -142,10 +110,10 @@ export const dashboardApi = {
     });
   },
 
-  // Update consultation session
+  // Update consultation session (this endpoint exists)
   updateConsultationSession: async (
     sessionId: string,
-    updates: Partial<ConsultationSession>,
+    updates: Partial<ConsultationSession>
   ): Promise<{ data: ConsultationSession }> => {
     return apiCall(`/api/Consultation/consultation-update/${sessionId}`, {
       method: "PATCH",
@@ -153,21 +121,35 @@ export const dashboardApi = {
     });
   },
 
-  // Cancel consultation session
-  cancelConsultationSession: async (sessionId: string): Promise<void> => {
-    return apiCall(`/api/Consultation/consultation-update/${sessionId}`, {
-      method: "DELETE",
-    });
-  },
-
-  // Get user's sessions for a specific date
-  getUserSessions: async (
-    date: string,
+  // These endpoints don't exist in the backend yet - return empty data
+  getConsultationSessions: async (
+    startDate?: string,
+    endDate?: string
   ): Promise<{ data: ConsultationSession[] }> => {
-    return apiCall(`/api/Consultation/user-sessions?date=${date}`);
+    console.warn("getConsultationSessions endpoint not implemented in backend");
+    return { data: [] };
   },
 
-  // Get session count statistics
+  getTodaySessions: async (): Promise<{ data: ConsultationSession[] }> => {
+    console.warn("getTodaySessions endpoint not implemented in backend");
+    return { data: [] };
+  },
+
+  getUpcomingSessions: async (): Promise<{ data: ConsultationSession[] }> => {
+    console.warn("getUpcomingSessions endpoint not implemented in backend");
+    return { data: [] };
+  },
+
+  cancelConsultationSession: async (sessionId: string): Promise<void> => {
+    console.warn("cancelConsultationSession endpoint not implemented in backend");
+    throw new DashboardApiError("Cancellation not yet available", 501);
+  },
+
+  getUserSessions: async (date: string): Promise<{ data: ConsultationSession[] }> => {
+    console.warn("getUserSessions endpoint not implemented in backend");
+    return { data: [] };
+  },
+
   getSessionStats: async (): Promise<{
     data: {
       todayTotal: number;
@@ -176,6 +158,14 @@ export const dashboardApi = {
       newAthletes: number;
     };
   }> => {
-    return apiCall("/api/Consultation/stats");
+    console.warn("getSessionStats endpoint not implemented in backend");
+    return {
+      data: {
+        todayTotal: 0,
+        todayCompleted: 0,
+        activeAthletes: 0,
+        newAthletes: 0,
+      },
+    };
   },
 };

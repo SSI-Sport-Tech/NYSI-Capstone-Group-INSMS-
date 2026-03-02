@@ -29,7 +29,7 @@ export default function UpcomingSessions({
       setSessions(response.data || []);
     } catch (error: any) {
       console.error("Error fetching upcoming sessions:", error);
-      setError("Failed to load sessions");
+      setError("Session data not available yet");
       setSessions([]);
     } finally {
       setLoading(false);
@@ -107,22 +107,42 @@ export default function UpcomingSessions({
       </div>
 
       {error && !sessions.length && (
-        <div className="text-center py-8">
-          <div className="text-red-600 text-sm mb-2">⚠️ {error}</div>
+        <div className="text-center py-12">
+          <div className="mb-4">
+            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4h3a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2V9a2 2 0 012-2h3z" />
+              </svg>
+            </div>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Sessions Yet</h3>
+          <p className="text-gray-500 mb-4 max-w-sm mx-auto">
+            Your upcoming consultation sessions will appear here once they're scheduled.
+          </p>
+          <div className="text-xs text-red-600 bg-red-50 p-2 rounded-lg inline-block mb-4">
+            {error}
+          </div>
           <button
             onClick={refreshSessions}
-            className="text-blue-600 hover:text-blue-800 text-sm underline"
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium underline"
           >
-            Try again
+            Refresh
           </button>
         </div>
       )}
 
       {sessions.length === 0 && !error ? (
-        <div className="text-center py-8">
-          <div className="text-gray-500 mb-2">No upcoming sessions</div>
-          <p className="text-sm text-gray-400">
-            Schedule a new consultation to get started
+        <div className="text-center py-12">
+          <div className="mb-4">
+            <div className="mx-auto w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4h3a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2V9a2 2 0 012-2h3z" />
+              </svg>
+            </div>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Ready to Schedule</h3>
+          <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+            No upcoming sessions scheduled yet. Use the calendar or quick actions to book consultation sessions with your athletes.
           </p>
         </div>
       ) : (

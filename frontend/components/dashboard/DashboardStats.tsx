@@ -25,7 +25,7 @@ export default function DashboardStats({ onQuickAction }: DashboardStatsProps) {
       setStats(response.data);
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
-      // Keep stats at 0 if API fails
+      // Keep stats at 0 if API fails - this is expected since endpoint doesn't exist yet
       setStats({
         todayTotal: 0,
         todayCompleted: 0,

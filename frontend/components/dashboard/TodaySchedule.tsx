@@ -17,7 +17,7 @@ export default function TodaySchedule() {
       setSchedule(response.data || []);
     } catch (error: any) {
       console.error("Error fetching today's schedule:", error);
-      setError("Failed to load schedule");
+      setError("Schedule data not available yet");
       setSchedule([]);
     } finally {
       setLoading(false);
@@ -99,20 +99,37 @@ export default function TodaySchedule() {
       </div>
 
       {error && !schedule.length ? (
-        <div className="text-center py-4">
-          <div className="text-red-600 text-sm mb-2">⚠️ {error}</div>
+        <div className="text-center py-8">
+          <div className="mb-4">
+            <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <div className="text-gray-500 mb-2">Schedule Not Available</div>
+          <div className="text-xs text-red-600 bg-red-50 p-2 rounded-lg inline-block mb-3">
+            {error}
+          </div>
           <button
             onClick={fetchTodaySchedule}
             className="text-blue-600 hover:text-blue-800 text-sm underline"
           >
-            Try again
+            Refresh
           </button>
         </div>
       ) : schedule.length === 0 ? (
         <div className="text-center py-8">
-          <div className="text-gray-500 mb-2">No sessions today</div>
+          <div className="mb-4">
+            <div className="mx-auto w-12 h-12 bg-green-50 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+          </div>
+          <div className="text-gray-500 mb-2">Clear Schedule</div>
           <p className="text-sm text-gray-400">
-            Enjoy your free day! 
+            No sessions scheduled for today. Enjoy your free time!
           </p>
         </div>
       ) : (
