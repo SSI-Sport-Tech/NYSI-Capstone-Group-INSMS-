@@ -290,7 +290,17 @@ export default function Anthropometry({
       );
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const errorBody = await response.json();
+          errorMessage = errorBody.message ?? errorBody.error ?? errorMessage;
+          if (errorBody.details?.length) {
+            errorMessage += `: ${errorBody.details.map((d: { field?: string; message: string }) => d.field ? `${d.field} – ${d.message}` : d.message).join(", ")}`;
+          }
+        } catch {
+          // ignore JSON parse error, keep generic message
+        }
+        throw new Error(errorMessage);
       }
 
       setIsEditing(false);
@@ -300,7 +310,7 @@ export default function Anthropometry({
       }
     } catch (err) {
       console.error("Error saving anthropometry:", err);
-      setSaveError("Failed to save. Please try again.");
+      setSaveError(err instanceof Error ? err.message : "Failed to save. Please try again.");
     }
   };
 

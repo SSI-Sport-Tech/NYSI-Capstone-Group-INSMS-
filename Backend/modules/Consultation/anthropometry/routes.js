@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getAnthropometry, patchAnthropometry } from "./controller.js";
 import { validateGetSessionId, validatePatchAnthropometry } from "./validation.js";
+import { authenticateToken } from "../../Auth/authMiddleware.js";
 
 const router = Router();
 
@@ -75,6 +76,6 @@ const router = Router();
  */
 
 router.get("/sessions/:sessionId/anthropometry", validateGetSessionId, getAnthropometry);
-router.patch("/sessions/:sessionId/anthropometry", validatePatchAnthropometry, patchAnthropometry);
+router.patch("/sessions/:sessionId/anthropometry", authenticateToken, validatePatchAnthropometry, patchAnthropometry);
 
 export default router;

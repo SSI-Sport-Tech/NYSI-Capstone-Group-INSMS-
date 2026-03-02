@@ -450,15 +450,9 @@ export async function approveStagingSupplements(stagingIds, userId) {
         );
 
         if (duplicate) {
-          // Duplicate found - delete from staging and report
+          // Duplicate found - report it but do NOT auto-delete.
+          // The frontend will ask the user whether to delete or keep editing.
           console.log(`Duplicate detected for "${staging.supplement_name}" - matches existing supplement ${duplicate.id}`);
-
-          await withUserContext(userId, async (client) => {
-            await client.query(
-              'DELETE FROM SSS.Supplement_Staging WHERE id = $1',
-              [stagingId]
-            );
-          });
 
           results.push({
             staging_id: stagingId,

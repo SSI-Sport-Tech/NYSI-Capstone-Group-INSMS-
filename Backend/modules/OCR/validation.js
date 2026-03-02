@@ -17,8 +17,9 @@ export const DEFAULT_PAGE_SIZE = 10;
 
 /**
  * Timeout for Python service calls (ms)
+ * Matches OCR_TIMEOUT env var (default 5 minutes)
  */
-export const PYTHON_TIMEOUT = 120000;
+export const PYTHON_TIMEOUT = parseInt(process.env.OCR_TIMEOUT || "300000", 10);
 
 /**
  * Maximum file size for image uploads (bytes)

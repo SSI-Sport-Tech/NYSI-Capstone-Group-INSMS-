@@ -33,6 +33,10 @@ export async function apiCall<T>(endpoint: string): Promise<T> {
   });
 
   if (!response.ok) {
+    // Return null for 404 (no data yet) so callers can handle it gracefully
+    if (response.status === 404) {
+      return null as T;
+    }
     throw new ConsultationApiError(
       `HTTP error! status: ${response.status}`,
       response.status,

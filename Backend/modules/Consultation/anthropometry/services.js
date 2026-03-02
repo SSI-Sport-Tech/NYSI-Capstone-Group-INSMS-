@@ -12,14 +12,15 @@ async function assertSessionExists(sessionId) {
   }
 }
 
-async function getOrCreateNutritionReview(sessionId) {
-  const existing = await pool.query(
+async function getOrCreateNutritionReview(sessionId, client) {
+  const q = client ?? pool;
+  const existing = await q.query(
     `SELECT * FROM consultation.session_nutrition_review WHERE sessions_id = $1 LIMIT 1`,
     [sessionId]
   );
   if (existing.rows.length) return existing.rows[0];
 
-  const created = await pool.query(
+  const created = await q.query(
     `INSERT INTO consultation.session_nutrition_review (sessions_id)
      VALUES ($1)
      RETURNING *`,
@@ -28,14 +29,15 @@ async function getOrCreateNutritionReview(sessionId) {
   return created.rows[0];
 }
 
-async function getOrCreateAnthropometry(sessionId) {
-  const existing = await pool.query(
+async function getOrCreateAnthropometry(sessionId, client) {
+  const q = client ?? pool;
+  const existing = await q.query(
     `SELECT * FROM consultation.session_anthropometry WHERE sessions_id = $1 LIMIT 1`,
     [sessionId]
   );
   if (existing.rows.length) return existing.rows[0];
 
-  const created = await pool.query(
+  const created = await q.query(
     `INSERT INTO consultation.session_anthropometry (sessions_id)
      VALUES ($1)
      RETURNING *`,
@@ -96,10 +98,6 @@ export async function getAnthropometryBySessionId(sessionId) {
 export async function patchAnthropometryBySessionId(sessionId, payload, userId) {
   await assertSessionExists(sessionId);
 
-  // Lazy-init rows (pool-based; acceptable for GET-style initialisation)
-  await getOrCreateNutritionReview(sessionId);
-  await getOrCreateAnthropometry(sessionId);
-
   const reviewFields = {
     anthropometry_height_cm: payload.heightCm,
     anthropometry_weight_kg: payload.weightKg,
@@ -117,6 +115,10 @@ export async function patchAnthropometryBySessionId(sessionId, payload, userId) 
   };
 
   await withUserContext(userId, async (client) => {
+    // Ensure rows exist inside the transaction so INSERTs inherit user context
+    await getOrCreateNutritionReview(sessionId, client);
+    await getOrCreateAnthropometry(sessionId, client);
+
     // PATCH style: only update provided keys
     const setPartsReview = [];
     const valuesReview = [sessionId];

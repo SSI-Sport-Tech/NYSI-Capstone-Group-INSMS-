@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getMealLog, upsertMealLog } from "./controller.js";
 import { validateSessionIdParam, validateMealLogBody } from "./validation.js";
+import { authenticateToken } from "../../Auth/authMiddleware.js";
 
 const router = Router();
 
@@ -82,6 +83,7 @@ router.get(
 
 router.put(
   "/sessions/:sessionId/meal-log",
+  authenticateToken,
   validateSessionIdParam,
   validateMealLogBody,
   upsertMealLog

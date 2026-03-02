@@ -12,14 +12,15 @@ async function assertSessionExists(sessionId) {
   }
 }
 
-async function getOrCreateNutritionReview(sessionId) {
-  const existing = await pool.query(
+async function getOrCreateNutritionReview(sessionId, client) {
+  const q = client ?? pool;
+  const existing = await q.query(
     `SELECT * FROM consultation.session_nutrition_review WHERE sessions_id = $1 LIMIT 1`,
     [sessionId]
   );
   if (existing.rows.length) return existing.rows[0];
 
-  const created = await pool.query(
+  const created = await q.query(
     `INSERT INTO consultation.session_nutrition_review (sessions_id)
      VALUES ($1)
      RETURNING *`,
@@ -96,9 +97,6 @@ export async function getAdherencesBySessionId(sessionId) {
 export async function patchAdherencesBySessionId(sessionId, payload, userId) {
   await assertSessionExists(sessionId);
 
-  // Lazy-init row (pool-based; acceptable for GET-style initialisation)
-  await getOrCreateNutritionReview(sessionId);
-
   const fields = {
     training_physical_activity_level_pal: payload.pal,
 
@@ -129,16 +127,19 @@ export async function patchAdherencesBySessionId(sessionId, payload, userId) {
     }
   }
 
-  if (setParts.length) {
-    await withUserContext(userId, async (client) => {
+  await withUserContext(userId, async (client) => {
+    // Ensure row exists inside the transaction so INSERT inherits user context
+    await getOrCreateNutritionReview(sessionId, client);
+
+    if (setParts.length) {
       await client.query(
         `UPDATE consultation.session_nutrition_review
          SET ${setParts.join(", ")}
          WHERE sessions_id = $1`,
         values
       );
-    });
-  }
+    }
+  });
 
   return getAdherencesBySessionId(sessionId);
 }

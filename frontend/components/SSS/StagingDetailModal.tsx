@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Edit2, Save, XCircle, ExternalLink, BookmarkCheck } from "lucide-react";
+import { X, Edit2, Save, XCircle, ExternalLink, BookmarkCheck, AlertTriangle, Trash2 } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -399,6 +399,12 @@ const StagingDetailModal: React.FC<StagingDetailModalProps> = ({
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [duplicateInfo, setDuplicateInfo] = useState<{
+    name: string;
+    brand: string | null;
+    similarity: string | null;
+  } | null>(null);
+  const [deletingDuplicate, setDeletingDuplicate] = useState(false);
 
   const isOpen = supplementId !== null;
 
@@ -565,11 +571,23 @@ const StagingDetailModal: React.FC<StagingDetailModalProps> = ({
     if (!detail) return;
     setApproving(true);
     try {
-      await axios.post(
+      const response = await axios.post(
         "/api/SSS/staging-supplements/approve",
         { ids: [detail.id] },
         { headers: { Authorization: `Bearer ${token}` } },
       );
+
+      const result = response.data.results?.[0];
+      if (result?.status === "duplicate") {
+        // Don't close — show the duplicate prompt instead
+        setDuplicateInfo({
+          name: result.duplicate_of?.name ?? "Unknown",
+          brand: result.duplicate_of?.brand ?? null,
+          similarity: result.duplicate_of?.similarity_100g ?? result.duplicate_of?.similarity_perserving ?? null,
+        });
+        return;
+      }
+
       onApproved(detail.id);
       onClose();
     } catch (err) {
@@ -581,6 +599,24 @@ const StagingDetailModal: React.FC<StagingDetailModalProps> = ({
       }
     } finally {
       setApproving(false);
+    }
+  };
+
+  const handleDeleteDuplicate = async () => {
+    if (!detail) return;
+    setDeletingDuplicate(true);
+    try {
+      await axios.delete("/api/SSS/staging-supplements", {
+        data: { ids: [detail.id] },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      onApproved(detail.id); // removes it from the parent list
+      onClose();
+    } catch (err) {
+      console.error("Error deleting staging entry:", err);
+      alert("Failed to delete staging entry. Please try again.");
+    } finally {
+      setDeletingDuplicate(false);
     }
   };
 
@@ -603,6 +639,47 @@ const StagingDetailModal: React.FC<StagingDetailModalProps> = ({
       {/* Panel */}
       <div className="relative min-h-screen flex items-start justify-center p-4 pt-10">
         <div className="relative bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+          {/* ── Duplicate Banner ─────────────────────────────────────── */}
+          {duplicateInfo && (
+            <div className="shrink-0 bg-amber-50 border-b border-amber-200 px-6 py-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-amber-800">
+                    Duplicate detected
+                  </p>
+                  <p className="text-sm text-amber-700 mt-0.5">
+                    This supplement already exists in the library as{" "}
+                    <span className="font-medium">
+                      {duplicateInfo.name}
+                      {duplicateInfo.brand ? ` by ${duplicateInfo.brand}` : ""}
+                    </span>
+                    {duplicateInfo.similarity
+                      ? ` (${duplicateInfo.similarity} similarity)`
+                      : ""}
+                    . Would you like to delete this staging entry?
+                  </p>
+                  <div className="flex items-center gap-3 mt-3">
+                    <button
+                      onClick={handleDeleteDuplicate}
+                      disabled={deletingDuplicate}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      {deletingDuplicate ? "Deleting..." : "Yes, delete it"}
+                    </button>
+                    <button
+                      onClick={() => setDuplicateInfo(null)}
+                      className="px-3 py-1.5 text-sm font-medium text-amber-800 bg-white border border-amber-300 rounded-md hover:bg-amber-50"
+                    >
+                      No, keep editing
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ── Header ──────────────────────────────────────────────────── */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white shrink-0">
             <div>
