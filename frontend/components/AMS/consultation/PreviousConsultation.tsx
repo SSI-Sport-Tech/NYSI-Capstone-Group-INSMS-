@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { consultationApi, apiCall } from "@/utils/consultationApi";
 
 interface PreviousConsultationProps {
@@ -112,6 +112,76 @@ export default function PreviousConsultation({
   useEffect(() => {
     setIsSaved(false);
   }, [form]);
+
+  // Refs so the auto-save closure always sees current values
+  const formRef = useRef(form);
+  useEffect(() => { formRef.current = form; }, [form]);
+  const ensureSessionRef = useRef(ensureSession);
+  useEffect(() => { ensureSessionRef.current = ensureSession; }, [ensureSession]);
+  const isSavedRef = useRef(isSaved);
+  useEffect(() => { isSavedRef.current = isSaved; }, [isSaved]);
+  const consultTypesRef = useRef<ConsultType[]>([]);
+
+  // Auto-save when "Save and Finish" transitions isNewConsultation true → false
+  const prevIsNewRef = useRef(!!isNewConsultation);
+  useEffect(() => {
+    const wasNew = prevIsNewRef.current;
+    prevIsNewRef.current = !!isNewConsultation;
+    if (!wasNew || isNewConsultation || readOnly) return;
+
+    const currentForm = formRef.current;
+    const currentEnsureSession = ensureSessionRef.current;
+    if (isSavedRef.current || !currentEnsureSession) return;
+    if (!Object.values(currentForm).some((v) => v !== "")) return;
+
+    (async () => {
+      try {
+        const id = await currentEnsureSession();
+        const token = localStorage.getItem("token");
+        const headers: HeadersInit = {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        };
+        if (currentForm.consult_type) {
+          const typeMatch = consultTypesRef.current.find(
+            (t) => t.type_of_consult === currentForm.consult_type,
+          );
+          if (typeMatch) {
+            await fetch(
+              `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/${id}`,
+              { method: "PATCH", headers, body: JSON.stringify({ type_of_consult_id: typeMatch.id }) },
+            );
+          }
+        }
+        await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-details`,
+          {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              sessions_id: id,
+              main_nutrition_diagnosis: currentForm.main_nutrition_diagnosis || undefined,
+              carbohydrates_review_id: currentForm.carbohydrates_review || null,
+              protein_review_id: currentForm.protein_review || null,
+              fat_review_id: currentForm.fat_review || null,
+              fibre_review_id: currentForm.fibre_review || null,
+              iron_review_id: currentForm.iron_review || null,
+              calcium_review_id: currentForm.calcium_review || null,
+              micronutrients_review_id: currentForm.micronutrients_review || null,
+              other_review: currentForm.other_review || undefined,
+              intervention_note: currentForm.intervention_note || undefined,
+              follow_up_note: currentForm.follow_up_note || undefined,
+              other_remarks: currentForm.other_remarks || undefined,
+            }),
+          },
+        );
+      } catch (e) {
+        console.error("[PreviousConsultation] Auto-save on finish failed:", e);
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNewConsultation]);
+
   const [consultTypes, setConsultTypes] = useState<ConsultType[]>([]);
   const [nutritionDiagnoses, setNutritionDiagnoses] = useState<
     NutritionDiagnosis[]
@@ -230,6 +300,7 @@ export default function PreviousConsultation({
         if (typesRes.ok) {
           const d = await typesRes.json();
           setConsultTypes(d.data ?? []);
+          consultTypesRef.current = d.data ?? [];
         }
         if (diagRes.ok) {
           const d = await diagRes.json();
