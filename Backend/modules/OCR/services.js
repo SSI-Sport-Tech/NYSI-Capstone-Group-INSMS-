@@ -66,6 +66,24 @@ pythonClient.interceptors.response.use(
 );
 
 // ============================================================================
+// HELPERS
+// ============================================================================
+
+/**
+ * Resolve MIME type from filename extension
+ */
+function getMimeType(filename) {
+  const ext = (filename || "").split(".").pop()?.toLowerCase();
+  const map = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+  };
+  return map[ext] || "image/jpeg";
+}
+
+// ============================================================================
 // PYTHON SERVICE CALLS
 // ============================================================================
 
@@ -82,7 +100,7 @@ export async function analyzeNutritionLabel(fileBuffer, filename) {
     const form = new FormData();
     form.append("file", fileBuffer, {
       filename: filename,
-      contentType: "image/jpeg",
+      contentType: getMimeType(filename),
     });
 
     console.log(`[OCR Service] Calling Python service for file: ${filename}`);
@@ -134,7 +152,7 @@ export async function identifySupplementFromImage(fileBuffer, filename) {
   const form = new FormData();
   form.append("file", fileBuffer, {
     filename: filename,
-    contentType: "image/jpeg",
+    contentType: getMimeType(filename),
   });
 
   const ocrResponse = await pythonClient.post("/api/ocr/ocr-only", form, {
@@ -170,7 +188,7 @@ export async function extractBatchIdFromImage(fileBuffer, filename) {
   const form = new FormData();
   form.append("file", fileBuffer, {
     filename: filename,
-    contentType: "image/jpeg",
+    contentType: getMimeType(filename),
   });
 
   // Use OCR-only first, then extract batch ID from text
@@ -556,4 +574,143 @@ export async function findSimilarSupplements(
     per_page: pageSize,
     total_pages: Math.ceil(total / pageSize),
   };
+}
+
+// ============================================================================
+// 2-STAGE OCR FLOW
+// ============================================================================
+
+/**
+ * Stage 1: Extract raw text only from an image (no LLM structuring or vectors)
+ * Calls Python /api/ocr/ocr-only endpoint
+ *
+ * @param {Buffer} fileBuffer - Image file buffer
+ * @param {string} filename - Original filename
+ * @returns {Promise<Object>} { success, raw_text, line_count, character_count }
+ */
+export async function extractTextOnlyFromImage(fileBuffer, filename) {
+  try {
+    const form = new FormData();
+    form.append("file", fileBuffer, {
+      filename: filename,
+      contentType: getMimeType(filename),
+    });
+
+    console.log(`[OCR Service] Calling Python OCR-only for file: ${filename}`);
+    const response = await pythonClient.post("/api/ocr/ocr-only", form, {
+      headers: form.getHeaders(),
+    });
+
+    console.log(`[OCR Service] Python OCR-only responded successfully`);
+    return response.data;
+  } catch (error) {
+    console.error("[OCR Service] Error calling Python OCR-only:", error.message);
+
+    if (error.code === "ECONNRESET" || error.code === "ECONNREFUSED") {
+      throw new Error(
+        "Python OCR service is not available. Please ensure it is running on port 8001.",
+      );
+    } else if (error.code === "ETIMEDOUT") {
+      throw new Error(
+        "Python OCR service timed out. The image might be too complex to process.",
+      );
+    } else if (error.response) {
+      throw new Error(
+        `Python OCR service error: ${error.response.status} - ${error.response.data?.detail || "Unknown error"}`,
+      );
+    } else if (error.request) {
+      throw new Error(
+        "No response from Python OCR service. Please check if it is running.",
+      );
+    } else {
+      throw new Error(`OCR service error: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * Stage 2: Analyze raw text — structure via LLM + optionally generate vectors
+ * Calls Python /api/ocr/analyze-text endpoint
+ *
+ * @param {string} rawText - Raw OCR text (possibly edited by the user)
+ * @param {boolean} generateVectors - Whether to generate embedding vectors
+ * @returns {Promise<Object>} { success, data, vectors, ... }
+ */
+export async function analyzeFromText(rawText, generateVectors = true) {
+  try {
+    console.log(
+      `[OCR Service] Calling Python analyze-text (${rawText.length} chars, vectors=${generateVectors})`,
+    );
+    const response = await pythonClient.post("/api/ocr/analyze-text", {
+      raw_text: rawText,
+      generate_vectors: generateVectors,
+    });
+
+    console.log(`[OCR Service] Python analyze-text responded successfully`);
+    return response.data;
+  } catch (error) {
+    console.error(
+      "[OCR Service] Error calling Python analyze-text:",
+      error.message,
+    );
+
+    if (error.code === "ECONNRESET" || error.code === "ECONNREFUSED") {
+      throw new Error(
+        "Python OCR service is not available. Please ensure it is running on port 8001.",
+      );
+    } else if (error.code === "ETIMEDOUT") {
+      throw new Error("Python OCR service timed out. Please try again.");
+    } else if (error.response) {
+      throw new Error(
+        `Python OCR service error: ${error.response.status} - ${error.response.data?.detail || "Unknown error"}`,
+      );
+    } else if (error.request) {
+      throw new Error(
+        "No response from Python OCR service. Please check if it is running.",
+      );
+    } else {
+      throw new Error(`OCR service error: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * Vectorize pre-structured nutrition data (no OCR or LLM step)
+ * Calls Python /api/ocr/vectorize endpoint
+ *
+ * @param {Object} structuredData - Structured data matching the LLM output shape:
+ *   { supplement_ingredient, nutritional_info_per_serving, nutritional_info_per_100g, serving_size_grams }
+ * @returns {Promise<Object>} { success, vectors: { vector_per_serving, vector_per_100g, per_100g_calculated } }
+ */
+export async function vectorizeStructuredData(structuredData) {
+  try {
+    console.log(`[OCR Service] Calling Python vectorize`);
+    const response = await pythonClient.post("/api/ocr/vectorize", {
+      structured_data: structuredData,
+      include_ingredients: true,
+    });
+
+    console.log(`[OCR Service] Python vectorize responded successfully`);
+    return response.data;
+  } catch (error) {
+    console.error("[OCR Service] Error calling Python vectorize:", error.message);
+
+    if (error.code === "ECONNRESET" || error.code === "ECONNREFUSED") {
+      throw new Error(
+        "Python OCR service is not available. Please ensure it is running on port 8001.",
+      );
+    } else if (error.code === "ETIMEDOUT") {
+      throw new Error("Python OCR service timed out. Please try again.");
+    } else if (error.response) {
+      throw new Error(
+        `Python OCR service error: ${error.response.status} - ${error.response.data?.detail || "Unknown error"}`,
+      );
+    } else if (error.request) {
+      throw new Error(
+        "No response from Python OCR service. Please check if it is running.",
+      );
+    } else {
+      throw new Error(`OCR service error: ${error.message}`);
+    }
+  }
 }
