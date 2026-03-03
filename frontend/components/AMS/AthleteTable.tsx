@@ -426,13 +426,7 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                             className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               athlete.carding_status?.toLowerCase() === "active"
                                 ? "bg-green-100 text-green-800"
-                                : athlete.carding_status?.toLowerCase() ===
-                                    "terminated"
-                                  ? "bg-red-100 text-red-800"
-                                  : athlete.carding_status?.toLowerCase() ===
-                                      "deactivated"
-                                    ? "bg-orange-100 text-orange-800"
-                                    : "bg-gray-100 text-gray-800"
+                                : "bg-red-100 text-red-800"
                             }`}
                           >
                             {athlete.carding_status}

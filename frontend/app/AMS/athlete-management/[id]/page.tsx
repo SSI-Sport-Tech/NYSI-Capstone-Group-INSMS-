@@ -674,12 +674,35 @@ export default function AthleteDetailPage() {
                         )}
                       </div>
 
-                      {/* Status (display-only) */}
+                      {/* Athlete Status */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Status
+                          Athlete Status
                         </label>
-                        <p className="text-sm text-gray-900">Active</p>
+                        {isEditing && editForm ? (
+                          <select
+                            value={editForm.carding_status}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, carding_status: e.target.value })
+                            }
+                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                          </select>
+                        ) : (
+                          profile.registry?.carding_status ? (
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              profile.registry.carding_status.toLowerCase() === "active"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}>
+                              {profile.registry.carding_status}
+                            </span>
+                          ) : (
+                            <p className="text-sm text-gray-400">-</p>
+                          )
+                        )}
                       </div>
                     </div>
                   </div>
@@ -733,28 +756,6 @@ export default function AthleteDetailPage() {
                             Number of Reminders
                           </label>
                           <p className="text-sm text-gray-900">-</p>
-                        </div>
-
-                        {/* Carding Level */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Carding Level
-                          </label>
-                          {isEditing && editForm ? (
-                            <input
-                              type="text"
-                              value={editForm.carding_status}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, carding_status: e.target.value })
-                              }
-                              placeholder="e.g. Active"
-                              className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900">
-                              {profile.registry.carding_status}
-                            </p>
-                          )}
                         </div>
 
                         {/* Coach Assigned */}
