@@ -108,7 +108,7 @@ async def run_full_scrape_job():
 def start_scheduler():
     scheduler.add_job(
         run_full_scrape_job,
-        trigger=IntervalTrigger(start_date=datetime.now() + timedelta(minutes=1),weeks=2),
+        trigger=IntervalTrigger(weeks=2),
         id="full_scrape",
         name="Bi-weekly full catalog scrape",
         replace_existing=True,
