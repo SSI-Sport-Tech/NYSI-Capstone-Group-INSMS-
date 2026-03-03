@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import { analyzeLabel, extractInfo, verifySupplements, runOCR } from "./controller.js";
+import { analyzeLabel, extractInfo, verifySupplements, runOCR, ocrOnly, analyzeText, findAlternatives } from "./controller.js";
 import { MAX_FILE_SIZE, ALLOWED_MIME_TYPES } from "./validation.js";
 
 const router = express.Router();
@@ -41,6 +41,158 @@ const uploadMultiple = multer({
 // ============================================================================
 // ROUTES
 // ============================================================================
+
+/**
+ * @swagger
+ * /api/ocr/ocr-only:
+ *   post:
+ *     summary: Stage 1 — Extract raw text from image (editable flow)
+ *     description: |
+ *       Upload an image and receive raw OCR text that the user can review and
+ *       edit before passing to /api/ocr/analyze-text.
+ *     tags: [OCR]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image file (jpg, png, webp - max 10MB)
+ *     responses:
+ *       200:
+ *         description: Raw text extracted from image
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 raw_text:
+ *                   type: string
+ *                 line_count:
+ *                   type: integer
+ *                 character_count:
+ *                   type: integer
+ *       400:
+ *         description: Invalid file
+ *       422:
+ *         description: OCR extraction failed
+ *       503:
+ *         description: Python OCR service unavailable
+ *       504:
+ *         description: Request timeout
+ */
+router.post("/ocr-only", uploadSingle, ocrOnly);
+
+/**
+ * @swagger
+ * /api/ocr/analyze-text:
+ *   post:
+ *     summary: Stage 2 — Structure text and generate vectors
+ *     description: |
+ *       Submit raw text (from /api/ocr/ocr-only, optionally edited by the user)
+ *       to structure it via LLM and optionally generate embedding vectors for
+ *       similarity search.
+ *     tags: [OCR]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - raw_text
+ *             properties:
+ *               raw_text:
+ *                 type: string
+ *                 minLength: 5
+ *                 description: Raw text from the OCR step
+ *               generate_vectors:
+ *                 type: boolean
+ *                 default: true
+ *                 description: Whether to generate embedding vectors
+ *     responses:
+ *       200:
+ *         description: Structured data and optional vectors
+ *       400:
+ *         description: Invalid request body
+ *       422:
+ *         description: Text analysis failed
+ *       503:
+ *         description: Python OCR service unavailable
+ *       504:
+ *         description: Request timeout
+ */
+router.post("/analyze-text", analyzeText);
+
+/**
+ * @swagger
+ * /api/ocr/find-alternatives:
+ *   post:
+ *     summary: Find similar supplements from verified nutritional data
+ *     description: |
+ *       Step 2 of the editable OCR flow. Submit user-verified ingredients and
+ *       nutritional information to vectorize the data and search the supplement
+ *       database for similar products (≥ 60% similarity threshold).
+ *     tags: [OCR]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ingredients:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: List of ingredient names
+ *               nutritional_per_serving:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     amount:
+ *                       type: string
+ *               nutritional_per_100g:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     amount:
+ *                       type: string
+ *               serving_size_grams:
+ *                 type: number
+ *                 nullable: true
+ *               page:
+ *                 type: integer
+ *                 default: 1
+ *               per_page:
+ *                 type: integer
+ *                 default: 10
+ *                 maximum: 50
+ *     responses:
+ *       200:
+ *         description: Similar supplements found
+ *       422:
+ *         description: Not enough data to generate vectors
+ *       503:
+ *         description: Python OCR service unavailable
+ *       504:
+ *         description: Request timeout
+ */
+router.post("/find-alternatives", findAlternatives);
 
 /**
  * @swagger
