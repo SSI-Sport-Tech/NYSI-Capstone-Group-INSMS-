@@ -45,7 +45,7 @@ export const createBasicAthleteSchema = z
     date_of_birth: dateSchema,
     ethnicity: z.string().trim().optional(),
     target_event: z.string().trim().optional(),
-    sport_start_date: optionalDateSchema,
+    sport_start_date: z.number().int().positive().optional(),
     dietary_restriction: z.string().trim().optional(),
 
     // --- Reject system-managed fields ---
@@ -73,7 +73,7 @@ export const createCompleteAthleteSchema = z
     date_of_birth: dateSchema,
     ethnicity: z.string().trim().optional(),
     target_event: z.string().trim().optional(),
-    sport_start_date: optionalDateSchema,
+    sport_start_date: z.number().int().positive().optional(),
 
     // --- Registry fields ---
     carding_status: z.string().trim().min(1, "Carding status is required"),
@@ -126,7 +126,7 @@ export const adminCreateCompleteAthleteSchema = z
     date_of_birth: dateSchema,
     ethnicity: z.string().trim().optional(),
     target_event: z.string().trim().optional(),
-    sport_start_date: optionalDateSchema,
+    sport_start_date: z.number().int().positive().optional(),
 
     // --- Registry fields ---
     carding_status: z.string().trim().min(1, "Carding status is required"),
@@ -184,7 +184,7 @@ export const updateAthleteSchema = z
     date_of_birth: optionalDateSchema,
     ethnicity: z.string().trim().optional(),
     target_event: z.string().trim().optional(),
-    sport_start_date: optionalDateSchema,
+    sport_start_date: z.number().int().positive().optional(),
     dietary_restriction: z.string().trim().optional(),
   })
   .strict();
@@ -257,7 +257,7 @@ export const updateProfileSchema = z
     date_of_birth: optionalDateSchema,
     ethnicity: z.string().trim().optional(),
     target_event: z.string().trim().optional(),
-    sport_start_date: optionalDateSchema,
+    sport_start_date: z.number().int().positive().optional(),
 
     // --- Registry fields (all optional) ---
     carding_status: z
@@ -318,7 +318,7 @@ export const adminUpdateProfileSchema = z
     date_of_birth: optionalDateSchema,
     ethnicity: z.string().trim().optional(),
     target_event: z.string().trim().optional(),
-    sport_start_date: optionalDateSchema,
+    sport_start_date: z.number().int().positive().optional(),
 
     // --- Registry fields (all optional) ---
     carding_status: z
