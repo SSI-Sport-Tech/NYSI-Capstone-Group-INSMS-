@@ -59,7 +59,7 @@ import {
       const { sessionId } = sessionIdParamSchema.parse(req.params);
       const payload = upsertTrainingScheduleSchema.parse(req.body);
   
-      const data = await upsertTrainingScheduleBySessionId(sessionId, payload);
+      const data = await upsertTrainingScheduleBySessionId(sessionId, payload, req.user.userId);
       res.json({ data });
     } catch (err) {
       next(err);

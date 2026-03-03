@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool, { withUserContext } from "../../../config/db.js";
 
 // ============================================================================
 // FIELD LISTS PER SECTION
@@ -312,14 +312,11 @@ async function upsertSessionSection(client, tableName, sessionId, fieldList, dat
  * @param {Object} data - Validated body (sessions_id already stripped by caller)
  * @returns {Promise<Object|null>} Full medical history after upsert
  */
-export async function upsertMedicalHistory(sessionId, data) {
+export async function upsertMedicalHistory(sessionId, data, userId) {
     const athleteId = await getAthleteIdFromSession(sessionId);
     if (!athleteId) return null;
 
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-
+    await withUserContext(userId, async (client) => {
         // 1. General fields → ams.athlete_medical
         const generalData = {};
         for (const f of GENERAL_FIELDS) {
@@ -372,14 +369,7 @@ export async function upsertMedicalHistory(sessionId, data) {
                 data.period
             );
         }
-
-        await client.query('COMMIT');
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
-    }
+    });
 
     // Return the fresh full card
     return getMedicalHistory(sessionId);

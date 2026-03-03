@@ -14,7 +14,7 @@ export async function patchAdherences(req, res, next) {
   try {
     const { sessionId } = req.params;
     const payload = req.body;
-    const data = await patchAdherencesBySessionId(sessionId, payload);
+    const data = await patchAdherencesBySessionId(sessionId, payload, req.user.userId);
     return res.status(200).json({ data });
   } catch (err) {
     return next(err);

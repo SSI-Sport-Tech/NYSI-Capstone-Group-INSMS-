@@ -117,7 +117,7 @@ export async function createOpenItem(req, res) {
             owner = nutritionistResult.rows[0].name;
         }
 
-        const item = await services.createOpenItem({ ...validated, owner });
+        const item = await services.createOpenItem({ ...validated, owner }, req.user.userId);
 
         res.status(201).json({
             message: 'Open item created successfully',
@@ -171,7 +171,7 @@ export async function updateOpenItem(req, res) {
             }
         }
 
-        const updated = await services.updateOpenItem(id, validated);
+        const updated = await services.updateOpenItem(id, validated, req.user.userId);
 
         if (!updated) {
             return res.status(400).json({ error: 'No fields to update' });
@@ -205,7 +205,7 @@ export async function deleteOpenItems(req, res) {
     try {
         const { ids } = bulkDeleteSchema.parse(req.body);
 
-        const deleted = await services.deleteOpenItems(ids);
+        const deleted = await services.deleteOpenItems(ids, req.user.userId);
 
         res.json({
             message: `Successfully deleted ${deleted.length} open item(s)`,

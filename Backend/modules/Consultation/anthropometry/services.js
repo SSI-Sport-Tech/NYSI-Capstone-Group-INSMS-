@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool, { withUserContext } from "../../../config/db.js";
 
 async function assertSessionExists(sessionId) {
   const { rows } = await pool.query(
@@ -12,14 +12,15 @@ async function assertSessionExists(sessionId) {
   }
 }
 
-async function getOrCreateNutritionReview(sessionId) {
-  const existing = await pool.query(
+async function getOrCreateNutritionReview(sessionId, client) {
+  const q = client ?? pool;
+  const existing = await q.query(
     `SELECT * FROM consultation.session_nutrition_review WHERE sessions_id = $1 LIMIT 1`,
     [sessionId]
   );
   if (existing.rows.length) return existing.rows[0];
 
-  const created = await pool.query(
+  const created = await q.query(
     `INSERT INTO consultation.session_nutrition_review (sessions_id)
      VALUES ($1)
      RETURNING *`,
@@ -28,14 +29,15 @@ async function getOrCreateNutritionReview(sessionId) {
   return created.rows[0];
 }
 
-async function getOrCreateAnthropometry(sessionId) {
-  const existing = await pool.query(
+async function getOrCreateAnthropometry(sessionId, client) {
+  const q = client ?? pool;
+  const existing = await q.query(
     `SELECT * FROM consultation.session_anthropometry WHERE sessions_id = $1 LIMIT 1`,
     [sessionId]
   );
   if (existing.rows.length) return existing.rows[0];
 
-  const created = await pool.query(
+  const created = await q.query(
     `INSERT INTO consultation.session_anthropometry (sessions_id)
      VALUES ($1)
      RETURNING *`,
@@ -93,12 +95,8 @@ export async function getAnthropometryBySessionId(sessionId) {
   return mapResponse({ anthroRow: anthro.rows[0], reviewRow: review.rows[0] });
 }
 
-export async function patchAnthropometryBySessionId(sessionId, payload) {
+export async function patchAnthropometryBySessionId(sessionId, payload, userId) {
   await assertSessionExists(sessionId);
-
-  // ensure rows exist
-  await getOrCreateNutritionReview(sessionId);
-  await getOrCreateAnthropometry(sessionId);
 
   const reviewFields = {
     anthropometry_height_cm: payload.heightCm,
@@ -116,42 +114,48 @@ export async function patchAnthropometryBySessionId(sessionId, payload) {
     other_remarks: payload.otherRemarks,
   };
 
-  // PATCH style: only update provided keys
-  const setPartsReview = [];
-  const valuesReview = [sessionId];
-  let idx = 2;
-  for (const [col, val] of Object.entries(reviewFields)) {
-    if (val !== undefined) {
-      setPartsReview.push(`${col} = $${idx++}`);
-      valuesReview.push(val);
-    }
-  }
-  if (setPartsReview.length) {
-    await pool.query(
-      `UPDATE consultation.session_nutrition_review
-       SET ${setPartsReview.join(", ")}
-       WHERE sessions_id = $1`,
-      valuesReview
-    );
-  }
+  await withUserContext(userId, async (client) => {
+    // Ensure rows exist inside the transaction so INSERTs inherit user context
+    await getOrCreateNutritionReview(sessionId, client);
+    await getOrCreateAnthropometry(sessionId, client);
 
-  const setPartsAnthro = [];
-  const valuesAnthro = [sessionId];
-  idx = 2;
-  for (const [col, val] of Object.entries(anthroFields)) {
-    if (val !== undefined) {
-      setPartsAnthro.push(`${col} = $${idx++}`);
-      valuesAnthro.push(val);
+    // PATCH style: only update provided keys
+    const setPartsReview = [];
+    const valuesReview = [sessionId];
+    let idx = 2;
+    for (const [col, val] of Object.entries(reviewFields)) {
+      if (val !== undefined) {
+        setPartsReview.push(`${col} = $${idx++}`);
+        valuesReview.push(val);
+      }
     }
-  }
-  if (setPartsAnthro.length) {
-    await pool.query(
-      `UPDATE consultation.session_anthropometry
-       SET ${setPartsAnthro.join(", ")}
-       WHERE sessions_id = $1`,
-      valuesAnthro
-    );
-  }
+    if (setPartsReview.length) {
+      await client.query(
+        `UPDATE consultation.session_nutrition_review
+         SET ${setPartsReview.join(", ")}
+         WHERE sessions_id = $1`,
+        valuesReview
+      );
+    }
+
+    const setPartsAnthro = [];
+    const valuesAnthro = [sessionId];
+    idx = 2;
+    for (const [col, val] of Object.entries(anthroFields)) {
+      if (val !== undefined) {
+        setPartsAnthro.push(`${col} = $${idx++}`);
+        valuesAnthro.push(val);
+      }
+    }
+    if (setPartsAnthro.length) {
+      await client.query(
+        `UPDATE consultation.session_anthropometry
+         SET ${setPartsAnthro.join(", ")}
+         WHERE sessions_id = $1`,
+        valuesAnthro
+      );
+    }
+  });
 
   return getAnthropometryBySessionId(sessionId);
 }

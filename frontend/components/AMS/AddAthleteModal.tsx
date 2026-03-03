@@ -288,7 +288,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
 
         // Sport & event fields
         ...(formData.ethnicity && { ethnicity: formData.ethnicity }),
-        ...(formData.sport_start_date && { sport_start_date: formData.sport_start_date }),
+        ...(formData.sport_start_date && { sport_start_date: Number(formData.sport_start_date) }),
         ...(formData.target_event && { target_event: formData.target_event }),
 
         // Coach assignments
@@ -481,14 +481,17 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
 
                 <div>
                   <label className="block text-sm font-medium text-black mb-2">
-                    Sport Start Date
+                    Age Started Sport
                   </label>
                   <input
-                    type="date"
+                    type="number"
                     name="sport_start_date"
                     value={formData.sport_start_date}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 text-gray-400 valid:text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="e.g. 8"
+                    min={1}
+                    max={99}
+                    className="w-full px-3 py-2 placeholder:text-gray-400 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
 
@@ -680,17 +683,19 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-black mb-2">
-                    Carding Level <span className="text-red-500">*</span>
+                    Athlete Status <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="carding_status"
                     value={formData.carding_status}
                     onChange={handleInputChange}
-                    placeholder="Carding Level"
-                    className="w-full px-3 py-2 placeholder:text-gray-400 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-gray-400 valid:text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
-                  />
+                  >
+                    <option value="">Select status</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
                 </div>
 
                 <div>

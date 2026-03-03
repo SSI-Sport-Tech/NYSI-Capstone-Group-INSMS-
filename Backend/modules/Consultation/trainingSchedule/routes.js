@@ -1,11 +1,9 @@
 // Backend/modules/Consultation/trainingSchedule/routes.js
 import { Router } from "express";
 import { getTrainingSchedule, upsertTrainingSchedule } from "./controller.js";
+import { authenticateToken } from "../../Auth/authMiddleware.js";
 
 const router = Router();
-
-// If you have auth middleware, mount it here, e.g.
-// router.use(requireAuth);
 
 /**
  * @swagger
@@ -74,6 +72,6 @@ const router = Router();
  */
 
 router.get("/sessions/:sessionId/training-schedule", getTrainingSchedule);
-router.put("/sessions/:sessionId/training-schedule", upsertTrainingSchedule);
+router.put("/sessions/:sessionId/training-schedule", authenticateToken, upsertTrainingSchedule);
 
 export default router;

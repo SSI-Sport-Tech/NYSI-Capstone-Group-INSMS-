@@ -17,7 +17,7 @@ import {
     try {
       const { sessionId } = req.params;
       const payload = req.body;
-      const data = await upsertMealLogBySessionId(sessionId, payload);
+      const data = await upsertMealLogBySessionId(sessionId, payload, req.user.userId);
       res.json({ data });
     } catch (err) {
       next(err);

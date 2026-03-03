@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool, { withUserContext } from "../../../config/db.js";
 
 // ============================================================================
 // CONSULTATION DETAILS CARD SERVICES
@@ -107,26 +107,25 @@ export async function getConsultationDetails(sessionId) {
  * @param {Object} data - Fields to set
  * @returns {Promise<Object>} Upserted session_note row
  */
-export async function upsertConsultationDetails(sessionId, data) {
-    // Check if session_note already exists for this session
-    const noteCheck = await pool.query(
-        'SELECT id FROM consultation.session_note WHERE sessions_id = $1',
-        [sessionId]
-    );
+export async function upsertConsultationDetails(sessionId, data, userId) {
+    return withUserContext(userId, async (client) => {
+        const noteCheck = await client.query(
+            'SELECT id FROM consultation.session_note WHERE sessions_id = $1',
+            [sessionId]
+        );
 
-    if (noteCheck.rows.length > 0) {
-        // UPDATE existing row
-        return updateSessionNote(sessionId, data);
-    } else {
-        // INSERT new row
-        return insertSessionNote(sessionId, data);
-    }
+        if (noteCheck.rows.length > 0) {
+            return updateSessionNote(client, sessionId, data);
+        } else {
+            return insertSessionNote(client, sessionId, data);
+        }
+    });
 }
 
 /**
  * Insert a new session_note row
  */
-async function insertSessionNote(sessionId, data) {
+async function insertSessionNote(client, sessionId, data) {
     const columns = ['sessions_id'];
     const placeholders = ['$1'];
     const values = [sessionId];
@@ -141,7 +140,7 @@ async function insertSessionNote(sessionId, data) {
         }
     }
 
-    const result = await pool.query(`
+    const result = await client.query(`
         INSERT INTO consultation.session_note (${columns.join(', ')})
         VALUES (${placeholders.join(', ')})
         RETURNING *
@@ -153,7 +152,7 @@ async function insertSessionNote(sessionId, data) {
 /**
  * Update an existing session_note row (dynamic SET)
  */
-async function updateSessionNote(sessionId, data) {
+async function updateSessionNote(client, sessionId, data) {
     const fields = [];
     const values = [];
     let paramCounter = 1;
@@ -169,7 +168,7 @@ async function updateSessionNote(sessionId, data) {
     if (fields.length === 0) return null;
 
     values.push(sessionId);
-    const result = await pool.query(`
+    const result = await client.query(`
         UPDATE consultation.session_note
         SET ${fields.join(', ')}
         WHERE sessions_id = $${paramCounter}

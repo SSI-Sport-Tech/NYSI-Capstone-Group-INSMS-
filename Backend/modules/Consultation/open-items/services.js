@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool, { withUserContext } from "../../../config/db.js";
 
 // ============================================================================
 // OPEN ITEMS CARD SERVICES
@@ -52,7 +52,7 @@ export async function getOpenItemsBySessionId(sessionId) {
  * @param {Object} data - Open item fields
  * @returns {Promise<Object>} Created open item row
  */
-export async function createOpenItem(data) {
+export async function createOpenItem(data, userId) {
     const query = `
         INSERT INTO consultation.session_open_item (
             sessions_id, open_item_status_id, description,
@@ -61,16 +61,18 @@ export async function createOpenItem(data) {
         RETURNING *
     `;
 
-    const result = await pool.query(query, [
-        data.sessions_id,
-        data.open_item_status_id,
-        data.description || null,
-        data.open_item || null,
-        data.owner || null,
-        data.due_date || null,
-        data.other_remarks || null,
-    ]);
-    return result.rows[0];
+    return withUserContext(userId, async (client) => {
+        const result = await client.query(query, [
+            data.sessions_id,
+            data.open_item_status_id,
+            data.description || null,
+            data.open_item || null,
+            data.owner || null,
+            data.due_date || null,
+            data.other_remarks || null,
+        ]);
+        return result.rows[0];
+    });
 }
 
 /**
@@ -79,7 +81,7 @@ export async function createOpenItem(data) {
  * @param {Object} updateData - Fields to update
  * @returns {Promise<Object|null>} Updated open item or null
  */
-export async function updateOpenItem(openItemId, updateData) {
+export async function updateOpenItem(openItemId, updateData, userId) {
     const fields = [];
     const values = [];
     let paramCounter = 1;
@@ -114,8 +116,10 @@ export async function updateOpenItem(openItemId, updateData) {
         RETURNING *
     `;
 
-    const result = await pool.query(query, values);
-    return result.rows.length > 0 ? result.rows[0] : null;
+    return withUserContext(userId, async (client) => {
+        const result = await client.query(query, values);
+        return result.rows.length > 0 ? result.rows[0] : null;
+    });
 }
 
 /**
@@ -123,13 +127,15 @@ export async function updateOpenItem(openItemId, updateData) {
  * @param {Array<string>} ids - Array of UUIDs
  * @returns {Promise<Array>} Array of deleted rows
  */
-export async function deleteOpenItems(ids) {
+export async function deleteOpenItems(ids, userId) {
     const query = `
         DELETE FROM consultation.session_open_item
         WHERE id = ANY($1::uuid[])
         RETURNING id
     `;
 
-    const result = await pool.query(query, [ids]);
-    return result.rows;
+    return withUserContext(userId, async (client) => {
+        const result = await client.query(query, [ids]);
+        return result.rows;
+    });
 }

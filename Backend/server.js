@@ -10,6 +10,7 @@ import athleteRoutes from "./modules/AMS/index.js";
 import authRoutes from "./modules/Auth/routes.js";
 import consultationRoutes from "./modules/Consultation/index.js";
 import { verifyEmailConfig } from "./modules/Auth/emailService.js";
+import { ZodError } from "zod";
 
 // Load environment variables
 dotenv.config();
@@ -271,6 +272,17 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error("Error:", err);
+
+  // Zod validation errors → 400 Bad Request
+  if (err instanceof ZodError) {
+    return res.status(400).json({
+      error: "Validation failed",
+      details: err.errors.map((e) => ({
+        field: e.path.join("."),
+        message: e.message,
+      })),
+    });
+  }
 
   res.status(err.status || 500).json({
     error: err.message || "Internal server error",

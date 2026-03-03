@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool, { withUserContext } from "../../../config/db.js";
 
 async function assertSessionExists(sessionId) {
   const r = await pool.query(
@@ -66,16 +66,8 @@ export async function getMealLogBySessionId(sessionId) {
   return dbRowToApi(r.rows[0]);
 }
 
-export async function upsertMealLogBySessionId(sessionId, payload) {
+export async function upsertMealLogBySessionId(sessionId, payload, userId) {
   await assertSessionExists(sessionId);
-
-  const existing = await pool.query(
-    `SELECT id
-     FROM consultation.session_meal_log
-     WHERE sessions_id = $1
-     LIMIT 1`,
-    [sessionId]
-  );
 
   const values = {
     am_breakfast_food: payload?.amBreakfast?.food ?? null,
@@ -96,107 +88,84 @@ export async function upsertMealLogBySessionId(sessionId, payload) {
     other_remarks: payload?.otherRemarks ?? null,
   };
 
-  let row;
-
-  if (existing.rowCount === 0) {
-    const r = await pool.query(
-      `INSERT INTO consultation.session_meal_log (
-        sessions_id,
-        am_breakfast_food, am_breakfast_macro,
-        am_training_food, am_training_macro,
-        pm_lunch_food, pm_lunch_macro,
-        pm_training_food, pm_training_macro,
-        pm_dinner_food, pm_dinner_macro,
-        supper_food, supper_macro,
-        total_carbohydrate_intake, total_protein_intake, total_fat_intake,
-        other_remarks
-      ) VALUES (
-        $1,
-        $2, $3,
-        $4, $5,
-        $6, $7,
-        $8, $9,
-        $10, $11,
-        $12, $13,
-        $14, $15, $16,
-        $17
-      )
-      RETURNING *`,
-      [
-        sessionId,
-
-        values.am_breakfast_food,
-        values.am_breakfast_macro,
-
-        values.am_training_food,
-        values.am_training_macro,
-
-        values.pm_lunch_food,
-        values.pm_lunch_macro,
-
-        values.pm_training_food,
-        values.pm_training_macro,
-
-        values.pm_dinner_food,
-        values.pm_dinner_macro,
-
-        values.supper_food,
-        values.supper_macro,
-
-        values.total_carbohydrate_intake,
-        values.total_protein_intake,
-        values.total_fat_intake,
-
-        values.other_remarks,
-      ]
+  const row = await withUserContext(userId, async (client) => {
+    const existing = await client.query(
+      `SELECT id FROM consultation.session_meal_log WHERE sessions_id = $1 LIMIT 1`,
+      [sessionId]
     );
-    row = r.rows[0];
-  } else {
-    const r = await pool.query(
-      `UPDATE consultation.session_meal_log
-       SET
-         am_breakfast_food = $2, am_breakfast_macro = $3,
-         am_training_food  = $4, am_training_macro  = $5,
-         pm_lunch_food     = $6, pm_lunch_macro     = $7,
-         pm_training_food  = $8, pm_training_macro  = $9,
-         pm_dinner_food    = $10, pm_dinner_macro   = $11,
-         supper_food       = $12, supper_macro      = $13,
-         total_carbohydrate_intake = $14,
-         total_protein_intake      = $15,
-         total_fat_intake          = $16,
-         other_remarks             = $17
-       WHERE sessions_id = $1
-       RETURNING *`,
-      [
-        sessionId,
 
-        values.am_breakfast_food,
-        values.am_breakfast_macro,
-
-        values.am_training_food,
-        values.am_training_macro,
-
-        values.pm_lunch_food,
-        values.pm_lunch_macro,
-
-        values.pm_training_food,
-        values.pm_training_macro,
-
-        values.pm_dinner_food,
-        values.pm_dinner_macro,
-
-        values.supper_food,
-        values.supper_macro,
-
-        values.total_carbohydrate_intake,
-        values.total_protein_intake,
-        values.total_fat_intake,
-
-        values.other_remarks,
-      ]
-    );
-    row = r.rows[0];
-  }
+    if (existing.rowCount === 0) {
+      const r = await client.query(
+        `INSERT INTO consultation.session_meal_log (
+          sessions_id,
+          am_breakfast_food, am_breakfast_macro,
+          am_training_food, am_training_macro,
+          pm_lunch_food, pm_lunch_macro,
+          pm_training_food, pm_training_macro,
+          pm_dinner_food, pm_dinner_macro,
+          supper_food, supper_macro,
+          total_carbohydrate_intake, total_protein_intake, total_fat_intake,
+          other_remarks
+        ) VALUES (
+          $1,
+          $2, $3,
+          $4, $5,
+          $6, $7,
+          $8, $9,
+          $10, $11,
+          $12, $13,
+          $14, $15, $16,
+          $17
+        )
+        RETURNING *`,
+        [
+          sessionId,
+          values.am_breakfast_food, values.am_breakfast_macro,
+          values.am_training_food, values.am_training_macro,
+          values.pm_lunch_food, values.pm_lunch_macro,
+          values.pm_training_food, values.pm_training_macro,
+          values.pm_dinner_food, values.pm_dinner_macro,
+          values.supper_food, values.supper_macro,
+          values.total_carbohydrate_intake,
+          values.total_protein_intake,
+          values.total_fat_intake,
+          values.other_remarks,
+        ]
+      );
+      return r.rows[0];
+    } else {
+      const r = await client.query(
+        `UPDATE consultation.session_meal_log
+         SET
+           am_breakfast_food = $2, am_breakfast_macro = $3,
+           am_training_food  = $4, am_training_macro  = $5,
+           pm_lunch_food     = $6, pm_lunch_macro     = $7,
+           pm_training_food  = $8, pm_training_macro  = $9,
+           pm_dinner_food    = $10, pm_dinner_macro   = $11,
+           supper_food       = $12, supper_macro      = $13,
+           total_carbohydrate_intake = $14,
+           total_protein_intake      = $15,
+           total_fat_intake          = $16,
+           other_remarks             = $17
+         WHERE sessions_id = $1
+         RETURNING *`,
+        [
+          sessionId,
+          values.am_breakfast_food, values.am_breakfast_macro,
+          values.am_training_food, values.am_training_macro,
+          values.pm_lunch_food, values.pm_lunch_macro,
+          values.pm_training_food, values.pm_training_macro,
+          values.pm_dinner_food, values.pm_dinner_macro,
+          values.supper_food, values.supper_macro,
+          values.total_carbohydrate_intake,
+          values.total_protein_intake,
+          values.total_fat_intake,
+          values.other_remarks,
+        ]
+      );
+      return r.rows[0];
+    }
+  });
 
   return dbRowToApi(row);
 }

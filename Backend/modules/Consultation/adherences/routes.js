@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getAdherences, patchAdherences } from "./controller.js";
 import { validateGetSessionId, validatePatchAdherences } from "./validation.js";
+import { authenticateToken } from "../../Auth/authMiddleware.js";
 
 const router = Router();
 
@@ -75,6 +76,6 @@ const router = Router();
  */
 
 router.get("/sessions/:sessionId/adherences", validateGetSessionId, getAdherences);
-router.patch("/sessions/:sessionId/adherences", validatePatchAdherences, patchAdherences);
+router.patch("/sessions/:sessionId/adherences", authenticateToken, validatePatchAdherences, patchAdherences);
 
 export default router;

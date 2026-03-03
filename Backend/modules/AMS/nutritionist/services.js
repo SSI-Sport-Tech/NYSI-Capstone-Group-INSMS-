@@ -1,5 +1,6 @@
 import pool, { withUserContext } from "../../../config/db.js";
 
+
 // ============================================================================
 // NUTRITIONIST CRUD SERVICES
 // ============================================================================
@@ -58,16 +59,18 @@ export async function createNutritionist(name, userId) {
  * @param {string} name - New name
  * @returns {Promise<Object|null>} Updated row or null
  */
-export async function updateNutritionist(id, name) {
+export async function updateNutritionist(id, name, userId) {
   const query = `
-        UPDATE AMS.Nutritionist 
-        SET name = $1 
-        WHERE id = $2 
+        UPDATE AMS.Nutritionist
+        SET name = $1
+        WHERE id = $2
         RETURNING *
     `;
 
-  const result = await pool.query(query, [name, id]);
-  return result.rows.length > 0 ? result.rows[0] : null;
+  return withUserContext(userId, async (client) => {
+    const result = await client.query(query, [name, id]);
+    return result.rows.length > 0 ? result.rows[0] : null;
+  });
 }
 
 /**

@@ -8,36 +8,27 @@ import SupplementInfo from "@/components/SSS/SupplementInfo";
 import NutritionalInfo from "@/components/SSS/NutritionalInfo";
 import InventoryBatches from "@/components/SSS/InventoryBatches";
 import { ArrowLeft, Edit, Search } from "lucide-react";
+import EditSupplementModal from "@/components/SSS/EditSupplementModal";
 
 interface Supplement {
   id: string;
   supplement_name: string;
   supplement_brand: string;
   supplement_packaging_form: string;
+  supplement_packaging_form_id?: string;
   supplement_status: string;
+  supplement_status_id?: string;
   batch_testing_org: string | null;
   product_source_url: string | null;
   description?: string;
   serving_size?: string;
   ingredients?: string;
+  supplement_ingredient_raw?: string[];
   notes?: string;
   warning_label?: string;
   certifications?: string;
-  nutritional_info_per_100g?: {
-    energy_kcal?: number;
-    protein_g?: number;
-    fat_g?: number;
-    carbohydrate_g?: number;
-    saturated_fat?: number;
-    trans_fat?: number;
-    cholesterol?: number;
-    total_sugars?: number;
-    dietary_fibre?: number;
-    sodium?: number;
-  };
-  nutritional_info_per_serving?: {
-    [key: string]: number; // Dynamic key-value pairs like vitamin_d_iu, vitamin_d_mcg
-  };
+  nutritional_info_per_100g?: Record<string, unknown>;
+  nutritional_info_per_serving?: Record<string, unknown>;
 }
 
 interface Batch {
@@ -60,6 +51,7 @@ export default function SupplementDetailPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   useEffect(() => {
     if (params.id) {
@@ -91,7 +83,10 @@ export default function SupplementDetailPage() {
         supplement_brand: supplementData.supplement_brand,
         supplement_packaging_form:
           supplementData.supplement_packaging_form || "",
+        supplement_packaging_form_id:
+          supplementData.supplement_packaging_form_id || undefined,
         supplement_status: supplementData.supplement_status || "",
+        supplement_status_id: supplementData.supplement_status_id || undefined,
         batch_testing_org: supplementData.batch_testing_org || null,
         product_source_url: supplementData.product_source_url || null,
         description: supplementData.supplement_description || undefined,
@@ -100,6 +95,11 @@ export default function SupplementDetailPage() {
         ingredients: Array.isArray(supplementData.supplement_ingredient)
           ? supplementData.supplement_ingredient.join(", ")
           : supplementData.supplement_ingredient || undefined,
+        supplement_ingredient_raw: Array.isArray(
+          supplementData.supplement_ingredient,
+        )
+          ? supplementData.supplement_ingredient
+          : undefined,
         notes: supplementData.supplement_additional_information || undefined,
         warning_label: supplementData.supplement_warning_label || undefined,
         certifications: supplementData.supplement_certifications || undefined,
@@ -179,7 +179,10 @@ export default function SupplementDetailPage() {
 
           {/* Action Buttons */}
           <div className="mb-8 flex items-center gap-3">
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+            <button
+              onClick={() => setIsEditOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+            >
               <Edit className="w-4 h-4" />
               Edit
             </button>
@@ -216,6 +219,14 @@ export default function SupplementDetailPage() {
           />
         </div>
       </div>
+
+      {/* Edit Supplement Modal */}
+      <EditSupplementModal
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        onSuccess={loadSupplementDetails}
+        supplement={supplement}
+      />
     </DashboardLayout>
   );
 }

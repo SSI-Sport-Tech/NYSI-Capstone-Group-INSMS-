@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool, { withUserContext } from "../../../config/db.js";
 
 // ============================================================================
 // CUSTOM ERROR
@@ -144,14 +144,9 @@ export async function getPrescriptionById(id) {
  * @returns {Promise<Object>} Created prescription with joined data
  * @throws {InsufficientStockError} If prescribed_quantity exceeds available stock
  */
-export async function createPrescription(data) {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-
-        // ------------------------------------------------------------------
+export async function createPrescription(data, userId) {
+    return withUserContext(userId, async (client) => {
         // 1. Lock the batch row and read initial quantity
-        // ------------------------------------------------------------------
         const batchResult = await client.query(`
             SELECT batch_initial_quantity
             FROM sss.inventory_batch
@@ -161,9 +156,7 @@ export async function createPrescription(data) {
 
         const initial = batchResult.rows[0].batch_initial_quantity;
 
-        // ------------------------------------------------------------------
         // 2. Sum existing tickets for this batch
-        // ------------------------------------------------------------------
         const ticketSumResult = await client.query(`
             SELECT COALESCE(SUM(quantity), 0) AS booked
             FROM sss.inventory_ticket
@@ -173,16 +166,12 @@ export async function createPrescription(data) {
         const booked = parseInt(ticketSumResult.rows[0].booked);
         const available = initial - booked;
 
-        // ------------------------------------------------------------------
         // 3. Stock check
-        // ------------------------------------------------------------------
         if (data.prescribed_quantity > available) {
             throw new InsufficientStockError(available);
         }
 
-        // ------------------------------------------------------------------
         // 4. Create prescription row
-        // ------------------------------------------------------------------
         const prescriptionResult = await client.query(`
             INSERT INTO consultation.session_prescription (
                 sessions_id, batch_id,
@@ -203,17 +192,13 @@ export async function createPrescription(data) {
         ]);
         const prescriptionId = prescriptionResult.rows[0].id;
 
-        // ------------------------------------------------------------------
         // 5. Get athlete_id from the session
-        // ------------------------------------------------------------------
         const sessionResult = await client.query(`
             SELECT athlete_id FROM consultation.sessions WHERE id = $1
         `, [data.sessions_id]);
         const athleteId = sessionResult.rows[0].athlete_id;
 
-        // ------------------------------------------------------------------
         // 6. Get BOOKED ticket status UUID
-        // ------------------------------------------------------------------
         const ticketStatusResult = await client.query(`
             SELECT id FROM sss.ticket_status_lookup
             WHERE UPPER(ticket_status) = 'BOOKED' AND is_active = true
@@ -224,29 +209,18 @@ export async function createPrescription(data) {
         }
         const ticketStatusId = ticketStatusResult.rows[0].id;
 
-        // ------------------------------------------------------------------
         // 7. Create inventory ticket
-        // ------------------------------------------------------------------
         await client.query(`
             INSERT INTO sss.inventory_ticket (
                 inventory_batch_id, athlete_id, ticket_status_id, prescription_id, quantity
             ) VALUES ($1, $2, $3, $4, $5)
         `, [data.batch_id, athleteId, ticketStatusId, prescriptionId, data.prescribed_quantity]);
 
-        // ------------------------------------------------------------------
         // 8. Recalculate and correct batch stock status
-        // ------------------------------------------------------------------
         await recalculateBatchStatus(client, data.batch_id);
 
-        await client.query('COMMIT');
         return getPrescriptionById(prescriptionId);
-
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
-    }
+    });
 }
 
 // ============================================================================
@@ -265,16 +239,11 @@ export async function createPrescription(data) {
  * @returns {Promise<Object|null>} Updated prescription or null if no fields given
  * @throws {InsufficientStockError} If new prescribed_quantity exceeds available stock
  */
-export async function updatePrescription(id, updateData) {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-
+export async function updatePrescription(id, updateData, userId) {
+    return withUserContext(userId, async (client) => {
         let didUpdate = false;
 
-        // ------------------------------------------------------------------
         // 1. Update prescription table fields (if any)
-        // ------------------------------------------------------------------
         const fieldMapping = {
             batch_id: updateData.batch_id,
             dosage: updateData.dosage,
@@ -308,11 +277,8 @@ export async function updatePrescription(id, updateData) {
             didUpdate = true;
         }
 
-        // ------------------------------------------------------------------
         // 2. Handle prescribed_quantity (ticket update + batch status)
-        // ------------------------------------------------------------------
         if (updateData.prescribed_quantity !== undefined) {
-            // Get the linked ticket and lock its batch row
             const ticketResult = await client.query(`
                 SELECT it.id AS ticket_id, it.inventory_batch_id
                 FROM sss.inventory_ticket it
@@ -323,13 +289,11 @@ export async function updatePrescription(id, updateData) {
             if (ticketResult.rows.length > 0) {
                 const { ticket_id, inventory_batch_id: batchId } = ticketResult.rows[0];
 
-                // Lock the batch
                 const batchResult = await client.query(`
                     SELECT batch_initial_quantity FROM sss.inventory_batch WHERE id = $1 FOR UPDATE
                 `, [batchId]);
                 const initial = batchResult.rows[0].batch_initial_quantity;
 
-                // Sum all tickets for this batch EXCEPT the current one
                 const otherBookedResult = await client.query(`
                     SELECT COALESCE(SUM(quantity), 0) AS other_booked
                     FROM sss.inventory_ticket
@@ -342,29 +306,19 @@ export async function updatePrescription(id, updateData) {
                     throw new InsufficientStockError(availableForThis);
                 }
 
-                // Update ticket quantity
                 await client.query(`
                     UPDATE sss.inventory_ticket SET quantity = $1 WHERE id = $2
                 `, [updateData.prescribed_quantity, ticket_id]);
 
-                // Recalculate batch status
                 await recalculateBatchStatus(client, batchId);
 
                 didUpdate = true;
             }
         }
 
-        await client.query('COMMIT');
-
         if (!didUpdate) return null;
         return getPrescriptionById(id);
-
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
-    }
+    });
 }
 
 // ============================================================================
@@ -379,11 +333,8 @@ export async function updatePrescription(id, updateData) {
  * @param {string} id - UUID of prescription
  * @returns {Promise<string|null>} Deleted prescription ID or null
  */
-export async function deletePrescription(id) {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-
+export async function deletePrescription(id, userId) {
+    return withUserContext(userId, async (client) => {
         // Get the batch_id from the linked ticket before deleting
         const ticketResult = await client.query(`
             SELECT inventory_batch_id FROM sss.inventory_ticket WHERE prescription_id = $1
@@ -405,13 +356,6 @@ export async function deletePrescription(id) {
             await recalculateBatchStatus(client, batchId);
         }
 
-        await client.query('COMMIT');
         return result.rows.length > 0 ? result.rows[0].id : null;
-
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
-    }
+    });
 }

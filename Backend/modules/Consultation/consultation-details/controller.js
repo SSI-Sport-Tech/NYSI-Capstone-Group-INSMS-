@@ -60,7 +60,7 @@ export async function createConsultationDetails(req, res) {
             });
         }
 
-        const result = await services.upsertConsultationDetails(sessions_id, detailFields);
+        const result = await services.upsertConsultationDetails(sessions_id, detailFields, req.user.userId);
 
         res.status(201).json({
             message: 'Consultation details saved successfully',
@@ -109,7 +109,7 @@ export async function updateConsultationDetails(req, res) {
             });
         }
 
-        const result = await services.upsertConsultationDetails(sessionId, validated);
+        const result = await services.upsertConsultationDetails(sessionId, validated, req.user.userId);
 
         if (!result) {
             return res.status(400).json({ error: 'No fields to update' });

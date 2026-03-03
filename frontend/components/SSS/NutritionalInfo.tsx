@@ -178,10 +178,6 @@ const NutritionalInfo: React.FC<NutritionalInfoProps> = ({
             }`}
           ></div>
         )}
-        {/* Third dot only shows if there's potential for more data views */}
-        {hasPer100gData && hasPerServingData && (
-          <div className="w-2 h-2 bg-gray-200 rounded-full"></div>
-        )}
       </div>
     </div>
   );

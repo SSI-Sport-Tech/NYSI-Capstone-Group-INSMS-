@@ -12,6 +12,8 @@ interface SupplementInfoProps {
     serving_size?: string;
     ingredients?: string;
     notes?: string;
+    warning_label?: string;
+    certifications?: string;
   };
 }
 
@@ -102,6 +104,26 @@ const SupplementInfo: React.FC<SupplementInfoProps> = ({ supplement }) => {
           </dt>
           <dd className="text-sm text-gray-900 break-words">
             {supplement.notes || "N/A"}
+          </dd>
+        </div>
+
+        {/* Warning Label */}
+        <div>
+          <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+            Warning Label
+          </dt>
+          <dd className="text-sm text-gray-900 break-words">
+            {supplement.warning_label || "N/A"}
+          </dd>
+        </div>
+
+        {/* Certifications */}
+        <div>
+          <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+            Certifications
+          </dt>
+          <dd className="text-sm text-gray-900 break-words">
+            {supplement.certifications || "N/A"}
           </dd>
         </div>
       </div>

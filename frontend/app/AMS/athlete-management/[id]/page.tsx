@@ -19,7 +19,7 @@ interface AthleteProfile {
     sport_name: string;
     ethnicity?: string | null;
     target_event?: string | null;
-    sport_start_date?: string | null;
+    sport_start_date?: number | null;
   };
   registry: {
     id: string;
@@ -203,13 +203,15 @@ export default function AthleteDetailPage() {
     return d.toISOString().split("T")[0];
   };
 
-  const getYearsInSport = (sportStartDate: string | null | undefined) => {
-    if (!sportStartDate) return "-";
-    const start = new Date(sportStartDate);
+  const getYearsInSport = (startAge: number | null | undefined, dob: string | null | undefined) => {
+    if (startAge == null || !dob) return "-";
+    const birthDate = new Date(dob);
     const now = new Date();
-    const years = Math.floor(
-      (now.getTime() - start.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
+    const currentAge = Math.floor(
+      (now.getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
     );
+    const years = currentAge - startAge;
+    if (years < 0) return "-";
     if (years < 1) return "Less than 1 year";
     return years === 1 ? "1 year" : `${years} years`;
   };
@@ -224,7 +226,7 @@ export default function AthleteDetailPage() {
       ethnicity: profile.athlete.ethnicity || "",
       sport_id: profile.athlete.sport_id || "",
       target_event: profile.athlete.target_event || "",
-      sport_start_date: toInputDate(profile.athlete.sport_start_date),
+      sport_start_date: profile.athlete.sport_start_date?.toString() ?? "",
       carding_status: profile.registry?.carding_status || "",
       medical_clearance: profile.registry?.medical_clearance ?? false,
       approved_start_date: toInputDate(profile.registry?.approved_start_date),
@@ -285,7 +287,7 @@ export default function AthleteDetailPage() {
       ethnicity: editForm.ethnicity || undefined,
       sport_id: editForm.sport_id || undefined,
       target_event: editForm.target_event || undefined,
-      sport_start_date: editForm.sport_start_date || undefined,
+      sport_start_date: editForm.sport_start_date ? Number(editForm.sport_start_date) : undefined,
       carding_status: editForm.carding_status || undefined,
       medical_clearance: editForm.medical_clearance,
       approved_start_date: editForm.approved_start_date || undefined,
@@ -672,12 +674,35 @@ export default function AthleteDetailPage() {
                         )}
                       </div>
 
-                      {/* Status (display-only) */}
+                      {/* Athlete Status */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Status
+                          Athlete Status
                         </label>
-                        <p className="text-sm text-gray-900">Active</p>
+                        {isEditing && editForm ? (
+                          <select
+                            value={editForm.carding_status}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, carding_status: e.target.value })
+                            }
+                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                          </select>
+                        ) : (
+                          profile.registry?.carding_status ? (
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              profile.registry.carding_status.toLowerCase() === "active"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}>
+                              {profile.registry.carding_status}
+                            </span>
+                          ) : (
+                            <p className="text-sm text-gray-400">-</p>
+                          )
+                        )}
                       </div>
                     </div>
                   </div>
@@ -731,28 +756,6 @@ export default function AthleteDetailPage() {
                             Number of Reminders
                           </label>
                           <p className="text-sm text-gray-900">-</p>
-                        </div>
-
-                        {/* Carding Level */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Carding Level
-                          </label>
-                          {isEditing && editForm ? (
-                            <input
-                              type="text"
-                              value={editForm.carding_status}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, carding_status: e.target.value })
-                              }
-                              placeholder="e.g. Active"
-                              className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900">
-                              {profile.registry.carding_status}
-                            </p>
-                          )}
                         </div>
 
                         {/* Coach Assigned */}
@@ -931,23 +934,26 @@ export default function AthleteDetailPage() {
                         )}
                       </div>
 
-                      {/* Sport Start Date */}
+                      {/* Age Started Sport */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Sport Start Date
+                          Age Started Sport
                         </label>
                         {isEditing && editForm ? (
                           <input
-                            type="date"
+                            type="number"
                             value={editForm.sport_start_date}
                             onChange={(e) =>
                               setEditForm({ ...editForm, sport_start_date: e.target.value })
                             }
+                            placeholder="e.g. 8"
+                            min={1}
+                            max={99}
                             className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         ) : (
                           <p className="text-sm text-gray-900">
-                            {formatDate(profile.athlete.sport_start_date)}
+                            {profile.athlete.sport_start_date != null ? `Age ${profile.athlete.sport_start_date}` : "-"}
                           </p>
                         )}
                       </div>
@@ -960,8 +966,9 @@ export default function AthleteDetailPage() {
                         <p className="text-sm text-gray-900">
                           {getYearsInSport(
                             isEditing && editForm
-                              ? editForm.sport_start_date || profile.athlete.sport_start_date
+                              ? (editForm.sport_start_date ? Number(editForm.sport_start_date) : profile.athlete.sport_start_date)
                               : profile.athlete.sport_start_date,
+                            profile.athlete.date_of_birth,
                           )}
                         </p>
                       </div>

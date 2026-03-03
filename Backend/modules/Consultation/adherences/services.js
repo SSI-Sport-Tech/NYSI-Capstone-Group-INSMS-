@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool, { withUserContext } from "../../../config/db.js";
 
 async function assertSessionExists(sessionId) {
   const { rows } = await pool.query(
@@ -12,14 +12,15 @@ async function assertSessionExists(sessionId) {
   }
 }
 
-async function getOrCreateNutritionReview(sessionId) {
-  const existing = await pool.query(
+async function getOrCreateNutritionReview(sessionId, client) {
+  const q = client ?? pool;
+  const existing = await q.query(
     `SELECT * FROM consultation.session_nutrition_review WHERE sessions_id = $1 LIMIT 1`,
     [sessionId]
   );
   if (existing.rows.length) return existing.rows[0];
 
-  const created = await pool.query(
+  const created = await q.query(
     `INSERT INTO consultation.session_nutrition_review (sessions_id)
      VALUES ($1)
      RETURNING *`,
@@ -93,9 +94,8 @@ export async function getAdherencesBySessionId(sessionId) {
   return mapResponse(rows[0]);
 }
 
-export async function patchAdherencesBySessionId(sessionId, payload) {
+export async function patchAdherencesBySessionId(sessionId, payload, userId) {
   await assertSessionExists(sessionId);
-  await getOrCreateNutritionReview(sessionId);
 
   const fields = {
     training_physical_activity_level_pal: payload.pal,
@@ -127,14 +127,19 @@ export async function patchAdherencesBySessionId(sessionId, payload) {
     }
   }
 
-  if (setParts.length) {
-    await pool.query(
-      `UPDATE consultation.session_nutrition_review
-       SET ${setParts.join(", ")}
-       WHERE sessions_id = $1`,
-      values
-    );
-  }
+  await withUserContext(userId, async (client) => {
+    // Ensure row exists inside the transaction so INSERT inherits user context
+    await getOrCreateNutritionReview(sessionId, client);
+
+    if (setParts.length) {
+      await client.query(
+        `UPDATE consultation.session_nutrition_review
+         SET ${setParts.join(", ")}
+         WHERE sessions_id = $1`,
+        values
+      );
+    }
+  });
 
   return getAdherencesBySessionId(sessionId);
 }
