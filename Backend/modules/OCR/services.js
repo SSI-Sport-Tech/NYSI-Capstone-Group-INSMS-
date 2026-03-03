@@ -673,3 +673,44 @@ export async function analyzeFromText(rawText, generateVectors = true) {
     }
   }
 }
+
+/**
+ * Vectorize pre-structured nutrition data (no OCR or LLM step)
+ * Calls Python /api/ocr/vectorize endpoint
+ *
+ * @param {Object} structuredData - Structured data matching the LLM output shape:
+ *   { supplement_ingredient, nutritional_info_per_serving, nutritional_info_per_100g, serving_size_grams }
+ * @returns {Promise<Object>} { success, vectors: { vector_per_serving, vector_per_100g, per_100g_calculated } }
+ */
+export async function vectorizeStructuredData(structuredData) {
+  try {
+    console.log(`[OCR Service] Calling Python vectorize`);
+    const response = await pythonClient.post("/api/ocr/vectorize", {
+      structured_data: structuredData,
+      include_ingredients: true,
+    });
+
+    console.log(`[OCR Service] Python vectorize responded successfully`);
+    return response.data;
+  } catch (error) {
+    console.error("[OCR Service] Error calling Python vectorize:", error.message);
+
+    if (error.code === "ECONNRESET" || error.code === "ECONNREFUSED") {
+      throw new Error(
+        "Python OCR service is not available. Please ensure it is running on port 8001.",
+      );
+    } else if (error.code === "ETIMEDOUT") {
+      throw new Error("Python OCR service timed out. Please try again.");
+    } else if (error.response) {
+      throw new Error(
+        `Python OCR service error: ${error.response.status} - ${error.response.data?.detail || "Unknown error"}`,
+      );
+    } else if (error.request) {
+      throw new Error(
+        "No response from Python OCR service. Please check if it is running.",
+      );
+    } else {
+      throw new Error(`OCR service error: ${error.message}`);
+    }
+  }
+}

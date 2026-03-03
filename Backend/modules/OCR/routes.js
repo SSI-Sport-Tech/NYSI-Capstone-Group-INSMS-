@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import { analyzeLabel, extractInfo, verifySupplements, runOCR, ocrOnly, analyzeText } from "./controller.js";
+import { analyzeLabel, extractInfo, verifySupplements, runOCR, ocrOnly, analyzeText, findAlternatives } from "./controller.js";
 import { MAX_FILE_SIZE, ALLOWED_MIME_TYPES } from "./validation.js";
 
 const router = express.Router();
@@ -131,6 +131,68 @@ router.post("/ocr-only", uploadSingle, ocrOnly);
  *         description: Request timeout
  */
 router.post("/analyze-text", analyzeText);
+
+/**
+ * @swagger
+ * /api/ocr/find-alternatives:
+ *   post:
+ *     summary: Find similar supplements from verified nutritional data
+ *     description: |
+ *       Step 2 of the editable OCR flow. Submit user-verified ingredients and
+ *       nutritional information to vectorize the data and search the supplement
+ *       database for similar products (≥ 60% similarity threshold).
+ *     tags: [OCR]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ingredients:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: List of ingredient names
+ *               nutritional_per_serving:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     amount:
+ *                       type: string
+ *               nutritional_per_100g:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     amount:
+ *                       type: string
+ *               serving_size_grams:
+ *                 type: number
+ *                 nullable: true
+ *               page:
+ *                 type: integer
+ *                 default: 1
+ *               per_page:
+ *                 type: integer
+ *                 default: 10
+ *                 maximum: 50
+ *     responses:
+ *       200:
+ *         description: Similar supplements found
+ *       422:
+ *         description: Not enough data to generate vectors
+ *       503:
+ *         description: Python OCR service unavailable
+ *       504:
+ *         description: Request timeout
+ */
+router.post("/find-alternatives", findAlternatives);
 
 /**
  * @swagger

@@ -4,10 +4,9 @@ import {
     extractBatchIdFromImage,
     verifyBatchTesting,
     findSimilarSupplements,
-  
-    // NEW (we will add these to services.js next)
     extractTextOnlyFromImage,
     analyzeFromText,
+    vectorizeStructuredData,
   } from "./services.js";
   
   import {
@@ -478,6 +477,144 @@ import {
       res.status(500).json({
         success: false,
         error: "OCR failed",
+        details: error.message,
+      });
+    }
+  }
+
+  // ============================================================================
+  // STEP 2: FIND ALTERNATIVES FROM STRUCTURED DATA
+  // ============================================================================
+
+  /**
+   * POST /api/ocr/find-alternatives
+   * Body: {
+   *   ingredients: string[],
+   *   nutritional_per_serving: { name, amount }[],
+   *   nutritional_per_100g:    { name, amount }[],
+   *   serving_size_grams?: number | null,
+   *   page?: number,
+   *   per_page?: number,
+   * }
+   * Vectorizes the user-verified nutritional data and returns similar supplements.
+   */
+  export async function findAlternatives(req, res) {
+    try {
+      const {
+        ingredients = [],
+        nutritional_per_serving = [],
+        nutritional_per_100g = [],
+        serving_size_grams = null,
+        page = 1,
+        per_page = DEFAULT_PAGE_SIZE,
+      } = req.body || {};
+
+      // Helper: build the {nutrients:[]} shape Python vectorize expects
+      const buildNutrientsObj = (rows) => {
+        const filtered = rows.filter((n) => n?.name?.trim());
+        if (filtered.length === 0) return null;
+        return {
+          nutrients: filtered.map((n) => ({
+            name: n.name,
+            amount: n.amount || "",
+            daily_value: null,
+          })),
+        };
+      };
+
+      const structuredData = {
+        supplement_ingredient: ingredients.filter(Boolean),
+        nutritional_info_per_serving:
+          buildNutrientsObj(nutritional_per_serving) || { nutrients: [] },
+        nutritional_info_per_100g: buildNutrientsObj(nutritional_per_100g),
+        serving_size_grams,
+      };
+
+      console.log("[OCR] Vectorizing structured data for alternative search");
+
+      const vectorResult = await vectorizeStructuredData(structuredData);
+
+      if (!vectorResult?.success) {
+        return res.status(422).json({
+          success: false,
+          error: "Failed to generate vectors from nutritional data",
+        });
+      }
+
+      const vectorPerServing = vectorResult.vectors?.vector_per_serving || null;
+      const vectorPer100g = vectorResult.vectors?.vector_per_100g || null;
+
+      if (!vectorPerServing && !vectorPer100g) {
+        return res.json({
+          success: true,
+          similar_supplements: {
+            data: [],
+            pagination: { page: 1, per_page, total: 0, total_pages: 0 },
+          },
+          message:
+            "Not enough nutritional data to find alternatives. Please add more ingredient or nutritional information.",
+        });
+      }
+
+      const pageNum = Math.max(1, parseInt(page, 10) || 1);
+      const perPageNum = Math.min(
+        50,
+        Math.max(1, parseInt(per_page, 10) || DEFAULT_PAGE_SIZE),
+      );
+
+      const similarSupplements = await findSimilarSupplements(
+        vectorPerServing,
+        vectorPer100g,
+        pageNum,
+        perPageNum,
+      );
+
+      console.log(`[OCR] Found ${similarSupplements.total} similar supplements`);
+
+      return res.json({
+        success: true,
+        similar_supplements: {
+          data: similarSupplements.supplements,
+          pagination: {
+            page: similarSupplements.page,
+            per_page: similarSupplements.per_page,
+            total: similarSupplements.total,
+            total_pages: similarSupplements.total_pages,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("[OCR] Find alternatives error:", error.message);
+
+      if (error.code === "ECONNRESET") {
+        return res.status(503).json({
+          success: false,
+          error: "Connection to OCR service was reset. Please try again.",
+        });
+      }
+
+      if (
+        error.code === "ECONNABORTED" ||
+        error.code === "ETIMEDOUT" ||
+        error.message.includes("timeout")
+      ) {
+        return res.status(504).json({
+          success: false,
+          error: "Service timeout. Please try again.",
+        });
+      }
+
+      if (error.code === "ECONNREFUSED") {
+        return res.status(503).json({
+          success: false,
+          error:
+            "OCR service unavailable. Please ensure Python service is running.",
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        error: "Failed to find alternatives",
         details: error.message,
       });
     }
