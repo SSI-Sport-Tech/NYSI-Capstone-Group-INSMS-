@@ -11,3 +11,7 @@ ALTER TABLE consultation.session_anthropometry
 ALTER TABLE consultation.session_prescription
     ADD COLUMN IF NOT EXISTS prescriber          TEXT,
     ADD COLUMN IF NOT EXISTS prescription_date   DATE DEFAULT CURRENT_DATE;
+
+-- Anthropometry: manually entered potential adult height
+ALTER TABLE consultation.session_anthropometry
+    ADD COLUMN IF NOT EXISTS athlete_potential_adult_height INTEGER;

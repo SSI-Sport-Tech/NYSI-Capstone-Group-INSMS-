@@ -69,8 +69,7 @@ function mapResponse({ anthroRow, reviewRow }) {
     motherHeightCm: anthroRow.mother_height ?? null,
     fatherHeightCm: anthroRow.father_height ?? null,
 
-    // Not in DB schema -> will be null unless you add a column
-    athletePotentialAdultHeightCm: null,
+    athletePotentialAdultHeightCm: anthroRow.athlete_potential_adult_height ?? null,
 
     otherRemarks: anthroRow.other_remarks ?? null,
     dateRecorded: anthroRow.date_recorded ?? null,
@@ -116,6 +115,7 @@ export async function patchAnthropometryBySessionId(sessionId, payload, userId) 
     other_remarks: payload.otherRemarks,
     date_recorded: payload.dateRecorded,
     measured_by: payload.measuredBy,
+    athlete_potential_adult_height: payload.athletePotentialAdultHeightCm,
   };
 
   await withUserContext(userId, async (client) => {

@@ -32,6 +32,7 @@ export const validatePatchAnthropometry = [
   body("otherRemarks").optional().isString().isLength({ max: 4000 }).withMessage("otherRemarks must be <= 4000 chars"),
   body("dateRecorded").optional().isISO8601().withMessage("dateRecorded must be a valid date (YYYY-MM-DD)"),
   body("measuredBy").optional().isString().isLength({ max: 255 }).withMessage("measuredBy must be <= 255 chars"),
+  body("athletePotentialAdultHeightCm").optional().isInt({ min: 0, max: 300 }).withMessage("athletePotentialAdultHeightCm must be an integer between 0 and 300"),
 
   handleValidation,
 ];

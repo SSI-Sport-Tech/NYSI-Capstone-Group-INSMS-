@@ -52,6 +52,7 @@ interface EditForm {
   target_weight: string;
   mothers_height: string;
   fathers_height: string;
+  athlete_potential_adult_height: string;
   date_recorded: string;
   measured_by: string;
 }
@@ -83,13 +84,6 @@ function calcTargetBMI(targetWeight: number, height: number): string {
   return (targetWeight / Math.pow(height / 100, 2)).toFixed(2);
 }
 
-function calcPotentialHeight(
-  mothersHeight: number,
-  fathersHeight: number,
-): string {
-  if (!mothersHeight || !fathersHeight) return "";
-  return ((mothersHeight + fathersHeight + 13) / 2).toFixed(0);
-}
 
 export default function Anthropometry({
   athleteId,
@@ -118,6 +112,7 @@ export default function Anthropometry({
     target_weight: "",
     mothers_height: "",
     fathers_height: "",
+    athlete_potential_adult_height: "",
     date_recorded: "",
     measured_by: "",
   };
@@ -148,8 +143,6 @@ export default function Anthropometry({
   const fm = parseFloat(editForm.fat_mass);
   const smm = parseFloat(editForm.skeletal_muscle_mass);
   const tw = parseFloat(editForm.target_weight);
-  const mh = parseFloat(editForm.mothers_height);
-  const fh = parseFloat(editForm.fathers_height);
 
   const calcedBMI = !isNaN(w) && !isNaN(h) ? calcBMI(w, h) : "";
   const calcedBMICategory = calcedBMI
@@ -160,8 +153,6 @@ export default function Anthropometry({
   const calcedSMMPercent =
     !isNaN(smm) && !isNaN(w) ? calcSMMPercent(smm, w) : "";
   const calcedTargetBMI = !isNaN(tw) && !isNaN(h) ? calcTargetBMI(tw, h) : "";
-  const calcedPotentialHeight =
-    !isNaN(mh) && !isNaN(fh) ? calcPotentialHeight(mh, fh) : "";
 
   const fetchAnthropometry = async () => {
     if (!sessionId) {
@@ -229,8 +220,8 @@ export default function Anthropometry({
         fathers_height: apiData.fatherHeightCm
           ? parseFloat(apiData.fatherHeightCm)
           : null,
-        athlete_potential_adult_height: apiData.athletePotentialAdultHeightCm
-          ? parseFloat(apiData.athletePotentialAdultHeightCm)
+        athlete_potential_adult_height: apiData.athletePotentialAdultHeightCm != null
+          ? Number(apiData.athletePotentialAdultHeightCm)
           : null,
         measured_by: apiData.measuredBy ?? null,
         measurement_notes: apiData.otherRemarks || null,
@@ -258,6 +249,7 @@ export default function Anthropometry({
         target_weight: data.target_weight?.toString() ?? "",
         mothers_height: data.mothers_height?.toString() ?? "",
         fathers_height: data.fathers_height?.toString() ?? "",
+        athlete_potential_adult_height: data.athlete_potential_adult_height?.toString() ?? "",
         date_recorded: data.date_recorded
           ? new Date(data.date_recorded).toISOString().split("T")[0]
           : "",
@@ -305,6 +297,8 @@ export default function Anthropometry({
       if (editForm.fathers_height)
         payload.fatherHeightCm = parseFloat(editForm.fathers_height);
       if (calcedBMICategory) payload.bmiCategory = calcedBMICategory;
+      if (editForm.athlete_potential_adult_height)
+        payload.athletePotentialAdultHeightCm = parseInt(editForm.athlete_potential_adult_height, 10);
       if (editForm.date_recorded) payload.dateRecorded = editForm.date_recorded;
       if (editForm.measured_by) payload.measuredBy = editForm.measured_by;
 
@@ -360,6 +354,7 @@ export default function Anthropometry({
         target_weight: anthropometryData.target_weight?.toString() ?? "",
         mothers_height: anthropometryData.mothers_height?.toString() ?? "",
         fathers_height: anthropometryData.fathers_height?.toString() ?? "",
+        athlete_potential_adult_height: anthropometryData.athlete_potential_adult_height?.toString() ?? "",
         date_recorded: anthropometryData.date_recorded
           ? new Date(anthropometryData.date_recorded)
               .toISOString()
@@ -485,6 +480,11 @@ export default function Anthropometry({
                 field: "fathers_height" as const,
                 type: "number",
               },
+              {
+                label: "Athlete's Potential Adult Height (cm)",
+                field: "athlete_potential_adult_height" as const,
+                type: "number",
+              },
             ] as { label: string; field: keyof EditForm; type: string }[]
           ).map(({ label, field, type }) => (
             <div
@@ -494,7 +494,7 @@ export default function Anthropometry({
               <span className="text-gray-600 w-56 flex-shrink-0">{label}:</span>
               <input
                 type={type}
-                value={editForm[field]}
+                value={editForm[field] ?? ""}
                 onChange={(e) => updateField(field, e.target.value)}
                 placeholder="—"
                 style={{ color: editForm[field] ? "#111827" : undefined }}
@@ -520,10 +520,6 @@ export default function Anthropometry({
                 value: calcedSMMPercent ? `${calcedSMMPercent}%` : "",
               },
               { label: "Target BMI", value: calcedTargetBMI },
-              {
-                label: "Athlete's Potential Adult Height (cm)",
-                value: calcedPotentialHeight,
-              },
             ].map(({ label, value }) => (
               <div
                 key={label}
