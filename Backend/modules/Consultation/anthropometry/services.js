@@ -73,6 +73,8 @@ function mapResponse({ anthroRow, reviewRow }) {
     athletePotentialAdultHeightCm: null,
 
     otherRemarks: anthroRow.other_remarks ?? null,
+    dateRecorded: anthroRow.date_recorded ?? null,
+    measuredBy: anthroRow.measured_by ?? null,
   };
 }
 
@@ -112,6 +114,8 @@ export async function patchAnthropometryBySessionId(sessionId, payload, userId) 
     mother_height: payload.motherHeightCm,
     father_height: payload.fatherHeightCm,
     other_remarks: payload.otherRemarks,
+    date_recorded: payload.dateRecorded,
+    measured_by: payload.measuredBy,
   };
 
   await withUserContext(userId, async (client) => {

@@ -166,6 +166,7 @@ export default function Anthropometry({
   const fetchAnthropometry = async () => {
     if (!sessionId) {
       setAnthropometryData(null);
+      setEditForm(emptyForm);
       setLoading(false);
       return;
     }
@@ -193,6 +194,8 @@ export default function Anthropometry({
         fatherHeightCm?: string;
         athletePotentialAdultHeightCm?: string;
         otherRemarks?: string;
+        dateRecorded?: string | null;
+        measuredBy?: string | null;
       } = response.data;
 
       console.log("🔍 Anthropometry API Response:", apiData);
@@ -229,9 +232,9 @@ export default function Anthropometry({
         athlete_potential_adult_height: apiData.athletePotentialAdultHeightCm
           ? parseFloat(apiData.athletePotentialAdultHeightCm)
           : null,
-        measured_by: null, // This field doesn't exist in the API response
+        measured_by: apiData.measuredBy ?? null,
         measurement_notes: apiData.otherRemarks || null,
-        date_recorded: null, // This field doesn't exist in the API response
+        date_recorded: apiData.dateRecorded ?? null,
         // Fields not in API:
         body_fat_percentage: null,
         muscle_mass: null,
@@ -302,6 +305,8 @@ export default function Anthropometry({
       if (editForm.fathers_height)
         payload.fatherHeightCm = parseFloat(editForm.fathers_height);
       if (calcedBMICategory) payload.bmiCategory = calcedBMICategory;
+      if (editForm.date_recorded) payload.dateRecorded = editForm.date_recorded;
+      if (editForm.measured_by) payload.measuredBy = editForm.measured_by;
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${targetId}/anthropometry`,
@@ -414,6 +419,17 @@ export default function Anthropometry({
                 Cancel
               </button>
             )}
+            <button
+              onClick={() => {
+                setAnthropometryData(null);
+                setEditForm(emptyForm);
+                setIsSaved(false);
+                setSaveError("");
+              }}
+              className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+            >
+              Clear All
+            </button>
             <button
               onClick={handleSave}
               className={`px-3 py-1 text-white text-sm rounded ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}

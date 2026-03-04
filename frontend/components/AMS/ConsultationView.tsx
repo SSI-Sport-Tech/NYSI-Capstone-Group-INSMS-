@@ -307,6 +307,12 @@ export default function ConsultationView({
     setUpdateSaveError("");
   };
 
+  const handleClearConsultationDetails = () => {
+    setUpdateForm(EMPTY_UPDATE_FORM);
+    setUpdateSaveError("");
+    previousConsultRef.current?.clearAll();
+  };
+
   const handleSaveUpdate = async () => {
     if (!currentSessionId) return;
     setIsSavingUpdate(true);
@@ -697,6 +703,18 @@ export default function ConsultationView({
     <div className="flex h-full">
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-8">
+        {/* Start New Consultation button — top of content area */}
+        {!isNewConsultation && !isEditMode && (
+          <div className="flex justify-end">
+            <button
+              onClick={handleStartNewConsultation}
+              className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
+            >
+              Start New Consultation
+            </button>
+          </div>
+        )}
+
         {/* Consultation Update Card */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-6">
@@ -729,6 +747,12 @@ export default function ConsultationView({
                     Cancel
                   </button>
                   <button
+                    onClick={handleClearConsultationDetails}
+                    className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+                  >
+                    Clear All
+                  </button>
+                  <button
                     onClick={handleSaveUpdate}
                     disabled={isSavingUpdate}
                     className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
@@ -737,27 +761,19 @@ export default function ConsultationView({
                   </button>
                 </>
               ) : (
-                <>
-                  <button
-                    onClick={handleEditClick}
-                    className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200 flex items-center gap-1"
+                <button
+                  onClick={handleEditClick}
+                  className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200 flex items-center gap-1"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
                   >
-                    <svg
-                      className="w-4 h-4"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                    </svg>
-                    Edit
-                  </button>
-                  <button
-                    onClick={handleStartNewConsultation}
-                    className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
-                  >
-                    Start New Consultation
-                  </button>
-                </>
+                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                  </svg>
+                  Edit
+                </button>
               )}
             </div>
           </div>
@@ -781,10 +797,10 @@ export default function ConsultationView({
           />
         </div>
 
-        {/* Open Items */}
+        {/* Open Items — clears on new consultation */}
         <OpenItems
           athleteId={athleteId}
-          sessionId={currentSessionId}
+          sessionId={isNewConsultation ? "" : currentSessionId}
           isNewConsultation={isNewConsultation}
           ensureSession={ensureSession}
         />
@@ -810,19 +826,19 @@ export default function ConsultationView({
           ensureSession={ensureSession}
         />
 
-        {/* 6. Anthropometry */}
+        {/* 6. Anthropometry — clears on new consultation */}
         <Anthropometry
           athleteId={athleteId}
-          sessionId={currentSessionId}
+          sessionId={isNewConsultation ? "" : currentSessionId}
           isNewConsultation={isNewConsultation}
           ensureSession={ensureSession}
           onAnthroChange={handleAnthroChange}
         />
 
-        {/* 7. Adherences */}
+        {/* 7. Adherences — clears on new consultation */}
         <Adherences
           athleteId={athleteId}
-          sessionId={currentSessionId}
+          sessionId={isNewConsultation ? "" : currentSessionId}
           isNewConsultation={isNewConsultation}
           ensureSession={ensureSession}
           liveWeight={liveAnthro.weight}

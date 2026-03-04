@@ -311,6 +311,19 @@ export default function TrainingSchedule({
                 Cancel
               </button>
             )}
+            {effectiveEditing && (
+              <button
+                onClick={() => {
+                  setTrainingData(null);
+                  setEditForm(emptyEditForm);
+                  setIsSaved(false);
+                  setSaveError("");
+                }}
+                className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+              >
+                Clear All
+              </button>
+            )}
             <button
               onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
               className={`px-3 py-1 text-white text-sm rounded ${effectiveEditing && isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}

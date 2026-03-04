@@ -30,6 +30,8 @@ export const validatePatchAnthropometry = [
   body("motherHeightCm").optional().isFloat({ min: 0, max: 300 }).withMessage("motherHeightCm must be a valid number"),
   body("fatherHeightCm").optional().isFloat({ min: 0, max: 300 }).withMessage("fatherHeightCm must be a valid number"),
   body("otherRemarks").optional().isString().isLength({ max: 4000 }).withMessage("otherRemarks must be <= 4000 chars"),
+  body("dateRecorded").optional().isISO8601().withMessage("dateRecorded must be a valid date (YYYY-MM-DD)"),
+  body("measuredBy").optional().isString().isLength({ max: 255 }).withMessage("measuredBy must be <= 255 chars"),
 
   handleValidation,
 ];

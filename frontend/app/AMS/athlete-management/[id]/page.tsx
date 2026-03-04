@@ -163,6 +163,11 @@ export default function AthleteDetailPage() {
   }, [activeTab, athleteId]);
 
   const handleTabChange = (tab: TabType) => {
+    if (tab !== "profile" && isEditing) {
+      setIsEditing(false);
+      setEditForm(null);
+      setSaveError(null);
+    }
     setActiveTab(tab);
     router.push(`/AMS/athlete-management/${athleteId}?tab=${tab}`, {
       scroll: false,
@@ -431,8 +436,8 @@ export default function AthleteDetailPage() {
                 </p>
               </div>
 
-              {/* Edit / Save / Cancel controls */}
-              {isEditing ? (
+              {/* Edit / Save / Cancel controls — only on Profile tab */}
+              {activeTab === "profile" && isEditing ? (
                 <div className="flex items-center gap-2 flex-wrap justify-end">
                   {saveError && (
                     <p className="text-sm text-red-600 w-full text-right">{saveError}</p>
@@ -463,7 +468,7 @@ export default function AthleteDetailPage() {
                     )}
                   </button>
                 </div>
-              ) : (
+              ) : activeTab === "profile" ? (
                 <button
                   onClick={handleEditStart}
                   className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
@@ -483,7 +488,7 @@ export default function AthleteDetailPage() {
                   </svg>
                   Edit
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
 

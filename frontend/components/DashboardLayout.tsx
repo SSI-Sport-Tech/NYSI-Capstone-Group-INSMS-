@@ -29,7 +29,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const isAthleteProfilePage =
     pathname.includes("/AMS/athlete-management/") &&
     pathname.split("/").length > 3;
-  const athleteId = isAthleteProfilePage ? pathname.split("/").pop() : null;
+  const athleteId = isAthleteProfilePage ? pathname.split("/")[3] : null;
 
   // Auto-manage section states based on current page
   const [supplementOpen, setSupplementOpen] = useState(

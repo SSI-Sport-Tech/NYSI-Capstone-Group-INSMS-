@@ -300,6 +300,14 @@ export default function OpenItems({
               >
                 {showAddForm ? "Cancel" : "Add New Action"}
               </button>
+              {isNewConsultation && (
+                <button
+                  onClick={() => { setOpenItems([]); setSelectedIds(new Set()); }}
+                  className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+                >
+                  Clear All
+                </button>
+              )}
             </>
           )}
         </div>

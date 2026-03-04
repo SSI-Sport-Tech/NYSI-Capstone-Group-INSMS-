@@ -71,6 +71,16 @@ export async function createPrescription(req, res) {
             });
         }
 
+        // Resolve prescriber name from JWT user
+        const userRow = await pool.query(
+            'SELECT first_name, last_name FROM auth.users WHERE id = $1',
+            [req.user.userId]
+        );
+        if (userRow.rows.length > 0) {
+            const { first_name, last_name } = userRow.rows[0];
+            validated.prescriber = `${first_name} ${last_name}`.trim();
+        }
+
         const prescription = await services.createPrescription(validated, req.user.userId);
         res.status(201).json({
             message: 'Prescription created successfully',

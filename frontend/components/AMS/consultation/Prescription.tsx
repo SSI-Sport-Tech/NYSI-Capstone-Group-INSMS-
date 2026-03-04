@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 interface PrescriptionProps {
   athleteId: string;
   sessionId: string;
+  readOnly?: boolean;
 }
 
 interface PrescriptionItem {
@@ -31,7 +32,6 @@ interface BatchOption {
 
 interface NewEntry {
   batchId: string | null;
-  batchCurrentQty: number | null;
   supplementName: string;
   batchNumber: string;
   quantity: string;
@@ -42,7 +42,6 @@ interface NewEntry {
 
 const emptyEntry = (): NewEntry => ({
   batchId: null,
-  batchCurrentQty: null,
   supplementName: "",
   batchNumber: "",
   quantity: "",
@@ -54,10 +53,16 @@ const emptyEntry = (): NewEntry => ({
 export default function Prescription({
   athleteId,
   sessionId,
+  readOnly,
 }: PrescriptionProps) {
   const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
+
+  // Delete state
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   // Add form state
   const [showAddForm, setShowAddForm] = useState(false);
@@ -144,7 +149,6 @@ export default function Prescription({
     setEntry((prev) => ({
       ...prev,
       batchId: batch.id,
-      batchCurrentQty: batch.batch_initial_quantity,
       supplementName: batch.supplement_name,
       batchNumber: batch.batch_number,
     }));
@@ -185,25 +189,6 @@ export default function Prescription({
         throw new Error(errData?.details?.[0]?.message || errData?.message || `Save failed: ${prescRes.status}`);
       }
 
-      // Deduct inventory
-      if (entry.batchId && entry.quantity && entry.batchCurrentQty !== null) {
-        const prescribed = parseFloat(entry.quantity);
-        if (prescribed > 0) {
-          const newQty = Math.max(0, entry.batchCurrentQty - prescribed);
-          await fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/SSS/batches/${entry.batchId}`,
-            {
-              method: "PATCH",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ batch_initial_quantity: newQty }),
-            },
-          );
-        }
-      }
-
       // Reset and refresh
       setEntry(emptyEntry());
       setBatchSearchQuery("");
@@ -224,6 +209,31 @@ export default function Prescription({
     setBatchSearchQuery("");
     setBatchResults([]);
     setSaveError("");
+  };
+
+  const handleDelete = async (id: string) => {
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/prescription/${id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.message || `Delete failed: ${res.status}`);
+      }
+      setConfirmDeleteId(null);
+      await fetchPrescriptions();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to delete prescription.");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (loading) {
@@ -261,7 +271,7 @@ export default function Prescription({
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Prescription</h2>
         <div className="flex items-center gap-2">
-          {!showAddForm && (
+          {!readOnly && !showAddForm && (
             <button
               onClick={() => setShowAddForm(true)}
               className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
@@ -401,6 +411,10 @@ export default function Prescription({
         </div>
       )}
 
+      {deleteError && (
+        <p className="text-red-600 text-sm mb-4">{deleteError}</p>
+      )}
+
       {/* Existing prescriptions list */}
       <div className="space-y-6">
         {prescriptions.length === 0 ? (
@@ -416,6 +430,29 @@ export default function Prescription({
               key={prescription.id}
               className="border-b border-gray-200 pb-6 last:border-b-0"
             >
+              {/* Delete confirmation row */}
+              {!readOnly && confirmDeleteId === prescription.id ? (
+                <div className="flex items-center gap-3 mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm">
+                  <span className="text-red-700 flex-1">
+                    Delete <span className="font-medium">{prescription.supplement_name}</span>? This will also release the inventory back to stock.
+                  </span>
+                  <button
+                    onClick={() => handleDelete(prescription.id)}
+                    disabled={deleting}
+                    className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {deleting ? "Deleting..." : "Confirm Delete"}
+                  </button>
+                  <button
+                    onClick={() => { setConfirmDeleteId(null); setDeleteError(""); }}
+                    disabled={deleting}
+                    className="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : null}
+
               <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Supplement Name:</span>
@@ -452,6 +489,17 @@ export default function Prescription({
                   </div>
                 )}
               </div>
+
+              {!readOnly && confirmDeleteId !== prescription.id && (
+                <div className="mt-3 flex justify-end">
+                  <button
+                    onClick={() => { setConfirmDeleteId(prescription.id); setDeleteError(""); }}
+                    className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
           ))
         )}

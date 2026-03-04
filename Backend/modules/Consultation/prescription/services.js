@@ -39,7 +39,9 @@ const PRESCRIPTION_SELECT = `
         sp.start_date,
         sp.projected_end_date,
         sp.follow_up_required,
-        sp.other_remarks
+        sp.other_remarks,
+        sp.prescriber,
+        sp.prescription_date
     FROM consultation.session_prescription sp
     LEFT JOIN sss.inventory_batch ib ON sp.batch_id = ib.id
     LEFT JOIN sss.supplement s ON ib.supplement_id = s.id
@@ -176,8 +178,9 @@ export async function createPrescription(data, userId) {
             INSERT INTO consultation.session_prescription (
                 sessions_id, batch_id,
                 dosage, dosage_unit, dosage_frequency,
-                start_date, projected_end_date, follow_up_required, other_remarks
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                start_date, projected_end_date, follow_up_required, other_remarks,
+                prescriber, prescription_date
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_DATE)
             RETURNING id
         `, [
             data.sessions_id,
@@ -189,6 +192,7 @@ export async function createPrescription(data, userId) {
             data.projected_end_date ?? null,
             data.follow_up_required ?? false,
             data.other_remarks ?? null,
+            data.prescriber ?? null,
         ]);
         const prescriptionId = prescriptionResult.rows[0].id;
 

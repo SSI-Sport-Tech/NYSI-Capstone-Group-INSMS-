@@ -3,6 +3,7 @@ import { consultationApi, apiCall } from "@/utils/consultationApi";
 
 export interface PreviousConsultationHandle {
   save: () => Promise<void>;
+  clearAll: () => void;
 }
 
 interface PreviousConsultationProps {
@@ -418,7 +419,7 @@ const PreviousConsultation = forwardRef<
     }
   };
 
-  // Expose save() to parent via ref
+  // Expose save() and clearAll() to parent via ref
   useImperativeHandle(ref, () => ({
     save: async () => {
       if (isNewConsultation) {
@@ -426,6 +427,11 @@ const PreviousConsultation = forwardRef<
       } else if (isEditMode) {
         await handleSaveEdit();
       }
+    },
+    clearAll: () => {
+      setForm(emptyForm);
+      setConsultationData(null);
+      setSaveError("");
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [isNewConsultation, isEditMode, sessionId]);

@@ -178,6 +178,8 @@ export default function Adherences({
 
   const fetchData = async () => {
     if (!sessionId) {
+      setAdherencesData(null);
+      setEditForm(emptyForm);
       setLoading(false);
       return;
     }
@@ -461,6 +463,19 @@ export default function Adherences({
                 className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
               >
                 Cancel
+              </button>
+            )}
+            {effectiveEditing && (
+              <button
+                onClick={() => {
+                  setAdherencesData(null);
+                  setEditForm(emptyForm);
+                  setIsSaved(false);
+                  setSaveError("");
+                }}
+                className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+              >
+                Clear All
               </button>
             )}
             <button
