@@ -1,5 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { consultationApi, apiCall } from "@/utils/consultationApi";
+
+export interface PreviousConsultationHandle {
+  save: () => Promise<void>;
+}
 
 interface PreviousConsultationProps {
   athleteId: string;
@@ -7,6 +11,10 @@ interface PreviousConsultationProps {
   isNewConsultation?: boolean;
   ensureSession?: () => Promise<string>;
   readOnly?: boolean;
+  /** When true: renders without card wrapper/header and skips the type-of-consult field */
+  embedded?: boolean;
+  /** When true (parent edit mode): shows editable form pre-populated with current data */
+  isEditMode?: boolean;
 }
 
 interface ConsultationData {
@@ -18,12 +26,19 @@ interface ConsultationData {
   consult_type?: string;
   details: {
     main_nutrition_diagnosis: string | null;
+    carbohydrates_review_id: string | null;
     carbohydrates_review_diagnosis: string | null;
+    protein_review_id: string | null;
     protein_review_diagnosis: string | null;
+    fat_review_id: string | null;
     fat_review_diagnosis: string | null;
+    fibre_review_id: string | null;
     fibre_review_diagnosis: string | null;
+    iron_review_id: string | null;
     iron_review_diagnosis: string | null;
+    calcium_review_id: string | null;
     calcium_review_diagnosis: string | null;
+    micronutrients_review_id: string | null;
     micronutrients_review_diagnosis: string | null;
     other_review: string | null;
     intervention_note: string | null;
@@ -92,13 +107,13 @@ const emptyForm: CurrentConsultForm = {
   other_remarks: "",
 };
 
-export default function PreviousConsultation({
-  athleteId,
-  sessionId,
-  isNewConsultation,
-  ensureSession,
-  readOnly,
-}: PreviousConsultationProps) {
+const PreviousConsultation = forwardRef<
+  PreviousConsultationHandle,
+  PreviousConsultationProps
+>(function PreviousConsultation(
+  { athleteId, sessionId, isNewConsultation, ensureSession, readOnly, embedded, isEditMode },
+  ref,
+) {
   const [consultationData, setConsultationData] =
     useState<ConsultationData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -112,20 +127,50 @@ export default function PreviousConsultation({
     setIsSaved(false);
   }, [form]);
 
-  // Refs so the auto-save closure always sees current values
+  // Refs so closures always see current values
   const formRef = useRef(form);
-  useEffect(() => {
-    formRef.current = form;
-  }, [form]);
+  useEffect(() => { formRef.current = form; }, [form]);
+
   const ensureSessionRef = useRef(ensureSession);
-  useEffect(() => {
-    ensureSessionRef.current = ensureSession;
-  }, [ensureSession]);
+  useEffect(() => { ensureSessionRef.current = ensureSession; }, [ensureSession]);
+
   const isSavedRef = useRef(isSaved);
-  useEffect(() => {
-    isSavedRef.current = isSaved;
-  }, [isSaved]);
+  useEffect(() => { isSavedRef.current = isSaved; }, [isSaved]);
+
   const consultTypesRef = useRef<ConsultType[]>([]);
+
+  const [consultTypes, setConsultTypes] = useState<ConsultType[]>([]);
+  const [nutritionDiagnoses, setNutritionDiagnoses] = useState<NutritionDiagnosis[]>([]);
+
+  // Pre-populate / reset form when isEditMode changes
+  const prevIsEditModeRef = useRef(false);
+  useEffect(() => {
+    const wasEdit = prevIsEditModeRef.current;
+    prevIsEditModeRef.current = !!isEditMode;
+    if (!wasEdit && isEditMode && consultationData?.details) {
+      const d = consultationData.details;
+      setForm({
+        consult_type: "",
+        intervention_status: consultationData.intervention_status || "",
+        main_nutrition_diagnosis: d.main_nutrition_diagnosis || "",
+        carbohydrates_review: d.carbohydrates_review_id || "",
+        protein_review: d.protein_review_id || "",
+        fat_review: d.fat_review_id || "",
+        fibre_review: d.fibre_review_id || "",
+        iron_review: d.iron_review_id || "",
+        calcium_review: d.calcium_review_id || "",
+        micronutrients_review: d.micronutrients_review_id || "",
+        other_review: d.other_review || "",
+        intervention_note: d.intervention_note || "",
+        follow_up_note: d.follow_up_note || "",
+        other_remarks: d.other_remarks || "",
+      });
+    }
+    if (wasEdit && !isEditMode) {
+      setForm(emptyForm);
+      setSaveError("");
+    }
+  }, [isEditMode]);
 
   // Auto-save when "Save and Finish" transitions isNewConsultation true → false
   const prevIsNewRef = useRef(!!isNewConsultation);
@@ -147,18 +192,15 @@ export default function PreviousConsultation({
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         };
-        if (currentForm.consult_type) {
+        // Only patch type_of_consult_id when NOT embedded (A section handles it when embedded)
+        if (!embedded && currentForm.consult_type) {
           const typeMatch = consultTypesRef.current.find(
             (t) => t.type_of_consult === currentForm.consult_type,
           );
           if (typeMatch) {
             await fetch(
               `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/${id}`,
-              {
-                method: "PATCH",
-                headers,
-                body: JSON.stringify({ type_of_consult_id: typeMatch.id }),
-              },
+              { method: "PATCH", headers, body: JSON.stringify({ type_of_consult_id: typeMatch.id }) },
             );
           }
         }
@@ -169,16 +211,14 @@ export default function PreviousConsultation({
             headers,
             body: JSON.stringify({
               sessions_id: id,
-              main_nutrition_diagnosis:
-                currentForm.main_nutrition_diagnosis || undefined,
+              main_nutrition_diagnosis: currentForm.main_nutrition_diagnosis || undefined,
               carbohydrates_review_id: currentForm.carbohydrates_review || null,
               protein_review_id: currentForm.protein_review || null,
               fat_review_id: currentForm.fat_review || null,
               fibre_review_id: currentForm.fibre_review || null,
               iron_review_id: currentForm.iron_review || null,
               calcium_review_id: currentForm.calcium_review || null,
-              micronutrients_review_id:
-                currentForm.micronutrients_review || null,
+              micronutrients_review_id: currentForm.micronutrients_review || null,
               other_review: currentForm.other_review || undefined,
               intervention_note: currentForm.intervention_note || undefined,
               follow_up_note: currentForm.follow_up_note || undefined,
@@ -193,11 +233,6 @@ export default function PreviousConsultation({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNewConsultation]);
 
-  const [consultTypes, setConsultTypes] = useState<ConsultType[]>([]);
-  const [nutritionDiagnoses, setNutritionDiagnoses] = useState<
-    NutritionDiagnosis[]
-  >([]);
-
   useEffect(() => {
     const fetchPreviousConsultation = async () => {
       try {
@@ -210,50 +245,30 @@ export default function PreviousConsultation({
         let athleteId_: string;
 
         if (readOnly && sessionId) {
-          // In readOnly (history view), fetch the specific session by sessionId
           const sessionRes = (await apiCall(
             `/api/Consultation/consultation-update/${sessionId}`,
-          )) as {
-            data: {
-              id: string;
-              athlete_id: string;
-              date_of_consult: string;
-              nutritionist_name: string;
-            };
-          };
+          )) as { data: { id: string; athlete_id: string; date_of_consult: string; nutritionist_name: string } };
           targetId = sessionRes.data.id;
           dateOfConsult = sessionRes.data.date_of_consult;
           nutritionistName = sessionRes.data.nutritionist_name;
           athleteId_ = sessionRes.data.athlete_id;
         } else {
-          // Default: fetch latest consultation for athlete
-          const latestSession = (await consultationApi.getLatestConsultation(
-            athleteId,
-          )) as {
-            data: {
-              id: string;
-              athlete_id: string;
-              date_of_consult: string;
-              nutritionist_name: string;
-            };
+          const latestSession = (await consultationApi.getLatestConsultation(athleteId)) as {
+            data: { id: string; athlete_id: string; date_of_consult: string; nutritionist_name: string };
           };
-          if (!latestSession?.data) {
-            setLoading(false);
-            return;
-          }
+          if (!latestSession?.data) { setLoading(false); return; }
           targetId = latestSession.data.id;
           dateOfConsult = latestSession.data.date_of_consult;
           nutritionistName = latestSession.data.nutritionist_name;
           athleteId_ = latestSession.data.athlete_id;
         }
 
-        const [detailsResponse, prescriptionsResponse] =
-          await Promise.allSettled([
-            apiCall(`/api/Consultation/consultation-details/${targetId}`),
-            consultationApi.getPrescriptions(targetId),
-          ]);
+        const [detailsResponse, prescriptionsResponse] = await Promise.allSettled([
+          apiCall(`/api/Consultation/consultation-details/${targetId}`),
+          consultationApi.getPrescriptions(targetId),
+        ]);
 
-        const consultationData: ConsultationData = {
+        const data: ConsultationData = {
           id: targetId,
           athlete_id: athleteId_,
           date_of_consult: dateOfConsult,
@@ -261,26 +276,18 @@ export default function PreviousConsultation({
           intervention_status: "Supplement Intake",
           details:
             detailsResponse.status === "fulfilled"
-              ? (
-                  detailsResponse.value as {
-                    data: ConsultationData["details"];
-                  }
-                ).data
+              ? (detailsResponse.value as { data: ConsultationData["details"] }).data
               : null,
           prescriptions:
             prescriptionsResponse.status === "fulfilled"
-              ? (
-                  prescriptionsResponse.value as {
-                    data: ConsultationData["prescriptions"];
-                  }
-                ).data || []
+              ? ((prescriptionsResponse.value as { data: ConsultationData["prescriptions"] }).data || [])
               : [],
         };
 
-        setConsultationData(consultationData);
+        setConsultationData(data);
       } catch (err) {
-        console.error("Error fetching previous consultation:", err);
-        setError("Failed to load previous consultation data");
+        console.error("Error fetching consultation data:", err);
+        setError("Failed to load consultation data");
       } finally {
         setLoading(false);
       }
@@ -291,20 +298,17 @@ export default function PreviousConsultation({
     }
   }, [athleteId, sessionId, readOnly]);
 
-  // Fetch lookup tables needed for saving new consultation data
+  // Fetch lookup tables for new-consultation or edit-mode forms
   useEffect(() => {
-    if (!isNewConsultation || readOnly) return;
+    if (!isNewConsultation && !isEditMode) return;
+    if (readOnly) return;
     const fetchLookups = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const headers = { Authorization: `Bearer ${token}` };
-        const { consultationLookupApi } =
-          await import("../../../utils/consultationApi");
+        const { consultationLookupApi } = await import("../../../utils/consultationApi");
         const [typesResponse, diagResponse] = await Promise.all([
           consultationLookupApi.getConsultationTypes(),
           consultationLookupApi.getNutritionDiagnoses(),
         ]);
-
         setConsultTypes(typesResponse.data ?? []);
         consultTypesRef.current = typesResponse.data ?? [];
         setNutritionDiagnoses(diagResponse.data ?? []);
@@ -313,12 +317,13 @@ export default function PreviousConsultation({
       }
     };
     fetchLookups();
-  }, [isNewConsultation, readOnly]);
+  }, [isNewConsultation, isEditMode, readOnly]);
 
   const updateForm = (field: keyof CurrentConsultForm, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Save for new consultation mode
   const handleSave = async () => {
     if (!isNewConsultation || !ensureSession) return;
     setSaving(true);
@@ -326,29 +331,18 @@ export default function PreviousConsultation({
     try {
       const id = await ensureSession();
       const token = localStorage.getItem("token");
-      const headers = {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      };
+      const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
-      // PATCH type_of_consult_id if a consult type was selected
-      if (form.consult_type) {
-        const typeMatch = consultTypes.find(
-          (t) => t.type_of_consult === form.consult_type,
-        );
+      if (!embedded && form.consult_type) {
+        const typeMatch = consultTypes.find((t) => t.type_of_consult === form.consult_type);
         if (typeMatch) {
           await fetch(
             `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/${id}`,
-            {
-              method: "PATCH",
-              headers,
-              body: JSON.stringify({ type_of_consult_id: typeMatch.id }),
-            },
+            { method: "PATCH", headers, body: JSON.stringify({ type_of_consult_id: typeMatch.id }) },
           );
         }
       }
 
-      // POST consultation details
       const detailsRes = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-details`,
         {
@@ -356,8 +350,7 @@ export default function PreviousConsultation({
           headers,
           body: JSON.stringify({
             sessions_id: id,
-            main_nutrition_diagnosis:
-              form.main_nutrition_diagnosis || undefined,
+            main_nutrition_diagnosis: form.main_nutrition_diagnosis || undefined,
             carbohydrates_review_id: form.carbohydrates_review || null,
             protein_review_id: form.protein_review || null,
             fat_review_id: form.fat_review || null,
@@ -374,12 +367,7 @@ export default function PreviousConsultation({
       );
       if (!detailsRes.ok) {
         const errData = await detailsRes.json().catch(() => ({}));
-        const msg =
-          errData?.details?.[0]?.message ||
-          errData?.error ||
-          errData?.message ||
-          `Save failed (${detailsRes.status})`;
-        throw new Error(msg);
+        throw new Error(errData?.details?.[0]?.message || errData?.error || errData?.message || `Save failed (${detailsRes.status})`);
       }
       setIsSaved(true);
     } catch (err) {
@@ -390,142 +378,125 @@ export default function PreviousConsultation({
     }
   };
 
-  // Render "Current Consultation" form when isNewConsultation=true (and not in readOnly mode)
-  if (isNewConsultation && !readOnly) {
+  // Save for parent edit mode
+  const handleSaveEdit = async () => {
+    if (!sessionId) return;
+    setSaving(true);
+    setSaveError("");
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-details/${sessionId}`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            main_nutrition_diagnosis: formRef.current.main_nutrition_diagnosis || undefined,
+            carbohydrates_review_id: formRef.current.carbohydrates_review || null,
+            protein_review_id: formRef.current.protein_review || null,
+            fat_review_id: formRef.current.fat_review || null,
+            fibre_review_id: formRef.current.fibre_review || null,
+            iron_review_id: formRef.current.iron_review || null,
+            calcium_review_id: formRef.current.calcium_review || null,
+            micronutrients_review_id: formRef.current.micronutrients_review || null,
+            other_review: formRef.current.other_review || undefined,
+            intervention_note: formRef.current.intervention_note || undefined,
+            follow_up_note: formRef.current.follow_up_note || undefined,
+            other_remarks: formRef.current.other_remarks || undefined,
+          }),
+        },
+      );
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.message || errData?.error || `Save failed (${res.status})`);
+      }
+      setIsSaved(true);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Expose save() to parent via ref
+  useImperativeHandle(ref, () => ({
+    save: async () => {
+      if (isNewConsultation) {
+        await handleSave();
+      } else if (isEditMode) {
+        await handleSaveEdit();
+      }
+    },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [isNewConsultation, isEditMode, sessionId]);
+
+  // ─── Editable form (new consultation or parent edit mode) ───────────────────
+  const showForm = (isNewConsultation && !readOnly) || (isEditMode && !readOnly);
+
+  if (showForm) {
     const today = new Date().toLocaleDateString();
-
-    return (
-      <section
-        id="previous-consultation"
-        className="bg-white rounded-xl shadow-lg p-6"
-      >
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              Current Consultation
-            </h2>
-            <span className="text-sm text-gray-500">{today}</span>
-          </div>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className={`px-3 py-1 text-white text-sm rounded disabled:opacity-50 ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
-          >
-            {saving ? "Saving..." : isSaved ? "Saved" : "Save"}
-          </button>
-        </div>
-
+    const content = (
+      <>
         {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
-
         <div className="space-y-6">
-          {/* Type of Consultation + Intervention Status */}
-          <div className="grid grid-cols-2 gap-6 text-sm">
+          <div className={`grid gap-6 text-sm ${embedded ? "grid-cols-1" : "grid-cols-2"}`}>
+            {/* Type of Consultation — only shown when NOT embedded (A section has it when embedded) */}
+            {!embedded && (
+              <div>
+                <label className="block text-gray-600 mb-1">Type of Consultation:</label>
+                <select
+                  value={form.consult_type}
+                  onChange={(e) => updateForm("consult_type", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
+                >
+                  <option className="text-gray-500" value="">Select type...</option>
+                  {consultTypes.map((t) => (
+                    <option key={t.id} value={t.type_of_consult}>{t.type_of_consult}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
-              <label className="block text-gray-600 mb-1">
-                Type of Consultation:
-              </label>
-              <select
-                value={form.consult_type}
-                onChange={(e) => updateForm("consult_type", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
-              >
-                <option className="text-gray-500" value="">
-                  Select type...
-                </option>
-                {consultTypes.map((t) => (
-                  <option key={t.id} value={t.type_of_consult}>
-                    {t.type_of_consult}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-gray-600 mb-1">
-                Intervention Status:
-              </label>
+              <label className="block text-gray-600 mb-1">Intervention Status:</label>
               <select
                 value={form.intervention_status}
-                onChange={(e) =>
-                  updateForm("intervention_status", e.target.value)
-                }
+                onChange={(e) => updateForm("intervention_status", e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
               >
                 <option value="">Select status...</option>
                 {INTERVENTION_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
+                  <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             </div>
           </div>
 
-          {/* Main Nutrition Diagnosis */}
           <div>
-            <label className="block text-gray-600 text-sm mb-1">
-              Main Nutrition Diagnosis:
-            </label>
+            <label className="block text-gray-600 text-sm mb-1">Main Nutrition Diagnosis:</label>
             <textarea
               value={form.main_nutrition_diagnosis}
-              onChange={(e) =>
-                updateForm("main_nutrition_diagnosis", e.target.value)
-              }
+              onChange={(e) => updateForm("main_nutrition_diagnosis", e.target.value)}
               placeholder="Enter main nutrition diagnosis..."
               className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
             />
           </div>
 
-          {/* Review Dropdowns */}
           <div>
             <h3 className="text-sm font-medium text-gray-900 mb-3">Review</h3>
             <div className="grid grid-cols-4 gap-3 text-sm">
               {(
                 [
-                  {
-                    label: "Carbohydrate",
-                    field: "carbohydrates_review" as const,
-                    category: "CARB",
-                  },
-                  {
-                    label: "Protein",
-                    field: "protein_review" as const,
-                    category: "PROTEIN",
-                  },
-                  {
-                    label: "Fat",
-                    field: "fat_review" as const,
-                    category: "FAT",
-                  },
-                  {
-                    label: "Fibre",
-                    field: "fibre_review" as const,
-                    category: "FIBRE",
-                  },
-                  {
-                    label: "Iron",
-                    field: "iron_review" as const,
-                    category: "IRON",
-                  },
-                  {
-                    label: "Calcium",
-                    field: "calcium_review" as const,
-                    category: "CALCIUM",
-                  },
-                  {
-                    label: "Micronutrients",
-                    field: "micronutrients_review" as const,
-                    category: "MICRO",
-                  },
-                ] as {
-                  label: string;
-                  field: keyof CurrentConsultForm;
-                  category: string;
-                }[]
+                  { label: "Carbohydrate", field: "carbohydrates_review" as const, category: "CARB" },
+                  { label: "Protein", field: "protein_review" as const, category: "PROTEIN" },
+                  { label: "Fat", field: "fat_review" as const, category: "FAT" },
+                  { label: "Fibre", field: "fibre_review" as const, category: "FIBRE" },
+                  { label: "Iron", field: "iron_review" as const, category: "IRON" },
+                  { label: "Calcium", field: "calcium_review" as const, category: "CALCIUM" },
+                  { label: "Micronutrients", field: "micronutrients_review" as const, category: "MICRO" },
+                ] as { label: string; field: keyof CurrentConsultForm; category: string }[]
               ).map(({ label, field, category }) => (
                 <div key={field}>
-                  <label className="block text-xs text-gray-500 mb-1">
-                    {label}
-                  </label>
+                  <label className="block text-xs text-gray-500 mb-1">{label}</label>
                   <select
                     value={form[field]}
                     onChange={(e) => updateForm(field, e.target.value)}
@@ -535,17 +506,13 @@ export default function PreviousConsultation({
                     {nutritionDiagnoses
                       .filter((d) => d.category === category)
                       .map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.diagnosis}
-                        </option>
+                        <option key={d.id} value={d.id}>{d.diagnosis}</option>
                       ))}
                   </select>
                 </div>
               ))}
               <div>
-                <label className="block text-xs text-gray-500 mb-1">
-                  Other
-                </label>
+                <label className="block text-xs text-gray-500 mb-1">Other</label>
                 <input
                   type="text"
                   value={form.other_review}
@@ -557,27 +524,20 @@ export default function PreviousConsultation({
             </div>
           </div>
 
-          {/* Notes */}
           <div>
             <h3 className="text-sm font-medium text-gray-900 mb-3">Notes</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">
-                  Intervention Notes:
-                </label>
+                <label className="block text-xs text-gray-500 mb-1">Intervention Notes:</label>
                 <textarea
                   value={form.intervention_note}
-                  onChange={(e) =>
-                    updateForm("intervention_note", e.target.value)
-                  }
+                  onChange={(e) => updateForm("intervention_note", e.target.value)}
                   placeholder="Input Text Here"
                   className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">
-                  Follow-Up Notes:
-                </label>
+                <label className="block text-xs text-gray-500 mb-1">Follow-Up Notes:</label>
                 <textarea
                   value={form.follow_up_note}
                   onChange={(e) => updateForm("follow_up_note", e.target.value)}
@@ -586,9 +546,7 @@ export default function PreviousConsultation({
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">
-                  Other Remarks:
-                </label>
+                <label className="block text-xs text-gray-500 mb-1">Other Remarks:</label>
                 <textarea
                   value={form.other_remarks}
                   onChange={(e) => updateForm("other_remarks", e.target.value)}
@@ -599,174 +557,144 @@ export default function PreviousConsultation({
             </div>
           </div>
         </div>
+      </>
+    );
+
+    if (embedded) {
+      return <div className="pt-2">{content}</div>;
+    }
+
+    return (
+      <section id="previous-consultation" className="bg-white rounded-xl shadow-lg p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Current Consultation</h2>
+            <span className="text-sm text-gray-500">{today}</span>
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className={`px-3 py-1 text-white text-sm rounded disabled:opacity-50 ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
+          >
+            {saving ? "Saving..." : isSaved ? "Saved" : "Save"}
+          </button>
+        </div>
+        {content}
       </section>
     );
   }
 
-  // Read-only previous consultation view
+  // ─── Loading / error / empty states ────────────────────────────────────────
   if (loading) {
+    const inner = (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2 text-gray-600">Loading consultation data...</span>
+      </div>
+    );
+    if (embedded) return <div className="pt-2">{inner}</div>;
     return (
-      <section
-        id="previous-consultation"
-        className="bg-white rounded-xl shadow-lg p-6"
-      >
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-gray-600">
-            Loading previous consultation...
-          </span>
-        </div>
-      </section>
+      <section id="previous-consultation" className="bg-white rounded-xl shadow-lg p-6">{inner}</section>
     );
   }
 
   if (error) {
+    const inner = (
+      <div className="text-center py-12">
+        <div className="text-red-600 mb-2">⚠️ Error</div>
+        <p className="text-gray-600">{error}</p>
+      </div>
+    );
+    if (embedded) return <div className="pt-2">{inner}</div>;
     return (
-      <section
-        id="previous-consultation"
-        className="bg-white rounded-xl shadow-lg p-6"
-      >
-        <div className="text-center py-12">
-          <div className="text-red-600 mb-2">⚠️ Error</div>
-          <p className="text-gray-600">{error}</p>
-        </div>
-      </section>
+      <section id="previous-consultation" className="bg-white rounded-xl shadow-lg p-6">{inner}</section>
     );
   }
 
   if (!consultationData) {
+    const inner = (
+      <div className="text-center py-12">
+        <div className="text-gray-400 mb-2">📋</div>
+        <p className="text-gray-600">No consultation data available</p>
+      </div>
+    );
+    if (embedded) return <div className="pt-2">{inner}</div>;
     return (
-      <section
-        id="previous-consultation"
-        className="bg-white rounded-xl shadow-lg p-6"
-      >
-        <div className="text-center py-12">
-          <div className="text-gray-400 mb-2">📋</div>
-          <p className="text-gray-600">
-            No previous consultation data available
-          </p>
-        </div>
-      </section>
+      <section id="previous-consultation" className="bg-white rounded-xl shadow-lg p-6">{inner}</section>
     );
   }
 
-  return (
-    <section
-      id="previous-consultation"
-      className="bg-white rounded-xl shadow-lg p-6"
-    >
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">
-          {readOnly ? "Consultation Notes" : "Previous Consultation"}
-        </h2>
-        <span className="text-sm text-gray-500">
-          {new Date(consultationData.date_of_consult).toLocaleDateString()}
-        </span>
+  // ─── Read-only view ─────────────────────────────────────────────────────────
+  const readOnlyContent = (
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <h3 className="text-base font-medium text-gray-900">Intervention Status</h3>
+        <p className="text-xl font-bold text-gray-900">
+          {consultationData.intervention_status || "Not specified"}
+        </p>
       </div>
 
-      <div className="space-y-6">
-        <div className="space-y-4">
-          <h3 className="text-base font-medium text-gray-900">
-            Intervention Status
-          </h3>
-          <p className="text-lg font-semibold text-gray-900">
-            {consultationData.intervention_status || "Not specified"}
-          </p>
-        </div>
+      <div className="space-y-4">
+        <h3 className="text-base font-medium text-gray-900">Main Nutrition Diagnosis</h3>
+        <p className="text-base font-bold text-gray-900 leading-relaxed">
+          {consultationData.details?.main_nutrition_diagnosis || "No diagnosis available"}
+        </p>
+      </div>
 
-        <div className="space-y-4">
-          <h3 className="text-base font-medium text-gray-900">
-            Main Nutrition Diagnosis
-          </h3>
-          <p className="text-sm text-gray-900 leading-relaxed">
-            {consultationData.details?.main_nutrition_diagnosis ||
-              "No diagnosis available"}
-          </p>
+      <div className="space-y-4">
+        <div className="grid grid-cols-4 gap-4">
+          {[
+            { label: "Carbohydrate", value: consultationData.details?.carbohydrates_review_diagnosis },
+            { label: "Protein", value: consultationData.details?.protein_review_diagnosis },
+            { label: "Fat", value: consultationData.details?.fat_review_diagnosis },
+            { label: "Fibre", value: consultationData.details?.fibre_review_diagnosis },
+          ].map(({ label, value }) => (
+            <div key={label} className="text-center">
+              <p className="text-xs text-gray-500 mb-1">{label}</p>
+              <p className="text-sm font-medium text-gray-900">{value || "N/A"}</p>
+            </div>
+          ))}
         </div>
+        <div className="grid grid-cols-4 gap-4">
+          {[
+            { label: "Iron", value: consultationData.details?.iron_review_diagnosis },
+            { label: "Calcium", value: consultationData.details?.calcium_review_diagnosis },
+            { label: "Micronutrients", value: consultationData.details?.micronutrients_review_diagnosis },
+            { label: "Other", value: consultationData.details?.other_review },
+          ].map(({ label, value }) => (
+            <div key={label} className="text-center">
+              <p className="text-xs text-gray-500 mb-1">{label}</p>
+              <p className="text-sm font-medium text-gray-900">{value || "N/A"}</p>
+            </div>
+          ))}
+        </div>
+      </div>
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-4 gap-4">
-            <div className="text-center">
-              <p className="text-xs text-gray-500 mb-1">Carbohydrate</p>
-              <p className="text-sm font-medium text-gray-900">
-                {consultationData.details?.carbohydrates_review_diagnosis ||
-                  "N/A"}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-500 mb-1">Protein</p>
-              <p className="text-sm font-medium text-gray-900">
-                {consultationData.details?.protein_review_diagnosis || "N/A"}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-500 mb-1">Fat</p>
-              <p className="text-sm font-medium text-gray-900">
-                {consultationData.details?.fat_review_diagnosis || "N/A"}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-500 mb-1">Fibre</p>
-              <p className="text-sm font-medium text-gray-900">
-                {consultationData.details?.fibre_review_diagnosis || "N/A"}
-              </p>
-            </div>
+      <div className="space-y-4">
+        <h3 className="text-base font-medium text-gray-900">Notes</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <h4 className="text-xs text-gray-500 mb-2">Intervention Notes</h4>
+            <p className="text-sm text-gray-900">
+              {consultationData.details?.intervention_note || "No intervention notes available"}
+            </p>
           </div>
-          <div className="grid grid-cols-4 gap-4">
-            <div className="text-center">
-              <p className="text-xs text-gray-500 mb-1">Iron</p>
-              <p className="text-sm font-medium text-gray-900">
-                {consultationData.details?.iron_review_diagnosis || "N/A"}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-500 mb-1">Calcium</p>
-              <p className="text-sm font-medium text-gray-900">
-                {consultationData.details?.calcium_review_diagnosis || "N/A"}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-500 mb-1">Micronutrients</p>
-              <p className="text-sm font-medium text-gray-900">
-                {consultationData.details?.micronutrients_review_diagnosis ||
-                  "N/A"}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-500 mb-1">Other</p>
-              <p className="text-sm font-medium text-gray-900">
-                {consultationData.details?.other_review || "N/A"}
-              </p>
-            </div>
+          <div>
+            <h4 className="text-xs text-gray-500 mb-2">Follow-Up Notes</h4>
+            <p className="text-sm text-gray-900">
+              {consultationData.details?.follow_up_note || "No follow-up notes available"}
+            </p>
+          </div>
+          <div>
+            <h4 className="text-xs text-gray-500 mb-2">Other Remarks</h4>
+            <p className="text-sm text-gray-900">
+              {consultationData.details?.other_remarks || "No remarks"}
+            </p>
           </div>
         </div>
+      </div>
 
-        <div className="space-y-4">
-          <h3 className="text-base font-medium text-gray-900">Notes</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <h4 className="text-xs text-gray-500 mb-2">Intervention Notes</h4>
-              <p className="text-sm text-gray-900">
-                {consultationData.details?.intervention_note ||
-                  "No intervention notes available"}
-              </p>
-            </div>
-            <div>
-              <h4 className="text-xs text-gray-500 mb-2">Follow-Up Notes</h4>
-              <p className="text-sm text-gray-900">
-                {consultationData.details?.follow_up_note ||
-                  "No follow-up notes available"}
-              </p>
-            </div>
-            <div>
-              <h4 className="text-xs text-gray-500 mb-2">Other Remarks</h4>
-              <p className="text-sm text-gray-900">
-                {consultationData.details?.other_remarks || "No remarks"}
-              </p>
-            </div>
-          </div>
-        </div>
-
+      {!embedded && (
         <div className="space-y-4">
           <h3 className="text-base font-medium text-gray-900">Prescription</h3>
           {consultationData.prescriptions.length === 0 ? (
@@ -779,44 +707,28 @@ export default function PreviousConsultation({
                 <div key={index} className="bg-gray-50 rounded-lg p-4">
                   <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">
-                        Supplement Name
-                      </p>
-                      <p className="font-medium text-gray-900">
-                        {prescription.supplement_name}
-                      </p>
+                      <p className="text-xs text-gray-500 mb-1">Supplement Name</p>
+                      <p className="font-medium text-gray-900">{prescription.supplement_name}</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Prescriber</p>
-                      <p className="font-medium text-gray-900">
-                        {prescription.prescriber}
-                      </p>
+                      <p className="font-medium text-gray-900">{prescription.prescriber}</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Batch Number</p>
-                      <p className="font-medium text-gray-900">
-                        {prescription.batch_number}
-                      </p>
+                      <p className="font-medium text-gray-900">{prescription.batch_number}</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Dosage</p>
-                      <p className="font-medium text-gray-900">
-                        {prescription.dosage}
-                      </p>
+                      <p className="font-medium text-gray-900">{prescription.dosage}</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Dosage Unit</p>
-                      <p className="font-medium text-gray-900">
-                        {prescription.dosage_unit}
-                      </p>
+                      <p className="font-medium text-gray-900">{prescription.dosage_unit}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">
-                        Dosage Frequency
-                      </p>
-                      <p className="font-medium text-gray-900">
-                        {prescription.dosage_frequency}
-                      </p>
+                      <p className="text-xs text-gray-500 mb-1">Dosage Frequency</p>
+                      <p className="font-medium text-gray-900">{prescription.dosage_frequency}</p>
                     </div>
                   </div>
                 </div>
@@ -824,7 +736,27 @@ export default function PreviousConsultation({
             </div>
           )}
         </div>
+      )}
+    </div>
+  );
+
+  if (embedded) {
+    return <div className="pt-2">{readOnlyContent}</div>;
+  }
+
+  return (
+    <section id="previous-consultation" className="bg-white rounded-xl shadow-lg p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold text-gray-900">
+          {readOnly ? "Consultation Notes" : "Previous Consultation"}
+        </h2>
+        <span className="text-sm text-gray-500">
+          {new Date(consultationData.date_of_consult).toLocaleDateString()}
+        </span>
       </div>
+      {readOnlyContent}
     </section>
   );
-}
+});
+
+export default PreviousConsultation;

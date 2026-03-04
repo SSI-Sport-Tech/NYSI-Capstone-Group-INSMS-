@@ -58,7 +58,7 @@ const SupplementInfo: React.FC<SupplementInfoProps> = ({ supplement }) => {
             </dt>
             <dd className="text-sm text-blue-600 hover:text-blue-800">
               <a
-                href={`https://${getSourceUrl()}`}
+                href={/^https?:\/\//i.test(getSourceUrl() || '') ? getSourceUrl() : `https://${getSourceUrl()}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline break-words"
