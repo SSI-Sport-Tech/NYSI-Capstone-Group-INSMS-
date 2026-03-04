@@ -1,0 +1,406 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { X, Calendar, Clock, User, MapPin, FileText } from "lucide-react";
+import { dashboardApi, Athlete, ConsultationType, ConsultationSession } from "@/utils/dashboardApi";
+import { consultationLookupApi } from "@/utils/consultationApi";
+
+interface BookingModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onBookingCreated: (booking: ConsultationSession) => void;
+  selectedDate?: Date;
+  existingSession?: ConsultationSession | null;
+}
+
+export default function BookingModal({
+  isOpen,
+  onClose,
+  onBookingCreated,
+  selectedDate,
+  existingSession,
+}: BookingModalProps) {
+  const [loading, setLoading] = useState(false);
+  const [athletes, setAthletes] = useState<Athlete[]>([]);
+  const [consultationTypes, setConsultationTypes] = useState<ConsultationType[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    athlete_id: "",
+    type_of_consult_id: "",
+    date_of_consult: "",
+    time_of_consult: "",
+    venue: "",
+    consultation_objective: "",
+    duration: 60,
+  });
+
+  // Time slot options
+  const timeSlots = [
+    "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", 
+    "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
+    "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
+    "17:00", "17:30", "18:00", "18:30", "19:00"
+  ];
+
+  // Location options
+  const locations = [
+    "Nutrition Room 1", "Nutrition Room 2", "Nutrition Room 3",
+    "Conference Room A", "Conference Room B", "Online Meeting",
+    "Sports Science Lab", "Consultation Office"
+  ];
+
+  // Initialize form data when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      if (existingSession) {
+        // Edit mode - populate with existing session data
+        setFormData({
+          athlete_id: existingSession.athlete_id,
+          type_of_consult_id: existingSession.type_of_consult || "",
+          date_of_consult: existingSession.date_of_consult.split('T')[0],
+          time_of_consult: existingSession.time_slot || "",
+          venue: existingSession.location || "",
+          consultation_objective: existingSession.consultation_objective || "",
+          duration: existingSession.duration || 60,
+        });
+      } else if (selectedDate) {
+        // New booking mode - use selected date
+        setFormData(prev => ({
+          ...prev,
+          date_of_consult: selectedDate.toISOString().split('T')[0],
+        }));
+      }
+      
+      // Load reference data
+      loadReferenceData();
+    } else {
+      // Reset form when modal closes
+      setFormData({
+        athlete_id: "",
+        type_of_consult_id: "",
+        date_of_consult: "",
+        time_of_consult: "",
+        venue: "",
+        consultation_objective: "",
+        duration: 60,
+      });
+      setErrors({});
+    }
+  }, [isOpen, selectedDate, existingSession]);
+
+  const loadReferenceData = async () => {
+    try {
+      setLoading(true);
+      const [athletesResponse, typesResponse] = await Promise.all([
+        dashboardApi.getAthletes(),
+        consultationLookupApi.getConsultationTypes(),
+      ]);
+      
+      setAthletes(athletesResponse.data || []);
+      setConsultationTypes(typesResponse.data || []);
+    } catch (error) {
+      console.error("Error loading reference data:", error);
+      setErrors({ general: "Failed to load form data. Please try again." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.athlete_id) {
+      newErrors.athlete_id = "Please select an athlete";
+    } else {
+      // Validate UUID format for athlete_id
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(formData.athlete_id)) {
+        newErrors.athlete_id = "Invalid athlete selection";
+      }
+    }
+    
+    if (!formData.type_of_consult_id) {
+      newErrors.type_of_consult_id = "Please select a consultation type";
+    } else {
+      // Validate UUID format for type_of_consult_id
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(formData.type_of_consult_id)) {
+        newErrors.type_of_consult_id = "Invalid consultation type selection";
+      }
+    }
+    
+    if (!formData.date_of_consult) {
+      newErrors.date_of_consult = "Please select a date";
+    }
+    if (!formData.time_of_consult) {
+      newErrors.time_of_consult = "Please select a time slot";
+    }
+
+    // Check if the selected date is in the past
+    const selectedDateTime = new Date(`${formData.date_of_consult}T${formData.time_of_consult}`);
+    if (selectedDateTime < new Date()) {
+      newErrors.date_of_consult = "Cannot schedule consultation in the past";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setErrors({});
+
+      const sessionData = {
+        athlete_id: formData.athlete_id,
+        type_of_consult_id: formData.type_of_consult_id,
+        ...(formData.date_of_consult && { date_of_consult: formData.date_of_consult }),
+        ...(formData.time_of_consult && { time_of_consult: formData.time_of_consult }),
+        ...(formData.venue?.trim() && { venue: formData.venue.trim() }),
+        ...(formData.consultation_objective?.trim() && { consultation_objective: formData.consultation_objective.trim() }),
+      };
+
+      console.log('Submitting session data:', sessionData);
+
+      let response;
+      if (existingSession) {
+        // Update existing session
+        response = await dashboardApi.updateConsultationSession(
+          existingSession.id,
+          sessionData
+        );
+      } else {
+        // Create new session
+        response = await dashboardApi.createConsultationSession(sessionData);
+      }
+
+      onBookingCreated(response.data);
+      onClose();
+    } catch (error: any) {
+      console.error("Error saving consultation:", error);
+      
+      // Handle specific validation errors
+      if (error.response?.status === 400) {
+        const errorMessage = error.response.data?.message || error.response.data?.error || "Validation failed";
+        setErrors({ general: `Validation error: ${errorMessage}` });
+      } else if (error.message?.includes('DashboardApiError')) {
+        setErrors({ general: `API Error: ${error.message}` });
+      } else {
+        setErrors({ 
+          general: error.message || "Failed to save consultation. Please try again." 
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (field: string, value: string | number) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear field error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">
+            {existingSession ? "Edit Consultation" : "Schedule New Consultation"}
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* General Error */}
+          {errors.general && (
+            <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">
+              {errors.general}
+            </div>
+          )}
+
+          {/* Athlete Selection */}
+          <div>
+            <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+              <User className="w-4 h-4" />
+              <span>Athlete *</span>
+            </label>
+            <select
+              value={formData.athlete_id}
+              onChange={(e) => handleInputChange("athlete_id", e.target.value)}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                errors.athlete_id ? "border-red-500" : "border-gray-300"
+              }`}
+              disabled={loading}
+            >
+              <option value="">Select an athlete</option>
+              {athletes.map((athlete) => (
+                <option key={athlete.id} value={athlete.id}>
+                  {athlete.athlete_name_abbr || `${athlete.first_name} ${athlete.last_name}`}
+                  {athlete.sport_name && ` (${athlete.sport_name})`}
+                </option>
+              ))}
+            </select>
+            {errors.athlete_id && (
+              <p className="mt-1 text-sm text-red-600">{errors.athlete_id}</p>
+            )}
+          </div>
+
+          {/* Consultation Type */}
+          <div>
+            <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+              <FileText className="w-4 h-4" />
+              <span>Consultation Type *</span>
+            </label>
+            <select
+              value={formData.type_of_consult_id}
+              onChange={(e) => handleInputChange("type_of_consult_id", e.target.value)}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                errors.type_of_consult_id ? "border-red-500" : "border-gray-300"
+              }`}
+              disabled={loading}
+            >
+              <option value="">Select consultation type</option>
+              {consultationTypes.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                  {type.duration && ` (${type.duration} min)`}
+                </option>
+              ))}
+            </select>
+            {errors.type_of_consult_id && (
+              <p className="mt-1 text-sm text-red-600">{errors.type_of_consult_id}</p>
+            )}
+          </div>
+
+          {/* Date and Time */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                <Calendar className="w-4 h-4" />
+                <span>Date *</span>
+              </label>
+              <input
+                type="date"
+                value={formData.date_of_consult}
+                onChange={(e) => handleInputChange("date_of_consult", e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.date_of_consult ? "border-red-500" : "border-gray-300"
+                }`}
+                disabled={loading}
+              />
+              {errors.date_of_consult && (
+                <p className="mt-1 text-sm text-red-600">{errors.date_of_consult}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                <Clock className="w-4 h-4" />
+                <span>Time *</span>
+              </label>
+              <select
+                value={formData.time_of_consult}
+                onChange={(e) => handleInputChange("time_of_consult", e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.time_of_consult ? "border-red-500" : "border-gray-300"
+                }`}
+                disabled={loading}
+              >
+                <option value="">Select time</option>
+                {timeSlots.map((time) => (
+                  <option key={time} value={time}>
+                    {time}
+                  </option>
+                ))}
+              </select>
+              {errors.time_of_consult && (
+                <p className="mt-1 text-sm text-red-600">{errors.time_of_consult}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Location */}
+          <div>
+            <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+              <MapPin className="w-4 h-4" />
+              <span>Location</span>
+            </label>
+            <select
+              value={formData.venue}
+              onChange={(e) => handleInputChange("venue", e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={loading}
+            >
+              <option value="">Select location</option>
+              {locations.map((location) => (
+                <option key={location} value={location}>
+                  {location}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Consultation Objective */}
+          <div>
+            <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+              <FileText className="w-4 h-4" />
+              <span>Objective</span>
+            </label>
+            <textarea
+              value={formData.consultation_objective}
+              onChange={(e) => handleInputChange("consultation_objective", e.target.value)}
+              placeholder="Brief description of consultation goals..."
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              disabled={loading}
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              disabled={loading}
+            >
+              {loading ? "Saving..." : existingSession ? "Update" : "Schedule"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

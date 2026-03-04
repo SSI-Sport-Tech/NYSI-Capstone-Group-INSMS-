@@ -10,7 +10,11 @@ interface AnthropometryProps {
   isNewConsultation?: boolean;
   ensureSession?: () => Promise<string>;
   readOnly?: boolean;
-  onAnthroChange?: (weight: number | null, height: number | null, targetWeight: number | null) => void;
+  onAnthroChange?: (
+    weight: number | null,
+    height: number | null,
+    targetWeight: number | null,
+  ) => void;
 }
 
 interface AnthropometryData {
@@ -129,7 +133,8 @@ export default function Anthropometry({
     if (!onAnthroChange) return;
     const w = editForm.weight !== "" ? parseFloat(editForm.weight) : null;
     const h = editForm.height !== "" ? parseFloat(editForm.height) : null;
-    const tw = editForm.target_weight !== "" ? parseFloat(editForm.target_weight) : null;
+    const tw =
+      editForm.target_weight !== "" ? parseFloat(editForm.target_weight) : null;
     onAnthroChange(
       w !== null && !isNaN(w) ? w : null,
       h !== null && !isNaN(h) ? h : null,
@@ -169,8 +174,26 @@ export default function Anthropometry({
       setLoading(true);
       setError("");
 
-      const response = await consultationApi.getAnthropometry(sessionId);
-      const apiData = (response as any).data;
+      const response = (await consultationApi.getAnthropometry(sessionId)) as {
+        data: unknown;
+      };
+      const apiData: {
+        heightCm?: string;
+        weightKg?: string;
+        bmi?: string;
+        bmiCategory?: string;
+        fatMassKg?: string;
+        fatMassPct?: string;
+        skeletalMuscleMassKg?: string;
+        skeletalMuscleMassPct?: string;
+        sumOf8Skinfold?: string;
+        targetWeightKg?: string;
+        targetBmi?: string;
+        motherHeightCm?: string;
+        fatherHeightCm?: string;
+        athletePotentialAdultHeightCm?: string;
+        otherRemarks?: string;
+      } = response.data;
 
       console.log("🔍 Anthropometry API Response:", apiData);
 
@@ -256,7 +279,8 @@ export default function Anthropometry({
   const handleSave = async () => {
     try {
       setSaveError("");
-      const targetId = isNewConsultation && ensureSession ? await ensureSession() : sessionId;
+      const targetId =
+        isNewConsultation && ensureSession ? await ensureSession() : sessionId;
       const token = localStorage.getItem("token");
 
       // Use the camelCase field names that the backend service expects.
@@ -266,7 +290,9 @@ export default function Anthropometry({
       if (editForm.weight) payload.weightKg = parseFloat(editForm.weight);
       if (editForm.fat_mass) payload.fatMassKg = parseFloat(editForm.fat_mass);
       if (editForm.skeletal_muscle_mass)
-        payload.skeletalMuscleMassKg = parseFloat(editForm.skeletal_muscle_mass);
+        payload.skeletalMuscleMassKg = parseFloat(
+          editForm.skeletal_muscle_mass,
+        );
       if (editForm.sum_of_skinfold)
         payload.sumOf8Skinfold = parseFloat(editForm.sum_of_skinfold);
       if (editForm.target_weight)
@@ -507,7 +533,9 @@ export default function Anthropometry({
                 type="date"
                 value={editForm.date_recorded}
                 onChange={(e) => updateField("date_recorded", e.target.value)}
-                style={{ color: editForm.date_recorded ? "#111827" : undefined }}
+                style={{
+                  color: editForm.date_recorded ? "#111827" : undefined,
+                }}
                 className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
               />
             </div>
@@ -565,9 +593,7 @@ export default function Anthropometry({
                   <span className="font-medium ">
                     {anthropometryData.height || "N/A"}
                   </span>
-                  {anthropometryData.height && (
-                    <span className="">cm</span>
-                  )}
+                  {anthropometryData.height && <span className="">cm</span>}
                 </div>
               </div>
 
@@ -577,9 +603,7 @@ export default function Anthropometry({
                   <span className="font-medium">
                     {anthropometryData.weight || "N/A"}
                   </span>
-                  {anthropometryData.weight && (
-                    <span className="">kg</span>
-                  )}
+                  {anthropometryData.weight && <span className="">kg</span>}
                 </div>
               </div>
 
@@ -603,9 +627,7 @@ export default function Anthropometry({
                   <span className="font-medium">
                     {anthropometryData.fat_mass || "N/A"}
                   </span>
-                  {anthropometryData.fat_mass && (
-                    <span className="">kg</span>
-                  )}
+                  {anthropometryData.fat_mass && <span className="">kg</span>}
                 </div>
               </div>
 

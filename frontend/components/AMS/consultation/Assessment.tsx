@@ -164,3 +164,7 @@ export default function Assessment({ athleteId, sessionId, isNewConsultation, ne
     </section>
   );
 }
+function useEffect(arg0: () => void, arg1: AssessmentData[]) {
+  throw new Error("Function not implemented.");
+}
+

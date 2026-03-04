@@ -47,6 +47,19 @@ export async function apiCall<T>(endpoint: string): Promise<T> {
   return data;
 }
 
+// Consultation lookup functions
+export const consultationLookupApi = {
+  // Get consultation types
+  getConsultationTypes: async (): Promise<{ data: any[] }> => {
+    return apiCall("/api/Consultation/lookups/consult-types");
+  },
+
+  // Get nutrition diagnoses  
+  getNutritionDiagnoses: async (): Promise<{ data: any[] }> => {
+    return apiCall("/api/Consultation/lookups/nutrition-diagnoses");
+  },
+};
+
 // Consultation-specific API functions
 export const consultationApi = {
   // Get latest consultation for athlete
