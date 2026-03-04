@@ -130,7 +130,12 @@ export default function ConsultationView({
 
       const response = (await consultationApi.getLatestConsultation(
         athleteId,
-      )) as { data: LatestConsultation };
+      )) as { data: LatestConsultation } | null;
+      if (!response) {
+        setLatestConsultation(null);
+        setCurrentSessionId("");
+        return;
+      }
       const data = response.data as LatestConsultation;
       setLatestConsultation(data);
       setCurrentSessionId(data.id);
