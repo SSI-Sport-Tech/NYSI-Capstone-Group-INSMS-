@@ -79,12 +79,9 @@ export default function ConsultationView({
         const token = localStorage.getItem("token");
 
         // Fetch a default consult type (required by DB — NOT NULL)
-        const typesRes = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/lookups/consult-types`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        const typesData = await typesRes.json();
-        const defaultTypeId = typesData.data?.[0]?.id as string | undefined;
+        const { consultationLookupApi } = await import("../../utils/consultationApi");
+        const typesResponse = await consultationLookupApi.getConsultationTypes();
+        const defaultTypeId = typesResponse.data?.[0]?.id as string | undefined;
         if (!defaultTypeId) throw new Error("No active consult types found");
 
         const response = await fetch(

@@ -47,7 +47,6 @@ const INTERVENTION_STATUSES = [
   "No Change",
 ];
 
-
 interface ConsultType {
   id: string;
   type_of_consult: string;
@@ -115,11 +114,17 @@ export default function PreviousConsultation({
 
   // Refs so the auto-save closure always sees current values
   const formRef = useRef(form);
-  useEffect(() => { formRef.current = form; }, [form]);
+  useEffect(() => {
+    formRef.current = form;
+  }, [form]);
   const ensureSessionRef = useRef(ensureSession);
-  useEffect(() => { ensureSessionRef.current = ensureSession; }, [ensureSession]);
+  useEffect(() => {
+    ensureSessionRef.current = ensureSession;
+  }, [ensureSession]);
   const isSavedRef = useRef(isSaved);
-  useEffect(() => { isSavedRef.current = isSaved; }, [isSaved]);
+  useEffect(() => {
+    isSavedRef.current = isSaved;
+  }, [isSaved]);
   const consultTypesRef = useRef<ConsultType[]>([]);
 
   // Auto-save when "Save and Finish" transitions isNewConsultation true → false
@@ -149,7 +154,11 @@ export default function PreviousConsultation({
           if (typeMatch) {
             await fetch(
               `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/${id}`,
-              { method: "PATCH", headers, body: JSON.stringify({ type_of_consult_id: typeMatch.id }) },
+              {
+                method: "PATCH",
+                headers,
+                body: JSON.stringify({ type_of_consult_id: typeMatch.id }),
+              },
             );
           }
         }
@@ -160,14 +169,16 @@ export default function PreviousConsultation({
             headers,
             body: JSON.stringify({
               sessions_id: id,
-              main_nutrition_diagnosis: currentForm.main_nutrition_diagnosis || undefined,
+              main_nutrition_diagnosis:
+                currentForm.main_nutrition_diagnosis || undefined,
               carbohydrates_review_id: currentForm.carbohydrates_review || null,
               protein_review_id: currentForm.protein_review || null,
               fat_review_id: currentForm.fat_review || null,
               fibre_review_id: currentForm.fibre_review || null,
               iron_review_id: currentForm.iron_review || null,
               calcium_review_id: currentForm.calcium_review || null,
-              micronutrients_review_id: currentForm.micronutrients_review || null,
+              micronutrients_review_id:
+                currentForm.micronutrients_review || null,
               other_review: currentForm.other_review || undefined,
               intervention_note: currentForm.intervention_note || undefined,
               follow_up_note: currentForm.follow_up_note || undefined,
@@ -179,7 +190,7 @@ export default function PreviousConsultation({
         console.error("[PreviousConsultation] Auto-save on finish failed:", e);
       }
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNewConsultation]);
 
   const [consultTypes, setConsultTypes] = useState<ConsultType[]>([]);
@@ -287,25 +298,16 @@ export default function PreviousConsultation({
       try {
         const token = localStorage.getItem("token");
         const headers = { Authorization: `Bearer ${token}` };
-        const [typesRes, diagRes] = await Promise.all([
-          fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/lookups/consult-types`,
-            { headers },
-          ),
-          fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/lookups/nutrition-diagnoses`,
-            { headers },
-          ),
+        const { consultationLookupApi } =
+          await import("../../../utils/consultationApi");
+        const [typesResponse, diagResponse] = await Promise.all([
+          consultationLookupApi.getConsultationTypes(),
+          consultationLookupApi.getNutritionDiagnoses(),
         ]);
-        if (typesRes.ok) {
-          const d = await typesRes.json();
-          setConsultTypes(d.data ?? []);
-          consultTypesRef.current = d.data ?? [];
-        }
-        if (diagRes.ok) {
-          const d = await diagRes.json();
-          setNutritionDiagnoses(d.data ?? []);
-        }
+
+        setConsultTypes(typesResponse.data ?? []);
+        consultTypesRef.current = typesResponse.data ?? [];
+        setNutritionDiagnoses(diagResponse.data ?? []);
       } catch (err) {
         console.error("Failed to fetch consultation lookups:", err);
       }
@@ -413,9 +415,7 @@ export default function PreviousConsultation({
           </button>
         </div>
 
-        {saveError && (
-          <p className="text-red-600 text-sm mb-4">{saveError}</p>
-        )}
+        {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
         <div className="space-y-6">
           {/* Type of Consultation + Intervention Status */}
@@ -429,7 +429,9 @@ export default function PreviousConsultation({
                 onChange={(e) => updateForm("consult_type", e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
               >
-                <option className="text-gray-500" value="">Select type...</option>
+                <option className="text-gray-500" value="">
+                  Select type...
+                </option>
                 {consultTypes.map((t) => (
                   <option key={t.id} value={t.type_of_consult}>
                     {t.type_of_consult}
@@ -479,14 +481,46 @@ export default function PreviousConsultation({
             <div className="grid grid-cols-4 gap-3 text-sm">
               {(
                 [
-                  { label: "Carbohydrate", field: "carbohydrates_review" as const, category: "CARB" },
-                  { label: "Protein", field: "protein_review" as const, category: "PROTEIN" },
-                  { label: "Fat", field: "fat_review" as const, category: "FAT" },
-                  { label: "Fibre", field: "fibre_review" as const, category: "FIBRE" },
-                  { label: "Iron", field: "iron_review" as const, category: "IRON" },
-                  { label: "Calcium", field: "calcium_review" as const, category: "CALCIUM" },
-                  { label: "Micronutrients", field: "micronutrients_review" as const, category: "MICRO" },
-                ] as { label: string; field: keyof CurrentConsultForm; category: string }[]
+                  {
+                    label: "Carbohydrate",
+                    field: "carbohydrates_review" as const,
+                    category: "CARB",
+                  },
+                  {
+                    label: "Protein",
+                    field: "protein_review" as const,
+                    category: "PROTEIN",
+                  },
+                  {
+                    label: "Fat",
+                    field: "fat_review" as const,
+                    category: "FAT",
+                  },
+                  {
+                    label: "Fibre",
+                    field: "fibre_review" as const,
+                    category: "FIBRE",
+                  },
+                  {
+                    label: "Iron",
+                    field: "iron_review" as const,
+                    category: "IRON",
+                  },
+                  {
+                    label: "Calcium",
+                    field: "calcium_review" as const,
+                    category: "CALCIUM",
+                  },
+                  {
+                    label: "Micronutrients",
+                    field: "micronutrients_review" as const,
+                    category: "MICRO",
+                  },
+                ] as {
+                  label: string;
+                  field: keyof CurrentConsultForm;
+                  category: string;
+                }[]
               ).map(({ label, field, category }) => (
                 <div key={field}>
                   <label className="block text-xs text-gray-500 mb-1">

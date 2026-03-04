@@ -90,9 +90,11 @@ export const dashboardApi = {
     return apiCall("/api/AMS/athletes");
   },
 
-  // Get consultation types (this endpoint exists)
+  // Get consultation types (use shared consultation API)
   getConsultationTypes: async (): Promise<{ data: ConsultationType[] }> => {
-    return apiCall("/api/Consultation/lookups/consult-types");
+    // Import here to avoid circular dependencies
+    const { consultationLookupApi } = await import('./consultationApi');
+    return consultationLookupApi.getConsultationTypes();
   },
 
   // Create new consultation session (this endpoint exists)
@@ -101,8 +103,8 @@ export const dashboardApi = {
     type_of_consult_id: string;
     date_of_consult: string;
     consultation_objective?: string;
-    time_slot?: string;
-    location?: string;
+    time_of_consult?: string;
+    venue?: string;
   }): Promise<{ data: ConsultationSession }> => {
     return apiCall("/api/Consultation/consultation-update", {
       method: "POST",

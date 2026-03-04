@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { X, Calendar, Clock, User, MapPin, FileText } from "lucide-react";
 import { dashboardApi, Athlete, ConsultationType, ConsultationSession } from "@/utils/dashboardApi";
+import { consultationLookupApi } from "@/utils/consultationApi";
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -29,8 +30,8 @@ export default function BookingModal({
     athlete_id: "",
     type_of_consult_id: "",
     date_of_consult: "",
-    time_slot: "",
-    location: "",
+    time_of_consult: "",
+    venue: "",
     consultation_objective: "",
     duration: 60,
   });
@@ -59,8 +60,8 @@ export default function BookingModal({
           athlete_id: existingSession.athlete_id,
           type_of_consult_id: existingSession.type_of_consult || "",
           date_of_consult: existingSession.date_of_consult.split('T')[0],
-          time_slot: existingSession.time_slot || "",
-          location: existingSession.location || "",
+          time_of_consult: existingSession.time_slot || "",
+          venue: existingSession.location || "",
           consultation_objective: existingSession.consultation_objective || "",
           duration: existingSession.duration || 60,
         });
@@ -80,8 +81,8 @@ export default function BookingModal({
         athlete_id: "",
         type_of_consult_id: "",
         date_of_consult: "",
-        time_slot: "",
-        location: "",
+        time_of_consult: "",
+        venue: "",
         consultation_objective: "",
         duration: 60,
       });
@@ -94,7 +95,7 @@ export default function BookingModal({
       setLoading(true);
       const [athletesResponse, typesResponse] = await Promise.all([
         dashboardApi.getAthletes(),
-        dashboardApi.getConsultationTypes(),
+        consultationLookupApi.getConsultationTypes(),
       ]);
       
       setAthletes(athletesResponse.data || []);
@@ -112,19 +113,33 @@ export default function BookingModal({
 
     if (!formData.athlete_id) {
       newErrors.athlete_id = "Please select an athlete";
+    } else {
+      // Validate UUID format for athlete_id
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(formData.athlete_id)) {
+        newErrors.athlete_id = "Invalid athlete selection";
+      }
     }
+    
     if (!formData.type_of_consult_id) {
       newErrors.type_of_consult_id = "Please select a consultation type";
+    } else {
+      // Validate UUID format for type_of_consult_id
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(formData.type_of_consult_id)) {
+        newErrors.type_of_consult_id = "Invalid consultation type selection";
+      }
     }
+    
     if (!formData.date_of_consult) {
       newErrors.date_of_consult = "Please select a date";
     }
-    if (!formData.time_slot) {
-      newErrors.time_slot = "Please select a time slot";
+    if (!formData.time_of_consult) {
+      newErrors.time_of_consult = "Please select a time slot";
     }
 
     // Check if the selected date is in the past
-    const selectedDateTime = new Date(`${formData.date_of_consult}T${formData.time_slot}`);
+    const selectedDateTime = new Date(`${formData.date_of_consult}T${formData.time_of_consult}`);
     if (selectedDateTime < new Date()) {
       newErrors.date_of_consult = "Cannot schedule consultation in the past";
     }
@@ -147,11 +162,13 @@ export default function BookingModal({
       const sessionData = {
         athlete_id: formData.athlete_id,
         type_of_consult_id: formData.type_of_consult_id,
-        date_of_consult: formData.date_of_consult,
-        consultation_objective: formData.consultation_objective,
-        time_slot: formData.time_slot,
-        location: formData.location,
+        ...(formData.date_of_consult && { date_of_consult: formData.date_of_consult }),
+        ...(formData.time_of_consult && { time_of_consult: formData.time_of_consult }),
+        ...(formData.venue?.trim() && { venue: formData.venue.trim() }),
+        ...(formData.consultation_objective?.trim() && { consultation_objective: formData.consultation_objective.trim() }),
       };
+
+      console.log('Submitting session data:', sessionData);
 
       let response;
       if (existingSession) {
@@ -169,9 +186,18 @@ export default function BookingModal({
       onClose();
     } catch (error: any) {
       console.error("Error saving consultation:", error);
-      setErrors({ 
-        general: error.message || "Failed to save consultation. Please try again." 
-      });
+      
+      // Handle specific validation errors
+      if (error.response?.status === 400) {
+        const errorMessage = error.response.data?.message || error.response.data?.error || "Validation failed";
+        setErrors({ general: `Validation error: ${errorMessage}` });
+      } else if (error.message?.includes('DashboardApiError')) {
+        setErrors({ general: `API Error: ${error.message}` });
+      } else {
+        setErrors({ 
+          general: error.message || "Failed to save consultation. Please try again." 
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -298,10 +324,10 @@ export default function BookingModal({
                 <span>Time *</span>
               </label>
               <select
-                value={formData.time_slot}
-                onChange={(e) => handleInputChange("time_slot", e.target.value)}
+                value={formData.time_of_consult}
+                onChange={(e) => handleInputChange("time_of_consult", e.target.value)}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.time_slot ? "border-red-500" : "border-gray-300"
+                  errors.time_of_consult ? "border-red-500" : "border-gray-300"
                 }`}
                 disabled={loading}
               >
@@ -312,8 +338,8 @@ export default function BookingModal({
                   </option>
                 ))}
               </select>
-              {errors.time_slot && (
-                <p className="mt-1 text-sm text-red-600">{errors.time_slot}</p>
+              {errors.time_of_consult && (
+                <p className="mt-1 text-sm text-red-600">{errors.time_of_consult}</p>
               )}
             </div>
           </div>
@@ -325,8 +351,8 @@ export default function BookingModal({
               <span>Location</span>
             </label>
             <select
-              value={formData.location}
-              onChange={(e) => handleInputChange("location", e.target.value)}
+              value={formData.venue}
+              onChange={(e) => handleInputChange("venue", e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               disabled={loading}
             >
