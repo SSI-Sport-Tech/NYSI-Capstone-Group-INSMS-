@@ -27,7 +27,7 @@ const pythonClient = axios.create({
     keepAliveMsecs: 1000,
     maxSockets: 5,
     maxFreeSockets: 2,
-    timeout: 60000,
+    timeout: 300000,
   }),
 });
 
