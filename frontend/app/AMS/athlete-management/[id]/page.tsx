@@ -755,14 +755,6 @@ export default function AthleteDetailPage() {
                           )}
                         </div>
 
-                        {/* Number of Reminders (display-only) */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Number of Reminders
-                          </label>
-                          <p className="text-sm text-gray-900">-</p>
-                        </div>
-
                         {/* Coach Assigned */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">

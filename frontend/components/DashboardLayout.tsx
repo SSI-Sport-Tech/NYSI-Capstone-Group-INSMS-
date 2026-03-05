@@ -151,6 +151,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             {supplementOpen && (
               <div className="mt-2 space-y-1">
                 <Link
+                  href="/SSS/library"
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/SSS/library"
+                    ? "bg-gray-100 text-gray-900 font-medium"
+                    : "text-gray-600 hover:bg-gray-50"
+                    }`}
+                >
+                  <BookOpenText className="w-4 h-4" />
+                  <span>Library</span>
+                </Link>
+                <Link
                   href="/SSS/inventory"
                   className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/SSS/inventory"
                     ? "bg-gray-100 text-gray-900 font-medium"
@@ -169,16 +179,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 >
                   <Globe className="w-4 h-4" />
                   <span>Web Scraper</span>
-                </Link>
-                <Link
-                  href="/SSS/library"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/SSS/library"
-                    ? "bg-gray-100 text-gray-900 font-medium"
-                    : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                >
-                  <BookOpenText className="w-4 h-4" />
-                  <span>Library</span>
                 </Link>
                 <Link
                   href="/SSS/batch-testing"

@@ -42,22 +42,22 @@ export default function InventoryPage() {
 
   const tabs = [
     {
+      id: "library",
+      label: "Supplement Library",
+      icon: "library",
+      href: "/SSS/library",
+    },
+    {
       id: "inventory",
       label: "Current Inventory View",
-      icon: "globe",
+      icon: "inventory",
       href: "/SSS/inventory",
     },
     {
       id: "scraper",
       label: "Web Scraper View",
-      icon: "search",
+      icon: "scraper",
       href: "/SSS/web-scraper",
-    },
-    {
-      id: "library",
-      label: "Supplement Library",
-      icon: "library",
-      href: "/SSS/library",
     },
     {
       id: "batch-testing",

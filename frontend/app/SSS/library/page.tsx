@@ -21,6 +21,12 @@ interface Supplement {
 
 const tabs = [
   {
+    id: "library",
+    label: "Supplement Library",
+    icon: "library",
+    href: "/SSS/library",
+  },
+  {
     id: "inventory",
     label: "Current Inventory View",
     icon: "inventory",
@@ -31,12 +37,6 @@ const tabs = [
     label: "Web Scraper View",
     icon: "scraper",
     href: "/SSS/web-scraper",
-  },
-  {
-    id: "library",
-    label: "Supplement Library",
-    icon: "library",
-    href: "/SSS/library",
   },
   {
     id: "batch-testing",

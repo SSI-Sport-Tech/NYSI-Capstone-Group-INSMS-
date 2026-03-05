@@ -36,6 +36,12 @@ interface CatalogUrl {
 
 const tabs = [
   {
+    id: "library",
+    label: "Supplement Library",
+    icon: "library",
+    href: "/SSS/library",
+  },
+  {
     id: "inventory",
     label: "Current Inventory View",
     icon: "inventory",
@@ -46,12 +52,6 @@ const tabs = [
     label: "Web Scraper View",
     icon: "scraper",
     href: "/SSS/web-scraper",
-  },
-  {
-    id: "library",
-    label: "Supplement Library",
-    icon: "library",
-    href: "/SSS/library",
   },
   {
     id: "batch-testing",
@@ -364,7 +364,10 @@ export default function WebScraperPage() {
             title={!isAdmin ? "Only admins can run the scraper" : undefined}
             className="w-full bg-black text-white py-3 px-4 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
-            <Play className="w-4 h-4 mr-2" />
+            {scraperLoading
+              ? <span className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+              : <Play className="w-4 h-4 mr-2" />
+            }
             {scraperLoading ? "Starting Scraper..." : "Manually Run Scraper Now"}
           </button>
           {!isAdmin && (

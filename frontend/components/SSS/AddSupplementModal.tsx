@@ -68,7 +68,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  title = "Add Supplement to Inventory",
+  title = "Add Supplement to Library",
   supplementOnly = false,
   preselectedSupplement,
 }) => {
