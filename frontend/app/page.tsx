@@ -32,9 +32,9 @@ export default function Home() {
 
   // Handle session view/edit from various components
   const handleSessionView = (session: ConsultationSession) => {
-    // Navigate to athlete consultation tab
+    // Navigate to athlete consultation tab, linking to this specific session
     router.push(
-      `/AMS/athlete-management/${session.athlete_id}?tab=consultation`,
+      `/AMS/athlete-management/${session.athlete_id}?tab=consultation&sessionId=${session.id}`,
     );
   };
 
@@ -82,7 +82,6 @@ export default function Home() {
               {/* Upcoming Sessions */}
               <UpcomingSessions
                 onSessionEdit={handleSessionEdit}
-                onSessionView={handleSessionView}
                 limit={4}
               />
             </div>

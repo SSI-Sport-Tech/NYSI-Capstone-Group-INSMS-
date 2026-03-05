@@ -8,13 +8,11 @@ import SessionCard from "./SessionCard";
 
 interface UpcomingSessionsProps {
   onSessionEdit?: (session: ConsultationSession) => void;
-  onSessionView?: (session: ConsultationSession) => void;
   limit?: number;
 }
 
 export default function UpcomingSessions({
   onSessionEdit,
-  onSessionView,
   limit = 4,
 }: UpcomingSessionsProps) {
   const [sessions, setSessions] = useState<ConsultationSession[]>([]);
@@ -27,7 +25,7 @@ export default function UpcomingSessions({
       setError("");
       const response = await dashboardApi.getUpcomingSessions();
       setSessions(response.data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching upcoming sessions:", error);
       setError("Session data not available yet");
       setSessions([]);
@@ -97,13 +95,6 @@ export default function UpcomingSessions({
             </button>
           )}
         </div>
-        <Link
-          href="/AMS/consultations"
-          className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center transition-colors"
-        >
-          View All
-          <ChevronRight className="w-4 h-4 ml-1" />
-        </Link>
       </div>
 
       {error && !sessions.length && (
@@ -117,7 +108,7 @@ export default function UpcomingSessions({
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No Sessions Yet</h3>
           <p className="text-gray-500 mb-4 max-w-sm mx-auto">
-            Your upcoming consultation sessions will appear here once they're scheduled.
+            Your upcoming consultation sessions will appear here once scheduled.
           </p>
           <div className="text-xs text-red-600 bg-red-50 p-2 rounded-lg inline-block mb-4">
             {error}
@@ -152,7 +143,6 @@ export default function UpcomingSessions({
               key={session.id}
               session={session}
               onEdit={onSessionEdit}
-              onView={onSessionView}
               onDelete={handleSessionDelete}
               showActions={true}
             />

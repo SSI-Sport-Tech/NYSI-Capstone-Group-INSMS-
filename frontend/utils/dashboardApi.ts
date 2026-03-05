@@ -45,7 +45,10 @@ export interface Athlete {
 
 export interface ConsultationType {
   id: string;
-  name: string;
+  /** Field name returned by the API */
+  type_of_consult?: string;
+  /** Legacy alias — may not be present */
+  name?: string;
   description?: string;
   duration?: number;
 }
@@ -142,8 +145,7 @@ export const dashboardApi = {
   },
 
   getUpcomingSessions: async (): Promise<{ data: ConsultationSession[] }> => {
-    console.warn("getUpcomingSessions endpoint not implemented in backend");
-    return { data: [] };
+    return apiCall("/api/Consultation/consultation-update/upcoming");
   },
 
   cancelConsultationSession: async (sessionId: string): Promise<void> => {

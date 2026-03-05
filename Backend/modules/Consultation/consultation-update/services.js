@@ -251,6 +251,42 @@ export async function getAllConsultationSessions(athleteId) {
 }
 
 /**
+ * Get upcoming consultation sessions (date_of_consult >= today), ordered by date ASC
+ * @param {number} limit - Max rows to return (default 20)
+ * @returns {Promise<Array>}
+ */
+export async function getUpcomingConsultationSessions(limit = 20) {
+    const query = `
+        SELECT
+            s.id,
+            s.nutritionist_id,
+            n.name AS nutritionist_name,
+            s.athlete_id,
+            a.athlete_name_abbr,
+            s.type_of_consult_id,
+            tl.type_of_consult,
+            s.title_description,
+            s.venue,
+            s.date_of_consult,
+            s.time_of_consult,
+            s.date_of_next_follow_up,
+            s.time_of_next_follow_up,
+            sn.consultation_objective,
+            s.is_scheduled_booking
+        FROM consultation.sessions s
+        LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
+        LEFT JOIN ams.athlete a ON s.athlete_id = a.id
+        LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
+        LEFT JOIN consultation.session_note sn ON sn.sessions_id = s.id
+        WHERE s.date_of_consult >= CURRENT_DATE
+        ORDER BY s.date_of_consult ASC, s.time_of_consult ASC NULLS LAST
+        LIMIT $1
+    `;
+    const result = await pool.query(query, [limit]);
+    return result.rows;
+}
+
+/**
  * Get nutritionist ID by auth user ID
  * @param {string} userId - UUID from auth.users
  * @returns {Promise<string|null>} Nutritionist UUID or null

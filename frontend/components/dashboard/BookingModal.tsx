@@ -66,10 +66,13 @@ export default function BookingModal({
           duration: existingSession.duration || 60,
         });
       } else if (selectedDate) {
-        // New booking mode - use selected date
+        // New booking mode - use selected date (local date, not UTC)
+        const y = selectedDate.getFullYear();
+        const m = String(selectedDate.getMonth() + 1).padStart(2, "0");
+        const d = String(selectedDate.getDate()).padStart(2, "0");
         setFormData(prev => ({
           ...prev,
-          date_of_consult: selectedDate.toISOString().split('T')[0],
+          date_of_consult: `${y}-${m}-${d}`,
         }));
       }
       
@@ -138,10 +141,13 @@ export default function BookingModal({
       newErrors.time_of_consult = "Please select a time slot";
     }
 
-    // Check if the selected date is in the past
-    const selectedDateTime = new Date(`${formData.date_of_consult}T${formData.time_of_consult}`);
-    if (selectedDateTime < new Date()) {
-      newErrors.date_of_consult = "Cannot schedule consultation in the past";
+    // Check if the selected date is in the past (only when both date and time are set)
+    if (formData.date_of_consult && formData.time_of_consult) {
+      const selectedDateTime = new Date(`${formData.date_of_consult}T${formData.time_of_consult}`);
+      const now = new Date();
+      if (!isNaN(selectedDateTime.getTime()) && selectedDateTime < now) {
+        newErrors.date_of_consult = "Cannot schedule consultation in the past";
+      }
     }
 
     setErrors(newErrors);
@@ -186,18 +192,21 @@ export default function BookingModal({
 
       onBookingCreated(response.data);
       onClose();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error saving consultation:", error);
       
       // Handle specific validation errors
-      if (error.response?.status === 400) {
-        const errorMessage = error.response.data?.message || error.response.data?.error || "Validation failed";
+      const err = error instanceof Error ? error : new Error(String(error));
+      const axiosError = error as { response?: { status?: number; data?: { message?: string; error?: string } } };
+      
+      if (axiosError.response?.status === 400) {
+        const errorMessage = axiosError.response.data?.message || axiosError.response.data?.error || "Validation failed";
         setErrors({ general: `Validation error: ${errorMessage}` });
-      } else if (error.message?.includes('DashboardApiError')) {
-        setErrors({ general: `API Error: ${error.message}` });
+      } else if (err.message?.includes('DashboardApiError')) {
+        setErrors({ general: `API Error: ${err.message}` });
       } else {
         setErrors({ 
-          general: error.message || "Failed to save consultation. Please try again." 
+          general: err.message || "Failed to save consultation. Please try again." 
         });
       }
     } finally {
@@ -288,7 +297,7 @@ export default function BookingModal({
               <option value="">Select consultation type</option>
               {consultationTypes.map((type) => (
                 <option key={type.id} value={type.id}>
-                  {type.name}
+                  {type.type_of_consult || type.name}
                   {type.duration && ` (${type.duration} min)`}
                 </option>
               ))}
@@ -309,7 +318,7 @@ export default function BookingModal({
                 type="date"
                 value={formData.date_of_consult}
                 onChange={(e) => handleInputChange("date_of_consult", e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
+                min={(() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })()}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.date_of_consult ? "border-red-500" : "border-gray-300"
                 }`}

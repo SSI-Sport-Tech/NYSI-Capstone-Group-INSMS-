@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Edit, Eye, Clock, MapPin, User, Trash2 } from "lucide-react";
+import { Edit, Eye, Clock, MapPin, Trash2 } from "lucide-react";
 import { ConsultationSession } from "@/utils/dashboardApi";
 import { useRouter } from "next/navigation";
 
@@ -9,7 +9,6 @@ interface SessionCardProps {
   session: ConsultationSession;
   onEdit?: (session: ConsultationSession) => void;
   onDelete?: (sessionId: string) => void;
-  onView?: (session: ConsultationSession) => void;
   showActions?: boolean;
 }
 
@@ -17,7 +16,6 @@ export default function SessionCard({
   session,
   onEdit,
   onDelete,
-  onView,
   showActions = true,
 }: SessionCardProps) {
   const [loading, setLoading] = useState(false);
@@ -60,17 +58,15 @@ export default function SessionCard({
     }
   };
 
-  const handleViewClick = () => {
-    if (onView) {
-      onView(session);
-    } else {
-      // Navigate to athlete consultation tab, linking to this specific session
-      router.push(
-        `/AMS/athlete-management/${session.athlete_id}?tab=consultation&sessionId=${session.id}`,
-      );
-    }
+  // Eye — always navigates to the athlete's consultation tab for this session
+  const handleViewClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    router.push(
+      `/AMS/athlete-management/${session.athlete_id}?tab=consultation&sessionId=${session.id}`,
+    );
   };
 
+  // Edit — opens the BookingModal to change schedule details (date, time, location, type)
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onEdit) {
@@ -91,17 +87,16 @@ export default function SessionCard({
   };
 
   return (
-    <div 
-      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer bg-white"
-      onClick={handleViewClick}
-    >
+    <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
       {/* Header with athlete name and date */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <h3 className="font-semibold text-gray-900">{session.athlete_name_abbr}</h3>
           <p className="text-sm text-gray-500">{formatDate(session.date_of_consult)}</p>
-          {session.time_slot && (
-            <p className="text-sm text-gray-500">{session.time_slot}</p>
+          {(session.time_of_consult || session.time_slot) && (
+            <p className="text-sm text-gray-500">
+              {session.time_of_consult ?? session.time_slot}
+            </p>
           )}
         </div>
 
@@ -130,10 +125,10 @@ export default function SessionCard({
 
       {/* Additional Info */}
       <div className="space-y-1 mb-3">
-        {session.location && (
+        {(session.venue || session.location) && (
           <div className="flex items-center space-x-2 text-sm text-gray-600">
             <MapPin className="w-3 h-3" />
-            <span>{session.location}</span>
+            <span>{session.venue ?? session.location}</span>
           </div>
         )}
         
@@ -163,16 +158,16 @@ export default function SessionCard({
           <button
             onClick={handleEditClick}
             className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
-            title="Edit consultation"
-            disabled={loading}
+            title="Edit schedule (date, time, location)"
+            disabled={loading || !onEdit}
           >
             <Edit className="w-4 h-4" />
           </button>
-          
+
           <button
             onClick={handleViewClick}
             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            title="View consultation details"
+            title="Open consultation"
             disabled={loading}
           >
             <Eye className="w-4 h-4" />

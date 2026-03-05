@@ -88,6 +88,7 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
+router.get('/consultation-update/upcoming', controller.getUpcomingConsultationSessions);
 router.get('/consultation-update/athlete/:athleteId/latest', controller.getLatestConsultationSession);
 router.get('/consultation-update/athlete/:athleteId/all', controller.getAllConsultationSessions);
 

@@ -110,6 +110,21 @@ export async function getAllConsultationSessions(req, res) {
 }
 
 // ============================================================================
+// GET UPCOMING CONSULTATION SESSIONS
+// ============================================================================
+
+export async function getUpcomingConsultationSessions(req, res) {
+    try {
+        const limit = parseInt(req.query.limit) || 20;
+        const sessions = await services.getUpcomingConsultationSessions(limit);
+        res.json({ data: sessions });
+    } catch (error) {
+        console.error('Error fetching upcoming consultation sessions:', error);
+        res.status(500).json({ error: 'Failed to fetch upcoming sessions', message: error.message });
+    }
+}
+
+// ============================================================================
 // CREATE CONSULTATION SESSION
 // ============================================================================
 
