@@ -11,6 +11,7 @@
  */
 
 import * as services from "./services.js";
+import { getNutritionistIdByUserId } from "../AMS/nutritionist/services.js";
 import {
   registerSchema,
   loginSchema,
@@ -590,6 +591,8 @@ export async function getCurrentUser(req, res) {
       });
     }
 
+    const nutritionist_id = await getNutritionistIdByUserId(user.id);
+
     console.log("User profile fetched successfully");
     res.json({
       user: {
@@ -602,6 +605,7 @@ export async function getCurrentUser(req, res) {
         is_email_verified: user.is_email_verified,
         created_at: user.created_at,
         last_login_at: user.last_login_at,
+        nutritionist_id: nutritionist_id ?? undefined,
       },
     });
   } catch (error) {

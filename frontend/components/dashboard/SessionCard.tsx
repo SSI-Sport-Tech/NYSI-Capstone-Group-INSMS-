@@ -5,6 +5,7 @@ import { Edit, Eye, Clock, MapPin, Trash2, CheckCircle2, Circle } from "lucide-r
 import { ConsultationSession, dashboardApi } from "@/utils/dashboardApi";
 import { nutritionistColor, getInitials } from "@/utils/nutritionistAvatar";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SessionCardProps {
   session: ConsultationSession;
@@ -24,6 +25,11 @@ export default function SessionCard({
   const [loading, setLoading] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(session.status);
   const router = useRouter();
+  const { user } = useAuth();
+
+  const isAdmin = user?.role === "ADMIN" || user?.role === "IT_ADMIN";
+  const isOwner = !!user?.nutritionist_id && user.nutritionist_id === session.nutritionist_id;
+  const canModify = isAdmin || isOwner;
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -126,7 +132,7 @@ export default function SessionCard({
 
         <div className="flex items-center space-x-2">
           {/* Checkmark to mark as completed */}
-          {currentStatus !== "cancelled" && (
+          {currentStatus !== "cancelled" && canModify && (
             <button
               onClick={handleCompleteToggle}
               disabled={loading}
@@ -195,7 +201,7 @@ export default function SessionCard({
       </div>
 
       {/* Action Buttons */}
-      {showActions && (
+      {showActions && canModify && (
         <div className="flex justify-end space-x-2 pt-2 border-t border-gray-100">
           <button
             onClick={handleEditClick}
@@ -214,8 +220,8 @@ export default function SessionCard({
           >
             <Eye className="w-4 h-4" />
           </button>
-          
-          {currentStatus !== "completed" && currentStatus !== "cancelled" && (
+
+          {canModify && currentStatus !== "completed" && currentStatus !== "cancelled" && (
             <button
               onClick={handleDeleteClick}
               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
