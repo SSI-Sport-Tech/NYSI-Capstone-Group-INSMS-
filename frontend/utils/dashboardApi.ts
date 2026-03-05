@@ -27,9 +27,12 @@ export interface ConsultationSession {
   consultation_objective: string;
   type_of_consult: string;
   time_slot?: string;
+  time_of_consult?: string;
+  venue?: string;
   location?: string;
   duration?: number;
   status?: "scheduled" | "completed" | "cancelled" | "in-progress";
+  is_scheduled_booking?: boolean;
 }
 
 export interface Athlete {
@@ -101,10 +104,11 @@ export const dashboardApi = {
   createConsultationSession: async (sessionData: {
     athlete_id: string;
     type_of_consult_id: string;
-    date_of_consult: string;
+    date_of_consult?: string;
     consultation_objective?: string;
     time_of_consult?: string;
     venue?: string;
+    is_scheduled_booking?: boolean;
   }): Promise<{ data: ConsultationSession }> => {
     return apiCall("/api/Consultation/consultation-update", {
       method: "POST",

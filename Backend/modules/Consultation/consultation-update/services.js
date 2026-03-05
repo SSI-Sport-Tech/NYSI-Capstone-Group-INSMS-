@@ -26,7 +26,8 @@ export async function getConsultationUpdate(sessionId) {
             s.time_of_consult,
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
-            sn.consultation_objective
+            sn.consultation_objective,
+            s.is_scheduled_booking
         FROM consultation.sessions s
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
@@ -52,8 +53,9 @@ export async function createConsultationSession(data, userId) {
                 nutritionist_id, athlete_id, type_of_consult_id,
                 title_description, venue,
                 date_of_consult, time_of_consult,
-                date_of_next_follow_up, time_of_next_follow_up
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                date_of_next_follow_up, time_of_next_follow_up,
+                is_scheduled_booking
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING *
         `, [
             data.nutritionist_id,
@@ -65,6 +67,7 @@ export async function createConsultationSession(data, userId) {
             data.time_of_consult || null,
             data.date_of_next_follow_up || null,
             data.time_of_next_follow_up || null,
+            data.is_scheduled_booking ?? false,
         ]);
         const session = sessionResult.rows[0];
 
@@ -182,7 +185,8 @@ export async function getLatestConsultationSession(athleteId) {
             s.time_of_consult,
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
-            sn.consultation_objective
+            sn.consultation_objective,
+            s.is_scheduled_booking
         FROM consultation.sessions s
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
@@ -219,6 +223,7 @@ export async function getAllConsultationSessions(athleteId) {
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
             sn.consultation_objective,
+            s.is_scheduled_booking,
             sup.supplement_name,
             ib.batch_number,
             sp.dosage,

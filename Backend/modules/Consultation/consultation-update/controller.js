@@ -197,6 +197,7 @@ export async function createConsultationSession(req, res) {
             date_of_next_follow_up: validated.date_of_next_follow_up,
             time_of_next_follow_up: validated.time_of_next_follow_up,
             consultation_objective: validated.consultation_objective,
+            is_scheduled_booking: validated.is_scheduled_booking ?? false,
         }, req.user.userId);
 
         res.status(201).json({

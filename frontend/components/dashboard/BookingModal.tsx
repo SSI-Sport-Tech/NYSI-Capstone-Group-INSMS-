@@ -166,6 +166,8 @@ export default function BookingModal({
         ...(formData.time_of_consult && { time_of_consult: formData.time_of_consult }),
         ...(formData.venue?.trim() && { venue: formData.venue.trim() }),
         ...(formData.consultation_objective?.trim() && { consultation_objective: formData.consultation_objective.trim() }),
+        // Mark sessions created from the dashboard so ConsultationView can detect them
+        ...(!existingSession && { is_scheduled_booking: true }),
       };
 
       console.log('Submitting session data:', sessionData);

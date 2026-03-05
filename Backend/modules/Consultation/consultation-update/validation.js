@@ -44,6 +44,9 @@ export const createSessionSchema = z.object({
     // --- Optional: override nutritionist (falls back to logged-in user if omitted) ---
     nutritionist_id: uuidSchema.optional(),
 
+    // --- Dashboard scheduling flag ---
+    is_scheduled_booking: z.boolean().optional(),
+
     // --- Reject system-managed fields ---
     id: z.never().optional(),
 }).strict();

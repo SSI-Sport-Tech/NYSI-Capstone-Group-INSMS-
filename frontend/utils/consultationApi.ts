@@ -69,6 +69,18 @@ export const consultationApi = {
     );
   },
 
+  // Get a specific consultation session by ID
+  getConsultationById: async (sessionId: string) => {
+    return apiCall(`/api/Consultation/consultation-update/${sessionId}`);
+  },
+
+  // Get all consultation sessions for an athlete
+  getAllConsultations: async (athleteId: string) => {
+    return apiCall(
+      `/api/Consultation/consultation-update/athlete/${athleteId}/all`,
+    );
+  },
+
   // Get open items for session
   getOpenItems: async (sessionId: string) => {
     return apiCall(`/api/Consultation/open-items/session/${sessionId}`);

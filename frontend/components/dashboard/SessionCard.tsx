@@ -64,8 +64,10 @@ export default function SessionCard({
     if (onView) {
       onView(session);
     } else {
-      // Navigate to athlete consultation tab
-      router.push(`/AMS/athlete-management/${session.athlete_id}?tab=consultation`);
+      // Navigate to athlete consultation tab, linking to this specific session
+      router.push(
+        `/AMS/athlete-management/${session.athlete_id}?tab=consultation&sessionId=${session.id}`,
+      );
     }
   };
 

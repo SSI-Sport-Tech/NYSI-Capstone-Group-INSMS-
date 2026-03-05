@@ -986,6 +986,7 @@ export default function AthleteDetailPage() {
                 <ConsultationView
                   athleteId={athleteId}
                   athleteName={profile.athlete.athlete_name_abbr}
+                  initialSessionId={searchParams.get("sessionId") ?? undefined}
                 />
               )}
 

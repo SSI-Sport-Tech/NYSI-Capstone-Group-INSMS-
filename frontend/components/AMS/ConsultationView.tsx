@@ -15,6 +15,9 @@ import Anthropometry from "./consultation/Anthropometry";
 import MedicalHistory from "./consultation/MedicalHistory";
 import Adherences from "./consultation/Adherences";
 import NewPrescriptionForm from "./consultation/NewPrescriptionForm";
+import ScheduledSessionSelectorModal, {
+  type ScheduledSession,
+} from "./consultation/ScheduledSessionSelectorModal";
 
 interface LatestConsultation {
   id: string;
@@ -30,11 +33,14 @@ interface LatestConsultation {
   venue: string;
   time_of_consult: string;
   title_description: string;
+  is_scheduled_booking?: boolean;
 }
 
 interface ConsultationViewProps {
   athleteId: string;
   athleteName: string;
+    /** When provided (e.g. navigating from dashboard), load this session instead of the latest. */
+  initialSessionId?: string;
 }
 
 interface ConsultType {
@@ -57,6 +63,7 @@ type UpdateForm = typeof EMPTY_UPDATE_FORM;
 export default function ConsultationView({
   athleteId,
   athleteName,
+  initialSessionId,
 }: ConsultationViewProps) {
   const [activeSection, setActiveSection] = useState<string>("open-items");
   const [latestConsultation, setLatestConsultation] =
@@ -98,6 +105,10 @@ export default function ConsultationView({
   const updateFormRef = useRef<UpdateForm>(EMPTY_UPDATE_FORM);
   const ensureSessionForUpdateRef = useRef<() => Promise<string>>(async () => "");
   const previousConsultRef = useRef<PreviousConsultationHandle>(null);
+
+  // Session selector modal (shown when current session has is_scheduled_booking = true
+  // and nutritionist clicks "Start New Consultation")
+  const [showSessionSelector, setShowSessionSelector] = useState(false);
 
   // Creates the consultation session on first card save (lazy).
   // Concurrent callers all wait for the same in-flight promise.
@@ -171,6 +182,26 @@ export default function ConsultationView({
       .catch(() => {});
   }, [isEditMode, isNewConsultation]);
 
+  // Fetch a specific session by ID (used when navigating from the dashboard)
+  const fetchSessionById = async (sessionId: string) => {
+    try {
+      setLoading(true);
+      setError("");
+      const response = (await consultationApi.getConsultationById(sessionId)) as {
+        data: LatestConsultation;
+      } | null;
+      const data = response?.data as LatestConsultation | undefined;
+      if (!data) throw new Error("Session not found");
+      setLatestConsultation(data);
+      setCurrentSessionId(data.id);
+    } catch {
+      // Fall back to latest if the specific session cannot be found
+      await fetchLatestConsultation();
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch latest consultation data for the athlete
   const fetchLatestConsultation = async () => {
     try {
@@ -202,15 +233,46 @@ export default function ConsultationView({
   };
 
   useEffect(() => {
-    if (athleteId) {
+    if (!athleteId) return;
+    if (initialSessionId) {
+      fetchSessionById(initialSessionId);
+    } else {
       fetchLatestConsultation();
     }
-  }, [athleteId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [athleteId, initialSessionId]);
 
   const handleStartNewConsultation = () => {
     const today = new Date();
     const d = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     setUpdateForm({ ...EMPTY_UPDATE_FORM, date_of_consult: d });
+    // If the current session was booked from the dashboard, show the session
+    // selector so the nutritionist picks which session to conduct.
+    if (latestConsultation?.is_scheduled_booking) {
+      setShowSessionSelector(true);
+      return;
+    }
+    setIsNewConsultation(true);
+  };
+
+  // Nutritionist picked a scheduled session from the modal.
+  // Pre-seed sessionIdRef so ensureSession() returns it without creating a new one.
+  const handleSelectScheduledSession = (session: ScheduledSession) => {
+    sessionIdRef.current = session.id;
+    sessionCreationRef.current = null;
+    setNewSessionId(session.id);
+    setNewConsultation(session as unknown as LatestConsultation);
+    setShowSessionSelector(false);
+    setIsNewConsultation(true);
+  };
+
+  // Nutritionist wants a brand-new session despite scheduled ones existing.
+  const handleStartNewFromModal = () => {
+    sessionIdRef.current = "";
+    sessionCreationRef.current = null;
+    setNewSessionId("");
+    setNewConsultation(null);
+    setShowSessionSelector(false);
     setIsNewConsultation(true);
   };
 
@@ -700,6 +762,16 @@ export default function ConsultationView({
   };
 
   return (
+    <>
+      {/* Scheduled session selector modal */}
+      <ScheduledSessionSelectorModal
+        isOpen={showSessionSelector}
+        athleteId={athleteId}
+        onSelectSession={handleSelectScheduledSession}
+        onStartNew={handleStartNewFromModal}
+        onClose={() => setShowSessionSelector(false)}
+      />
+
     <div className="flex h-full">
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-8">
@@ -858,5 +930,6 @@ export default function ConsultationView({
         {isNewConsultation && <NewPrescriptionForm ensureSession={ensureSession} />}
       </div>
     </div>
+    </>
   );
 }
