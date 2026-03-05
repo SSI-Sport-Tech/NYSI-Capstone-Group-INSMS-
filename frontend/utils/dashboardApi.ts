@@ -177,12 +177,23 @@ export const dashboardApi = {
       newAthletes: number;
     };
   }> => {
-    console.warn("getSessionStats endpoint not implemented in backend");
+    const [todayRes, athletesRes] = await Promise.allSettled([
+      apiCall<{ data: ConsultationSession[] }>("/api/Consultation/consultation-update/today"),
+      apiCall<{ totalCount: number }>("/api/AMS/athletes"),
+    ]);
+
+    const sessions = todayRes.status === "fulfilled" ? todayRes.value.data : [];
+    const todayTotal = sessions.length;
+    const todayCompleted = sessions.filter((s) => s.status === "completed").length;
+
+    const activeAthletes =
+      athletesRes.status === "fulfilled" ? (athletesRes.value.totalCount ?? 0) : 0;
+
     return {
       data: {
-        todayTotal: 0,
-        todayCompleted: 0,
-        activeAthletes: 0,
+        todayTotal,
+        todayCompleted,
+        activeAthletes,
         newAthletes: 0,
       },
     };

@@ -31,7 +31,7 @@ function toDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export default function TodaySchedule({ date }: { date?: Date }) {
+export default function TodaySchedule({ date, refreshKey }: { date?: Date; refreshKey?: number }) {
   const [sessions, setSessions] = useState<ConsultationSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -76,7 +76,8 @@ export default function TodaySchedule({ date }: { date?: Date }) {
       clearInterval(sessionInterval);
       clearInterval(nowInterval);
     };
-  }, [date]); // re-fetch when date prop changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, refreshKey]); // re-fetch when date or refreshKey changes
 
   // Scroll to current time on load
   useEffect(() => {

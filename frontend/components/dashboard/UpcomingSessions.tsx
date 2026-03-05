@@ -11,12 +11,14 @@ function toDateStr(d: Date): string {
 
 interface UpcomingSessionsProps {
   onSessionEdit?: (session: ConsultationSession) => void;
+  onSessionStatusChange?: () => void;
   limit?: number;
   selectedDate?: Date | null;
 }
 
 export default function UpcomingSessions({
   onSessionEdit,
+  onSessionStatusChange,
   limit = 4,
   selectedDate,
 }: UpcomingSessionsProps) {
@@ -161,6 +163,7 @@ export default function UpcomingSessions({
               session={session}
               onEdit={onSessionEdit}
               onDelete={handleSessionDelete}
+              onStatusChange={onSessionStatusChange ? () => onSessionStatusChange() : undefined}
               showActions={true}
             />
           ))}

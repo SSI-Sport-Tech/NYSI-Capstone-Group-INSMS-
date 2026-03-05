@@ -120,7 +120,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                     <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                                <div className="h-14 w-14 rounded-full bg-white bg-opacity-20 flex items-center justify-center text-white font-bold text-xl">
+                                <div className="h-14 w-14 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-xl">
                                     {user.first_name[0]}
                                     {user.last_name[0]}
                                 </div>

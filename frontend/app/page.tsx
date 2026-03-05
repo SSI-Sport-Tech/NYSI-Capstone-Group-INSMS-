@@ -14,8 +14,8 @@ import { ConsultationSession } from "@/utils/dashboardApi";
 export default function Home() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [editingSession, setEditingSession] =
-    useState<ConsultationSession | null>(null);
+  const [editingSession, setEditingSession] = useState<ConsultationSession | null>(null);
+  const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0);
   const router = useRouter();
 
   // Handle calendar date selection
@@ -74,6 +74,7 @@ export default function Home() {
               {/* Upcoming Sessions */}
               <UpcomingSessions
                 onSessionEdit={handleSessionEdit}
+                onSessionStatusChange={() => setScheduleRefreshKey(k => k + 1)}
                 limit={4}
                 selectedDate={selectedDate}
               />
@@ -89,7 +90,7 @@ export default function Home() {
               />
 
               {/* Today's Schedule */}
-              <TodaySchedule date={selectedDate || undefined} />
+              <TodaySchedule date={selectedDate || undefined} refreshKey={scheduleRefreshKey} />
             </div>
           </div>
 
