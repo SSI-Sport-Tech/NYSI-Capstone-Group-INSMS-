@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Edit, Eye, Clock, MapPin, Trash2 } from "lucide-react";
-import { ConsultationSession } from "@/utils/dashboardApi";
+import { Edit, Eye, Clock, MapPin, Trash2, CheckCircle2, Circle } from "lucide-react";
+import { ConsultationSession, dashboardApi } from "@/utils/dashboardApi";
+import { nutritionistColor, getInitials } from "@/utils/nutritionistAvatar";
 import { useRouter } from "next/navigation";
 
 interface SessionCardProps {
   session: ConsultationSession;
   onEdit?: (session: ConsultationSession) => void;
   onDelete?: (sessionId: string) => void;
+  onStatusChange?: (sessionId: string, status: ConsultationSession["status"]) => void;
   showActions?: boolean;
 }
 
@@ -16,9 +18,11 @@ export default function SessionCard({
   session,
   onEdit,
   onDelete,
+  onStatusChange,
   showActions = true,
 }: SessionCardProps) {
   const [loading, setLoading] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState(session.status);
   const router = useRouter();
 
   const formatDate = (dateString: string) => {
@@ -74,6 +78,22 @@ export default function SessionCard({
     }
   };
 
+  const handleCompleteToggle = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (currentStatus === "cancelled") return;
+    const newStatus = currentStatus === "completed" ? "scheduled" : "completed";
+    setLoading(true);
+    try {
+      await dashboardApi.updateSessionStatus(session.id, newStatus);
+      setCurrentStatus(newStatus);
+      onStatusChange?.(session.id, newStatus);
+    } catch (error) {
+      console.error("Failed to update session status:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDeleteClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onDelete && window.confirm("Are you sure you want to cancel this consultation?")) {
@@ -86,12 +106,16 @@ export default function SessionCard({
     }
   };
 
+  const isCompleted = currentStatus === "completed";
+
   return (
-    <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
-      {/* Header with athlete name and date */}
+    <div className={`border rounded-lg p-4 hover:shadow-md transition-shadow bg-white ${isCompleted ? "border-gray-100 opacity-60" : "border-gray-200"}`}>
+      {/* Header with athlete name, date, and checkmark */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
-          <h3 className="font-semibold text-gray-900">{session.athlete_name_abbr}</h3>
+          <h3 className={`font-semibold ${isCompleted ? "text-gray-400" : "text-gray-900"}`}>
+            {session.athlete_name_abbr}
+          </h3>
           <p className="text-sm text-gray-500">{formatDate(session.date_of_consult)}</p>
           {(session.time_of_consult || session.time_slot) && (
             <p className="text-sm text-gray-500">
@@ -100,13 +124,30 @@ export default function SessionCard({
           )}
         </div>
 
-        {/* Status Badge */}
-        <span className={`
-          px-2 py-1 text-xs font-medium rounded-full border
-          ${getStatusColor(session.status)}
-        `}>
-          {getStatusText(session.status)}
-        </span>
+        <div className="flex items-center space-x-2">
+          {/* Checkmark to mark as completed */}
+          {currentStatus !== "cancelled" && (
+            <button
+              onClick={handleCompleteToggle}
+              disabled={loading}
+              title={isCompleted ? "Mark as scheduled" : "Mark as completed"}
+              className="p-1 rounded-full transition-colors"
+            >
+              {isCompleted
+                ? <CheckCircle2 className="w-5 h-5 text-green-500" />
+                : <Circle className="w-5 h-5 text-gray-300 hover:text-green-400" />
+              }
+            </button>
+          )}
+
+          {/* Status Badge */}
+          <span className={`
+            px-2 py-1 text-xs font-medium rounded-full border
+            ${getStatusColor(currentStatus)}
+          `}>
+            {getStatusText(currentStatus)}
+          </span>
+        </div>
       </div>
 
       {/* Consultation Type and Objective */}
@@ -141,8 +182,9 @@ export default function SessionCard({
 
         {session.nutritionist_name && (
           <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <div className="w-5 h-5 bg-teal-600 rounded-full flex items-center justify-center text-white text-xs font-medium">
-              {session.nutritionist_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-white font-bold ${nutritionistColor(session.nutritionist_id || session.nutritionist_name)}`}
+              style={{ fontSize: "9px" }}>
+              {getInitials(session.nutritionist_name)}
             </div>
             <div>
               <span className="text-xs text-gray-500">Assigned to</span>
@@ -173,7 +215,7 @@ export default function SessionCard({
             <Eye className="w-4 h-4" />
           </button>
           
-          {session.status !== "completed" && session.status !== "cancelled" && (
+          {currentStatus !== "completed" && currentStatus !== "cancelled" && (
             <button
               onClick={handleDeleteClick}
               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"

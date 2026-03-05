@@ -21,9 +21,10 @@ export interface ConsultationSession {
   id: string;
   athlete_id: string;
   athlete_name_abbr: string;
+  nutritionist_id?: string;
+  nutritionist_name: string;
   date_of_consult: string;
   date_of_next_follow_up: string;
-  nutritionist_name: string;
   consultation_objective: string;
   type_of_consult: string;
   time_slot?: string;
@@ -130,18 +131,27 @@ export const dashboardApi = {
     });
   },
 
-  // These endpoints don't exist in the backend yet - return empty data
   getConsultationSessions: async (
     startDate?: string,
     endDate?: string
   ): Promise<{ data: ConsultationSession[] }> => {
-    console.warn("getConsultationSessions endpoint not implemented in backend");
-    return { data: [] };
+    if (!startDate || !endDate) return { data: [] };
+    return apiCall(`/api/Consultation/consultation-update/range?from=${startDate}&to=${endDate}`);
   },
 
-  getTodaySessions: async (): Promise<{ data: ConsultationSession[] }> => {
-    console.warn("getTodaySessions endpoint not implemented in backend");
-    return { data: [] };
+  getTodaySessions: async (date?: string): Promise<{ data: ConsultationSession[] }> => {
+    const query = date ? `?date=${date}` : "";
+    return apiCall(`/api/Consultation/consultation-update/today${query}`);
+  },
+
+  updateSessionStatus: async (
+    sessionId: string,
+    status: "scheduled" | "completed" | "cancelled" | "in-progress"
+  ): Promise<{ data: ConsultationSession }> => {
+    return apiCall(`/api/Consultation/consultation-update/${sessionId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
   },
 
   getUpcomingSessions: async (): Promise<{ data: ConsultationSession[] }> => {
@@ -149,11 +159,12 @@ export const dashboardApi = {
   },
 
   cancelConsultationSession: async (sessionId: string): Promise<void> => {
-    console.warn("cancelConsultationSession endpoint not implemented in backend");
-    throw new DashboardApiError("Cancellation not yet available", 501);
+    await apiCall(`/api/Consultation/consultation-update/${sessionId}`, {
+      method: "DELETE",
+    });
   },
 
-  getUserSessions: async (date: string): Promise<{ data: ConsultationSession[] }> => {
+  getUserSessions: async (_date: string): Promise<{ data: ConsultationSession[] }> => {
     console.warn("getUserSessions endpoint not implemented in backend");
     return { data: [] };
   },

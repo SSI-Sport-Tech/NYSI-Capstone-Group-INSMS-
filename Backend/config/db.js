@@ -4,6 +4,12 @@ import dotenv from "dotenv";
 // Load environment variables from .env
 dotenv.config();
 
+// Return DATE columns as plain 'YYYY-MM-DD' strings instead of JavaScript Date
+// objects. Without this, pg converts DATE to a local-midnight Date, which
+// JSON.stringify turns into a UTC ISO string — causing an off-by-one-day bug
+// for servers running outside UTC (e.g. UTC+8 / Singapore).
+pg.types.setTypeParser(1082, (val) => val);
+
 const { Pool } = pg;
 
 // Create a connection pool using .env values

@@ -30,21 +30,13 @@ export default function Home() {
     setShowBookingModal(true);
   };
 
-  // Handle session view/edit from various components
-  const handleSessionView = (session: ConsultationSession) => {
-    // Navigate to athlete consultation tab, linking to this specific session
-    router.push(
-      `/AMS/athlete-management/${session.athlete_id}?tab=consultation&sessionId=${session.id}`,
-    );
-  };
-
   const handleSessionEdit = (session: ConsultationSession) => {
     setEditingSession(session);
     setShowBookingModal(true);
   };
 
   // Handle booking creation/update
-  const handleBookingCreated = (booking: ConsultationSession) => {
+  const handleBookingCreated = (_booking: ConsultationSession) => {
     // Refresh the page data by triggering re-renders
     // This could be improved with a state management solution
     window.location.reload();
@@ -83,6 +75,7 @@ export default function Home() {
               <UpcomingSessions
                 onSessionEdit={handleSessionEdit}
                 limit={4}
+                selectedDate={selectedDate}
               />
             </div>
 
@@ -91,13 +84,12 @@ export default function Home() {
               {/* Interactive Calendar */}
               <CalendarComponent
                 onDateSelect={handleDateSelect}
-                onBookingClick={handleSessionView}
                 onNewBooking={handleNewBooking}
                 selectedDate={selectedDate || undefined}
               />
 
               {/* Today's Schedule */}
-              <TodaySchedule />
+              <TodaySchedule date={selectedDate || undefined} />
             </div>
           </div>
 

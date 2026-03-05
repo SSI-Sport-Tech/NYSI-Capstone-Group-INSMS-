@@ -1,32 +1,43 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { dashboardApi, ConsultationSession } from "@/utils/dashboardApi";
 import SessionCard from "./SessionCard";
 
+function toDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 interface UpcomingSessionsProps {
   onSessionEdit?: (session: ConsultationSession) => void;
   limit?: number;
+  selectedDate?: Date | null;
 }
 
 export default function UpcomingSessions({
   onSessionEdit,
   limit = 4,
+  selectedDate,
 }: UpcomingSessionsProps) {
   const [sessions, setSessions] = useState<ConsultationSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
-  const fetchUpcomingSessions = async () => {
+  const fetchSessions = async () => {
     try {
       setLoading(true);
       setError("");
-      const response = await dashboardApi.getUpcomingSessions();
+      let response;
+      if (selectedDate) {
+        const dateStr = toDateStr(selectedDate);
+        response = await dashboardApi.getConsultationSessions(dateStr, dateStr);
+      } else {
+        response = await dashboardApi.getUpcomingSessions();
+      }
       setSessions(response.data || []);
     } catch (error: unknown) {
-      console.error("Error fetching upcoming sessions:", error);
+      console.error("Error fetching sessions:", error);
       setError("Session data not available yet");
       setSessions([]);
     } finally {
@@ -35,13 +46,15 @@ export default function UpcomingSessions({
   };
 
   useEffect(() => {
-    fetchUpcomingSessions();
-    
-    // Refresh sessions every 2 minutes
-    const interval = setInterval(fetchUpcomingSessions, 2 * 60 * 1000);
-    
-    return () => clearInterval(interval);
-  }, []);
+    fetchSessions();
+
+    // Only auto-refresh when showing upcoming (no specific date selected)
+    if (!selectedDate) {
+      const interval = setInterval(fetchSessions, 2 * 60 * 1000);
+      return () => clearInterval(interval);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]); // re-fetch when selected date changes
 
   const handleSessionDelete = async (sessionId: string) => {
     try {
@@ -54,14 +67,18 @@ export default function UpcomingSessions({
   };
 
   const refreshSessions = () => {
-    fetchUpcomingSessions();
+    fetchSessions();
   };
+
+  const sectionTitle = selectedDate
+    ? selectedDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+    : "Upcoming Sessions";
 
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-sm p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Upcoming Sessions</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{sectionTitle}</h2>
         </div>
         <div className="grid md:grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
@@ -84,7 +101,7 @@ export default function UpcomingSessions({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-3">
           <h2 className="text-xl font-semibold text-gray-900">
-            Upcoming Sessions
+            {sectionTitle}
           </h2>
           {error && (
             <button

@@ -27,7 +27,8 @@ export async function getConsultationUpdate(sessionId) {
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
             sn.consultation_objective,
-            s.is_scheduled_booking
+            s.is_scheduled_booking,
+            s.status
         FROM consultation.sessions s
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
@@ -186,7 +187,8 @@ export async function getLatestConsultationSession(athleteId) {
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
             sn.consultation_objective,
-            s.is_scheduled_booking
+            s.is_scheduled_booking,
+            s.status
         FROM consultation.sessions s
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
@@ -224,6 +226,7 @@ export async function getAllConsultationSessions(athleteId) {
             s.time_of_next_follow_up,
             sn.consultation_objective,
             s.is_scheduled_booking,
+            s.status,
             sup.supplement_name,
             ib.batch_number,
             sp.dosage,
@@ -272,7 +275,8 @@ export async function getUpcomingConsultationSessions(limit = 20) {
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
             sn.consultation_objective,
-            s.is_scheduled_booking
+            s.is_scheduled_booking,
+            s.status
         FROM consultation.sessions s
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
@@ -287,6 +291,40 @@ export async function getUpcomingConsultationSessions(limit = 20) {
 }
 
 /**
+ * Get sessions within a date range (for calendar view)
+ * @param {string} from - Start date YYYY-MM-DD
+ * @param {string} to - End date YYYY-MM-DD
+ * @returns {Promise<Array>}
+ */
+export async function getSessionsByDateRange(from, to) {
+    const query = `
+        SELECT
+            s.id,
+            s.nutritionist_id,
+            n.name AS nutritionist_name,
+            s.athlete_id,
+            a.athlete_name_abbr,
+            s.type_of_consult_id,
+            tl.type_of_consult,
+            s.venue,
+            s.date_of_consult,
+            s.time_of_consult,
+            sn.consultation_objective,
+            s.is_scheduled_booking,
+            s.status
+        FROM consultation.sessions s
+        LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
+        LEFT JOIN ams.athlete a ON s.athlete_id = a.id
+        LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
+        LEFT JOIN consultation.session_note sn ON sn.sessions_id = s.id
+        WHERE s.date_of_consult >= $1 AND s.date_of_consult <= $2
+        ORDER BY s.date_of_consult, s.time_of_consult ASC NULLS LAST
+    `;
+    const result = await pool.query(query, [from, to]);
+    return result.rows;
+}
+
+/**
  * Get nutritionist ID by auth user ID
  * @param {string} userId - UUID from auth.users
  * @returns {Promise<string|null>} Nutritionist UUID or null
@@ -297,4 +335,58 @@ export async function getNutritionistIdByUserId(userId) {
         [userId]
     );
     return result.rows.length > 0 ? result.rows[0].id : null;
+}
+
+/**
+ * Get today's consultation sessions for a specific nutritionist
+ * @param {string} nutritionistId - Nutritionist UUID
+ * @returns {Promise<Array>}
+ */
+export async function getTodaySessionsForNutritionist(nutritionistId, date) {
+    const query = `
+        SELECT
+            s.id,
+            s.nutritionist_id,
+            n.name AS nutritionist_name,
+            s.athlete_id,
+            a.athlete_name_abbr,
+            s.type_of_consult_id,
+            tl.type_of_consult,
+            s.title_description,
+            s.venue,
+            s.date_of_consult,
+            s.time_of_consult,
+            s.date_of_next_follow_up,
+            s.time_of_next_follow_up,
+            sn.consultation_objective,
+            s.is_scheduled_booking,
+            s.status
+        FROM consultation.sessions s
+        LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
+        LEFT JOIN ams.athlete a ON s.athlete_id = a.id
+        LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
+        LEFT JOIN consultation.session_note sn ON sn.sessions_id = s.id
+        WHERE s.nutritionist_id = $1
+          AND s.date_of_consult = $2::date
+        ORDER BY s.time_of_consult ASC NULLS LAST
+    `;
+    const result = await pool.query(query, [nutritionistId, date]);
+    return result.rows;
+}
+
+/**
+ * Update the status of a consultation session
+ * @param {string} sessionId - Session UUID
+ * @param {string} status - New status ('scheduled' | 'in-progress' | 'completed' | 'cancelled')
+ * @param {string} userId - Auth user UUID for audit
+ * @returns {Promise<Object|null>} Updated session or null
+ */
+export async function updateSessionStatus(sessionId, status, userId) {
+    return withUserContext(userId, async (client) => {
+        const result = await client.query(
+            `UPDATE consultation.sessions SET status = $1 WHERE id = $2 RETURNING *`,
+            [status, sessionId]
+        );
+        return result.rows.length > 0 ? result.rows[0] : null;
+    });
 }

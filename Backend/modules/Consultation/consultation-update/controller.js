@@ -1,5 +1,5 @@
 import * as services from './services.js';
-import { createSessionSchema, updateSessionSchema, uuidParamSchema, athleteIdParamSchema } from './validation.js';
+import { createSessionSchema, updateSessionSchema, updateStatusSchema, uuidParamSchema, athleteIdParamSchema } from './validation.js';
 import pool from '../../../config/db.js';
 
 // ============================================================================
@@ -287,5 +287,97 @@ export async function updateConsultationSession(req, res) {
         }
         console.error('Error updating consultation session:', error);
         res.status(500).json({ error: 'Failed to update consultation session', message: error.message });
+    }
+}
+
+// ============================================================================
+// GET SESSIONS BY DATE RANGE (calendar view)
+// ============================================================================
+
+export async function getSessionsByDateRange(req, res) {
+    try {
+        const { from, to } = req.query;
+        if (!from || !to) {
+            return res.status(400).json({ error: 'Query params "from" and "to" (YYYY-MM-DD) are required' });
+        }
+        const sessions = await services.getSessionsByDateRange(from, to);
+        res.json({ data: sessions });
+    } catch (error) {
+        console.error('Error fetching sessions by date range:', error);
+        res.status(500).json({ error: 'Failed to fetch sessions', message: error.message });
+    }
+}
+
+// ============================================================================
+// GET TODAY'S SESSIONS FOR LOGGED-IN NUTRITIONIST
+// ============================================================================
+
+export async function getTodaySessionsForNutritionist(req, res) {
+    try {
+        const nutritionistId = await services.getNutritionistIdByUserId(req.user.userId);
+        if (!nutritionistId) {
+            return res.json({ data: [] });
+        }
+        // Accept optional ?date=YYYY-MM-DD; default to today (server local date)
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const date = req.query.date || todayStr;
+        const sessions = await services.getTodaySessionsForNutritionist(nutritionistId, date);
+        res.json({ data: sessions });
+    } catch (error) {
+        console.error('Error fetching today sessions:', error);
+        res.status(500).json({ error: 'Failed to fetch today sessions', message: error.message });
+    }
+}
+
+// ============================================================================
+// UPDATE SESSION STATUS (PATCH /:id/status)
+// ============================================================================
+
+export async function updateSessionStatus(req, res) {
+    try {
+        const { id } = uuidParamSchema.parse(req.params);
+        const { status } = updateStatusSchema.parse(req.body);
+
+        const exists = await pool.query('SELECT id FROM consultation.sessions WHERE id = $1', [id]);
+        if (exists.rows.length === 0) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
+
+        const updated = await services.updateSessionStatus(id, status, req.user.userId);
+        res.json({ message: 'Session status updated', data: updated });
+    } catch (error) {
+        if (error.name === 'ZodError') {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.issues.map(e => ({ field: e.path.join('.'), message: e.message })),
+            });
+        }
+        console.error('Error updating session status:', error);
+        res.status(500).json({ error: 'Failed to update session status', message: error.message });
+    }
+}
+
+// ============================================================================
+// CANCEL CONSULTATION SESSION (sets status = 'cancelled')
+// ============================================================================
+
+export async function cancelConsultationSession(req, res) {
+    try {
+        const { id } = uuidParamSchema.parse(req.params);
+
+        const exists = await pool.query('SELECT id FROM consultation.sessions WHERE id = $1', [id]);
+        if (exists.rows.length === 0) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
+
+        const updated = await services.updateSessionStatus(id, 'cancelled', req.user.userId);
+        res.json({ message: 'Session cancelled', data: updated });
+    } catch (error) {
+        if (error.name === 'ZodError') {
+            return res.status(400).json({ error: 'Invalid session ID', message: error.message });
+        }
+        console.error('Error cancelling session:', error);
+        res.status(500).json({ error: 'Failed to cancel session', message: error.message });
     }
 }

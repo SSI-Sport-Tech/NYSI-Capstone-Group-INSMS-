@@ -89,6 +89,8 @@ const router = express.Router();
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.get('/consultation-update/upcoming', controller.getUpcomingConsultationSessions);
+router.get('/consultation-update/today', authenticateToken, controller.getTodaySessionsForNutritionist);
+router.get('/consultation-update/range', controller.getSessionsByDateRange);
 router.get('/consultation-update/athlete/:athleteId/latest', controller.getLatestConsultationSession);
 router.get('/consultation-update/athlete/:athleteId/all', controller.getAllConsultationSessions);
 
@@ -382,5 +384,7 @@ router.post('/consultation-update', authenticateToken, controller.createConsulta
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.patch('/consultation-update/:id', authenticateToken, controller.updateConsultationSession);
+router.patch('/consultation-update/:id/status', authenticateToken, controller.updateSessionStatus);
+router.delete('/consultation-update/:id', authenticateToken, controller.cancelConsultationSession);
 
 export default router;

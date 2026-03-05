@@ -1,84 +1,107 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Clock, MapPin, User } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { dashboardApi, ConsultationSession } from "@/utils/dashboardApi";
 
-export default function TodaySchedule() {
-  const [schedule, setSchedule] = useState<ConsultationSession[]>([]);
+// Hours shown in the calendar grid (6 AM to 9 PM inclusive)
+const HOUR_START = 6;
+const HOUR_END = 21;
+const TOTAL_HOURS = HOUR_END - HOUR_START;
+const HOUR_HEIGHT_PX = 64; // px per hour slot
+
+function formatHour(h: number): string {
+  const suffix = h < 12 ? "AM" : "PM";
+  const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${display} ${suffix}`;
+}
+
+/** Convert "HH:MM" or "HH:MM:SS" to fractional hours from midnight */
+function timeToHours(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h + m / 60;
+}
+
+/** Fractional hours → pixel offset from the top of the grid */
+function hoursToTop(fractionalHours: number): number {
+  return (fractionalHours - HOUR_START) * HOUR_HEIGHT_PX;
+}
+
+function toDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export default function TodaySchedule({ date }: { date?: Date }) {
+  const [sessions, setSessions] = useState<ConsultationSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
+  const [nowTop, setNowTop] = useState<number | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
-  const fetchTodaySchedule = async () => {
+  const fetchSchedule = async () => {
     try {
       setLoading(true);
       setError("");
-      const response = await dashboardApi.getTodaySessions();
-      setSchedule(response.data || []);
-    } catch (error: any) {
-      console.error("Error fetching today's schedule:", error);
-      setError("Schedule data not available yet");
-      setSchedule([]);
+      const dateStr = date ? toDateStr(date) : undefined;
+      const response = await dashboardApi.getTodaySessions(dateStr);
+      setSessions(response.data || []);
+    } catch (err: unknown) {
+      console.error("Error fetching today's schedule:", err);
+      setError("Schedule not available");
+      setSessions([]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchTodaySchedule();
-
-    // Refresh every minute to keep schedule current
-    const interval = setInterval(fetchTodaySchedule, 60 * 1000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const getTimeColor = (timeSlot: string, status?: string) => {
-    if (status === "completed") {
-      return "bg-green-500";
-    }
-
-    if (!timeSlot) return "bg-gray-400";
-
-    const currentTime = new Date();
-    const [hours, minutes] = timeSlot.split(":").map(Number);
-    const sessionTime = new Date();
-    sessionTime.setHours(hours, minutes, 0, 0);
-
-    const timeDiff = sessionTime.getTime() - currentTime.getTime();
-    const minutesDiff = timeDiff / (1000 * 60);
-
-    if (status === "in-progress" || (minutesDiff >= -30 && minutesDiff <= 30)) {
-      return "bg-blue-500"; // Current/active session
-    } else if (minutesDiff > 30) {
-      return "bg-teal-400"; // Upcoming session
+  const updateNowLine = () => {
+    const now = new Date();
+    const fractional = now.getHours() + now.getMinutes() / 60;
+    if (fractional >= HOUR_START && fractional <= HOUR_END) {
+      setNowTop(hoursToTop(fractional));
     } else {
-      return "bg-gray-400"; // Past session
+      setNowTop(null);
     }
   };
 
-  const sortedSchedule = schedule.sort((a, b) => {
-    const timeA = a.time_slot || "00:00";
-    const timeB = b.time_slot || "00:00";
-    return timeA.localeCompare(timeB);
+  useEffect(() => {
+    fetchSchedule();
+    updateNowLine();
+
+    const sessionInterval = setInterval(fetchSchedule, 60 * 1000);
+    const nowInterval = setInterval(updateNowLine, 30 * 1000);
+
+    return () => {
+      clearInterval(sessionInterval);
+      clearInterval(nowInterval);
+    };
+  }, [date]); // re-fetch when date prop changes
+
+  // Scroll to current time on load
+  useEffect(() => {
+    if (!loading && nowTop !== null && gridRef.current) {
+      const scrollTarget = nowTop - HOUR_HEIGHT_PX * 1.5;
+      gridRef.current.scrollTop = Math.max(0, scrollTarget);
+    }
+  }, [loading, nowTop]);
+
+  const displayDate = date ?? new Date();
+  const isToday = !date || toDateStr(date) === toDateStr(new Date());
+  const dateLabel = displayDate.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
   });
 
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Your Schedule
-        </h2>
-        <div className="space-y-3">
+        <h2 className="text-lg font-semibold text-gray-900 mb-1">{isToday ? "Your Schedule" : "Your Schedule"}</h2>
+        <p className="text-xs text-gray-400 mb-4">{dateLabel}</p>
+        <div className="animate-pulse space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex space-x-3 animate-pulse">
-              <div className="w-2 bg-gray-200 rounded-full"></div>
-              <div className="flex-1">
-                <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2 mb-1"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/3"></div>
-              </div>
-            </div>
+            <div key={i} className="h-12 bg-gray-100 rounded-lg" />
           ))}
         </div>
       </div>
@@ -87,138 +110,117 @@ export default function TodaySchedule() {
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
-      <div className="flex items-center justify-between mb-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-1">
         <h2 className="text-lg font-semibold text-gray-900">Your Schedule</h2>
         {error && (
           <button
-            onClick={fetchTodaySchedule}
+            onClick={fetchSchedule}
             className="text-xs text-blue-600 hover:text-blue-800 underline"
           >
             Retry
           </button>
         )}
       </div>
+      <p className="text-xs text-gray-400 mb-4">{dateLabel}</p>
 
-      {error && !schedule.length ? (
-        <div className="text-center py-8">
-          <div className="mb-4">
-            <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-          </div>
-          <div className="text-gray-500 mb-2">Schedule Not Available</div>
-          <div className="text-xs text-red-600 bg-red-50 p-2 rounded-lg inline-block mb-3">
-            {error}
-          </div>
-          <button
-            onClick={fetchTodaySchedule}
-            className="text-blue-600 hover:text-blue-800 text-sm underline"
-          >
-            Refresh
-          </button>
-        </div>
-      ) : schedule.length === 0 ? (
-        <div className="text-center py-8">
-          <div className="mb-4">
-            <div className="mx-auto w-12 h-12 bg-green-50 rounded-full flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-green-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            </div>
-          </div>
-          <div className="text-gray-500 mb-2">Clear Schedule</div>
-          <p className="text-sm text-gray-400">
-            No sessions scheduled for today. Enjoy your free time!
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {sortedSchedule.map((session) => (
-            <div key={session.id} className="flex space-x-3">
-              {/* Time indicator */}
-              <div
-                className={`
-                w-2 rounded-full
-                ${getTimeColor(session.time_slot || "", session.status)}
-              `}
-              ></div>
-
-              <div className="flex-1">
-                <h3 className="font-medium text-gray-900 text-sm">
-                  {session.consultation_objective || session.type_of_consult}
-                </h3>
-
-                <div className="flex items-center space-x-4 text-xs text-gray-500 mt-1">
-                  {session.time_slot && (
-                    <div className="flex items-center space-x-1">
-                      <Clock className="w-3 h-3" />
-                      <span>{session.time_slot}</span>
-                    </div>
-                  )}
-
-                  {session.location && (
-                    <div className="flex items-center space-x-1">
-                      <MapPin className="w-3 h-3" />
-                      <span>{session.location}</span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center space-x-1">
-                    <User className="w-3 h-3" />
-                    <span>{session.athlete_name_abbr}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-gray-400 mt-1">
-                  <span>
-                    {session.duration ? `${session.duration} min` : ""}
-                  </span>
-                  {session.status && (
-                    <span
-                      className={`
-                      px-2 py-0.5 rounded-full text-xs
-                      ${
-                        session.status === "completed"
-                          ? "bg-green-100 text-green-700"
-                          : session.status === "in-progress"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-yellow-100 text-yellow-700"
-                      }
-                    `}
-                    >
-                      {session.status === "completed"
-                        ? "Completed"
-                        : session.status === "in-progress"
-                          ? "In Progress"
-                          : "Scheduled"}
-                    </span>
-                  )}
-                </div>
+      {/* Scrollable time grid */}
+      <div
+        ref={gridRef}
+        className="relative overflow-y-auto"
+        style={{ height: `${HOUR_HEIGHT_PX * 7}px` }} // show ~7 hours at once
+      >
+        {/* Hour rows */}
+        <div
+          className="relative"
+          style={{ height: `${TOTAL_HOURS * HOUR_HEIGHT_PX}px` }}
+        >
+          {Array.from({ length: TOTAL_HOURS }, (_, i) => HOUR_START + i).map((hour) => (
+            <div
+              key={hour}
+              className="absolute left-0 right-0 flex"
+              style={{ top: `${(hour - HOUR_START) * HOUR_HEIGHT_PX}px`, height: `${HOUR_HEIGHT_PX}px` }}
+            >
+              {/* Hour label */}
+              <div className="w-14 flex-shrink-0 text-right pr-3 pt-0.5">
+                <span className="text-xs text-gray-400">{formatHour(hour)}</span>
               </div>
+              {/* Divider line */}
+              <div className="flex-1 border-t border-gray-100" />
             </div>
           ))}
+
+          {/* Current time red indicator */}
+          {nowTop !== null && (
+            <div
+              className="absolute left-0 right-0 flex items-center pointer-events-none"
+              style={{ top: `${nowTop}px`, zIndex: 10 }}
+            >
+              <div className="w-14 flex-shrink-0 flex justify-end pr-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
+              </div>
+              <div className="flex-1 border-t-2 border-red-500" />
+            </div>
+          )}
+
+          {/* Session blocks */}
+          {sessions.map((session) => {
+            const time = session.time_of_consult ?? session.time_slot;
+            if (!time) return null;
+
+            const startHours = timeToHours(time);
+            if (startHours < HOUR_START || startHours >= HOUR_END) return null;
+
+            const durationHours = (session.duration || 60) / 60;
+            const topPx = hoursToTop(startHours);
+            const heightPx = Math.max(durationHours * HOUR_HEIGHT_PX, 36);
+
+            const isCompleted = session.status === "completed";
+            const isCancelled = session.status === "cancelled";
+
+            return (
+              <button
+                key={session.id}
+                onClick={() =>
+                  router.push(
+                    `/AMS/athlete-management/${session.athlete_id}?tab=consultation&sessionId=${session.id}`
+                  )
+                }
+                className={`
+                  absolute left-16 right-2 rounded-lg px-2 py-1 text-left
+                  transition-opacity hover:opacity-90 shadow-sm
+                  ${isCompleted ? "bg-gray-200 opacity-60" : isCancelled ? "bg-red-100 opacity-60" : "bg-teal-500"}
+                `}
+                style={{ top: `${topPx}px`, height: `${heightPx}px`, zIndex: 5 }}
+              >
+                <p className={`text-xs font-semibold truncate ${isCompleted || isCancelled ? "text-gray-500" : "text-white"}`}>
+                  {session.athlete_name_abbr}
+                </p>
+                {heightPx > 40 && (
+                  <p className={`text-xs truncate ${isCompleted || isCancelled ? "text-gray-400" : "text-teal-100"}`}>
+                    {session.type_of_consult}
+                    {session.venue ? ` · ${session.venue}` : ""}
+                  </p>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Empty state */}
+      {sessions.length === 0 && !error && (
+        <div className="text-center py-4">
+          <p className="text-sm text-gray-400">No sessions scheduled for today.</p>
+        </div>
+      )}
+
+      {error && sessions.length === 0 && (
+        <div className="text-center py-4">
+          <p className="text-xs text-red-500">{error}</p>
+          <button onClick={fetchSchedule} className="text-xs text-blue-600 underline mt-1">
+            Refresh
+          </button>
         </div>
       )}
     </div>
