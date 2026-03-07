@@ -494,15 +494,6 @@ export async function deleteUser(req, res) {
             });
         }
 
-        const targetRole = result.rows[0].role;
-        if (actingUserRole === "ADMIN") {
-            if (targetRole !== "NUTRITIONIST") {
-                return res.status(403).json({
-                    error: "Admins can only manage Nutritionists",
-                });
-            }
-        }
-
         // Delete user (cascade will delete AMS profile, sessions, verification codes)
         await authservices.deleteUserById(req.params.id);
 

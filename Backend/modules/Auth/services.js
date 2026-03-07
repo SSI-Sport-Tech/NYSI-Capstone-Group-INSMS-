@@ -108,14 +108,28 @@ export async function createUser(userData) {
  * @returns {Promise<void>}
  */
 export async function deleteUserById(userId) {
-  const query = `
-        DELETE FROM auth.users
-        WHERE id = $1
-    `;
+  const client = await pool.connect();
 
-  await pool.query(query, [userId]);
+  try {
+    await client.query('BEGIN');
+
+    // Delete from ams schema dependents first
+    await client.query(`DELETE FROM ams.nutritionist WHERE user_id = $1`, [userId]);
+    // Add any other ams schema tables that reference auth.users:
+    // await client.query(`DELETE FROM ams.athlete WHERE user_id = $1`, [userId]);
+    // await client.query(`DELETE FROM ams.coach WHERE user_id = $1`, [userId]);
+
+    // Now delete the user (cascade handles sessions, codes, etc. in auth schema)
+    await client.query(`DELETE FROM auth.users WHERE id = $1`, [userId]);
+
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
-
 /**
  * Update user's last login timestamp
  * @param {string} userId - User UUID
