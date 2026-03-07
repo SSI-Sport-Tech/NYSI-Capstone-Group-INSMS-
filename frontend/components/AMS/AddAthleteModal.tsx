@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Plus } from "lucide-react";
+import { X, Plus, AlertCircle } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -76,6 +76,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
   const [sports, setSports] = useState<Sport[]>([]);
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [nutritionists, setNutritionists] = useState<Nutritionist[]>([]);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   // Inline create sport
   const [showAddSportForm, setShowAddSportForm] = useState(false);
@@ -129,6 +130,42 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
       }
     }
   }, [isOpen, isAdmin]);
+
+  // Validate dates whenever they change
+  useEffect(() => {
+    validateDates();
+  }, [
+    formData.carding_start_date,
+    formData.carding_end_date,
+    formData.approved_start_date,
+    formData.approved_end_date,
+  ]);
+
+  const validateDates = () => {
+    const errors: string[] = [];
+
+    // Validate carding dates
+    if (formData.carding_start_date && formData.carding_end_date) {
+      const cardingStart = new Date(formData.carding_start_date);
+      const cardingEnd = new Date(formData.carding_end_date);
+
+      if (cardingEnd < cardingStart) {
+        errors.push("Carding End Date must be after or equal to Carding Start Date");
+      }
+    }
+
+    // Validate approved dates
+    if (formData.approved_start_date && formData.approved_end_date) {
+      const approvedStart = new Date(formData.approved_start_date);
+      const approvedEnd = new Date(formData.approved_end_date);
+
+      if (approvedEnd < approvedStart) {
+        errors.push("Approved End Date must be after or equal to Approved Start Date");
+      }
+    }
+
+    setValidationErrors(errors);
+  };
 
   const loadSports = async () => {
     try {
@@ -257,6 +294,13 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check for validation errors
+    if (validationErrors.length > 0) {
+      onError(validationErrors.join(". "));
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -306,15 +350,6 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
         ? "http://localhost:8000/api/AMS/athletes/complete/admin"
         : "http://localhost:8000/api/AMS/athletes/complete";
 
-      console.log("User info:", user);
-      console.log("Is admin:", isAdmin);
-      console.log("Using endpoint:", endpoint);
-      console.log("JWT token:", token ? "Token present" : "No token found");
-      console.log(
-        "Token starts with:",
-        token ? token.substring(0, 20) + "..." : "null",
-      );
-
       await axios.post(endpoint, payload, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -328,12 +363,29 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
     } catch (error: any) {
       console.error("Error creating athlete:", error);
       const data = error.response?.data;
-      const errorMessage =
-        data?.details?.[0]?.message ||
-        data?.error ||
-        data?.message ||
-        "Failed to create athlete";
-      onError(errorMessage);
+
+      // Check for database constraint violations
+      if (error.response?.status === 400 && data?.error) {
+        if (data.error.includes("chk_carding_dates")) {
+          onError("Carding End Date must be after or equal to Carding Start Date");
+        } else if (data.error.includes("chk_approved_dates")) {
+          onError("Approved End Date must be after or equal to Approved Start Date");
+        } else {
+          const errorMessage =
+            data?.details?.[0]?.message ||
+            data?.error ||
+            data?.message ||
+            "Failed to create athlete";
+          onError(errorMessage);
+        }
+      } else {
+        const errorMessage =
+          data?.details?.[0]?.message ||
+          data?.error ||
+          data?.message ||
+          "Failed to create athlete";
+        onError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -365,6 +417,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
       nutritionist_id: "",
       coach_ids: [],
     });
+    setValidationErrors([]);
   };
 
   if (!isOpen) return null;
@@ -391,6 +444,25 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
           </button>
         </div>
 
+        {/* Validation Errors */}
+        {validationErrors.length > 0 && (
+          <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-red-800 mb-1">
+                  Please fix the following errors:
+                </h4>
+                <ul className="text-sm text-red-700 space-y-1">
+                  {validationErrors.map((error, index) => (
+                    <li key={index}>• {error}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Form */}
         <form
           onSubmit={handleSubmit}
@@ -403,6 +475,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                 Athlete Profile
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* ... (keep all existing fields) ... */}
                 <div>
                   <label className="block text-sm font-medium text-black mb-2">
                     Name <span className="text-red-500">*</span>
@@ -495,6 +568,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                   />
                 </div>
 
+                {/* Sport selection with inline add - keep existing code */}
                 <div>
                   <label className="block text-sm font-medium text-black mb-2">
                     Sport <span className="text-red-500">*</span>
@@ -587,6 +661,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                   </div>
                 )}
 
+                {/* Coach selection - keep existing code */}
                 <div>
                   <label className="block text-sm font-medium text-black mb-2">
                     Coach Assigned
@@ -599,8 +674,8 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                         <label
                           key={coach.id}
                           className={`flex items-center space-x-2 py-1 ${formData.coach_ids.includes(coach.id)
-                              ? "text-black"
-                              : "text-gray-400"
+                            ? "text-black"
+                            : "text-gray-400"
                             }`}
                         >
                           <input
@@ -707,7 +782,10 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                     name="carding_start_date"
                     value={formData.carding_start_date}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 text-gray-400 valid:text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full px-3 py-2 text-gray-400 valid:text-black border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${validationErrors.some(e => e.includes("Carding"))
+                        ? "border-red-500"
+                        : "border-gray-300"
+                      }`}
                     required
                   />
                 </div>
@@ -721,7 +799,11 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                     name="carding_end_date"
                     value={formData.carding_end_date}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 text-gray-400 valid:text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    min={formData.carding_start_date || undefined}
+                    className={`w-full px-3 py-2 text-gray-400 valid:text-black border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${validationErrors.some(e => e.includes("Carding"))
+                        ? "border-red-500"
+                        : "border-gray-300"
+                      }`}
                     required
                   />
                 </div>
@@ -749,7 +831,10 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                     name="approved_start_date"
                     value={formData.approved_start_date}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 text-gray-400 valid:text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full px-3 py-2 text-gray-400 valid:text-black border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${validationErrors.some(e => e.includes("Approved"))
+                        ? "border-red-500"
+                        : "border-gray-300"
+                      }`}
                     required
                   />
                 </div>
@@ -763,7 +848,11 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                     name="approved_end_date"
                     value={formData.approved_end_date}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 text-gray-400 valid:text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    min={formData.approved_start_date || undefined}
+                    className={`w-full px-3 py-2 text-gray-400 valid:text-black border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${validationErrors.some(e => e.includes("Approved"))
+                        ? "border-red-500"
+                        : "border-gray-300"
+                      }`}
                     required
                   />
                 </div>
@@ -784,7 +873,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
               </div>
             </div>
 
-            {/* Medical Information Section */}
+            {/* Medical Information Section - keep existing code */}
             <div>
               <h3 className="text-lg font-semibold text-black mb-4">
                 Medical Information
@@ -904,7 +993,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || validationErrors.length > 0}
               className="px-4 py-2 text-sm font-medium text-white bg-black hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {loading ? (
