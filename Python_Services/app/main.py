@@ -40,6 +40,14 @@ async def lifespan(app: FastAPI):
 
     start_scheduler()
 
+    try:
+        logger.info("🔥 Pre-warming OCR engine...")
+        from app.services.ocr_engine import get_ocr_instance
+        get_ocr_instance()
+        logger.info("✅ OCR engine pre-warmed and ready")
+    except Exception as e:
+        logger.warning(f"⚠️ OCR pre-warm failed: {e}")
+
     yield  # App runs here
 
     # Shutdown
