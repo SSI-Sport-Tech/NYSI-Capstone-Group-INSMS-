@@ -1,10 +1,11 @@
 /**
- * Additional Admin Service Functions
- * Add these to your services.final.js file
+ * Clean Admin Services - No Duplication
+ * Only admin-specific functions here
+ * Reuses functions from authservices where appropriate
  */
 
-import pool from '../../config/db.js';
-
+import pool, { withUserContext } from '../../config/db.js';
+import * as authservices from '../Auth/services.js';
 
 // ============================================================================
 // ADMIN USER MANAGEMENT SERVICES
@@ -106,122 +107,124 @@ export async function getUserByIdWithProfile(userId) {
  * Update user active status
  * @param {string} userId - User UUID
  * @param {boolean} isActive - Active status
+ * @param {string} doneByUserId - UUID of user performing action
  * @returns {Promise<void>}
  */
-export async function updateUserActiveStatus(userId, isActive) {
-    const query = `
-        UPDATE auth.users
-        SET 
-            is_active = $2,
-            updated_at = NOW()
-        WHERE id = $1
-    `;
+export async function updateUserActiveStatus(userId, isActive, doneByUserId) {
+    return withUserContext(doneByUserId, async (client) => {
+        const result = await client.query(`
+            UPDATE auth.users
+            SET is_active = $1, updated_at = NOW()
+            WHERE id = $2
+            RETURNING id, email, is_active
+        `, [isActive, userId]);
 
-    await pool.query(query, [userId, isActive]);
+        return result.rows[0];
+    });
 }
 
 /**
  * Update user password
  * @param {string} userId - User UUID
  * @param {string} passwordHash - New hashed password
+ * @param {string} doneByUserId - UUID of user performing action
  * @returns {Promise<void>}
  */
-export async function updateUserPassword(userId, passwordHash) {
-    const query = `
-        UPDATE auth.users
-        SET 
-            password_hash = $2,
-            updated_at = NOW()
-        WHERE id = $1
-    `;
+export async function updateUserPassword(userId, passwordHash, doneByUserId) {
+    return withUserContext(doneByUserId, async (client) => {
+        const result = await client.query(`
+            UPDATE auth.users
+            SET password_hash = $1, updated_at = NOW()
+            WHERE id = $2
+            RETURNING id, email
+        `, [passwordHash, userId]);
 
-    await pool.query(query, [userId, passwordHash]);
+        return result.rows[0];
+    });
 }
 
 /**
  * Update user email
  * @param {string} userId - User UUID
  * @param {string} newEmail - New email address
+ * @param {string} doneByUserId - UUID of user performing action
  * @returns {Promise<void>}
  */
-export async function updateUserEmail(userId, newEmail) {
-    const query = `
-        UPDATE auth.users
-        SET 
-            email = $2,
-            updated_at = NOW()
-        WHERE id = $1
-    `;
+export async function updateUserEmail(userId, newEmail, doneByUserId) {
+    return withUserContext(doneByUserId, async (client) => {
+        const result = await client.query(`
+            UPDATE auth.users
+            SET email = $1, updated_at = NOW()
+            WHERE id = $2
+            RETURNING id, email
+        `, [newEmail.toLowerCase(), userId]);
 
-    await pool.query(query, [userId, newEmail.toLowerCase()]);
+        return result.rows[0];
+    });
 }
 
 /**
  * Update user email verification status
  * @param {string} userId - User UUID
  * @param {boolean} isVerified - Verification status
+ * @param {string} doneByUserId - UUID of user performing action
  * @returns {Promise<void>}
  */
-export async function updateUserEmailVerification(userId, isVerified) {
-    const query = `
-        UPDATE auth.users
-        SET 
-            is_email_verified = $2,
-            updated_at = NOW()
-        WHERE id = $1
-    `;
+export async function updateUserEmailVerification(userId, isVerified, doneByUserId) {
+    return withUserContext(doneByUserId, async (client) => {
+        const result = await client.query(`
+            UPDATE auth.users
+            SET is_email_verified = $1, updated_at = NOW()
+            WHERE id = $2
+            RETURNING id, email, is_email_verified
+        `, [isVerified, userId]);
 
-    await pool.query(query, [userId, isVerified]);
+        return result.rows[0];
+    });
 }
 
 /**
  * Update user details
  * @param {string} userId - User UUID
  * @param {Object} updates - Fields to update
+ * @param {string} doneByUserId - UUID of user performing action
  * @returns {Promise<Object>} Updated user object
  */
-export async function updateUser(userId, updates) {
-    const allowedFields = ['first_name', 'last_name', 'role', 'is_active', 'is_email_verified'];
-    const fields = [];
-    const values = [userId];
-    let paramCount = 1;
+export async function updateUser(userId, updates, doneByUserId) {
+    return withUserContext(doneByUserId, async (client) => {
+        const allowedFields = ['first_name', 'last_name', 'role', 'is_active', 'is_email_verified'];
+        const fields = [];
+        const values = [userId];
+        let paramCount = 1;
 
-    // Build dynamic UPDATE query
-    for (const [key, value] of Object.entries(updates)) {
-        if (allowedFields.includes(key) && value !== undefined) {
-            paramCount++;
-            fields.push(`${key} = $${paramCount}`);
-            values.push(value);
+        for (const [key, value] of Object.entries(updates)) {
+            if (allowedFields.includes(key) && value !== undefined) {
+                paramCount++;
+                fields.push(`${key} = $${paramCount}`);
+                values.push(value);
+            }
         }
-    }
 
-    if (fields.length === 0) {
-        throw new Error('No valid fields to update');
-    }
+        if (fields.length === 0) {
+            throw new Error('No valid fields to update');
+        }
 
-    // Add updated_at
-    paramCount++;
-    fields.push(`updated_at = NOW()`);
+        paramCount++;
+        fields.push(`updated_at = NOW()`);
 
-    const query = `
-        UPDATE auth.users
-        SET ${fields.join(', ')}
-        WHERE id = $1
-        RETURNING 
-            id,
-            email,
-            first_name,
-            last_name,
-            role,
-            is_active,
-            is_email_verified,
-            created_at,
-            last_login_at,
-            updated_at
-    `;
+        const query = `
+            UPDATE auth.users
+            SET ${fields.join(', ')}
+            WHERE id = $1
+            RETURNING 
+                id, email, first_name, last_name, role, 
+                is_active, is_email_verified, created_at, 
+                last_login_at, updated_at
+        `;
 
-    const result = await pool.query(query, values);
-    return result.rows[0];
+        const result = await client.query(query, values);
+        return result.rows[0];
+    });
 }
 
 /**
@@ -262,14 +265,8 @@ export async function getUserStatistics() {
 export async function getAuditLogs(filters = {}) {
     let query = `
         SELECT 
-            id,
-            user_id,
-            table_name,
-            record_id,
-            action,
-            old_values,
-            new_values,
-            changed_on
+            id, user_id, table_name, record_id, action,
+            old_values, new_values, changed_on
         FROM audit.audit_log
         WHERE 1=1
     `;
@@ -378,14 +375,8 @@ export async function getAuditedTables() {
 export async function getRecordAuditHistory(tableName, recordId, limit = 10) {
     const query = `
         SELECT 
-            id,
-            user_id,
-            table_name,
-            record_id,
-            action,
-            old_values,
-            new_values,
-            changed_on
+            id, user_id, table_name, record_id, action,
+            old_values, new_values, changed_on
         FROM audit.audit_log
         WHERE table_name = $1 AND record_id = $2
         ORDER BY changed_on DESC

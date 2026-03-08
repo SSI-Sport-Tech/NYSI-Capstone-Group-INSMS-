@@ -4,7 +4,7 @@
  * UPDATED: Includes AMS nutritionist profile creation
  */
 
-import pool from "../../config/db.js";
+import pool, { withUserContext } from "../../config/db.js";
 
 // ============================================================================
 // USER SERVICES
@@ -103,23 +103,34 @@ export async function createUser(userData) {
 }
 
 /**
- * Delete user by ID (for rollback scenarios)
- * @param {string} userId - User UUID
+ * Delete user by ID (WITH AUDIT)
+ * Used for both rollback scenarios and admin deletion
+ * @param {string} userId - User UUID to delete
+ * @param {string} doneByUserId - User ID performing the operation (optional for rollback)
  * @returns {Promise<void>}
  */
-export async function deleteUserById(userId) {
-  const client = await pool.connect();
+export async function deleteUserById(userId, doneByUserId = null) {
+  // If doneByUserId is provided, use withUserContext for audit
+  if (doneByUserId) {
+    return withUserContext(doneByUserId, async (client) => {
+      // Delete from ams schema dependents first
+      await client.query(`DELETE FROM ams.nutritionist WHERE user_id = $1`, [userId]);
+      await client.query(`DELETE FROM ams.coach WHERE user_id = $1`, [userId]);
+      await client.query(`DELETE FROM ams.athlete WHERE user_id = $1`, [userId]);
 
+      // Delete the user (cascade handles sessions, codes)
+      await client.query(`DELETE FROM auth.users WHERE id = $1`, [userId]);
+    });
+  }
+
+  // For rollback scenarios without audit (e.g., registration failure)
+  const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    // Delete from ams schema dependents first
     await client.query(`DELETE FROM ams.nutritionist WHERE user_id = $1`, [userId]);
-    // Add any other ams schema tables that reference auth.users:
-    // await client.query(`DELETE FROM ams.athlete WHERE user_id = $1`, [userId]);
-    // await client.query(`DELETE FROM ams.coach WHERE user_id = $1`, [userId]);
-
-    // Now delete the user (cascade handles sessions, codes, etc. in auth schema)
+    await client.query(`DELETE FROM ams.coach WHERE user_id = $1`, [userId]);
+    await client.query(`DELETE FROM ams.athlete WHERE user_id = $1`, [userId]);
     await client.query(`DELETE FROM auth.users WHERE id = $1`, [userId]);
 
     await client.query('COMMIT');
@@ -130,21 +141,6 @@ export async function deleteUserById(userId) {
     client.release();
   }
 }
-/**
- * Update user's last login timestamp
- * @param {string} userId - User UUID
- * @returns {Promise<void>}
- */
-export async function updateLastLogin(userId) {
-  const query = `
-        UPDATE auth.users
-        SET last_login_at = NOW()
-        WHERE id = $1
-    `;
-
-  await pool.query(query, [userId]);
-}
-
 // ============================================================================
 // AMS NUTRITIONIST PROFILE SERVICES
 // ============================================================================

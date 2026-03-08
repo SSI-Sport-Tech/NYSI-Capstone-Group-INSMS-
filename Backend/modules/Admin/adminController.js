@@ -129,48 +129,41 @@ export async function getUserDetails(req, res) {
 }
 
 // ============================================================================
-// ACTIVATE/DEACTIVATE USER
+// ACTIVATE/DEACTIVATE USER (UPDATED)
 // ============================================================================
 
-/**
- * Activate or deactivate a user (admin only)
- * PATCH /api/admin/users/:id/active
- */
 export async function toggleUserActive(req, res) {
     try {
         console.log('🔄 Admin toggling user active status...');
         console.log('User ID:', req.params.id);
         console.log('Requested by:', req.user.email);
 
-        // Validate request body
         const validatedData = adminToggleActiveSchema.parse(req.body);
 
-        // Prevent admin from deactivating themselves
         if (req.params.id === req.user.userId) {
             return res.status(400).json({
                 error: 'Cannot modify own account',
-                message: 'You cannot deactivate your own account',
             });
         }
 
-        // Get user to check if exists
         const user = await authservices.getUserById(req.params.id);
         if (!user) {
-            return res.status(404).json({
-                error: 'User not found',
-                message: 'No user found with this ID',
-            });
+            return res.status(404).json({ error: 'User not found' });
         }
 
-        //Check if user is allowed to edit target
         if (!canManageUser(req.user.role, user.role)) {
             return res.status(403).json({
                 error: "You do not have permission to manage this user",
             });
         }
 
-        // Update active status
-        await adminservices.updateUserActiveStatus(req.params.id, validatedData.is_active);
+        // ✅ PASS CURRENT USER ID FOR AUDIT
+        const currentUserId = req.user.userId;
+        await adminservices.updateUserActiveStatus(
+            req.params.id,
+            validatedData.is_active,
+            currentUserId  // ← Added for audit
+        );
 
         console.log(`User ${validatedData.is_active ? 'activated' : 'deactivated'} successfully`);
 
@@ -185,153 +178,101 @@ export async function toggleUserActive(req, res) {
 
     } catch (error) {
         console.error('Error toggling user active status:', error);
-
-        if (error instanceof z.ZodError) {
-            return res.status(400).json({
-                error: 'Validation failed',
-                details: error.issues.map(err => ({
-                    field: err.path.join('.'),
-                    message: err.message,
-                })),
-            });
-        }
-
-        res.status(500).json({
-            error: 'Failed to update user status',
-            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
-        });
+        res.status(500).json({ error: 'Failed to update user status' });
     }
 }
 
 // ============================================================================
-// CHANGE USER PASSWORD
+// CHANGE USER PASSWORD (UPDATED)
 // ============================================================================
 
-/**
- * Change user password (admin only)
- * PATCH /api/admin/users/:id/password
- */
 export async function changeUserPassword(req, res) {
     try {
         console.log('🔑 Admin changing user password...');
-        console.log('User ID:', req.params.id);
-        console.log('Requested by:', req.user.email);
 
-        // Validate request body
         const validatedData = adminChangePasswordSchema.parse(req.body);
 
-        // Get user to check if exists
         const user = await authservices.getUserById(req.params.id);
         if (!user) {
-            return res.status(404).json({
-                error: 'User not found',
-                message: 'No user found with this ID',
-            });
+            return res.status(404).json({ error: 'User not found' });
         }
 
-        //Check if user is allowed to edit target
         if (!canManageUser(req.user.role, user.role)) {
             return res.status(403).json({
                 error: "You do not have permission to manage this user",
             });
         }
 
-        // Hash new password
-        console.log('Hashing new password...');
         const hashedPassword = await bcrypt.hash(validatedData.new_password, 10);
 
-        // Update password
-        await adminservices.updateUserPassword(req.params.id, hashedPassword);
+        // ✅ PASS CURRENT USER ID FOR AUDIT
+        const currentUserId = req.user.userId;
+        await adminservices.updateUserPassword(
+            req.params.id,
+            hashedPassword,
+            currentUserId  // ← Added for audit
+        );
 
-        // Invalidate all sessions for this user (force re-login)
         await authservices.invalidateAllSessions(req.params.id);
 
         console.log('Password changed successfully');
 
         res.json({
             message: 'Password changed successfully. User will need to login again.',
-            user: {
-                id: user.id,
-                email: user.email,
-            },
+            user: { id: user.id, email: user.email },
         });
 
     } catch (error) {
         console.error('Error changing user password:', error);
-
-        if (error instanceof z.ZodError) {
-            return res.status(400).json({
-                error: 'Validation failed',
-                details: error.issues.map(err => ({
-                    field: err.path.join('.'),
-                    message: err.message,
-                })),
-            });
-        }
-
-        res.status(500).json({
-            error: 'Failed to change password',
-            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
-        });
+        res.status(500).json({ error: 'Failed to change password' });
     }
 }
-
 // ============================================================================
-// CHANGE USER EMAIL
+// CHANGE USER EMAIL (UPDATED)
 // ============================================================================
 
-/**
- * Change user email / 2FA email (admin only)
- * PATCH /api/admin/users/:id/email
- */
 export async function changeUserEmail(req, res) {
     try {
         console.log('📧 Admin changing user email...');
-        console.log('User ID:', req.params.id);
-        console.log('Requested by:', req.user.email);
 
-        // Validate request body
         const validatedData = adminChangeEmailSchema.parse(req.body);
 
-        // Prevent admin from changing their own email (should use regular flow)
         if (req.params.id === req.user.userId) {
             return res.status(400).json({
                 error: 'Cannot modify own email',
-                message: 'Please use the regular email change flow for your own account',
             });
         }
 
-        // Get user to check if exists
         const user = await authservices.getUserById(req.params.id);
         if (!user) {
-            return res.status(404).json({
-                error: 'User not found',
-                message: 'No user found with this ID',
-            });
+            return res.status(404).json({ error: 'User not found' });
         }
 
-        //Check if user is allowed to edit target
         if (!canManageUser(req.user.role, user.role)) {
             return res.status(403).json({
                 error: "You do not have permission to manage this user",
             });
         }
 
-        // Check if new email already exists
         const existingUser = await authservices.getUserByEmail(validatedData.new_email);
         if (existingUser && existingUser.id !== req.params.id) {
-            return res.status(409).json({
-                error: 'Email already in use',
-                message: 'This email address is already associated with another account',
-            });
+            return res.status(409).json({ error: 'Email already in use' });
         }
 
-        // Update email
-        await adminservices.updateUserEmail(req.params.id, validatedData.new_email);
+        // ✅ PASS CURRENT USER ID FOR AUDIT
+        const currentUserId = req.user.userId;
+        await adminservices.updateUserEmail(
+            req.params.id,
+            validatedData.new_email,
+            currentUserId  // ← Added for audit
+        );
 
-        // Optionally set email as unverified
         if (validatedData.reset_verification) {
-            await adminservices.updateUserEmailVerification(req.params.id, false);
+            await adminservices.updateUserEmailVerification(
+                req.params.id,
+                false,
+                currentUserId  // ← Added for audit
+            );
         }
 
         console.log('Email changed successfully');
@@ -342,75 +283,51 @@ export async function changeUserEmail(req, res) {
                 id: user.id,
                 old_email: user.email,
                 new_email: validatedData.new_email,
-                is_email_verified: validatedData.reset_verification ? false : user.is_email_verified,
             },
         });
 
     } catch (error) {
         console.error('Error changing user email:', error);
-
-        if (error instanceof z.ZodError) {
-            return res.status(400).json({
-                error: 'Validation failed',
-                details: error.issues.map(err => ({
-                    field: err.path.join('.'),
-                    message: err.message,
-                })),
-            });
-        }
-
-        res.status(500).json({
-            error: 'Failed to change email',
-            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
-        });
+        res.status(500).json({ error: 'Failed to change email' });
     }
 }
 
 // ============================================================================
-// UPDATE USER DETAILS
+// UPDATE USER DETAILS (UPDATED)
 // ============================================================================
 
-/**
- * Update user details (admin only)
- * PATCH /api/admin/users/:id
- */
 export async function updateUser(req, res) {
     try {
         console.log('✏️ Admin updating user details...');
-        console.log('User ID:', req.params.id);
-        console.log('Requested by:', req.user.email);
 
-        // Validate request body
         const validatedData = adminUpdateUserSchema.parse(req.body);
 
-        // Get user to check if exists
         const user = await authservices.getUserById(req.params.id);
         if (!user) {
-            return res.status(404).json({
-                error: 'User not found',
-                message: 'No user found with this ID',
-            });
+            return res.status(404).json({ error: 'User not found' });
         }
 
-        //Check if user is allowed to edit target
         if (!canManageUser(req.user.role, user.role)) {
             return res.status(403).json({
                 error: "You do not have permission to manage this user",
             });
         }
 
-        // Prevent changing own role (security measure)
         if (req.params.id === req.user.userId && validatedData.role) {
             return res.status(400).json({
                 error: 'Cannot modify own role',
-                message: 'You cannot change your own role',
             });
         }
 
-        // Update user
-        const updatedUser = await adminservices.updateUser(req.params.id, validatedData);
+        // ✅ PASS CURRENT USER ID FOR AUDIT
+        const currentUserId = req.user.userId;
+        const updatedUser = await adminservices.updateUser(
+            req.params.id,
+            validatedData,
+            currentUserId  // ← Added for audit
+        );
 
-        // If role changed to ADMIN or NUTRITIONIST and no profile exists, create one
+        // Create AMS profile if role changed to ADMIN/NUTRITIONIST
         if (validatedData.role && ['ADMIN', 'NUTRITIONIST'].includes(validatedData.role)) {
             const existingProfile = await authservices.getNutritionistByUserId(req.params.id);
             if (!existingProfile) {
@@ -438,39 +355,21 @@ export async function updateUser(req, res) {
 
     } catch (error) {
         console.error('Error updating user:', error);
-
-        if (error instanceof z.ZodError) {
-            return res.status(400).json({
-                error: 'Validation failed',
-                details: error.issues.map(err => ({
-                    field: err.path.join('.'),
-                    message: err.message,
-                })),
-            });
-        }
-
-        res.status(500).json({
-            error: 'Failed to update user',
-            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
-        });
+        res.status(500).json({ error: 'Failed to update user' });
     }
 }
 
 // ============================================================================
-// DELETE USER
+// DELETE USER (UPDATED - Uses authservices)
 // ============================================================================
 
-/**
- * Delete user (admin only)
- * DELETE /api/admin/users/:id
- */
 export async function deleteUser(req, res) {
     try {
         console.log('🗑️ Admin deleting user...');
         console.log('User ID:', req.params.id);
         console.log('Requested by:', req.user.email);
 
-        // Prevent admin from deleting themselves
+        // Prevent self-deletion
         if (req.params.id === req.user.userId) {
             return res.status(400).json({
                 error: 'Cannot delete own account',
@@ -487,23 +386,30 @@ export async function deleteUser(req, res) {
             });
         }
 
-        //Check if user is allowed to edit target
+        // Check permissions
         if (!canManageUser(req.user.role, user.role)) {
             return res.status(403).json({
-                error: "You do not have permission to manage this user",
+                error: 'Forbidden',
+                message: 'You do not have permission to delete this user',
             });
         }
 
-        // Delete user (cascade will delete AMS profile, sessions, verification codes)
-        await authservices.deleteUserById(req.params.id);
+        // ✅ USE authservices.deleteUserById with current user ID
+        const currentUserId = req.user.userId;
+        await authservices.deleteUserById(
+            req.params.id,   // User to delete
+            currentUserId    // WHO is deleting (for audit)
+        );
 
-        console.log('User deleted successfully');
+        console.log('✅ User deleted successfully');
 
         res.json({
             message: 'User deleted successfully',
             deleted_user: {
                 id: user.id,
                 email: user.email,
+                first_name: user.first_name,
+                last_name: user.last_name,
             },
         });
 
