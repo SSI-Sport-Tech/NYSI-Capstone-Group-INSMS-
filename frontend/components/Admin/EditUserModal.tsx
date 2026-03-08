@@ -221,7 +221,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                                     </div>
                                 </label>
 
-                                <label className="flex items-center gap-3">
+                                {/* <label className="flex items-center gap-3">
                                     <input
                                         type="checkbox"
                                         checked={isEmailVerified}
@@ -236,7 +236,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                                             Mark email as verified
                                         </p>
                                     </div>
-                                </label>
+                                </label> */}
                             </div>
                         </div>
 

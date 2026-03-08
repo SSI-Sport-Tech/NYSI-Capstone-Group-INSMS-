@@ -201,8 +201,8 @@ const UserTable: React.FC<UserTableProps> = ({
                                         <div className="flex flex-col gap-1">
                                             <span
                                                 className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.is_active
-                                                        ? "bg-green-100 text-green-800"
-                                                        : "bg-red-100 text-red-800"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : "bg-red-100 text-red-800"
                                                     }`}
                                             >
                                                 {user.is_active ? "✓ Active" : "✗ Inactive"}
@@ -270,8 +270,8 @@ const UserTable: React.FC<UserTableProps> = ({
                                                     <button
                                                         onClick={() => onToggleActive(user)}
                                                         className={`p-1.5 rounded-lg transition-colors ${user.is_active
-                                                                ? "text-orange-600 hover:bg-orange-50"
-                                                                : "text-green-600 hover:bg-green-50"
+                                                            ? "text-orange-600 hover:bg-orange-50"
+                                                            : "text-green-600 hover:bg-green-50"
                                                             }`}
                                                         title={user.is_active ? "Deactivate" : "Activate"}
                                                     >
@@ -283,13 +283,13 @@ const UserTable: React.FC<UserTableProps> = ({
                                                     </button>
 
                                                     {/* Delete User */}
-                                                    <button
+                                                    {/* <button
                                                         onClick={() => onDelete(user)}
                                                         className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                         title="Delete User"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
-                                                    </button>
+                                                    </button> */}
                                                 </>
                                             ) : (
                                                 // Show locked icon for users that cannot be modified

@@ -21,7 +21,7 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
     onSuccess,
 }) => {
     const [newEmail, setNewEmail] = useState("");
-    const [resetVerification, setResetVerification] = useState(true);
+    const [resetVerification, setResetVerification] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
@@ -149,7 +149,7 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
                             </div>
 
                             {/* Reset Verification Checkbox */}
-                            <div className="mb-4">
+                            {/* <div className="mb-4">
                                 <label className="flex items-start gap-3">
                                     <input
                                         type="checkbox"
@@ -167,7 +167,7 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
                                         </p>
                                     </div>
                                 </label>
-                            </div>
+                            </div> */}
                         </div>
 
                         {/* Footer */}
