@@ -53,7 +53,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
     user,
     onClose,
 }) => {
-    const [activeTab, setActiveTab] = useState<"activity" | "audit">("activity");
+    const [activeTab, setActiveTab] = useState<"activity">("activity");
     const [activity, setActivity] = useState<UserActivity | null>(null);
     const [loadingActivity, setLoadingActivity] = useState(true);
 
@@ -152,16 +152,6 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                             >
                                 <Activity className="w-4 h-4" />
                                 Activity & Sessions
-                            </button>
-                            <button
-                                onClick={() => setActiveTab("audit")}
-                                className={`flex items-center gap-2 py-4 px-4 border-b-2 font-medium text-sm transition-colors ${activeTab === "audit"
-                                    ? "border-blue-600 text-blue-600"
-                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                    }`}
-                            >
-                                <FileText className="w-4 h-4" />
-                                Audit Log
                             </button>
                         </nav>
                     </div>
