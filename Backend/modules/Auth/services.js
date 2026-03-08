@@ -141,6 +141,22 @@ export async function deleteUserById(userId, doneByUserId = null) {
     client.release();
   }
 }
+
+/**
+ * Update user's last login timestamp
+ * @param {string} userId - User UUID
+ * @returns {Promise<void>}
+ */
+export async function updateLastLogin(userId) {
+  const query = `
+        UPDATE auth.users
+        SET last_login_at = NOW()
+        WHERE id = $1
+    `;
+
+  await pool.query(query, [userId]);
+}
+
 // ============================================================================
 // AMS NUTRITIONIST PROFILE SERVICES
 // ============================================================================
