@@ -282,14 +282,14 @@ const UserTable: React.FC<UserTableProps> = ({
                                                         )}
                                                     </button>
 
-                                                    {/* Delete User */}
-                                                    {/* <button
-                                                        onClick={() => onDelete(user)}
-                                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                        title="Delete User"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button> */}
+                                                    {isITAdmin &&
+                                                        <button
+                                                            onClick={() => onDelete(user)}
+                                                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Delete User"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>}
                                                 </>
                                             ) : (
                                                 // Show locked icon for users that cannot be modified
