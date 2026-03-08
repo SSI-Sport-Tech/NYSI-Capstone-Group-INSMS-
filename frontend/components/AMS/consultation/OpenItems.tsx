@@ -22,6 +22,7 @@ interface OpenItem {
 interface StatusLookup {
   id: string;
   open_item_status: string;
+  is_active: boolean;
 }
 
 const emptyNewItem = {
@@ -363,7 +364,7 @@ export default function OpenItems({
                 }
                 className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
               >
-                {statuses.map((s) => (
+                {statuses.filter((s) => s.is_active).map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.open_item_status}
                   </option>

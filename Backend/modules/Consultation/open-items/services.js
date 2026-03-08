@@ -10,9 +10,8 @@ import pool, { withUserContext } from "../../../config/db.js";
  */
 export async function getOpenItemStatuses() {
     const query = `
-        SELECT id, open_item_status
+        SELECT id, open_item_status, is_active
         FROM consultation.open_item_status_lookup
-        WHERE is_active = true
         ORDER BY open_item_status ASC
     `;
 

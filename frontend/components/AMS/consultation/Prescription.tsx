@@ -32,6 +32,7 @@ interface BatchOption {
 
 interface NewEntry {
   batchId: string | null;
+  supplementId: string | null;
   supplementName: string;
   batchNumber: string;
   quantity: string;
@@ -42,6 +43,7 @@ interface NewEntry {
 
 const emptyEntry = (): NewEntry => ({
   batchId: null,
+  supplementId: null,
   supplementName: "",
   batchNumber: "",
   quantity: "",
@@ -149,6 +151,7 @@ export default function Prescription({
     setEntry((prev) => ({
       ...prev,
       batchId: batch.id,
+      supplementId: batch.supplement_id,
       supplementName: batch.supplement_name,
       batchNumber: batch.batch_number,
     }));
@@ -363,8 +366,18 @@ export default function Prescription({
             </div>
 
             {entry.batchId && (
-              <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
-                ✓ <span className="font-medium">{entry.supplementName}</span> — Batch {entry.batchNumber} selected
+              <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700 flex items-center justify-between">
+                <span>✓ <span className="font-medium">{entry.supplementName}</span> — Batch {entry.batchNumber} selected</span>
+                {entry.supplementId && (
+                  <a
+                    href={`/SSS/supplements/${entry.supplementId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-3 text-blue-600 hover:text-blue-800 underline whitespace-nowrap"
+                  >
+                    View Details ↗
+                  </a>
+                )}
               </div>
             )}
           </div>

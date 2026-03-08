@@ -219,9 +219,17 @@ function PrescriptionEntryCard({
           )}
         </div>
         {entry.supplementId && (
-          <p className="text-xs text-green-600 mt-1">
-            ✓ {entry.supplementName} selected
-          </p>
+          <div className="flex items-center justify-between mt-1">
+            <p className="text-xs text-green-600">✓ {entry.supplementName} selected</p>
+            <a
+              href={`/SSS/supplements/${entry.supplementId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-600 hover:text-blue-800 underline"
+            >
+              View Details ↗
+            </a>
+          </div>
         )}
       </div>
 
