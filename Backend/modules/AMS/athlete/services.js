@@ -116,13 +116,17 @@ export async function getAthletesByPage(
             a.date_of_birth,
             a.target_event,
             r.carding_status,
-            COALESCE(n.name, 'Not Assigned') AS assigned_nutritionist,
+            COALESCE(
+                (SELECT n.name FROM AMS.Nutritionist_Athlete_Mapping nam
+                 JOIN AMS.Nutritionist n ON nam.nutritionist_id = n.id
+                 WHERE nam.athlete_id = a.id AND nam.is_active = true
+                 LIMIT 1),
+                'Not Assigned'
+            ) AS assigned_nutritionist,
             COALESCE(uap.is_pinned, false) AS is_pinned
         FROM AMS.Athlete a
         LEFT JOIN AMS.Sport_Lookup sl ON a.sport_id = sl.id
-        LEFT JOIN AMS.Athlete_Registry r ON a.id = r.athlete_id
-        LEFT JOIN AMS.Nutritionist_Athlete_Mapping nam ON a.id = nam.athlete_id AND nam.is_active = true
-        LEFT JOIN AMS.Nutritionist n ON nam.nutritionist_id = n.id`;
+        LEFT JOIN AMS.Athlete_Registry r ON a.id = r.athlete_id`;
 
   let query, params;
 
@@ -201,13 +205,17 @@ export async function searchAthletes(
             a.date_of_birth,
             a.target_event,
             r.carding_status,
-            COALESCE(n.name, 'Not Assigned') AS assigned_nutritionist,
+            COALESCE(
+                (SELECT n.name FROM AMS.Nutritionist_Athlete_Mapping nam
+                 JOIN AMS.Nutritionist n ON nam.nutritionist_id = n.id
+                 WHERE nam.athlete_id = a.id AND nam.is_active = true
+                 LIMIT 1),
+                'Not Assigned'
+            ) AS assigned_nutritionist,
             COALESCE(uap.is_pinned, false) AS is_pinned
         FROM AMS.Athlete a
         LEFT JOIN AMS.Sport_Lookup sl ON a.sport_id = sl.id
-        LEFT JOIN AMS.Athlete_Registry r ON a.id = r.athlete_id
-        LEFT JOIN AMS.Nutritionist_Athlete_Mapping nam ON a.id = nam.athlete_id AND nam.is_active = true
-        LEFT JOIN AMS.Nutritionist n ON nam.nutritionist_id = n.id`;
+        LEFT JOIN AMS.Athlete_Registry r ON a.id = r.athlete_id`;
 
   let query, params;
 
