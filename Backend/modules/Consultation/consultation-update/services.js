@@ -108,6 +108,7 @@ export async function updateConsultationSession(sessionId, updateData, userId) {
             time_of_consult: updateData.time_of_consult,
             date_of_next_follow_up: updateData.date_of_next_follow_up,
             time_of_next_follow_up: updateData.time_of_next_follow_up,
+            is_scheduled_booking: updateData.is_scheduled_booking,
         };
 
         for (const [field, value] of Object.entries(fieldMapping)) {

@@ -257,11 +257,22 @@ export default function ConsultationView({
 
   // Nutritionist picked a scheduled session from the modal.
   // Pre-seed sessionIdRef so ensureSession() returns it without creating a new one.
+  // Populate the update form with whatever was filled in when the booking was created.
   const handleSelectScheduledSession = (session: ScheduledSession) => {
     sessionIdRef.current = session.id;
     sessionCreationRef.current = null;
     setNewSessionId(session.id);
     setNewConsultation(session as unknown as LatestConsultation);
+    setUpdateForm({
+      type_of_consult_id: session.type_of_consult_id ?? "",
+      title_description: session.title_description ?? "",
+      venue: session.venue ?? "",
+      date_of_consult: session.date_of_consult ?? "",
+      time_of_consult: session.time_of_consult ?? "",
+      date_of_next_follow_up: session.date_of_next_follow_up ?? "",
+      time_of_next_follow_up: session.time_of_next_follow_up ?? "",
+      consultation_objective: session.consultation_objective ?? "",
+    });
     setShowSessionSelector(false);
     setIsNewConsultation(true);
   };

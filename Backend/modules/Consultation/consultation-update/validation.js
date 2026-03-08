@@ -64,6 +64,7 @@ export const updateSessionSchema = z.object({
     date_of_next_follow_up: optionalDateSchema,
     time_of_next_follow_up: optionalTimeSchema,
     consultation_objective: z.string().trim().optional(),
+    is_scheduled_booking: z.boolean().optional(),
 
     // --- Reject immutable fields ---
     id: z.never().optional(),

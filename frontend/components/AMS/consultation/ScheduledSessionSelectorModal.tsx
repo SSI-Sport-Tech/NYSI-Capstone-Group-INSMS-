@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Calendar, Clock, MapPin, FileText } from "lucide-react";
+import { X, Calendar, Clock, MapPin, FileText, Trash2 } from "lucide-react";
 import { consultationApi } from "../../../utils/consultationApi";
 
 export interface ScheduledSession {
@@ -10,8 +10,12 @@ export interface ScheduledSession {
   athlete_name_abbr: string;
   date_of_consult: string | null;
   time_of_consult: string | null;
+  type_of_consult_id: string | null;
   type_of_consult: string | null;
+  title_description: string | null;
   venue: string | null;
+  date_of_next_follow_up: string | null;
+  time_of_next_follow_up: string | null;
   consultation_objective: string | null;
   nutritionist_name: string | null;
   is_scheduled_booking: boolean;
@@ -56,6 +60,7 @@ export default function ScheduledSessionSelectorModal({
   const [sessions, setSessions] = useState<ScheduledSession[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const [clearingId, setClearingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen || !athleteId) return;
@@ -81,6 +86,19 @@ export default function ScheduledSessionSelectorModal({
 
     fetchSessions();
   }, [isOpen, athleteId]);
+
+  const handleClear = async (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation();
+    setClearingId(sessionId);
+    try {
+      await consultationApi.clearScheduledBooking(sessionId);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    } catch {
+      setError("Failed to clear the booking flag. Please try again.");
+    } finally {
+      setClearingId(null);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -127,50 +145,65 @@ export default function ScheduledSessionSelectorModal({
 
           {!loading &&
             sessions.map((session) => (
-              <button
-                key={session.id}
-                onClick={() => onSelectSession(session)}
-                className="w-full text-left border border-gray-200 rounded-lg p-4 hover:border-blue-400 hover:bg-blue-50 transition-colors group"
-              >
-                {/* Date & Time row */}
-                <div className="flex items-center gap-4 mb-2">
-                  <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
-                    <Calendar className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                    <span>{formatDate(session.date_of_consult)}</span>
+              <div key={session.id} className="relative group">
+                <button
+                  onClick={() => onSelectSession(session)}
+                  className="w-full text-left border border-gray-200 rounded-lg p-4 hover:border-blue-400 hover:bg-blue-50 transition-colors pr-12"
+                >
+                  {/* Date & Time row */}
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                      <Calendar className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                      <span>{formatDate(session.date_of_consult)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-sm text-gray-700">
+                      <Clock className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                      <span>{formatTime(session.time_of_consult)}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 text-sm text-gray-700">
-                    <Clock className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                    <span>{formatTime(session.time_of_consult)}</span>
+
+                  {/* Consult type */}
+                  {session.type_of_consult && (
+                    <div className="flex items-center gap-1.5 text-sm text-gray-600 mb-1">
+                      <FileText className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                      <span>{session.type_of_consult}</span>
+                    </div>
+                  )}
+
+                  {/* Venue */}
+                  {session.venue && (
+                    <div className="flex items-center gap-1.5 text-sm text-gray-500">
+                      <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                      <span>{session.venue}</span>
+                    </div>
+                  )}
+
+                  {/* Objective preview */}
+                  {session.consultation_objective && (
+                    <p className="mt-2 text-xs text-gray-500 line-clamp-2 border-t border-gray-100 pt-2">
+                      {session.consultation_objective}
+                    </p>
+                  )}
+
+                  <div className="mt-2 text-xs text-blue-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                    Select this session →
                   </div>
-                </div>
+                </button>
 
-                {/* Consult type */}
-                {session.type_of_consult && (
-                  <div className="flex items-center gap-1.5 text-sm text-gray-600 mb-1">
-                    <FileText className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                    <span>{session.type_of_consult}</span>
-                  </div>
-                )}
-
-                {/* Venue */}
-                {session.venue && (
-                  <div className="flex items-center gap-1.5 text-sm text-gray-500">
-                    <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                    <span>{session.venue}</span>
-                  </div>
-                )}
-
-                {/* Objective preview */}
-                {session.consultation_objective && (
-                  <p className="mt-2 text-xs text-gray-500 line-clamp-2 border-t border-gray-100 pt-2">
-                    {session.consultation_objective}
-                  </p>
-                )}
-
-                <div className="mt-2 text-xs text-blue-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                  Select this session →
-                </div>
-              </button>
+                {/* Clear booking flag button */}
+                <button
+                  onClick={(e) => handleClear(e, session.id)}
+                  disabled={clearingId === session.id}
+                  title="Do not remind me again"
+                  className="absolute top-3 right-3 p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  {clearingId === session.id ? (
+                    <div className="w-4 h-4 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
             ))}
         </div>
 

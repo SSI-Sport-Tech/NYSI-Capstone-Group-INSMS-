@@ -17,7 +17,7 @@ export class ConsultationApiError extends Error {
   }
 }
 
-// Generic API call function
+// Generic API call function (GET)
 export async function apiCall<T>(endpoint: string): Promise<T> {
   const token = localStorage.getItem("token");
 
@@ -45,6 +45,33 @@ export async function apiCall<T>(endpoint: string): Promise<T> {
 
   const data = await response.json();
   return data;
+}
+
+// Generic PATCH call function
+export async function apiPatch<T>(endpoint: string, body: object): Promise<T> {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    throw new ConsultationApiError("Authentication token not found", 401);
+  }
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new ConsultationApiError(
+      `HTTP error! status: ${response.status}`,
+      response.status,
+    );
+  }
+
+  return response.json();
 }
 
 // Consultation lookup functions
@@ -114,5 +141,12 @@ export const consultationApi = {
   // Get adherences for session
   getAdherences: async (sessionId: string) => {
     return apiCall(`/api/Consultation/sessions/${sessionId}/adherences`);
+  },
+
+  // Clear the scheduled booking flag on a session
+  clearScheduledBooking: async (sessionId: string) => {
+    return apiPatch(`/api/Consultation/consultation-update/${sessionId}`, {
+      is_scheduled_booking: false,
+    });
   },
 };
