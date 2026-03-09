@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ChevronDown } from "lucide-react";
 import { consultationApi } from "@/utils/consultationApi";
 
 interface AdherencesProps {
@@ -156,6 +157,7 @@ export default function Adherences({
   liveHeight,
   liveTargetWeight,
 }: AdherencesProps) {
+  const [collapsed, setCollapsed] = useState(false);
   const [adherencesData, setAdherencesData] = useState<AdherencesData | null>(
     null,
   );
@@ -454,7 +456,13 @@ export default function Adherences({
   return (
     <section id="adherences" className="bg-white rounded-xl shadow-lg p-6 text-gray-900">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Adherences</h2>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="flex items-center gap-2 text-left"
+        >
+          <h2 className="text-xl font-semibold text-gray-900">Adherences</h2>
+          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
+        </button>
         {!readOnly && (
           <div className="flex items-center gap-2">
             {effectiveEditing && !isNewConsultation && (
@@ -488,6 +496,8 @@ export default function Adherences({
         )}
       </div>
 
+      {!collapsed && (
+        <>
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
       <div className="space-y-6">
@@ -1120,6 +1130,8 @@ export default function Adherences({
           )}
         </div>
       </div>
+        </>
+      )}
     </section>
   );
 }

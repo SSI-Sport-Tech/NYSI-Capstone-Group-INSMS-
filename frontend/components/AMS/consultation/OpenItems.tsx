@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ChevronDown } from "lucide-react";
 
 interface OpenItemsProps {
   athleteId: string;
@@ -40,6 +41,7 @@ export default function OpenItems({
   readOnly,
 }: OpenItemsProps) {
 
+  const [collapsed, setCollapsed] = useState(false);
   const [openItems, setOpenItems] = useState<OpenItem[]>([]);
   const [statuses, setStatuses] = useState<StatusLookup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -271,7 +273,13 @@ export default function OpenItems({
       className="bg-white rounded-xl shadow-lg p-6 text-gray-900"
     >
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Open Items</h2>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="flex items-center gap-2 text-left"
+        >
+          <h2 className="text-xl font-semibold text-gray-900">Open Items</h2>
+          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
+        </button>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">
             All Actions ({openItems.length})
@@ -314,6 +322,8 @@ export default function OpenItems({
         </div>
       </div>
 
+      {!collapsed && (
+        <>
       {saveError && <p className="text-red-600 text-sm mb-3">{saveError}</p>}
 
       {/* Add New Item Form */}
@@ -483,6 +493,8 @@ export default function OpenItems({
             Get started by creating a new action item.
           </p>
         </div>
+      )}
+        </>
       )}
     </section>
   );

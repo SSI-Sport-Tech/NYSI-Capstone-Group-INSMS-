@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ChevronDown } from "lucide-react";
 import { consultationApi, ConsultationApiError } from "@/utils/consultationApi";
 
 interface MealLogsProps {
@@ -98,6 +99,7 @@ export default function MealLogs({
   ensureSession,
   readOnly,
 }: MealLogsProps) {
+  const [collapsed, setCollapsed] = useState(false);
   const [mealLog, setMealLog] = useState<MealLogData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -238,7 +240,13 @@ export default function MealLogs({
   return (
     <section id="meal-logs" className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Meal Logs</h2>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="flex items-center gap-2 text-left"
+        >
+          <h2 className="text-xl font-semibold text-gray-900">Meal Logs</h2>
+          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
+        </button>
         {!readOnly && (
           <div className="flex items-center gap-2">
             {effectiveEditing && !isNewConsultation && (
@@ -272,6 +280,8 @@ export default function MealLogs({
         )}
       </div>
 
+      {!collapsed && (
+        <>
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
       <div className="space-y-6">
@@ -447,6 +457,8 @@ export default function MealLogs({
           </div>
         </div>
       </div>
+        </>
+      )}
     </section>
   );
 }

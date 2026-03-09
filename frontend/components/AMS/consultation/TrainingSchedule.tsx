@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ChevronDown } from "lucide-react";
 import { consultationApi } from "@/utils/consultationApi";
 
 interface TrainingScheduleProps {
@@ -136,6 +137,7 @@ export default function TrainingSchedule({
   ensureSession,
   readOnly,
 }: TrainingScheduleProps) {
+  const [collapsed, setCollapsed] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
 
@@ -298,9 +300,15 @@ export default function TrainingSchedule({
       className="bg-white rounded-xl shadow-lg p-6 text-gray-900"
     >
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">
-          Training Schedule
-        </h2>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="flex items-center gap-2 text-left"
+        >
+          <h2 className="text-xl font-semibold text-gray-900">
+            Training Schedule
+          </h2>
+          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
+        </button>
         {!readOnly && (
           <div className="flex items-center gap-2">
             {effectiveEditing && !isNewConsultation && (
@@ -334,6 +342,8 @@ export default function TrainingSchedule({
         )}
       </div>
 
+      {!collapsed && (
+        <>
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
       <div className="space-y-8">
@@ -631,6 +641,8 @@ export default function TrainingSchedule({
           </div>
         </div>
       </div>
+        </>
+      )}
     </section>
   );
 }

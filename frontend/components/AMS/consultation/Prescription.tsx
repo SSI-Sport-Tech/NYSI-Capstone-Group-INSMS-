@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { ChevronDown } from "lucide-react";
 
 interface PrescriptionProps {
   athleteId: string;
@@ -57,6 +58,7 @@ export default function Prescription({
   sessionId,
   readOnly,
 }: PrescriptionProps) {
+  const [collapsed, setCollapsed] = useState(false);
   const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -272,7 +274,13 @@ export default function Prescription({
   return (
     <section id="prescription" className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Prescription</h2>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="flex items-center gap-2 text-left"
+        >
+          <h2 className="text-xl font-semibold text-gray-900">Prescription</h2>
+          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
+        </button>
         <div className="flex items-center gap-2">
           {!readOnly && !showAddForm && (
             <button
@@ -288,6 +296,8 @@ export default function Prescription({
         </div>
       </div>
 
+      {!collapsed && (
+        <>
       {/* Add prescription inline form */}
       {showAddForm && (
         <div className="border border-blue-200 rounded-lg p-5 mb-6 bg-blue-50">
@@ -517,6 +527,8 @@ export default function Prescription({
           ))
         )}
       </div>
+        </>
+      )}
     </section>
   );
 }

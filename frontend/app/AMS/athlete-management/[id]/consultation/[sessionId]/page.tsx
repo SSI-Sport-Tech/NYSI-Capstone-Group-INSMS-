@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { ChevronDown } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import OpenItems from "@/components/AMS/consultation/OpenItems";
@@ -32,6 +33,7 @@ export default function ConsultationDetailsPage() {
   const sessionId = params.sessionId as string;
 
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
+  const [detailsCollapsed, setDetailsCollapsed] = useState(false);
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -78,8 +80,18 @@ export default function ConsultationDetailsPage() {
 
           {/* Consultation Details Card — A section (session info) + B section (nutrition notes) */}
           <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Consultation Details</h2>
+            <div className="flex items-center justify-between mb-6">
+              <button
+                onClick={() => setDetailsCollapsed(!detailsCollapsed)}
+                className="flex items-center gap-2 text-left"
+              >
+                <h2 className="text-xl font-semibold text-gray-900">Consultation Details</h2>
+                <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${detailsCollapsed ? "-rotate-90" : ""}`} />
+              </button>
+            </div>
 
+            {!detailsCollapsed && (
+              <>
             {/* A section */}
             {sessionData ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-900">
@@ -155,6 +167,8 @@ export default function ConsultationDetailsPage() {
               readOnly
               embedded
             />
+              </>
+            )}
           </div>
 
           <OpenItems
