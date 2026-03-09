@@ -62,6 +62,7 @@ export async function getAllUsers(req, res) {
                 is_email_verified: user.is_email_verified,
                 last_login_at: user.last_login_at,
                 has_nutritionist_profile: !!user.nutritionist_id,
+                created_at: user.created_at
             })),
         });
 
