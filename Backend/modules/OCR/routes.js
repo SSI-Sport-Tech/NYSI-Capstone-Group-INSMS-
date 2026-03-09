@@ -476,7 +476,12 @@ router.post("/extract", uploadMultiple, extractInfo);
  *       504:
  *         description: Verification timeout (certification sites may be slow)
  */
-router.post("/verify", verifySupplements);
+router.post("/verify", (req, res, next) => {
+    // Verification scrapes 6 external certification sites — needs longer than
+    // the global server.timeout (120s). Set directly on the socket to override.
+    req.socket.setTimeout(360000);
+    next();
+}, verifySupplements);
 
 /**
  * @swagger
