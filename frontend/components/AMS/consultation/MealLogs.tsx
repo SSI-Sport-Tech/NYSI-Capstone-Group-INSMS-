@@ -99,7 +99,7 @@ export default function MealLogs({
   ensureSession,
   readOnly,
 }: MealLogsProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [mealLog, setMealLog] = useState<MealLogData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");

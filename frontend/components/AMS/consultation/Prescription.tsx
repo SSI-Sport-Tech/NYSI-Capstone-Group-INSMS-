@@ -58,7 +58,7 @@ export default function Prescription({
   sessionId,
   readOnly,
 }: PrescriptionProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");

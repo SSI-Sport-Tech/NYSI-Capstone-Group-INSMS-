@@ -137,7 +137,7 @@ export default function TrainingSchedule({
   ensureSession,
   readOnly,
 }: TrainingScheduleProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
 

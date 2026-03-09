@@ -94,7 +94,7 @@ export default function Anthropometry({
   readOnly,
   onAnthroChange,
 }: AnthropometryProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [anthropometryData, setAnthropometryData] =
     useState<AnthropometryData | null>(null);
   const [loading, setLoading] = useState(true);

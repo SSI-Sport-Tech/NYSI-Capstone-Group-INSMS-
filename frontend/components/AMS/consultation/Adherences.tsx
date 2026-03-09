@@ -157,7 +157,7 @@ export default function Adherences({
   liveHeight,
   liveTargetWeight,
 }: AdherencesProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [adherencesData, setAdherencesData] = useState<AdherencesData | null>(
     null,
   );

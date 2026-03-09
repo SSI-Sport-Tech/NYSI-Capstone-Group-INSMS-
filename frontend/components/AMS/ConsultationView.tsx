@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { ChevronDown } from "lucide-react";
 import {
   consultationApi,
   consultationLookupApi,
@@ -95,13 +96,22 @@ export default function ConsultationView({
   const sessionIdRef = useRef<string>("");
   const sessionCreationRef = useRef<Promise<string> | null>(null);
 
-  // Edit mode state
+  // Collapse state
+  const [detailsCollapsed, setDetailsCollapsed] = useState(true);
+  const [diagnosisCollapsed, setDiagnosisCollapsed] = useState(true);
+
+  // Edit mode state — Card 1 (Consultation Details)
   const [isEditMode, setIsEditMode] = useState(false);
   const [consultTypes, setConsultTypes] = useState<ConsultType[]>([]);
   const [updateForm, setUpdateForm] = useState<UpdateForm>(EMPTY_UPDATE_FORM);
   const [isSavingUpdate, setIsSavingUpdate] = useState(false);
   const [isSavingAll, setIsSavingAll] = useState(false);
   const [updateSaveError, setUpdateSaveError] = useState("");
+
+  // Edit mode state — Card 2 (Main Nutrition Diagnosis)
+  const [isDiagnosisEditMode, setIsDiagnosisEditMode] = useState(false);
+  const [isSavingDiagnosis, setIsSavingDiagnosis] = useState(false);
+  const [diagnosisSaveError, setDiagnosisSaveError] = useState("");
   const updateFormRef = useRef<UpdateForm>(EMPTY_UPDATE_FORM);
   const ensureSessionForUpdateRef = useRef<() => Promise<string>>(async () => "");
   const previousConsultRef = useRef<PreviousConsultationHandle>(null);
@@ -383,7 +393,19 @@ export default function ConsultationView({
   const handleClearConsultationDetails = () => {
     setUpdateForm(EMPTY_UPDATE_FORM);
     setUpdateSaveError("");
-    previousConsultRef.current?.clearAll();
+  };
+
+  const handleSaveDiagnosis = async () => {
+    setIsSavingDiagnosis(true);
+    setDiagnosisSaveError("");
+    try {
+      await previousConsultRef.current?.save();
+      setIsDiagnosisEditMode(false);
+    } catch (e) {
+      setDiagnosisSaveError(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setIsSavingDiagnosis(false);
+    }
   };
 
   const handleSaveUpdate = async () => {
@@ -419,9 +441,6 @@ export default function ConsultationView({
           errData?.message || errData?.error || `Save failed (${res.status})`,
         );
       }
-      // Save B section (nutrition diagnosis, notes)
-      await previousConsultRef.current?.save();
-
       setIsEditMode(false);
       await fetchLatestConsultation();
     } catch (e) {
@@ -798,12 +817,16 @@ export default function ConsultationView({
           </div>
         )}
 
-        {/* Consultation Update Card */}
+        {/* Card 1 — Consultation Details */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-xl font-semibold text-gray-900">
-              Consultation Details
-            </h1>
+            <button
+              onClick={() => setDetailsCollapsed(!detailsCollapsed)}
+              className="flex items-center gap-2 text-left"
+            >
+              <h1 className="text-xl font-semibold text-gray-900">Consultation Details</h1>
+              <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${detailsCollapsed ? "-rotate-90" : ""}`} />
+            </button>
             <div className="flex items-center gap-2">
               {isNewConsultation ? (
                 <>
@@ -848,11 +871,7 @@ export default function ConsultationView({
                   onClick={handleEditClick}
                   className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200 flex items-center gap-1"
                 >
-                  <svg
-                    className="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                   </svg>
                   Edit
@@ -860,24 +879,73 @@ export default function ConsultationView({
               )}
             </div>
           </div>
+          {!detailsCollapsed && (
+            isNewConsultation || isEditMode ? renderUpdateForm() : renderReadOnly()
+          )}
+        </div>
 
-          {isNewConsultation || isEditMode
-            ? renderUpdateForm()
-            : renderReadOnly()}
-
-          {/* Divider between Details A and Details B */}
-          <div className="border-t border-gray-200 my-6" />
-
-          {/* Consultation Details B: nutrition diagnosis, notes, etc. */}
-          <PreviousConsultation
-            ref={previousConsultRef}
-            athleteId={athleteId}
-            sessionId={currentSessionId}
-            isNewConsultation={isNewConsultation}
-            ensureSession={ensureSession}
-            embedded={true}
-            isEditMode={isEditMode}
-          />
+        {/* Card 2 — Main Nutrition Diagnosis */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => setDiagnosisCollapsed(!diagnosisCollapsed)}
+              className="flex items-center gap-2 text-left"
+            >
+              <h2 className="text-xl font-semibold text-gray-900">Main Nutrition Diagnosis</h2>
+              <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${diagnosisCollapsed ? "-rotate-90" : ""}`} />
+            </button>
+            {!isNewConsultation && (
+              <div className="flex items-center gap-2">
+                {isDiagnosisEditMode ? (
+                  <>
+                    <button
+                      onClick={() => { previousConsultRef.current?.clearAll(); }}
+                      className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+                    >
+                      Clear All
+                    </button>
+                    <button
+                      onClick={() => setIsDiagnosisEditMode(false)}
+                      className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveDiagnosis}
+                      disabled={isSavingDiagnosis}
+                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {isSavingDiagnosis ? "Saving..." : "Save Changes"}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setIsDiagnosisEditMode(true)}
+                    className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200 flex items-center gap-1"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                    Edit
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          {diagnosisSaveError && (
+            <p className="text-red-600 text-sm mb-3">{diagnosisSaveError}</p>
+          )}
+          {!diagnosisCollapsed && (
+            <PreviousConsultation
+              ref={previousConsultRef}
+              athleteId={athleteId}
+              sessionId={currentSessionId}
+              isNewConsultation={isNewConsultation}
+              ensureSession={ensureSession}
+              embedded={true}
+              isEditMode={isDiagnosisEditMode}
+            />
+          )}
         </div>
 
         {/* Open Items — clears on new consultation */}

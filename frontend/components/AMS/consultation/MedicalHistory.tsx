@@ -187,7 +187,7 @@ export default function MedicalHistory({
   ensureSession,
   readOnly,
 }: MedicalHistoryProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");

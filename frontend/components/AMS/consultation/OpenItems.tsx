@@ -41,7 +41,7 @@ export default function OpenItems({
   readOnly,
 }: OpenItemsProps) {
 
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [openItems, setOpenItems] = useState<OpenItem[]>([]);
   const [statuses, setStatuses] = useState<StatusLookup[]>([]);
   const [loading, setLoading] = useState(true);
