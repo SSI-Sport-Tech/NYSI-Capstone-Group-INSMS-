@@ -9,9 +9,11 @@ import {
   Camera,
   Plus,
   MoreVertical,
+  Eye,
 } from "lucide-react";
 import axios from "axios";
 import AddSupplementModal from "./AddSupplementModal";
+import BatchDetailModal from "./BatchDetailModal";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Batch {
@@ -28,6 +30,7 @@ interface Batch {
   batch_price: number;
   date_added: string;
   inv_batch_testing_org: string | null;
+  batch_unit?: string | null;
 }
 
 interface BatchTableProps {
@@ -59,6 +62,22 @@ const getStatusBadgeClass = (status: string) => {
   }
 };
 
+const getExpiryInfo = (expirationDate: string | null) => {
+  if (!expirationDate) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const exp = new Date(expirationDate);
+  const oneMonth = new Date(today);
+  oneMonth.setMonth(oneMonth.getMonth() + 1);
+  const threeMonths = new Date(today);
+  threeMonths.setMonth(threeMonths.getMonth() + 3);
+
+  if (exp < today) return { dot: "bg-red-500", badge: "bg-red-100 text-red-700 border border-red-200" };
+  if (exp < oneMonth) return { dot: "bg-orange-500", badge: "bg-orange-100 text-orange-700 border border-orange-200" };
+  if (exp < threeMonths) return { dot: "bg-yellow-400", badge: "bg-yellow-100 text-yellow-700 border border-yellow-200" };
+  return { dot: "bg-green-500", badge: "bg-green-100 text-green-700 border border-green-200" };
+};
+
 const BatchTable: React.FC<BatchTableProps> = ({
   batches,
   total,
@@ -72,6 +91,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
 }) => {
   const { token } = useAuth();
   const [selectedBatches, setSelectedBatches] = useState<number[]>([]);
+  const [detailBatch, setDetailBatch] = useState<Batch | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -391,11 +411,14 @@ const BatchTable: React.FC<BatchTableProps> = ({
                       {batch.available}
                     </td>
                     <td className="px-3 py-4 text-sm text-gray-900">
-                      {batch.batch_expiration_date
-                        ? new Date(
-                            batch.batch_expiration_date,
-                          ).toLocaleDateString("en-US")
-                        : "-"}
+                      {batch.batch_expiration_date ? (() => {
+                        const info = getExpiryInfo(batch.batch_expiration_date);
+                        return (
+                          <span className={info ? `px-1.5 py-0.5 rounded text-xs font-medium ${info.badge}` : ""}>
+                            {new Date(batch.batch_expiration_date).toLocaleDateString("en-US")}
+                          </span>
+                        );
+                      })() : "-"}
                     </td>
                     <td className="px-3 py-4 text-sm font-medium text-gray-900">
                       $
@@ -409,7 +432,11 @@ const BatchTable: React.FC<BatchTableProps> = ({
                         : "-"}
                     </td>
                     <td className="px-3 py-4 text-center">
-                      <button className="text-gray-400 hover:text-gray-600 p-1">
+                      <button
+                        onClick={() => setDetailBatch(batch)}
+                        className="text-gray-400 hover:text-gray-600 p-1"
+                        title="View / Edit batch"
+                      >
                         <MoreVertical className="w-4 h-4" />
                       </button>
                     </td>
@@ -465,6 +492,18 @@ const BatchTable: React.FC<BatchTableProps> = ({
           </div>
         </div>
       </div>
+
+      {detailBatch && (
+        <BatchDetailModal
+          isOpen={!!detailBatch}
+          batch={detailBatch}
+          onClose={() => setDetailBatch(null)}
+          onSaved={() => {
+            setDetailBatch(null);
+            if (onRefresh) onRefresh();
+          }}
+        />
+      )}
 
       {/* Add Supplement Modal */}
       <AddSupplementModal

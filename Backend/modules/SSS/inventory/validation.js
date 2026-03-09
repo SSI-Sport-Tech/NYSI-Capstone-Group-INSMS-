@@ -45,6 +45,12 @@ export const createBatchSchema = z.object({
         .optional()
         .nullable(),
 
+    batch_unit: z.string()
+        .max(50, 'Unit must be less than 50 characters')
+        .trim()
+        .optional()
+        .nullable(),
+
     // ---- FIELDS NOT ACCEPTED (handled by system) ----
 
     id: z.never().optional(),
