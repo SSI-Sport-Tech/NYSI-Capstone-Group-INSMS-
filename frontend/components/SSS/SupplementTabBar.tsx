@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { X, BookOpen } from "lucide-react";
+import { X } from "lucide-react";
 import {
   getTabs,
   removeTab,
@@ -11,17 +11,27 @@ import {
 } from "@/utils/supplementTabs";
 
 interface SupplementTabBarProps {
-  /** "library" when on the library page, supplement uuid when on a detail page */
+  /**
+   * "library" | "inventory" | "web-scraper" | "batch-testing"
+   * or a supplement UUID when on a detail page
+   */
   activeId: string;
 }
 
+const SSS_SECTIONS = [
+  { id: "library",       label: "Supplement Library", href: "/SSS/library" },
+  { id: "inventory",     label: "Inventory",          href: "/SSS/inventory" },
+  { id: "web-scraper",   label: "Web Scraper",        href: "/SSS/web-scraper" },
+  { id: "batch-testing", label: "Batch Testing",      href: "/SSS/batch-testing" },
+];
+
 export default function SupplementTabBar({ activeId }: SupplementTabBarProps) {
   const router = useRouter();
-  const [tabs, setTabs] = useState<SupplementTab[]>([]);
+  const [supplementTabs, setSupplementTabs] = useState<SupplementTab[]>([]);
 
   useEffect(() => {
-    setTabs(getTabs());
-    const refresh = () => setTabs(getTabs());
+    setSupplementTabs(getTabs());
+    const refresh = () => setSupplementTabs(getTabs());
     window.addEventListener(TABS_EVENT, refresh);
     window.addEventListener("storage", refresh);
     return () => {
@@ -40,49 +50,61 @@ export default function SupplementTabBar({ activeId }: SupplementTabBarProps) {
     }
   };
 
-  return (
-    <div className="relative z-[60] bg-white border-b border-gray-200 px-6 flex items-center gap-0 overflow-x-auto shrink-0">
-      {/* Pinned: Supplement Library */}
-      <div
-        onClick={() => router.push("/SSS/library")}
-        className={`flex items-center gap-1.5 px-3 py-2.5 text-sm border-b-2 shrink-0 cursor-pointer transition-colors ${
-          activeId === "library"
-            ? "border-blue-500 text-blue-700 font-medium"
-            : "border-transparent text-gray-500 hover:text-gray-700"
-        }`}
-      >
-        <BookOpen className="w-3.5 h-3.5 shrink-0" />
-        <span>Supplement Library</span>
-      </div>
+  const sectionIsActive = SSS_SECTIONS.some((s) => s.id === activeId);
 
-      {/* Open supplement tabs */}
-      {tabs.map((tab) => {
-        const isActive = tab.id === activeId;
-        return (
-          <div
-            key={tab.id}
-            className={`flex items-center gap-1 px-3 py-2.5 text-sm border-b-2 shrink-0 transition-colors ${
-              isActive
-                ? "border-blue-500 text-blue-700 font-medium"
-                : "border-transparent text-gray-500 hover:text-gray-700 cursor-pointer"
-            }`}
-          >
-            <button
-              onClick={() => !isActive && router.push(`/SSS/supplements/${tab.id}`)}
-              className="max-w-[160px] truncate text-left"
-            >
-              {tab.name}
-            </button>
-            <button
-              onClick={(e) => handleClose(e, tab.id)}
-              className="text-gray-300 hover:text-gray-600 ml-1 transition-colors"
-              aria-label={`Close ${tab.name}`}
-            >
-              <X className="w-3 h-3" />
-            </button>
-          </div>
-        );
-      })}
+  return (
+    <div className="relative z-[60] bg-white border-b border-gray-200 px-6 flex items-center overflow-x-auto shrink-0">
+      {/* Always-visible SSS section tabs */}
+      {SSS_SECTIONS.map((section) => (
+        <div
+          key={section.id}
+          onClick={() => activeId !== section.id && router.push(section.href)}
+          className={`px-4 py-2.5 text-sm border-b-2 shrink-0 transition-colors whitespace-nowrap ${
+            activeId === section.id
+              ? "border-blue-500 text-blue-700 font-medium cursor-default"
+              : "border-transparent text-gray-500 hover:text-gray-700 cursor-pointer"
+          }`}
+        >
+          {section.label}
+        </div>
+      ))}
+
+      {/* Opened supplement detail tabs (with group label) */}
+      {supplementTabs.length > 0 && (
+        <>
+          <div className="w-px h-5 bg-gray-200 mx-3 shrink-0" />
+          <span className="text-xs text-gray-400 font-medium shrink-0 mr-1 whitespace-nowrap">
+            Opened:
+          </span>
+          {supplementTabs.map((tab) => {
+            const isActive = !sectionIsActive && tab.id === activeId;
+            return (
+              <div
+                key={tab.id}
+                className={`flex items-center gap-1 px-3 py-2.5 text-sm border-b-2 shrink-0 transition-colors ${
+                  isActive
+                    ? "border-blue-500 text-blue-700 font-medium"
+                    : "border-transparent text-gray-500 hover:text-gray-700 cursor-pointer"
+                }`}
+              >
+                <button
+                  onClick={() => !isActive && router.push(`/SSS/supplements/${tab.id}`)}
+                  className="max-w-[160px] truncate text-left"
+                >
+                  {tab.name}
+                </button>
+                <button
+                  onClick={(e) => handleClose(e, tab.id)}
+                  className="text-gray-300 hover:text-gray-600 ml-1 transition-colors"
+                  aria-label={`Close ${tab.name}`}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            );
+          })}
+        </>
+      )}
     </div>
   );
 }

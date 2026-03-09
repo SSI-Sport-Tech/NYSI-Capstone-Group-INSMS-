@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import axios from "axios";
 import DashboardLayout from "@/components/DashboardLayout";
-import ViewTabs from "@/components/SSS/ViewTabs";
+import SupplementTabBar from "@/components/SSS/SupplementTabBar";
 import {
   Upload,
   Loader,
@@ -34,13 +34,6 @@ interface VerificationResult {
   results: unknown[];
   quick_links: string[];
 }
-
-const tabs = [
-  { id: "library", label: "Supplement Library", icon: "library", href: "/SSS/library" },
-  { id: "inventory", label: "Current Inventory View", icon: "inventory", href: "/SSS/inventory" },
-  { id: "scraper", label: "Web Scraper View", icon: "scraper", href: "/SSS/web-scraper" },
-  { id: "batch-testing", label: "Batch OCR Testing", icon: "batch", href: "/SSS/batch-testing" },
-];
 
 export default function BatchTesting() {
   // Manual search form — always visible
@@ -174,6 +167,7 @@ export default function BatchTesting() {
 
   return (
     <DashboardLayout>
+      <SupplementTabBar activeId="batch-testing" />
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-[1600px] mx-auto px-6 py-8">
           {/* Page Header */}
@@ -185,9 +179,6 @@ export default function BatchTesting() {
               Search supplements by name, brand, or batch number to verify batch testing status
             </p>
           </div>
-
-          {/* Tabs */}
-          <ViewTabs tabs={tabs} />
 
           {/* ── Step 1: Search Form (always visible) ────────────────────── */}
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mb-4">

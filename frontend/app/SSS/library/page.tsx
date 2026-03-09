@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import DashboardLayout from "@/components/DashboardLayout";
 import SupplementTable from "@/components/SSS/SupplementTable";
-import ViewTabs from "@/components/SSS/ViewTabs";
 import SearchSection from "@/components/SSS/SearchSection";
 import OCRModal from "@/components/SSS/OCRModal";
 import AddSupplementModal from "@/components/SSS/AddSupplementModal";
@@ -19,33 +18,6 @@ interface Supplement {
   batch_testing_org: string | null;
   product_source_url: string[] | string | null;
 }
-
-const tabs = [
-  {
-    id: "library",
-    label: "Supplement Library",
-    icon: "library",
-    href: "/SSS/library",
-  },
-  {
-    id: "inventory",
-    label: "Current Inventory View",
-    icon: "inventory",
-    href: "/SSS/inventory",
-  },
-  {
-    id: "scraper",
-    label: "Web Scraper View",
-    icon: "scraper",
-    href: "/SSS/web-scraper",
-  },
-  {
-    id: "batch-testing",
-    label: "Batch OCR Testing",
-    icon: "batch",
-    href: "/SSS/batch-testing",
-  },
-];
 
 export default function LibraryPage() {
   const [supplements, setSupplements] = useState<Supplement[]>([]);
@@ -133,9 +105,6 @@ export default function LibraryPage() {
               Supplement Library
             </h1>
           </div>
-
-          {/* Tabs */}
-          <ViewTabs tabs={tabs} />
 
           {/* Error Message */}
           {error && (
