@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import ViewTabs from "@/components/SSS/ViewTabs";
 import PageHeader from "@/components/PageHeader";
 import UrlSelectionModal from "@/components/SSS/UrlSelectionModal";
 import StagingDetailModal from "@/components/SSS/StagingDetailModal";
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
+import SupplementTabBar from "@/components/SSS/SupplementTabBar";
 
 interface StagingSupplement {
   id: string;
@@ -34,32 +34,6 @@ interface CatalogUrl {
   is_active: boolean;
 }
 
-const tabs = [
-  {
-    id: "library",
-    label: "Supplement Library",
-    icon: "library",
-    href: "/SSS/library",
-  },
-  {
-    id: "inventory",
-    label: "Current Inventory View",
-    icon: "inventory",
-    href: "/SSS/inventory",
-  },
-  {
-    id: "scraper",
-    label: "Web Scraper View",
-    icon: "scraper",
-    href: "/SSS/web-scraper",
-  },
-  {
-    id: "batch-testing",
-    label: "Batch OCR Testing",
-    icon: "batch",
-    href: "/SSS/batch-testing",
-  },
-];
 
 export default function WebScraperPage() {
   const { token, user } = useAuth();
@@ -340,13 +314,11 @@ export default function WebScraperPage() {
 
   return (
     <DashboardLayout>
+      <SupplementTabBar activeId="web-scraper" />
       <div className="min-h-screen bg-gray-50 p-6">
-        {/* Page Title */}
-        <PageHeader title="Supplements" />
-
-        {/* Tabs */}
-        <ViewTabs tabs={tabs} />
-
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Web Scraper</h1>
+        </div>
         {/* Scraper Status Section */}
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">

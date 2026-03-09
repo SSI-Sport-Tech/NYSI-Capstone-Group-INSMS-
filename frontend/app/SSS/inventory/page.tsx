@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import DashboardLayout from "@/components/DashboardLayout";
-import ViewTabs from "@/components/SSS/ViewTabs";
 import SearchSection from "@/components/SSS/SearchSection";
 import BatchTable from "@/components/SSS/BatchTable";
 import OCRModal from "@/components/SSS/OCRModal";
+import SupplementTabBar from "@/components/SSS/SupplementTabBar";
 
 interface Batch {
   id: number;
@@ -21,33 +21,6 @@ interface Batch {
   batch_expiration_date: string;
   batch_price: number;
 }
-
-const tabs = [
-  {
-    id: "library",
-    label: "Supplement Library",
-    icon: "library",
-    href: "/SSS/library",
-  },
-  {
-    id: "inventory",
-    label: "Current Inventory View",
-    icon: "inventory",
-    href: "/SSS/inventory",
-  },
-  {
-    id: "scraper",
-    label: "Web Scraper View",
-    icon: "scraper",
-    href: "/SSS/web-scraper",
-  },
-  {
-    id: "batch-testing",
-    label: "Batch OCR Testing",
-    icon: "batch",
-    href: "/SSS/batch-testing",
-  },
-];
 
 export default function InventoryPage() {
   const [query, setQuery] = useState("");
@@ -115,6 +88,7 @@ export default function InventoryPage() {
 
   return (
     <DashboardLayout>
+      <SupplementTabBar activeId="inventory" />
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-[1600px] mx-auto px-6 py-8">
           {/* Page Header */}
@@ -123,9 +97,6 @@ export default function InventoryPage() {
               Current Inventory
             </h1>
           </div>
-
-          {/* Tabs */}
-          <ViewTabs tabs={tabs} />
 
           {/* Error Message */}
           {error && (
