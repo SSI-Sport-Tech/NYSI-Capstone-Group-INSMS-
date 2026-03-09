@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import {
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   MoreVertical,
   ExternalLink,
   Plus,
@@ -66,6 +68,35 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
   const { token, user } = useAuth();
   const isAdmin = user?.role === "ADMIN" || user?.role === "IT_ADMIN";
   const [selectedSupplements, setSelectedSupplements] = useState<string[]>([]);
+  const [sortColumn, setSortColumn] = useState<string>("");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortColumn !== column) return <ArrowUpDown className="w-3 h-3" />;
+    return sortDirection === "asc"
+      ? <ArrowUp className="w-3 h-3 text-blue-600" />
+      : <ArrowDown className="w-3 h-3 text-blue-600" />;
+  };
+
+  const sortedSupplements = [...supplements].sort((a, b) => {
+    if (!sortColumn) return 0;
+    let aVal: string | number = (a[sortColumn as keyof Supplement] ?? "") as string | number;
+    let bVal: string | number = (b[sortColumn as keyof Supplement] ?? "") as string | number;
+    if (typeof aVal === "string") aVal = aVal.toLowerCase();
+    if (typeof bVal === "string") bVal = bVal.toLowerCase();
+    if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+    if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+    return 0;
+  });
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -218,28 +249,40 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
               </th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700">
+              <th
+                onClick={() => handleSort("supplement_name")}
+                className="px-6 py-3 text-left text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+              >
                 <div className="flex items-center space-x-1">
                   <span>Supplement Name</span>
-                  <ArrowUpDown className="w-3 h-3" />
+                  <SortIcon column="supplement_name" />
                 </div>
               </th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700">
+              <th
+                onClick={() => handleSort("supplement_brand")}
+                className="px-6 py-3 text-left text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+              >
                 <div className="flex items-center space-x-1">
                   <span>Brand</span>
-                  <ArrowUpDown className="w-3 h-3" />
+                  <SortIcon column="supplement_brand" />
                 </div>
               </th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700">
+              <th
+                onClick={() => handleSort("supplement_packaging_form")}
+                className="px-6 py-3 text-left text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+              >
                 <div className="flex items-center space-x-1">
                   <span>Form</span>
-                  <ArrowUpDown className="w-3 h-3" />
+                  <SortIcon column="supplement_packaging_form" />
                 </div>
               </th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700">
+              <th
+                onClick={() => handleSort("supplement_status")}
+                className="px-6 py-3 text-left text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+              >
                 <div className="flex items-center space-x-1">
                   <span>Status</span>
-                  <ArrowUpDown className="w-3 h-3" />
+                  <SortIcon column="supplement_status" />
                 </div>
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">
@@ -258,8 +301,8 @@ const SupplementTable: React.FC<SupplementTableProps> = ({
                   Loading supplements...
                 </td>
               </tr>
-            ) : supplements.length > 0 ? (
-              supplements.map((supplement, index) => (
+            ) : sortedSupplements.length > 0 ? (
+              sortedSupplements.map((supplement, index) => (
                 <tr
                   key={supplement.id}
                   onClick={() => onRowSelect?.(supplement)}

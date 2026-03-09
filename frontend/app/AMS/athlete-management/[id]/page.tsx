@@ -580,13 +580,13 @@ export default function AthleteDetailPage() {
                 <div className="space-y-8">
                   {/* Basic Information */}
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-4 underline underline-offset-2">
                       Basic Information
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {/* Date of Birth */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                           Date of Birth
                         </label>
                         {isEditing && editForm ? (
@@ -607,7 +607,7 @@ export default function AthleteDetailPage() {
 
                       {/* Gender */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                           Sex
                         </label>
                         {isEditing && editForm ? (
@@ -632,7 +632,7 @@ export default function AthleteDetailPage() {
 
                       {/* Ethnicity */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                           Ethnicity
                         </label>
                         {isEditing && editForm ? (
@@ -654,7 +654,7 @@ export default function AthleteDetailPage() {
 
                       {/* Sport */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                           Sport
                         </label>
                         {isEditing && editForm ? (
@@ -681,7 +681,7 @@ export default function AthleteDetailPage() {
 
                       {/* Athlete Status */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                           Athlete Status
                         </label>
                         {isEditing && editForm ? (
@@ -715,13 +715,13 @@ export default function AthleteDetailPage() {
                   {/* Registry Information */}
                   {profile.registry && (
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-4 underline underline-offset-2">
                         Registry Information
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {/* Nutritionist Assigned */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                             Nutritionist Assigned
                             {isEditing && !isAdmin && (
                               <span className="ml-2 text-xs text-gray-400 font-normal">(Admin only)</span>
@@ -757,7 +757,7 @@ export default function AthleteDetailPage() {
 
                         {/* Coach Assigned */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                             Coach Assigned
                           </label>
                           {isEditing && editForm ? (
@@ -790,7 +790,7 @@ export default function AthleteDetailPage() {
 
                         {/* Medical Clearance */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                             Medical Clearance
                           </label>
                           {isEditing && editForm ? (
@@ -818,7 +818,7 @@ export default function AthleteDetailPage() {
 
                         {/* Approved Start Date */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                             Approved Start Date
                           </label>
                           {isEditing && editForm ? (
@@ -839,7 +839,7 @@ export default function AthleteDetailPage() {
 
                         {/* Carding Start Date */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                             Carding Start Date
                           </label>
                           {isEditing && editForm ? (
@@ -860,7 +860,7 @@ export default function AthleteDetailPage() {
 
                         {/* Approved End Date */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                             Approved End Date
                           </label>
                           {isEditing && editForm ? (
@@ -881,7 +881,7 @@ export default function AthleteDetailPage() {
 
                         {/* Carding End Date */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                             Carding End Date
                           </label>
                           {isEditing && editForm ? (
@@ -905,13 +905,13 @@ export default function AthleteDetailPage() {
 
                   {/* Sport Information */}
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-4 underline underline-offset-2">
                       Sport Information
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {/* Target Event */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                           Target Event
                         </label>
                         {isEditing && editForm ? (
@@ -933,7 +933,7 @@ export default function AthleteDetailPage() {
 
                       {/* Age Started Sport */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                           Age Started Sport
                         </label>
                         {isEditing && editForm ? (
@@ -957,7 +957,7 @@ export default function AthleteDetailPage() {
 
                       {/* Years in Sport (always display-only, computed) */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                           Years in Sport
                         </label>
                         <p className="text-sm text-gray-900">

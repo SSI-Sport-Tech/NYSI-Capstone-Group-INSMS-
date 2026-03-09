@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import {
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   ChevronDown,
   Trash2,
   Settings,
@@ -170,7 +172,6 @@ const BatchTable: React.FC<BatchTableProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  // Handle sorting
   const handleSort = (column: string) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -178,8 +179,25 @@ const BatchTable: React.FC<BatchTableProps> = ({
       setSortColumn(column);
       setSortDirection("asc");
     }
-    // You can implement actual sorting here or pass to parent
   };
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortColumn !== column) return <ArrowUpDown className="w-3 h-3" />;
+    return sortDirection === "asc"
+      ? <ArrowUp className="w-3 h-3 text-blue-600" />
+      : <ArrowDown className="w-3 h-3 text-blue-600" />;
+  };
+
+  const sortedBatches = [...batches].sort((a, b) => {
+    if (!sortColumn) return 0;
+    let aVal: string | number = (a[sortColumn as keyof Batch] ?? "") as string | number;
+    let bVal: string | number = (b[sortColumn as keyof Batch] ?? "") as string | number;
+    if (typeof aVal === "string") aVal = aVal.toLowerCase();
+    if (typeof bVal === "string") bVal = bVal.toLowerCase();
+    if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+    if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+    return 0;
+  });
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -257,68 +275,95 @@ const BatchTable: React.FC<BatchTableProps> = ({
                 </th>
                 <th
                   onClick={() => handleSort("batch_number")}
-                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700"
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
                 >
                   <div className="flex items-center gap-1">
                     <span className="whitespace-nowrap">Batch #</span>
-                    <ArrowUpDown className="w-3 h-3" />
+                    <SortIcon column="batch_number" />
                   </div>
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
+                <th
+                  onClick={() => handleSort("supplement_name")}
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                >
                   <div className="flex items-center gap-1">
                     <span className="whitespace-nowrap">Supplement Name</span>
-                    <ArrowUpDown className="w-3 h-3" />
+                    <SortIcon column="supplement_name" />
                   </div>
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
+                <th
+                  onClick={() => handleSort("supplement_brand")}
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                >
                   <div className="flex items-center gap-1">
                     <span className="whitespace-nowrap">Brand</span>
-                    <ArrowUpDown className="w-3 h-3" />
+                    <SortIcon column="supplement_brand" />
                   </div>
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
                   <span className="whitespace-nowrap">Testing Org</span>
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
+                <th
+                  onClick={() => handleSort("batch_status")}
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                >
                   <div className="flex items-center gap-1">
                     <span className="whitespace-nowrap">Stock Status</span>
-                    <ArrowUpDown className="w-3 h-3" />
+                    <SortIcon column="batch_status" />
                   </div>
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
+                <th
+                  onClick={() => handleSort("batch_initial_quantity")}
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                >
                   <div className="flex items-center gap-1">
                     <span className="whitespace-nowrap">Batch Size</span>
-                    <ArrowUpDown className="w-3 h-3" />
+                    <SortIcon column="batch_initial_quantity" />
                   </div>
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
+                <th
+                  onClick={() => handleSort("booked")}
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                >
                   <div className="flex items-center gap-1">
                     <span className="whitespace-nowrap">Booked</span>
-                    <ArrowUpDown className="w-3 h-3" />
+                    <SortIcon column="booked" />
                   </div>
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
+                <th
+                  onClick={() => handleSort("available")}
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                >
                   <div className="flex items-center gap-1">
                     <span className="whitespace-nowrap">Available</span>
-                    <ArrowUpDown className="w-3 h-3" />
+                    <SortIcon column="available" />
                   </div>
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
+                <th
+                  onClick={() => handleSort("batch_expiration_date")}
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                >
                   <div className="flex items-center gap-1">
                     <span className="whitespace-nowrap">Expiration</span>
-                    <ArrowUpDown className="w-3 h-3" />
+                    <SortIcon column="batch_expiration_date" />
                   </div>
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
+                <th
+                  onClick={() => handleSort("batch_price")}
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                >
                   <div className="flex items-center gap-1">
                     <span className="whitespace-nowrap">Batch Price</span>
-                    <ArrowUpDown className="w-3 h-3" />
+                    <SortIcon column="batch_price" />
                   </div>
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
+                <th
+                  onClick={() => handleSort("date_added")}
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                >
                   <div className="flex items-center gap-1">
                     <span className="whitespace-nowrap">Date Added</span>
-                    <ArrowUpDown className="w-3 h-3" />
+                    <SortIcon column="date_added" />
                   </div>
                 </th>
                 <th className="px-3 py-3 text-left w-16"></th>
@@ -334,8 +379,8 @@ const BatchTable: React.FC<BatchTableProps> = ({
                     Loading batches...
                   </td>
                 </tr>
-              ) : batches.length > 0 ? (
-                batches.map((batch, index) => (
+              ) : sortedBatches.length > 0 ? (
+                sortedBatches.map((batch, index) => (
                   <tr key={batch.id} className="hover:bg-gray-50">
                     <td className="px-3 py-4">
                       <input
