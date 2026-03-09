@@ -17,6 +17,7 @@ export async function getBatchesByPage(pageNumber, pageSize = 10) {
       ib.batch_price,
       ib.supplement_id,
       ib.inv_batch_testing_org,
+      ib.batch_unit,
       s.supplement_name,
       s.supplement_brand,
       COALESCE(SUM(it.quantity), 0) AS booked,
@@ -30,7 +31,7 @@ export async function getBatchesByPage(pageNumber, pageSize = 10) {
     WHERE bssl.is_active = true
     GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity,
              ib.batch_expiration_date, ib.batch_price, ib.supplement_id,
-             ib.inv_batch_testing_org, s.supplement_name, s.supplement_brand,
+             ib.inv_batch_testing_org, ib.batch_unit, s.supplement_name, s.supplement_brand,
              bssl.batch_stock_status, ib.date_added
     ORDER BY ib.id DESC
     LIMIT $1 OFFSET $2
@@ -88,6 +89,7 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
       ib.batch_price,
       ib.supplement_id,
       ib.inv_batch_testing_org,
+      ib.batch_unit,
       s.supplement_name,
       s.supplement_brand,
       COALESCE(SUM(it.quantity), 0) AS booked,
@@ -101,7 +103,7 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
     WHERE bssl.is_active = true AND (${whereConditions})
     GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity,
              ib.batch_expiration_date, ib.batch_price, ib.supplement_id,
-             ib.inv_batch_testing_org, s.supplement_name, s.supplement_brand,
+             ib.inv_batch_testing_org, ib.batch_unit, s.supplement_name, s.supplement_brand,
              bssl.batch_stock_status, ib.date_added
     ORDER BY ib.id DESC
     LIMIT $${searchWords.length + 1} OFFSET $${searchWords.length + 2}
@@ -163,6 +165,7 @@ export async function getBatchById(batchId) {
             ib.batch_expiration_date,
             ib.batch_manufacture_date,
             ib.inv_batch_testing_org,
+            ib.batch_unit,
             ib.batch_stock_status_id,
             ib.date_added,
             bssl.batch_stock_status,
@@ -235,9 +238,10 @@ export async function createBatch(batchData, userId) {
             batch_price,
             batch_expiration_date,
             batch_manufacture_date,
-            inv_batch_testing_org
+            inv_batch_testing_org,
+            batch_unit
         ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8
+            $1, $2, $3, $4, $5, $6, $7, $8, $9
         )
         RETURNING
             id,
@@ -249,6 +253,7 @@ export async function createBatch(batchData, userId) {
             batch_expiration_date,
             batch_manufacture_date,
             inv_batch_testing_org,
+            batch_unit,
             date_added
     `;
 
@@ -261,6 +266,7 @@ export async function createBatch(batchData, userId) {
     batchData.batch_expiration_date || null,
     batchData.batch_manufacture_date || null,
     batchData.inv_batch_testing_org || null,
+    batchData.batch_unit || null,
   ];
 
   return withUserContext(userId, async (client) => {
@@ -285,6 +291,7 @@ export async function updateBatch(batchId, updateData, userId) {
     batch_expiration_date: updateData.batch_expiration_date,
     batch_manufacture_date: updateData.batch_manufacture_date,
     inv_batch_testing_org: updateData.inv_batch_testing_org,
+    batch_unit: updateData.batch_unit,
   };
 
   for (const [field, value] of Object.entries(fieldMapping)) {
@@ -314,7 +321,8 @@ export async function updateBatch(batchId, updateData, userId) {
             batch_price,
             batch_expiration_date,
             batch_manufacture_date,
-            inv_batch_testing_org
+            inv_batch_testing_org,
+            batch_unit
     `;
 
   return withUserContext(userId, async (client) => {

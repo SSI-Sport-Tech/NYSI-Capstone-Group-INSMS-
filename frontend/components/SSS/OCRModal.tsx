@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import axios from "axios";
-import { X, Upload, Loader, HelpCircle } from "lucide-react";
+
+const OCR_SESSION_KEY = "ocr_modal_state";
+import { upsertTab } from "@/utils/supplementTabs";
+import { X, Upload, Loader, HelpCircle, CheckCircle } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -201,8 +203,6 @@ function NutritionalTable({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const OCRModal: React.FC<OCRModalProps> = ({ isOpen, onClose }) => {
-  const router = useRouter();
-
   // Upload state
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
@@ -230,6 +230,50 @@ const OCRModal: React.FC<OCRModalProps> = ({ isOpen, onClose }) => {
     data: SimilarSupplement[];
     total: number;
   }>({ data: [], total: 0 });
+
+  // Track which results have been opened as tabs
+  const [openedTabs, setOpenedTabs] = useState<Set<string>>(new Set());
+
+  // ── Persist state to sessionStorage (verify + result steps only) ──────────
+
+  useEffect(() => {
+    if (step === "verify" || step === "result") {
+      sessionStorage.setItem(
+        OCR_SESSION_KEY,
+        JSON.stringify({
+          step,
+          ingredients,
+          nutPerServing,
+          nutPer100g,
+          servingSizeGrams,
+          results,
+          openedTabs: [...openedTabs],
+        }),
+      );
+    }
+  }, [step, ingredients, nutPerServing, nutPer100g, servingSizeGrams, results, openedTabs]);
+
+  // ── Restore state when modal opens ────────────────────────────────────────
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const saved = sessionStorage.getItem(OCR_SESSION_KEY);
+    if (!saved) return;
+    try {
+      const s = JSON.parse(saved);
+      if (s.step === "verify" || s.step === "result") {
+        setStep(s.step);
+        setIngredients(s.ingredients ?? [""]);
+        setNutPerServing(s.nutPerServing ?? [{ nutrient: "", amount: "" }]);
+        setNutPer100g(s.nutPer100g ?? [{ nutrient: "", amount: "" }]);
+        setServingSizeGrams(s.servingSizeGrams ?? null);
+        setResults(s.results ?? { data: [], total: 0 });
+        setOpenedTabs(new Set(s.openedTabs ?? []));
+      }
+    } catch {
+      // ignore corrupt session data
+    }
+  }, [isOpen]);
 
   // ── File upload ───────────────────────────────────────────────────────────
 
@@ -340,6 +384,7 @@ const OCRModal: React.FC<OCRModalProps> = ({ isOpen, onClose }) => {
   // ── Reset / close ─────────────────────────────────────────────────────────
 
   const handleReset = () => {
+    sessionStorage.removeItem(OCR_SESSION_KEY);
     setUploadedFile(null);
     setPreviewUrl("");
     setStep("upload");
@@ -350,6 +395,7 @@ const OCRModal: React.FC<OCRModalProps> = ({ isOpen, onClose }) => {
     setNutPer100g([{ nutrient: "", amount: "" }]);
     setServingSizeGrams(null);
     setResults({ data: [], total: 0 });
+    setOpenedTabs(new Set());
   };
 
   const handleClose = () => {
@@ -599,38 +645,54 @@ const OCRModal: React.FC<OCRModalProps> = ({ isOpen, onClose }) => {
                       {results.total}
                     </span>{" "}
                     supplement{results.total !== 1 ? "s" : ""} with a similar
-                    nutritional profile. Click a row to view details.
+                    nutritional profile. Click a row to open it as a tab above.
                   </p>
 
                   <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                    {results.data.map((s) => (
-                      <div
-                        key={s.supplement_id}
-                        onClick={() => {
-                          handleClose();
-                          router.push(`/SSS/supplements/${s.supplement_id}`);
-                        }}
-                        className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
-                      >
-                        <div>
-                          <p className="font-medium text-gray-900 text-sm">
-                            {s.supplement_name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {s.supplement_brand}
-                          </p>
+                    {results.data.map((s) => {
+                      const isOpened = openedTabs.has(s.supplement_id);
+                      return (
+                        <div
+                          key={s.supplement_id}
+                          onClick={() => {
+                            upsertTab({
+                              id: s.supplement_id,
+                              name: s.supplement_name,
+                              brand: s.supplement_brand,
+                            });
+                            setOpenedTabs((prev) => new Set([...prev, s.supplement_id]));
+                          }}
+                          className={`flex items-center justify-between rounded-lg px-4 py-3 cursor-pointer transition-colors border ${
+                            isOpened
+                              ? "bg-green-50 border-green-200 hover:bg-green-100"
+                              : "bg-gray-50 border-gray-200 hover:bg-blue-50 hover:border-blue-300"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            {isOpened && (
+                              <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <p className="font-medium text-gray-900 text-sm truncate">
+                                {s.supplement_name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {s.supplement_brand}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0 ml-4">
+                            <p className="text-sm font-semibold text-blue-600">
+                              {Math.round(parseFloat(s.similarity_score) * 100)}%
+                              match
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {s.supplement_status}
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-right shrink-0 ml-4">
-                          <p className="text-sm font-semibold text-blue-600">
-                            {Math.round(parseFloat(s.similarity_score) * 100)}%
-                            match
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {s.supplement_status}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </>
               ) : (

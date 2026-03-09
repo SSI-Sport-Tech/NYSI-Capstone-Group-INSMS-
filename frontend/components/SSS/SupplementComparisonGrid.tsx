@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Check,
   X,
@@ -54,6 +53,7 @@ interface SupplementComparisonGridProps {
     totalCount: number;
     threshold: number;
   };
+  onOpenTab?: (s: { id: string; name: string; brand: string }) => void;
 }
 
 const SupplementComparisonGrid: React.FC<SupplementComparisonGridProps> = ({
@@ -64,10 +64,10 @@ const SupplementComparisonGrid: React.FC<SupplementComparisonGridProps> = ({
   comparisonMode,
   comparisonCriteria,
   alternativesData,
+  onOpenTab,
 }) => {
   const [sortBy, setSortBy] = useState<string>("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-  const router = useRouter();
 
   const allSupplements = original ? [original, ...alternatives] : alternatives;
   const selectedSupplementsData = allSupplements.filter((sup) =>
@@ -176,7 +176,15 @@ const SupplementComparisonGrid: React.FC<SupplementComparisonGridProps> = ({
       supplement.similarity_score_100g;
 
     const handleCardClick = () => {
-      router.push(`/SSS/supplements/${supplement.id}`);
+      if (onOpenTab) {
+        onOpenTab({
+          id: supplement.id,
+          name: supplement.supplement_name,
+          brand: supplement.supplement_brand,
+        });
+      } else {
+        onSupplementSelect(supplement.id, !isSelected);
+      }
     };
 
     return (

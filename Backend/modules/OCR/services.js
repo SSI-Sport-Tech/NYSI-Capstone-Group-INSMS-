@@ -341,8 +341,16 @@ function isLikelyDateOrPhone(text) {
 export async function verifyBatchTesting(brand, name, batchId = null) {
   let endpoint, params;
 
-  if (batchId) {
-    // Use combined verification
+  if (batchId && (!brand || !name)) {
+    // Batch-ID-only search
+    endpoint = "/api/batch-verification/verify-combined";
+    params = {
+      supplement_brand: brand || "",
+      supplement_name: name || "",
+      batch_id: batchId,
+    };
+  } else if (batchId) {
+    // Full combined verification
     endpoint = "/api/batch-verification/verify-combined";
     params = {
       supplement_brand: brand,
@@ -350,7 +358,7 @@ export async function verifyBatchTesting(brand, name, batchId = null) {
       batch_id: batchId,
     };
   } else {
-    // Use brand/product verification only
+    // Brand/product verification only
     endpoint = "/api/batch-verification/verify";
     params = {
       supplement_brand: brand,
