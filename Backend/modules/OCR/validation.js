@@ -61,14 +61,18 @@ export const analyzeQuerySchema = z.object({
  */
 export const verifyRequestSchema = z.object({
     supplement_brand: z.string()
-        .min(1, 'Brand is required')
         .max(255, 'Brand must be less than 255 characters')
-        .trim(),
+        .trim()
+        .optional()
+        .nullable()
+        .transform(val => val || null),
 
     supplement_name: z.string()
-        .min(1, 'Supplement name is required')
         .max(255, 'Supplement name must be less than 255 characters')
-        .trim(),
+        .trim()
+        .optional()
+        .nullable()
+        .transform(val => val || null),
 
     batch_id: z.string()
         .max(100, 'Batch ID must be less than 100 characters')
@@ -76,7 +80,10 @@ export const verifyRequestSchema = z.object({
         .optional()
         .nullable()
         .transform(val => val || null)
-}).strict();
+}).strict().refine(
+    data => data.supplement_name || data.supplement_brand || data.batch_id,
+    { message: 'At least one of supplement name, brand, or batch number is required' }
+);
 
 // ============================================================================
 // FILE VALIDATION HELPERS

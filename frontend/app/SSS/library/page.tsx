@@ -8,6 +8,7 @@ import ViewTabs from "@/components/SSS/ViewTabs";
 import SearchSection from "@/components/SSS/SearchSection";
 import OCRModal from "@/components/SSS/OCRModal";
 import AddSupplementModal from "@/components/SSS/AddSupplementModal";
+import SupplementTabBar from "@/components/SSS/SupplementTabBar";
 
 interface Supplement {
   id: string;
@@ -59,6 +60,18 @@ export default function LibraryPage() {
 
   useEffect(() => {
     loadSupplements();
+    // Reopen OCR modal if user navigated away mid-session
+    try {
+      const saved = sessionStorage.getItem("ocr_modal_state");
+      if (saved) {
+        const s = JSON.parse(saved);
+        if (s.step === "verify" || s.step === "result") {
+          setOcrModalOpen(true);
+        }
+      }
+    } catch {
+      // ignore
+    }
   }, []);
 
   const loadSupplements = async (search = "", page = 1) => {
@@ -111,6 +124,7 @@ export default function LibraryPage() {
 
   return (
     <DashboardLayout>
+      <SupplementTabBar activeId="library" />
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-[1600px] mx-auto px-6 py-8">
           {/* Page Header */}

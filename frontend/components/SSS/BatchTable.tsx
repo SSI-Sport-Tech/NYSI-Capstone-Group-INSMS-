@@ -2,14 +2,12 @@ import React, { useState } from "react";
 import Link from "next/link";
 import {
   ArrowUpDown,
-  ChevronDown,
   Trash2,
   Settings,
   Upload,
   Camera,
   Plus,
   MoreVertical,
-  Eye,
 } from "lucide-react";
 import axios from "axios";
 import AddSupplementModal from "./AddSupplementModal";
@@ -296,24 +294,9 @@ const BatchTable: React.FC<BatchTableProps> = ({
                     <ArrowUpDown className="w-3 h-3" />
                   </div>
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
-                  <span className="whitespace-nowrap">Testing Org</span>
-                </th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
                   <div className="flex items-center gap-1">
                     <span className="whitespace-nowrap">Stock Status</span>
-                    <ArrowUpDown className="w-3 h-3" />
-                  </div>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
-                  <div className="flex items-center gap-1">
-                    <span className="whitespace-nowrap">Batch Size</span>
-                    <ArrowUpDown className="w-3 h-3" />
-                  </div>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
-                  <div className="flex items-center gap-1">
-                    <span className="whitespace-nowrap">Booked</span>
                     <ArrowUpDown className="w-3 h-3" />
                   </div>
                 </th>
@@ -326,18 +309,6 @@ const BatchTable: React.FC<BatchTableProps> = ({
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
                   <div className="flex items-center gap-1">
                     <span className="whitespace-nowrap">Expiration</span>
-                    <ArrowUpDown className="w-3 h-3" />
-                  </div>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
-                  <div className="flex items-center gap-1">
-                    <span className="whitespace-nowrap">Batch Price</span>
-                    <ArrowUpDown className="w-3 h-3" />
-                  </div>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
-                  <div className="flex items-center gap-1">
-                    <span className="whitespace-nowrap">Date Added</span>
                     <ArrowUpDown className="w-3 h-3" />
                   </div>
                 </th>
@@ -355,7 +326,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
                   </td>
                 </tr>
               ) : batches.length > 0 ? (
-                batches.map((batch, index) => (
+                batches.map((batch) => (
                   <tr key={batch.id} className="hover:bg-gray-50">
                     <td className="px-3 py-4">
                       <input
@@ -374,38 +345,17 @@ const BatchTable: React.FC<BatchTableProps> = ({
                       <Link
                         href={`/SSS/supplements/${batch.supplement_id}`}
                         className="font-medium text-blue-600 underline cursor-pointer hover:text-blue-800"
-                        onClick={() =>
-                          console.log(
-                            "Clicking supplement link with ID:",
-                            batch.supplement_id,
-                            "Full batch:",
-                            batch,
-                          )
-                        }
                       >
                         {batch.supplement_name || "Unknown Supplement"}
                       </Link>
                     </td>
                     <td className="px-3 py-4 text-sm text-gray-900">
-                      {batch.supplement_brand}
-                    </td>
-                    <td className="px-3 py-4 text-sm text-gray-900">
-                      {batch.inv_batch_testing_org || "-"}
+                      {batch.supplement_brand || "-"}
                     </td>
                     <td className="px-3 py-4">
-                      <span
-                        className={getStatusBadgeClass(
-                          batch.batch_status || "",
-                        )}
-                      >
+                      <span className={getStatusBadgeClass(batch.batch_status || "")}>
                         {batch.batch_status || "Unknown"}
                       </span>
-                    </td>
-                    <td className="px-3 py-4 text-sm text-gray-900 text-center">
-                      {batch.batch_initial_quantity}
-                    </td>
-                    <td className="px-3 py-4 text-sm text-gray-900 text-center">
-                      {batch.booked}
                     </td>
                     <td className="px-3 py-4 text-sm text-gray-900 text-center">
                       {batch.available}
@@ -419,17 +369,6 @@ const BatchTable: React.FC<BatchTableProps> = ({
                           </span>
                         );
                       })() : "-"}
-                    </td>
-                    <td className="px-3 py-4 text-sm font-medium text-gray-900">
-                      $
-                      {batch.batch_price
-                        ? Number(batch.batch_price).toFixed(2)
-                        : "N/A"}
-                    </td>
-                    <td className="px-3 py-4 text-sm text-gray-900">
-                      {batch.date_added
-                        ? new Date(batch.date_added).toLocaleDateString("en-US")
-                        : "-"}
                     </td>
                     <td className="px-3 py-4 text-center">
                       <button
