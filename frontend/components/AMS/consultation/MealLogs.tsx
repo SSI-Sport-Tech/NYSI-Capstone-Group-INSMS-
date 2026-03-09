@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
 import { consultationApi, ConsultationApiError } from "@/utils/consultationApi";
 
 interface MealLogsProps {
@@ -8,6 +7,7 @@ interface MealLogsProps {
   isNewConsultation?: boolean;
   ensureSession?: () => Promise<string>;
   readOnly?: boolean;
+  prevSessionId?: string;
 }
 
 interface MealSlot {
@@ -98,9 +98,10 @@ export default function MealLogs({
   isNewConsultation,
   ensureSession,
   readOnly,
+  prevSessionId,
 }: MealLogsProps) {
-  const [collapsed, setCollapsed] = useState(true);
   const [mealLog, setMealLog] = useState<MealLogData | null>(null);
+  const [prevMealLog, setPrevMealLog] = useState<MealLogData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
@@ -144,6 +145,18 @@ export default function MealLogs({
   useEffect(() => {
     fetchMealLogs();
   }, [sessionId]);
+
+  useEffect(() => {
+    if (!prevSessionId) return;
+    (async () => {
+      try {
+        const response = (await consultationApi.getMealLogs(prevSessionId)) as { data: MealLogData };
+        setPrevMealLog(response.data);
+      } catch {
+        // non-critical
+      }
+    })();
+  }, [prevSessionId]);
 
   const handleSave = async () => {
     try {
@@ -207,6 +220,16 @@ export default function MealLogs({
     }));
   };
 
+  const PrevVal = ({ val }: { val: string | number | null | undefined }) => {
+    if (!isNewConsultation || !prevMealLog || val == null || val === "") return null;
+    return (
+      <p className="text-xs text-gray-400 italic mt-0.5 flex items-center gap-1">
+        <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>
+        Prev: {val}
+      </p>
+    );
+  };
+
   if (loading) {
     return (
       <section id="meal-logs" className="bg-white rounded-xl shadow-lg p-6">
@@ -240,13 +263,7 @@ export default function MealLogs({
   return (
     <section id="meal-logs" className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center gap-2 text-left"
-        >
           <h2 className="text-xl font-semibold text-gray-900">Meal Logs</h2>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
-        </button>
         {!readOnly && (
           <div className="flex items-center gap-2">
             {effectiveEditing && !isNewConsultation && (
@@ -280,8 +297,6 @@ export default function MealLogs({
         )}
       </div>
 
-      {!collapsed && (
-        <>
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
       <div className="space-y-6">
@@ -319,7 +334,10 @@ export default function MealLogs({
                         className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                       />
                     ) : (
-                      mealLog?.[key].food || "—"
+                      <div>
+                        {mealLog?.[key].food || "—"}
+                        <PrevVal val={prevMealLog?.[key].food} />
+                      </div>
                     )}
                   </td>
                   <td className="border border-gray-300 px-4 py-3 text-sm text-gray-700 text-center">
@@ -334,7 +352,10 @@ export default function MealLogs({
                         className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                       />
                     ) : (
-                      mealLog?.[key].macro || "—"
+                      <div>
+                        {mealLog?.[key].macro || "—"}
+                        <PrevVal val={prevMealLog?.[key].macro} />
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -369,9 +390,10 @@ export default function MealLogs({
                   }`}
                 />
               ) : (
-                <span className="font-medium text-black">
-                  {mealLog?.totalCarbohydrateIntake ?? "—"}
-                </span>
+                <div className="text-right">
+                  <span className="font-medium text-black">{mealLog?.totalCarbohydrateIntake ?? "—"}</span>
+                  <PrevVal val={prevMealLog?.totalCarbohydrateIntake} />
+                </div>
               )}
             </div>
 
@@ -395,9 +417,10 @@ export default function MealLogs({
                   }`}
                 />
               ) : (
-                <span className="font-medium text-black">
-                  {mealLog?.totalProteinIntake ?? "—"}
-                </span>
+                <div className="text-right">
+                  <span className="font-medium text-black">{mealLog?.totalProteinIntake ?? "—"}</span>
+                  <PrevVal val={prevMealLog?.totalProteinIntake} />
+                </div>
               )}
             </div>
 
@@ -421,9 +444,10 @@ export default function MealLogs({
                   }`}
                 />
               ) : (
-                <span className="font-medium text-black">
-                  {mealLog?.totalFatIntake ?? "—"}
-                </span>
+                <div className="text-right">
+                  <span className="font-medium text-black">{mealLog?.totalFatIntake ?? "—"}</span>
+                  <PrevVal val={prevMealLog?.totalFatIntake} />
+                </div>
               )}
             </div>
           </div>
@@ -450,15 +474,14 @@ export default function MealLogs({
                 }
               />
             ) : (
-              <p className="text-sm text-gray-900">
-                {mealLog?.otherRemarks || "—"}
-              </p>
+              <div>
+                <p className="text-sm text-gray-900">{mealLog?.otherRemarks || "—"}</p>
+                <PrevVal val={prevMealLog?.otherRemarks} />
+              </div>
             )}
           </div>
         </div>
       </div>
-        </>
-      )}
     </section>
   );
 }

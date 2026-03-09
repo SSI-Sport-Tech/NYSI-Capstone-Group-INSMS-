@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ChevronDown } from "lucide-react";
 
 interface PrescriptionProps {
   athleteId: string;
   sessionId: string;
   readOnly?: boolean;
+  isNewConsultation?: boolean;
+  prevSessionId?: string;
 }
 
 interface PrescriptionItem {
@@ -57,9 +58,11 @@ export default function Prescription({
   athleteId,
   sessionId,
   readOnly,
+  isNewConsultation,
+  prevSessionId,
 }: PrescriptionProps) {
-  const [collapsed, setCollapsed] = useState(true);
   const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([]);
+  const [prevPrescriptionsCount, setPrevPrescriptionsCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
@@ -117,6 +120,29 @@ export default function Prescription({
   useEffect(() => {
     fetchPrescriptions();
   }, [fetchPrescriptions]);
+
+  useEffect(() => {
+    if (!prevSessionId) return;
+    (async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/prescription/session/${prevSessionId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          },
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        setPrevPrescriptionsCount((data.data || []).length);
+      } catch {
+        // non-critical
+      }
+    })();
+  }, [prevSessionId]);
 
   // Debounced batch search
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -274,13 +300,7 @@ export default function Prescription({
   return (
     <section id="prescription" className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center gap-2 text-left"
-        >
           <h2 className="text-xl font-semibold text-gray-900">Prescription</h2>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
-        </button>
         <div className="flex items-center gap-2">
           {!readOnly && !showAddForm && (
             <button
@@ -296,8 +316,6 @@ export default function Prescription({
         </div>
       </div>
 
-      {!collapsed && (
-        <>
       {/* Add prescription inline form */}
       {showAddForm && (
         <div className="border border-blue-200 rounded-lg p-5 mb-6 bg-blue-50">
@@ -442,6 +460,11 @@ export default function Prescription({
       <div className="space-y-6">
         {prescriptions.length === 0 ? (
           <div className="text-center py-8">
+            {isNewConsultation && prevPrescriptionsCount !== null && prevPrescriptionsCount > 0 && (
+              <p className="text-sm text-gray-400 italic mb-3">
+                Previous consultation had {prevPrescriptionsCount} prescription{prevPrescriptionsCount !== 1 ? "s" : ""}
+              </p>
+            )}
             <h3 className="mt-2 text-sm font-medium text-gray-900">No prescriptions</h3>
             <p className="mt-1 text-sm text-gray-500">
               No prescriptions have been made for this consultation session.
@@ -527,8 +550,6 @@ export default function Prescription({
           ))
         )}
       </div>
-        </>
-      )}
     </section>
   );
 }

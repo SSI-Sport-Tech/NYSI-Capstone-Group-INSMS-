@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
 import { consultationApi } from "@/utils/consultationApi";
 
 interface TrainingScheduleProps {
@@ -8,6 +7,7 @@ interface TrainingScheduleProps {
   isNewConsultation?: boolean;
   ensureSession?: () => Promise<string>;
   readOnly?: boolean;
+  prevSessionId?: string;
 }
 
 interface TrainingScheduleData {
@@ -136,8 +136,8 @@ export default function TrainingSchedule({
   isNewConsultation,
   ensureSession,
   readOnly,
+  prevSessionId,
 }: TrainingScheduleProps) {
-  const [collapsed, setCollapsed] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
 
@@ -148,6 +148,7 @@ export default function TrainingSchedule({
     useState<TrainingScheduleData | null>(null);
   const [editForm, setEditForm] = useState<EditForm>(emptyEditForm);
   const [isSaved, setIsSaved] = useState(false);
+  const [prevData, setPrevData] = useState<TrainingScheduleData | null>(null);
 
   useEffect(() => {
     setIsSaved(false);
@@ -258,11 +259,33 @@ export default function TrainingSchedule({
     }
   }, [sessionId]);
 
+  useEffect(() => {
+    if (!prevSessionId) return;
+    (async () => {
+      try {
+        const response = (await consultationApi.getTrainingSchedule(prevSessionId)) as { data: TrainingScheduleData };
+        if (response?.data) setPrevData(response.data);
+      } catch {
+        // non-critical
+      }
+    })();
+  }, [prevSessionId]);
+
   // Total hours derived from editForm in edit mode
   const editTotalHours = DAY_KEYS.reduce((sum, { key }) => {
     const h = parseFloat(editForm.days[key].trainingHours);
     return sum + (isNaN(h) ? 0 : h);
   }, 0);
+
+  const PrevVal = ({ val }: { val: string | number | null | undefined }) => {
+    if (!isNewConsultation || !prevData || val == null || val === "") return null;
+    return (
+      <p className="text-xs text-gray-400 italic mt-0.5 flex items-center gap-1">
+        <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>
+        Prev: {val}
+      </p>
+    );
+  };
 
   if (loading) {
     return (
@@ -300,15 +323,7 @@ export default function TrainingSchedule({
       className="bg-white rounded-xl shadow-lg p-6 text-gray-900"
     >
       <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center gap-2 text-left"
-        >
-          <h2 className="text-xl font-semibold text-gray-900">
-            Training Schedule
-          </h2>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
-        </button>
+          <h2 className="text-xl font-semibold text-gray-900">Training Schedule</h2>
         {!readOnly && (
           <div className="flex items-center gap-2">
             {effectiveEditing && !isNewConsultation && (
@@ -342,8 +357,6 @@ export default function TrainingSchedule({
         )}
       </div>
 
-      {!collapsed && (
-        <>
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
       <div className="space-y-8">
@@ -405,6 +418,12 @@ export default function TrainingSchedule({
                         {!trainingData?.days[key].am &&
                           !trainingData?.days[key].pm &&
                           "—"}
+                        {isNewConsultation && prevData && (prevData.days[key].am || prevData.days[key].pm) && (
+                          <p className="text-xs text-gray-400 italic mt-0.5 flex items-center gap-1">
+                            <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>
+                            Prev: {[prevData.days[key].am, prevData.days[key].pm].filter(Boolean).join(" / ")}
+                          </p>
+                        )}
                       </div>
                     )}
                   </td>
@@ -422,7 +441,10 @@ export default function TrainingSchedule({
                         className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
                       />
                     ) : (
-                      trainingData?.days[key].trainingHours ?? "—"
+                      <div>
+                        {trainingData?.days[key].trainingHours ?? "—"}
+                        <PrevVal val={prevData?.days[key].trainingHours} />
+                      </div>
                     )}
                   </td>
                   <td className="border border-gray-300 px-4 py-3 text-sm text-center">
@@ -439,7 +461,10 @@ export default function TrainingSchedule({
                         className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
                       />
                     ) : (
-                      trainingData?.days[key].rpe ?? "—"
+                      <div>
+                        {trainingData?.days[key].rpe ?? "—"}
+                        <PrevVal val={prevData?.days[key].rpe} />
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -481,11 +506,14 @@ export default function TrainingSchedule({
                     className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
                   />
                 ) : (
-                  <span className="text-gray-900">
-                    {trainingData?.pal
-                      ? parseFloat(trainingData.pal)
-                      : "Not set"}
-                  </span>
+                  <div className="text-right">
+                    <span className="text-gray-900">
+                      {trainingData?.pal
+                        ? parseFloat(trainingData.pal)
+                        : "Not set"}
+                    </span>
+                    <PrevVal val={prevData?.pal ? parseFloat(prevData.pal) : null} />
+                  </div>
                 )}
               </div>
 
@@ -507,10 +535,13 @@ export default function TrainingSchedule({
                     className="w-48 px-2 py-1 border border-gray-300 rounded text-sm"
                   />
                 ) : (
-                  <span className="text-gray-900">
-                    {trainingData?.trainingDetails?.upcomingMajorCompetitions ||
-                      "Not specified"}
-                  </span>
+                  <div className="text-right">
+                    <span className="text-gray-900">
+                      {trainingData?.trainingDetails?.upcomingMajorCompetitions ||
+                        "Not specified"}
+                    </span>
+                    <PrevVal val={prevData?.trainingDetails?.upcomingMajorCompetitions} />
+                  </div>
                 )}
               </div>
 
@@ -532,10 +563,13 @@ export default function TrainingSchedule({
                     className="w-48 px-2 py-1 border border-gray-300 rounded text-sm"
                   />
                 ) : (
-                  <span className="text-gray-900">
-                    {trainingData?.trainingDetails?.upcomingLocalCompetitions ||
-                      "Not specified"}
-                  </span>
+                  <div className="text-right">
+                    <span className="text-gray-900">
+                      {trainingData?.trainingDetails?.upcomingLocalCompetitions ||
+                        "Not specified"}
+                    </span>
+                    <PrevVal val={prevData?.trainingDetails?.upcomingLocalCompetitions} />
+                  </div>
                 )}
               </div>
             </div>
@@ -563,9 +597,10 @@ export default function TrainingSchedule({
                     }
                   />
                 ) : (
-                  <p className="text-sm text-gray-900">
-                    {editForm.currentPerformance || "—"}
-                  </p>
+                  <div>
+                    <p className="text-sm text-gray-900">{editForm.currentPerformance || "—"}</p>
+                    <PrevVal val={prevData?.performanceDetails?.currentPerformance} />
+                  </div>
                 )}
               </div>
 
@@ -586,9 +621,10 @@ export default function TrainingSchedule({
                     }
                   />
                 ) : (
-                  <p className="text-sm text-gray-900">
-                    {editForm.coachPerformanceGoals || "—"}
-                  </p>
+                  <div>
+                    <p className="text-sm text-gray-900">{editForm.coachPerformanceGoals || "—"}</p>
+                    <PrevVal val={prevData?.performanceDetails?.coachPerformanceGoals} />
+                  </div>
                 )}
               </div>
 
@@ -609,9 +645,10 @@ export default function TrainingSchedule({
                     }
                   />
                 ) : (
-                  <p className="text-sm text-gray-900">
-                    {editForm.athletePerformanceGoals || "—"}
-                  </p>
+                  <div>
+                    <p className="text-sm text-gray-900">{editForm.athletePerformanceGoals || "—"}</p>
+                    <PrevVal val={prevData?.performanceDetails?.athletePerformanceGoals} />
+                  </div>
                 )}
               </div>
 
@@ -632,17 +669,16 @@ export default function TrainingSchedule({
                     }
                   />
                 ) : (
-                  <p className="text-sm text-gray-900">
-                    {editForm.otherRemarks || "—"}
-                  </p>
+                  <div>
+                    <p className="text-sm text-gray-900">{editForm.otherRemarks || "—"}</p>
+                    <PrevVal val={prevData?.performanceDetails?.otherRemarks} />
+                  </div>
                 )}
               </div>
             </div>
           </div>
         </div>
       </div>
-        </>
-      )}
     </section>
   );
 }

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
 import { consultationApi, ConsultationApiError } from "@/utils/consultationApi";
 
 interface MedicalHistoryProps {
@@ -8,6 +7,7 @@ interface MedicalHistoryProps {
   isNewConsultation?: boolean;
   ensureSession?: () => Promise<string>;
   readOnly?: boolean;
+  prevSessionId?: string;
 }
 
 // ---- API response shape ----
@@ -186,8 +186,8 @@ export default function MedicalHistory({
   isNewConsultation,
   ensureSession,
   readOnly,
+  prevSessionId,
 }: MedicalHistoryProps) {
-  const [collapsed, setCollapsed] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -208,6 +208,7 @@ export default function MedicalHistory({
   // Snapshot of last-saved values — used to detect unsaved changes (text color)
   const [savedState, setSavedState] = useState(emptyState());
   const [isSaved, setIsSaved] = useState(false);
+  const [prevData, setPrevData] = useState<ReturnType<typeof apiToState> | null>(null);
 
   useEffect(() => {
     setIsSaved(false);
@@ -251,6 +252,18 @@ export default function MedicalHistory({
   useEffect(() => {
     fetchMedicalHistory();
   }, [sessionId]);
+
+  useEffect(() => {
+    if (!prevSessionId) return;
+    (async () => {
+      try {
+        const response = (await consultationApi.getMedicalHistory(prevSessionId)) as { data: MedicalHistoryApiData };
+        setPrevData(apiToState(response.data));
+      } catch {
+        // non-critical — prev data simply won't show
+      }
+    })();
+  }, [prevSessionId]);
 
   useEffect(() => {
     if (!athleteId) return;
@@ -354,6 +367,16 @@ export default function MedicalHistory({
     fetchMedicalHistory();
   };
 
+  const PrevVal = ({ val }: { val: string | number | null | undefined }) => {
+    if (!isNewConsultation || !prevData || val == null || val === "") return null;
+    return (
+      <p className="text-xs text-gray-400 italic mt-0.5 flex items-center gap-1">
+        <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>
+        Prev: {val}
+      </p>
+    );
+  };
+
   if (loading) {
     return (
       <section
@@ -393,13 +416,7 @@ export default function MedicalHistory({
   return (
     <section id="medical-history" className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center gap-2 text-left"
-        >
           <h2 className="text-xl font-semibold text-gray-900">Medical History</h2>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
-        </button>
         {!readOnly && (
           <div className="flex items-center gap-2">
             {effectiveEditing && !isNewConsultation && (
@@ -438,8 +455,6 @@ export default function MedicalHistory({
         )}
       </div>
 
-      {!collapsed && (
-        <>
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
       <div className="space-y-8">
@@ -485,9 +500,10 @@ export default function MedicalHistory({
                     }
                   />
                 ) : (
-                  <span className="text-gray-900 flex-1">
-                    {generalInfo[field] || "—"}
-                  </span>
+                  <div className="flex-1">
+                    <span className="text-gray-900">{generalInfo[field] || "—"}</span>
+                    <PrevVal val={prevData?.general[field]} />
+                  </div>
                 )}
               </div>
             ))}
@@ -514,9 +530,10 @@ export default function MedicalHistory({
                   }
                 />
               ) : (
-                <span className="text-gray-900 flex-1">
-                  {generalInfo.medicalRemarks || "—"}
-                </span>
+                <div className="flex-1">
+                  <span className="text-gray-900">{generalInfo.medicalRemarks || "—"}</span>
+                  <PrevVal val={prevData?.general.medicalRemarks} />
+                </div>
               )}
             </div>
           </div>
@@ -548,9 +565,10 @@ export default function MedicalHistory({
                   }
                 />
               ) : (
-                <span className="text-gray-900 flex-1">
-                  {pubertyInfo.periodOfGrowthSpurt || "—"}
-                </span>
+                <div className="flex-1">
+                  <span className="text-gray-900">{pubertyInfo.periodOfGrowthSpurt || "—"}</span>
+                  <PrevVal val={prevData?.puberty.periodOfGrowthSpurt} />
+                </div>
               )}
             </div>
             <div className="flex items-center gap-4">
@@ -575,9 +593,10 @@ export default function MedicalHistory({
                   }
                 />
               ) : (
-                <span className="text-gray-900 flex-1">
-                  {pubertyInfo.otherRemarks || "—"}
-                </span>
+                <div className="flex-1">
+                  <span className="text-gray-900">{pubertyInfo.otherRemarks || "—"}</span>
+                  <PrevVal val={prevData?.puberty.otherRemarks} />
+                </div>
               )}
             </div>
           </div>
@@ -613,9 +632,10 @@ export default function MedicalHistory({
                   <option value="No">No</option>
                 </select>
               ) : (
-                <span className="text-gray-900 flex-1">
-                  {bowelMovement.regularBowelMovement || "—"}
-                </span>
+                <div className="flex-1">
+                  <span className="text-gray-900">{bowelMovement.regularBowelMovement || "—"}</span>
+                  <PrevVal val={prevData?.bowelMovement.regularBowelMovement} />
+                </div>
               )}
             </div>
 
@@ -641,9 +661,10 @@ export default function MedicalHistory({
                   }
                 />
               ) : (
-                <span className="text-gray-900 flex-1">
-                  {bowelMovement.frequencyOfBowelMovements || "—"}
-                </span>
+                <div className="flex-1">
+                  <span className="text-gray-900">{bowelMovement.frequencyOfBowelMovements || "—"}</span>
+                  <PrevVal val={prevData?.bowelMovement.frequencyOfBowelMovements} />
+                </div>
               )}
             </div>
 
@@ -669,9 +690,10 @@ export default function MedicalHistory({
                   }
                 />
               ) : (
-                <span className="text-gray-900 flex-1">
-                  {bowelMovement.stoolAppearance || "—"}
-                </span>
+                <div className="flex-1">
+                  <span className="text-gray-900">{bowelMovement.stoolAppearance || "—"}</span>
+                  <PrevVal val={prevData?.bowelMovement.stoolAppearance} />
+                </div>
               )}
             </div>
 
@@ -697,9 +719,10 @@ export default function MedicalHistory({
                   }
                 />
               ) : (
-                <span className="text-gray-900 flex-1">
-                  {bowelMovement.otherRemarks || "—"}
-                </span>
+                <div className="flex-1">
+                  <span className="text-gray-900">{bowelMovement.otherRemarks || "—"}</span>
+                  <PrevVal val={prevData?.bowelMovement.otherRemarks} />
+                </div>
               )}
             </div>
           </div>
@@ -715,22 +738,28 @@ export default function MedicalHistory({
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Water Intake for Target Weight (45 ml/kg):
               </span>
-              <span className="text-gray-900 flex-1">
-                {hydrationInfo.waterIntakeForTargetWeight
-                  ? `${hydrationInfo.waterIntakeForTargetWeight} ml`
-                  : "—"}
-              </span>
+              <div className="flex-1">
+                <span className="text-gray-900">
+                  {hydrationInfo.waterIntakeForTargetWeight
+                    ? `${hydrationInfo.waterIntakeForTargetWeight} ml`
+                    : "—"}
+                </span>
+                <PrevVal val={prevData?.hydrationInfo.waterIntakeForTargetWeight ? `${prevData.hydrationInfo.waterIntakeForTargetWeight} ml` : null} />
+              </div>
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
                 Requirement for Water Intake (45 ml/kg):
               </span>
-              <span className="text-gray-900 flex-1">
-                {hydrationInfo.requirementForWaterIntake
-                  ? `${hydrationInfo.requirementForWaterIntake} ml`
-                  : "—"}
-              </span>
+              <div className="flex-1">
+                <span className="text-gray-900">
+                  {hydrationInfo.requirementForWaterIntake
+                    ? `${hydrationInfo.requirementForWaterIntake} ml`
+                    : "—"}
+                </span>
+                <PrevVal val={prevData?.hydrationInfo.requirementForWaterIntake ? `${prevData.hydrationInfo.requirementForWaterIntake} ml` : null} />
+              </div>
             </div>
 
             <div className="flex items-center gap-4">
@@ -756,11 +785,14 @@ export default function MedicalHistory({
                   }
                 />
               ) : (
-                <span className="text-gray-900 flex-1">
-                  {hydrationInfo.waterIntakePerDay
-                    ? `${hydrationInfo.waterIntakePerDay} L`
-                    : "—"}
-                </span>
+                <div className="flex-1">
+                  <span className="text-gray-900">
+                    {hydrationInfo.waterIntakePerDay
+                      ? `${hydrationInfo.waterIntakePerDay} L`
+                      : "—"}
+                  </span>
+                  <PrevVal val={prevData?.hydrationInfo.waterIntakePerDay ? `${prevData.hydrationInfo.waterIntakePerDay} L` : null} />
+                </div>
               )}
             </div>
 
@@ -786,9 +818,10 @@ export default function MedicalHistory({
                   }
                 />
               ) : (
-                <span className="text-gray-900 flex-1">
-                  {hydrationInfo.urineColour || "—"}
-                </span>
+                <div className="flex-1">
+                  <span className="text-gray-900">{hydrationInfo.urineColour || "—"}</span>
+                  <PrevVal val={prevData?.hydrationInfo.urineColour} />
+                </div>
               )}
             </div>
 
@@ -814,9 +847,10 @@ export default function MedicalHistory({
                   }
                 />
               ) : (
-                <span className="text-gray-900 flex-1">
-                  {hydrationInfo.hydrationStatus || "—"}
-                </span>
+                <div className="flex-1">
+                  <span className="text-gray-900">{hydrationInfo.hydrationStatus || "—"}</span>
+                  <PrevVal val={prevData?.hydrationInfo.hydrationStatus} />
+                </div>
               )}
             </div>
 
@@ -842,9 +876,10 @@ export default function MedicalHistory({
                   }
                 />
               ) : (
-                <span className="text-gray-900 flex-1">
-                  {hydrationInfo.otherRemarks || "—"}
-                </span>
+                <div className="flex-1">
+                  <span className="text-gray-900">{hydrationInfo.otherRemarks || "—"}</span>
+                  <PrevVal val={prevData?.hydrationInfo.otherRemarks} />
+                </div>
               )}
             </div>
           </div>
@@ -912,9 +947,10 @@ export default function MedicalHistory({
                     }
                   />
                 ) : (
-                  <span className="font-medium">
-                    {periodInfo[field] || "—"}
-                  </span>
+                  <div className="text-right">
+                    <span className="font-medium">{periodInfo[field] || "—"}</span>
+                    <PrevVal val={prevData?.periodInfo[field]} />
+                  </div>
                 )}
               </div>
             ))}
@@ -943,9 +979,10 @@ export default function MedicalHistory({
                   }
                 />
               ) : (
-                <span className="text-gray-900 flex-1">
-                  {periodInfo.signsAndSymptoms || "—"}
-                </span>
+                <div className="flex-1">
+                  <span className="text-gray-900">{periodInfo.signsAndSymptoms || "—"}</span>
+                  <PrevVal val={prevData?.periodInfo.signsAndSymptoms} />
+                </div>
               )}
             </div>
             <div className="flex items-center gap-4">
@@ -970,17 +1007,16 @@ export default function MedicalHistory({
                   }
                 />
               ) : (
-                <span className="text-gray-900 flex-1">
-                  {periodInfo.otherRemarks || "—"}
-                </span>
+                <div className="flex-1">
+                  <span className="text-gray-900">{periodInfo.otherRemarks || "—"}</span>
+                  <PrevVal val={prevData?.periodInfo.otherRemarks} />
+                </div>
               )}
             </div>
           </div>
         </div>
         )}
       </div>
-        </>
-      )}
     </section>
   );
 }
