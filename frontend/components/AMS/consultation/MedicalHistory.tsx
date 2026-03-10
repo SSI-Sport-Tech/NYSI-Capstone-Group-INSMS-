@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 import { consultationApi, ConsultationApiError } from "@/utils/consultationApi";
 
@@ -190,7 +189,6 @@ export default function MedicalHistory({
 }: MedicalHistoryProps) {
   const [collapsed, setCollapsed] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [saveError, setSaveError] = useState<string>("");
@@ -442,577 +440,546 @@ export default function MedicalHistory({
 
       {!collapsed && (
         <>
-          {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
+      {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
-          <div className="space-y-8">
-            {/* General Section */}
-            <div>
-              <div className="flex items-center text-sm text-gray-600 mb-4">
-                <span className="font-medium">General</span>
-              </div>
-              <div className="space-y-4 text-sm">
-                {(
-                  [
-                    {
-                      label: "Medical Condition:",
-                      field: "medicalCondition" as const,
-                    },
-                    { label: "Food Allergy:", field: "foodAllergy" as const },
-                    { label: "Drug Allergy:", field: "drugAllergy" as const },
-                    {
-                      label: "Notable Past Injuries:",
-                      field: "notablePastInjuries" as const,
-                    },
-                  ] as { label: string; field: keyof GeneralInfo }[]
-                ).map(({ label, field }) => (
-                  <div key={field} className="flex items-center gap-4">
-                    <span className="text-gray-600 w-48 flex-shrink-0">
-                      {label}
-                    </span>
-                    {effectiveEditing ? (
-                      <input
-                        type="text"
-                        placeholder="Input Text Here"
-                        className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${generalInfo[field] !== savedState.general[field]
-                            ? "text-black"
-                            : "text-gray-400"
-                          }`}
-                        value={generalInfo[field]}
-                        onChange={(e) =>
-                          setGeneralInfo((prev) => ({
-                            ...prev,
-                            [field]: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <span className="text-gray-900 flex-1">
-                        {generalInfo[field] || "—"}
-                      </span>
-                    )}
-                  </div>
-                ))}
-
-                <div className="flex items-start gap-4">
-                  <span className="text-gray-600 w-48 flex-shrink-0">
-                    Medical Remarks:
-                  </span>
-                  {effectiveEditing ? (
-                    <input
-                      type="text"
-                      placeholder="Input Text Here"
-                      className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${generalInfo.medicalRemarks !== savedState.general.medicalRemarks
-                          ? "text-black"
-                          : "text-gray-400"
-                        }`}
-                      value={generalInfo.medicalRemarks}
-                      onChange={(e) =>
-                        setGeneralInfo((prev) => ({
-                          ...prev,
-                          medicalRemarks: e.target.value,
-                        }))
-                      }
-                    />
-                  ) : (
-                    <span className="text-gray-900 flex-1">
-                      {generalInfo.medicalRemarks || "—"}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Puberty Section */}
-            <div>
-              <h3 className="text-base font-medium text-gray-900 mb-4">Puberty</h3>
-              <div className="space-y-4 text-sm">
-                <div className="flex items-center gap-4">
-                  <span className="text-gray-600 w-48 flex-shrink-0">
-                    Period of Growth Spurt:
-                  </span>
-                  {effectiveEditing ? (
-                    <input
-                      type="text"
-                      placeholder="Input Text Here"
-                      className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${pubertyInfo.periodOfGrowthSpurt !== savedState.puberty.periodOfGrowthSpurt
-                          ? "text-black"
-                          : "text-gray-400"
-                        }`}
-                      value={pubertyInfo.periodOfGrowthSpurt}
-                      onChange={(e) =>
-                        setPubertyInfo((prev) => ({
-                          ...prev,
-                          periodOfGrowthSpurt: e.target.value,
-                        }))
-                      }
-                    />
-                  ) : (
-                    <span className="text-gray-900 flex-1">
-                      {pubertyInfo.periodOfGrowthSpurt || "—"}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-gray-600 w-48 flex-shrink-0">
-                    Other Remarks:
-                  </span>
-                  {effectiveEditing ? (
-                    <input
-                      type="text"
-                      placeholder="Input Text Here"
-                      className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${pubertyInfo.otherRemarks !== savedState.puberty.otherRemarks
-                          ? "text-black"
-                          : "text-gray-400"
-                        }`}
-                      value={pubertyInfo.otherRemarks}
-                      onChange={(e) =>
-                        setPubertyInfo((prev) => ({
-                          ...prev,
-                          otherRemarks: e.target.value,
-                        }))
-                      }
-                    />
-                  ) : (
-                    <span className="text-gray-900 flex-1">
-                      {pubertyInfo.otherRemarks || "—"}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Bowel Movement Section */}
-            <div>
-              <h3 className="text-base font-medium text-gray-900 mb-4">
-                Bowel Movement
-              </h3>
-              <div className="flex gap-6 items-start">
-                <div className="space-y-4 text-sm flex-1">
-                  <div className="flex items-center gap-4">
-                    <span className="text-gray-600 w-48 flex-shrink-0">
-                      Regular Bowel Movement:
-                    </span>
-                    {effectiveEditing ? (
-                      <select
-                        className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${bowelMovement.regularBowelMovement !== savedState.bowelMovement.regularBowelMovement
-                            ? "text-black"
-                            : "text-gray-400"
-                          }`}
-                        value={bowelMovement.regularBowelMovement}
-                        onChange={(e) =>
-                          setBowelMovement((prev) => ({
-                            ...prev,
-                            regularBowelMovement: e.target.value,
-                          }))
-                        }
-                      >
-                        <option value="">—</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                      </select>
-                    ) : (
-                      <span className="text-gray-900 flex-1">
-                        {bowelMovement.regularBowelMovement || "—"}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-start gap-4">
-                    <span className="text-gray-600 w-48 flex-shrink-0">
-                      Frequency of Bowel Movements:
-                    </span>
-                    {effectiveEditing ? (
-                      <input
-                        type="text"
-                        placeholder="e.g. once a day"
-                        className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${bowelMovement.frequencyOfBowelMovements !== savedState.bowelMovement.frequencyOfBowelMovements
-                            ? "text-black"
-                            : "text-gray-400"
-                          }`}
-                        value={bowelMovement.frequencyOfBowelMovements}
-                        onChange={(e) =>
-                          setBowelMovement((prev) => ({
-                            ...prev,
-                            frequencyOfBowelMovements: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <span className="text-gray-900 flex-1">
-                        {bowelMovement.frequencyOfBowelMovements || "—"}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-start gap-4">
-                    <span className="text-gray-600 w-48 flex-shrink-0">
-                      Stool Appearance:
-                    </span>
-                    {effectiveEditing ? (
-                      <input
-                        type="text"
-                        placeholder="Input Text Here"
-                        className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${bowelMovement.stoolAppearance !== savedState.bowelMovement.stoolAppearance
-                            ? "text-black"
-                            : "text-gray-400"
-                          }`}
-                        value={bowelMovement.stoolAppearance}
-                        onChange={(e) =>
-                          setBowelMovement((prev) => ({
-                            ...prev,
-                            stoolAppearance: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <span className="text-gray-900 flex-1">
-                        {bowelMovement.stoolAppearance || "—"}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <span className="text-gray-600 w-48 flex-shrink-0">
-                      Other Remarks:
-                    </span>
-                    {effectiveEditing ? (
-                      <input
-                        type="text"
-                        placeholder="Input Text Here"
-                        className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${bowelMovement.otherRemarks !== savedState.bowelMovement.otherRemarks
-                            ? "text-black"
-                            : "text-gray-400"
-                          }`}
-                        value={bowelMovement.otherRemarks}
-                        onChange={(e) =>
-                          setBowelMovement((prev) => ({
-                            ...prev,
-                            otherRemarks: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <span className="text-gray-900 flex-1">
-                        {bowelMovement.otherRemarks || "—"}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex-shrink-0 self-start">
-                  <Image
-                    src="/consultation/bristol-stool-chart.png"
-                    alt="Bristol Stool Chart"
-                    width={380}
-                    height={520}
-                    className="rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => setLightboxSrc("/consultation/bristol-stool-chart.png")}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Hydration Section */}
-            <div>
-              <h3 className="text-base font-medium text-gray-900 mb-4">
-                Hydration / Fluid Intake
-              </h3>
-              <div className="flex gap-6 items-start">
-                <div className="space-y-4 text-sm flex-1">
-                  <div className="flex items-center gap-4">
-                    <span className="text-gray-600 w-48 flex-shrink-0">
-                      Water Intake for Target Weight (45 ml/kg):
-                    </span>
-                    <span className="text-gray-900 flex-1">
-                      {hydrationInfo.waterIntakeForTargetWeight
-                        ? `${hydrationInfo.waterIntakeForTargetWeight} ml`
-                        : "—"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <span className="text-gray-600 w-48 flex-shrink-0">
-                      Requirement for Water Intake (45 ml/kg):
-                    </span>
-                    <span className="text-gray-900 flex-1">
-                      {hydrationInfo.requirementForWaterIntake
-                        ? `${hydrationInfo.requirementForWaterIntake} ml`
-                        : "—"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <span className="text-gray-600 w-48 flex-shrink-0">
-                      Water Intake per Day (L):
-                    </span>
-                    {effectiveEditing ? (
-                      <input
-                        type="number"
-                        step="0.1"
-                        placeholder="e.g. 2.5"
-                        className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${hydrationInfo.waterIntakePerDay !== savedState.hydrationInfo.waterIntakePerDay
-                            ? "text-black"
-                            : "text-gray-400"
-                          }`}
-                        value={hydrationInfo.waterIntakePerDay}
-                        onChange={(e) =>
-                          setHydrationInfo((prev) => ({
-                            ...prev,
-                            waterIntakePerDay: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <span className="text-gray-900 flex-1">
-                        {hydrationInfo.waterIntakePerDay
-                          ? `${hydrationInfo.waterIntakePerDay} L`
-                          : "—"}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <span className="text-gray-600 w-48 flex-shrink-0">
-                      Urine Colour:
-                    </span>
-                    {effectiveEditing ? (
-                      <input
-                        type="text"
-                        placeholder="e.g. Pale yellow"
-                        className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${hydrationInfo.urineColour !== savedState.hydrationInfo.urineColour
-                            ? "text-black"
-                            : "text-gray-400"
-                          }`}
-                        value={hydrationInfo.urineColour}
-                        onChange={(e) =>
-                          setHydrationInfo((prev) => ({
-                            ...prev,
-                            urineColour: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <span className="text-gray-900 flex-1">
-                        {hydrationInfo.urineColour || "—"}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <span className="text-gray-600 w-48 flex-shrink-0">
-                      Hydration Status:
-                    </span>
-                    {effectiveEditing ? (
-                      <input
-                        type="text"
-                        placeholder="e.g. Well hydrated"
-                        className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${hydrationInfo.hydrationStatus !== savedState.hydrationInfo.hydrationStatus
-                            ? "text-black"
-                            : "text-gray-400"
-                          }`}
-                        value={hydrationInfo.hydrationStatus}
-                        onChange={(e) =>
-                          setHydrationInfo((prev) => ({
-                            ...prev,
-                            hydrationStatus: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <span className="text-gray-900 flex-1">
-                        {hydrationInfo.hydrationStatus || "—"}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <span className="text-gray-600 w-48 flex-shrink-0">
-                      Other Remarks:
-                    </span>
-                    {effectiveEditing ? (
-                      <input
-                        type="text"
-                        placeholder="Input Text Here"
-                        className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${hydrationInfo.otherRemarks !== savedState.hydrationInfo.otherRemarks
-                            ? "text-black"
-                            : "text-gray-400"
-                          }`}
-                        value={hydrationInfo.otherRemarks}
-                        onChange={(e) =>
-                          setHydrationInfo((prev) => ({
-                            ...prev,
-                            otherRemarks: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <span className="text-gray-900 flex-1">
-                        {hydrationInfo.otherRemarks || "—"}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex-shrink-0 self-start">
-                  <Image
-                    src="/consultation/hydration-chart.png"
-                    alt="Hydration Chart"
-                    width={380}
-                    height={520}
-                    className="rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => setLightboxSrc("/consultation/hydration-chart.png")}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Period Section — female athletes only */}
-            {isFemale && (
-              <div>
-                <h3 className="text-base font-medium text-gray-900 mb-4">Period</h3>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
-                  {(
-                    [
-                      {
-                        label: "Date of First Day Period:",
-                        field: "firstDayPeriod" as const,
-                        type: "date",
-                      },
-                      {
-                        label: "Age of Menarche:",
-                        field: "ageOfMenarche" as const,
-                        type: "number",
-                      },
-                      {
-                        label: "Regularity of Period:",
-                        field: "regularityOfPeriod" as const,
-                        type: "number",
-                      },
-                      {
-                        label: "Menstrual Cycle Length (days):",
-                        field: "menstrualCycleLength" as const,
-                        type: "number",
-                      },
-                      {
-                        label: "Period Bleeding Length (days):",
-                        field: "periodBleedingLength" as const,
-                        type: "number",
-                      },
-                      {
-                        label: "Menstrual Bleeding Heaviness:",
-                        field: "menstrualBleedingHeaviness" as const,
-                        type: "number",
-                      },
-                    ] as {
-                      label: string;
-                      field: keyof PeriodInfo;
-                      type: string;
-                    }[]
-                  ).map(({ label, field, type }) => (
-                    <div key={field} className="flex justify-between items-center">
-                      <span className="text-gray-600">{label}</span>
-                      {effectiveEditing ? (
-                        <input
-                          type={type}
-                          className={`w-28 px-2 py-1 border border-gray-300 rounded text-sm text-right transition-colors ${periodInfo[field] !== savedState.periodInfo[field]
-                              ? "text-black"
-                              : "text-gray-400"
-                            }`}
-                          value={periodInfo[field]}
-                          onChange={(e) =>
-                            setPeriodInfo((prev) => ({
-                              ...prev,
-                              [field]: e.target.value,
-                            }))
-                          }
-                        />
-                      ) : (
-                        <span className="font-medium">
-                          {periodInfo[field] || "—"}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-4 space-y-4 text-sm">
-                  <div className="flex items-center gap-4">
-                    <span className="text-gray-600 w-48 flex-shrink-0">
-                      Signs and Symptoms:
-                    </span>
-                    {effectiveEditing ? (
-                      <input
-                        type="text"
-                        placeholder="Input Text Here"
-                        className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${periodInfo.signsAndSymptoms !== savedState.periodInfo.signsAndSymptoms
-                            ? "text-black"
-                            : "text-gray-400"
-                          }`}
-                        value={periodInfo.signsAndSymptoms}
-                        onChange={(e) =>
-                          setPeriodInfo((prev) => ({
-                            ...prev,
-                            signsAndSymptoms: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <span className="text-gray-900 flex-1">
-                        {periodInfo.signsAndSymptoms || "—"}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-gray-600 w-48 flex-shrink-0">
-                      Other Remarks:
-                    </span>
-                    {effectiveEditing ? (
-                      <input
-                        type="text"
-                        placeholder="Input Text Here"
-                        className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${periodInfo.otherRemarks !== savedState.periodInfo.otherRemarks
-                            ? "text-black"
-                            : "text-gray-400"
-                          }`}
-                        value={periodInfo.otherRemarks}
-                        onChange={(e) =>
-                          setPeriodInfo((prev) => ({
-                            ...prev,
-                            otherRemarks: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <span className="text-gray-900 flex-1">
-                        {periodInfo.otherRemarks || "—"}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
+      <div className="space-y-8">
+        {/* General Section */}
+        <div>
+          <div className="flex items-center text-sm text-gray-600 mb-4">
+            <span className="font-medium">General</span>
           </div>
-        </>
-      )}
-      {lightboxSrc && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
-          onClick={() => setLightboxSrc(null)}
-        >
-          <div className="relative max-w-4xl max-h-[90vh] p-4" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setLightboxSrc(null)}
-              className="absolute top-2 right-2 bg-white rounded-full w-8 h-8 flex items-center justify-center text-gray-700 hover:bg-gray-100 text-lg font-bold shadow"
-            >
-              ×
-            </button>
-            <Image
-              src={lightboxSrc}
-              alt="Enlarged view"
-              width={900}
-              height={1200}
-              className="rounded-lg max-h-[85vh] w-auto object-contain"
-            />
+          <div className="space-y-4 text-sm">
+            {(
+              [
+                {
+                  label: "Medical Condition:",
+                  field: "medicalCondition" as const,
+                },
+                { label: "Food Allergy:", field: "foodAllergy" as const },
+                { label: "Drug Allergy:", field: "drugAllergy" as const },
+                {
+                  label: "Notable Past Injuries:",
+                  field: "notablePastInjuries" as const,
+                },
+              ] as { label: string; field: keyof GeneralInfo }[]
+            ).map(({ label, field }) => (
+              <div key={field} className="flex items-center gap-4">
+                <span className="text-gray-600 w-48 flex-shrink-0">
+                  {label}
+                </span>
+                {effectiveEditing ? (
+                  <input
+                    type="text"
+                    placeholder="Input Text Here"
+                    className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                      generalInfo[field] !== savedState.general[field]
+                        ? "text-black"
+                        : "text-gray-400"
+                    }`}
+                    value={generalInfo[field]}
+                    onChange={(e) =>
+                      setGeneralInfo((prev) => ({
+                        ...prev,
+                        [field]: e.target.value,
+                      }))
+                    }
+                  />
+                ) : (
+                  <span className="text-gray-900 flex-1">
+                    {generalInfo[field] || "—"}
+                  </span>
+                )}
+              </div>
+            ))}
+
+            <div className="flex items-start gap-4">
+              <span className="text-gray-600 w-48 flex-shrink-0">
+                Medical Remarks:
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    generalInfo.medicalRemarks !== savedState.general.medicalRemarks
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
+                  value={generalInfo.medicalRemarks}
+                  onChange={(e) =>
+                    setGeneralInfo((prev) => ({
+                      ...prev,
+                      medicalRemarks: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {generalInfo.medicalRemarks || "—"}
+                </span>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Puberty Section */}
+        <div>
+          <h3 className="text-base font-medium text-gray-900 mb-4">Puberty</h3>
+          <div className="space-y-4 text-sm">
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600 w-48 flex-shrink-0">
+                Period of Growth Spurt:
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    pubertyInfo.periodOfGrowthSpurt !== savedState.puberty.periodOfGrowthSpurt
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
+                  value={pubertyInfo.periodOfGrowthSpurt}
+                  onChange={(e) =>
+                    setPubertyInfo((prev) => ({
+                      ...prev,
+                      periodOfGrowthSpurt: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {pubertyInfo.periodOfGrowthSpurt || "—"}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600 w-48 flex-shrink-0">
+                Other Remarks:
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    pubertyInfo.otherRemarks !== savedState.puberty.otherRemarks
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
+                  value={pubertyInfo.otherRemarks}
+                  onChange={(e) =>
+                    setPubertyInfo((prev) => ({
+                      ...prev,
+                      otherRemarks: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {pubertyInfo.otherRemarks || "—"}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Bowel Movement Section */}
+        <div>
+          <h3 className="text-base font-medium text-gray-900 mb-4">
+            Bowel Movement
+          </h3>
+          <div className="space-y-4 text-sm">
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600 w-48 flex-shrink-0">
+                Regular Bowel Movement:
+              </span>
+              {effectiveEditing ? (
+                <select
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    bowelMovement.regularBowelMovement !== savedState.bowelMovement.regularBowelMovement
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
+                  value={bowelMovement.regularBowelMovement}
+                  onChange={(e) =>
+                    setBowelMovement((prev) => ({
+                      ...prev,
+                      regularBowelMovement: e.target.value,
+                    }))
+                  }
+                >
+                  <option value="">—</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {bowelMovement.regularBowelMovement || "—"}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-start gap-4">
+              <span className="text-gray-600 w-48 flex-shrink-0">
+                Frequency of Bowel Movements:
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="e.g. once a day"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    bowelMovement.frequencyOfBowelMovements !== savedState.bowelMovement.frequencyOfBowelMovements
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
+                  value={bowelMovement.frequencyOfBowelMovements}
+                  onChange={(e) =>
+                    setBowelMovement((prev) => ({
+                      ...prev,
+                      frequencyOfBowelMovements: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {bowelMovement.frequencyOfBowelMovements || "—"}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-start gap-4">
+              <span className="text-gray-600 w-48 flex-shrink-0">
+                Stool Appearance:
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    bowelMovement.stoolAppearance !== savedState.bowelMovement.stoolAppearance
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
+                  value={bowelMovement.stoolAppearance}
+                  onChange={(e) =>
+                    setBowelMovement((prev) => ({
+                      ...prev,
+                      stoolAppearance: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {bowelMovement.stoolAppearance || "—"}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600 w-48 flex-shrink-0">
+                Other Remarks:
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    bowelMovement.otherRemarks !== savedState.bowelMovement.otherRemarks
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
+                  value={bowelMovement.otherRemarks}
+                  onChange={(e) =>
+                    setBowelMovement((prev) => ({
+                      ...prev,
+                      otherRemarks: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {bowelMovement.otherRemarks || "—"}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Hydration Section */}
+        <div>
+          <h3 className="text-base font-medium text-gray-900 mb-4">
+            Hydration / Fluid Intake
+          </h3>
+          <div className="space-y-4 text-sm">
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600 w-48 flex-shrink-0">
+                Water Intake for Target Weight (45 ml/kg):
+              </span>
+              <span className="text-gray-900 flex-1">
+                {hydrationInfo.waterIntakeForTargetWeight
+                  ? `${hydrationInfo.waterIntakeForTargetWeight} ml`
+                  : "—"}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600 w-48 flex-shrink-0">
+                Requirement for Water Intake (45 ml/kg):
+              </span>
+              <span className="text-gray-900 flex-1">
+                {hydrationInfo.requirementForWaterIntake
+                  ? `${hydrationInfo.requirementForWaterIntake} ml`
+                  : "—"}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600 w-48 flex-shrink-0">
+                Water Intake per Day (L):
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  placeholder="e.g. 2.5"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    hydrationInfo.waterIntakePerDay !== savedState.hydrationInfo.waterIntakePerDay
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
+                  value={hydrationInfo.waterIntakePerDay}
+                  onChange={(e) =>
+                    setHydrationInfo((prev) => ({
+                      ...prev,
+                      waterIntakePerDay: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {hydrationInfo.waterIntakePerDay
+                    ? `${hydrationInfo.waterIntakePerDay} L`
+                    : "—"}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600 w-48 flex-shrink-0">
+                Urine Colour:
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="e.g. Pale yellow"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    hydrationInfo.urineColour !== savedState.hydrationInfo.urineColour
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
+                  value={hydrationInfo.urineColour}
+                  onChange={(e) =>
+                    setHydrationInfo((prev) => ({
+                      ...prev,
+                      urineColour: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {hydrationInfo.urineColour || "—"}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600 w-48 flex-shrink-0">
+                Hydration Status:
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="e.g. Well hydrated"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    hydrationInfo.hydrationStatus !== savedState.hydrationInfo.hydrationStatus
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
+                  value={hydrationInfo.hydrationStatus}
+                  onChange={(e) =>
+                    setHydrationInfo((prev) => ({
+                      ...prev,
+                      hydrationStatus: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {hydrationInfo.hydrationStatus || "—"}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600 w-48 flex-shrink-0">
+                Other Remarks:
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    hydrationInfo.otherRemarks !== savedState.hydrationInfo.otherRemarks
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
+                  value={hydrationInfo.otherRemarks}
+                  onChange={(e) =>
+                    setHydrationInfo((prev) => ({
+                      ...prev,
+                      otherRemarks: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {hydrationInfo.otherRemarks || "—"}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Period Section — female athletes only */}
+        {isFemale && (
+        <div>
+          <h3 className="text-base font-medium text-gray-900 mb-4">Period</h3>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+            {(
+              [
+                {
+                  label: "Date of First Day Period:",
+                  field: "firstDayPeriod" as const,
+                  type: "date",
+                },
+                {
+                  label: "Age of Menarche:",
+                  field: "ageOfMenarche" as const,
+                  type: "number",
+                },
+                {
+                  label: "Regularity of Period:",
+                  field: "regularityOfPeriod" as const,
+                  type: "number",
+                },
+                {
+                  label: "Menstrual Cycle Length (days):",
+                  field: "menstrualCycleLength" as const,
+                  type: "number",
+                },
+                {
+                  label: "Period Bleeding Length (days):",
+                  field: "periodBleedingLength" as const,
+                  type: "number",
+                },
+                {
+                  label: "Menstrual Bleeding Heaviness:",
+                  field: "menstrualBleedingHeaviness" as const,
+                  type: "number",
+                },
+              ] as {
+                label: string;
+                field: keyof PeriodInfo;
+                type: string;
+              }[]
+            ).map(({ label, field, type }) => (
+              <div key={field} className="flex justify-between items-center">
+                <span className="text-gray-600">{label}</span>
+                {effectiveEditing ? (
+                  <input
+                    type={type}
+                    className={`w-28 px-2 py-1 border border-gray-300 rounded text-sm text-right transition-colors ${
+                      periodInfo[field] !== savedState.periodInfo[field]
+                        ? "text-black"
+                        : "text-gray-400"
+                    }`}
+                    value={periodInfo[field]}
+                    onChange={(e) =>
+                      setPeriodInfo((prev) => ({
+                        ...prev,
+                        [field]: e.target.value,
+                      }))
+                    }
+                  />
+                ) : (
+                  <span className="font-medium">
+                    {periodInfo[field] || "—"}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 space-y-4 text-sm">
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600 w-48 flex-shrink-0">
+                Signs and Symptoms:
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    periodInfo.signsAndSymptoms !== savedState.periodInfo.signsAndSymptoms
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
+                  value={periodInfo.signsAndSymptoms}
+                  onChange={(e) =>
+                    setPeriodInfo((prev) => ({
+                      ...prev,
+                      signsAndSymptoms: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {periodInfo.signsAndSymptoms || "—"}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600 w-48 flex-shrink-0">
+                Other Remarks:
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="text"
+                  placeholder="Input Text Here"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
+                    periodInfo.otherRemarks !== savedState.periodInfo.otherRemarks
+                      ? "text-black"
+                      : "text-gray-400"
+                  }`}
+                  value={periodInfo.otherRemarks}
+                  onChange={(e) =>
+                    setPeriodInfo((prev) => ({
+                      ...prev,
+                      otherRemarks: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <span className="text-gray-900 flex-1">
+                  {periodInfo.otherRemarks || "—"}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        )}
+      </div>
+        </>
       )}
     </section>
   );
