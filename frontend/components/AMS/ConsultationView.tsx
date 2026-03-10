@@ -753,6 +753,8 @@ export default function ConsultationView({
             isNewConsultation={isNewConsultation}
             ensureSession={ensureSession}
             prevSessionId={prevSessionId}
+            liveWeight={liveAnthro.weight}
+            liveTargetWeight={liveAnthro.targetWeight}
           />
         );
 

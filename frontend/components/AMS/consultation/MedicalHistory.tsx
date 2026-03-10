@@ -9,6 +9,8 @@ interface MedicalHistoryProps {
   ensureSession?: () => Promise<string>;
   readOnly?: boolean;
   prevSessionId?: string;
+  liveWeight?: number | null;
+  liveTargetWeight?: number | null;
 }
 
 // ---- API response shape ----
@@ -188,6 +190,8 @@ export default function MedicalHistory({
   ensureSession,
   readOnly,
   prevSessionId,
+  liveWeight,
+  liveTargetWeight,
 }: MedicalHistoryProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
@@ -765,9 +769,11 @@ export default function MedicalHistory({
                 </span>
                 <div className="flex-1">
                   <span className="text-gray-900">
-                    {hydrationInfo.waterIntakeForTargetWeight
-                      ? `${hydrationInfo.waterIntakeForTargetWeight} ml`
-                      : "—"}
+                    {liveTargetWeight != null
+                      ? `${(45 * liveTargetWeight).toFixed(0)} ml`
+                      : hydrationInfo.waterIntakeForTargetWeight
+                        ? `${hydrationInfo.waterIntakeForTargetWeight} ml`
+                        : "—"}
                   </span>
                   <PrevVal val={prevData?.hydrationInfo.waterIntakeForTargetWeight ? `${prevData.hydrationInfo.waterIntakeForTargetWeight} ml` : null} />
                 </div>
@@ -779,9 +785,11 @@ export default function MedicalHistory({
                 </span>
                 <div className="flex-1">
                   <span className="text-gray-900">
-                    {hydrationInfo.requirementForWaterIntake
-                      ? `${hydrationInfo.requirementForWaterIntake} ml`
-                      : "—"}
+                    {liveWeight != null
+                      ? `${(45 * liveWeight).toFixed(0)} ml`
+                      : hydrationInfo.requirementForWaterIntake
+                        ? `${hydrationInfo.requirementForWaterIntake} ml`
+                        : "—"}
                   </span>
                   <PrevVal val={prevData?.hydrationInfo.requirementForWaterIntake ? `${prevData.hydrationInfo.requirementForWaterIntake} ml` : null} />
                 </div>
