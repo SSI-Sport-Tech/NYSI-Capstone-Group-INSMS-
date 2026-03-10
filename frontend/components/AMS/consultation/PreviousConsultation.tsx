@@ -462,19 +462,6 @@ const PreviousConsultation = forwardRef<
                 </select>
               </div>
             )}
-            <div>
-              <label className="block text-gray-600 mb-1">Intervention Status:</label>
-              <select
-                value={form.intervention_status}
-                onChange={(e) => updateForm("intervention_status", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
-              >
-                <option value="">Select status...</option>
-                {INTERVENTION_STATUSES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
           </div>
 
           <div>
@@ -534,7 +521,7 @@ const PreviousConsultation = forwardRef<
             <h3 className="text-sm font-medium text-gray-900 mb-3">Notes</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Intervention Notes:</label>
+                <label className="block text-xs text-gray-500 mb-1">Intervention Plan:</label>
                 <textarea
                   value={form.intervention_note}
                   onChange={(e) => updateForm("intervention_note", e.target.value)}
@@ -634,13 +621,6 @@ const PreviousConsultation = forwardRef<
   const readOnlyContent = (
     <div className="space-y-6">
       <div className="space-y-4">
-        <h3 className="text-base font-medium text-gray-900">Intervention Status</h3>
-        <p className="text-xl font-bold text-gray-900">
-          {consultationData.intervention_status || "Not specified"}
-        </p>
-      </div>
-
-      <div className="space-y-4">
         <h3 className="text-base font-medium text-gray-900">Main Nutrition Diagnosis</h3>
         <p className="text-base font-bold text-gray-900 leading-relaxed">
           {consultationData.details?.main_nutrition_diagnosis || "No diagnosis available"}
@@ -680,7 +660,7 @@ const PreviousConsultation = forwardRef<
         <h3 className="text-base font-medium text-gray-900">Notes</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <h4 className="text-xs text-gray-500 mb-2">Intervention Notes</h4>
+            <h4 className="text-xs text-gray-500 mb-2">Intervention Plan</h4>
             <p className="text-sm text-gray-900">
               {consultationData.details?.intervention_note || "No intervention notes available"}
             </p>

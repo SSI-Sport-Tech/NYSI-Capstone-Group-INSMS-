@@ -710,7 +710,13 @@ export default function ConsultationView({
         </div>
       </div>
       {isNewConsultation && (
-        <div className="mt-4 flex justify-end">
+        <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
+          <button
+            onClick={handleClearConsultationDetails}
+            className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+          >
+            Clear All
+          </button>
           <button
             onClick={handleSaveUpdateCard}
             disabled={isSavingUpdate}
@@ -730,7 +736,7 @@ export default function ConsultationView({
       <div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-900">
           <div>
-            <span className="text-gray-900">Last Consult Date:</span>
+            <span className="text-gray-900">Date of Consult:</span>
             <span className="ml-2 font-medium">
               {(d.date_of_consult
                 ? new Date(d.date_of_consult)
@@ -806,13 +812,29 @@ export default function ConsultationView({
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-8">
         {/* Start New Consultation button — top of content area */}
-        {!isNewConsultation && !isEditMode && (
+        {!isNewConsultation && !isEditMode ? (
           <div className="flex justify-end">
             <button
               onClick={handleStartNewConsultation}
               className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
             >
               Start New Consultation
+            </button>
+          </div>
+        ) : isNewConsultation && (
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={handleCancelNewConsultation}
+              className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200"
+            >
+              Cancel New Consultation
+            </button>
+            <button
+              onClick={handleSaveAll}
+              disabled={isSavingAll}
+              className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isSavingAll ? "Saving..." : "Save and Finish Consultation"}
             </button>
           </div>
         )}
@@ -842,23 +864,6 @@ export default function ConsultationView({
           {!detailsCollapsed && (
             <>
               {isNewConsultation || isEditMode ? renderUpdateForm() : renderReadOnly()}
-              {isNewConsultation && (
-                <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
-                  <button
-                    onClick={handleCancelNewConsultation}
-                    className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSaveAll}
-                    disabled={isSavingAll}
-                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {isSavingAll ? "Saving..." : "Save and Finish Consultation"}
-                  </button>
-                </div>
-              )}
               {isEditMode && (
                 <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
                   <button
@@ -893,7 +898,7 @@ export default function ConsultationView({
               onClick={() => setDiagnosisCollapsed(!diagnosisCollapsed)}
               className="flex items-center gap-2 text-left"
             >
-              <h2 className="text-xl font-semibold text-gray-900">Main Nutrition Diagnosis</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Nutrition Diagnosis Summary</h2>
               <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${diagnosisCollapsed ? "-rotate-90" : ""}`} />
             </button>
             {!isNewConsultation && !diagnosisCollapsed && !isDiagnosisEditMode && (
@@ -922,6 +927,23 @@ export default function ConsultationView({
                 embedded={true}
                 isEditMode={isDiagnosisEditMode}
               />
+              {isNewConsultation && (
+                <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
+                  <button
+                    onClick={() => { previousConsultRef.current?.clearAll(); }}
+                    className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+                  >
+                    Clear All
+                  </button>
+                  <button
+                    onClick={handleSaveDiagnosis}
+                    disabled={isSavingDiagnosis}
+                    className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    {isSavingDiagnosis ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              )}
               {isDiagnosisEditMode && (
                 <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
                   <button
@@ -1008,6 +1030,25 @@ export default function ConsultationView({
 
         {/* 10. New Prescription Form (only when starting a new consultation) */}
         {isNewConsultation && <NewPrescriptionForm ensureSession={ensureSession} />}
+
+        {/* Bottom global Save and Finish / Cancel — new consultation only */}
+        {isNewConsultation && (
+          <div className="flex items-center justify-end gap-2 py-4">
+            <button
+              onClick={handleCancelNewConsultation}
+              className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200"
+            >
+              Cancel New Consultation
+            </button>
+            <button
+              onClick={handleSaveAll}
+              disabled={isSavingAll}
+              className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isSavingAll ? "Saving..." : "Save and Finish Consultation"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
     </>

@@ -408,8 +408,16 @@ export default function Anthropometry({
     return (
       <section id="anthropometry" className="bg-white rounded-xl shadow-lg p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Anthropometry</h2>
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="flex items-center gap-2 text-left"
+          >
+            <h2 className="text-xl font-semibold text-gray-900">Anthropometry</h2>
+            <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
+          </button>
         </div>
+
+        {!collapsed && <>
 
         {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
@@ -591,6 +599,8 @@ export default function Anthropometry({
           </button>
         </div>
 
+        </>}
+
         {bmiLightbox && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
@@ -677,14 +687,18 @@ export default function Anthropometry({
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">BMI:</span>
                 <span className="text-gray-900 font-medium">
-                  {anthropometryData.bmi || "N/A"}
+                  {anthropometryData.weight && anthropometryData.height
+                    ? calcBMI(anthropometryData.weight, anthropometryData.height)
+                    : "N/A"}
                 </span>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">BMI Category:</span>
                 <span className="font-medium text-gray-900">
-                  {anthropometryData.bmi_category || "N/A"}
+                  {anthropometryData.weight && anthropometryData.height
+                    ? calcBMICategory(parseFloat(calcBMI(anthropometryData.weight, anthropometryData.height)))
+                    : "N/A"}
                 </span>
               </div>
 

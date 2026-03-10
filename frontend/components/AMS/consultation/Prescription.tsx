@@ -281,19 +281,21 @@ export default function Prescription({
           <h2 className="text-xl font-semibold text-gray-900">Prescription</h2>
           <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
         </button>
-        <div className="flex items-center gap-2">
-          {!readOnly && !showAddForm && (
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-            >
-              Add New Prescription
+        {!collapsed && (
+          <div className="flex items-center gap-2">
+            {!readOnly && !showAddForm && (
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+              >
+                Add New Prescription
+              </button>
+            )}
+            <button className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200">
+              Print All
             </button>
-          )}
-          <button className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200">
-            Print All
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {!collapsed && (
