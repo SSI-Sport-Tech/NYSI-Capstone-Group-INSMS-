@@ -708,29 +708,24 @@ export default function ConsultationView({
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold text-gray-900">Consultation Details</h2>
-              <div className="flex items-center gap-2">
-                {isNewConsultation ? (
-                  <>
-                    <button onClick={handleCancelNewConsultation} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200">Cancel</button>
-                    <button onClick={handleSaveAll} disabled={isSavingAll} className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50">
-                      {isSavingAll ? "Saving..." : "Save and Finish Consultation"}
+              {!isNewConsultation && (
+                <div className="flex items-center gap-2">
+                  {isEditMode ? (
+                    <>
+                      <button onClick={handleCancelEdit} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200">Cancel</button>
+                      <button onClick={handleClearConsultationDetails} className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100">Clear All</button>
+                      <button onClick={handleSaveUpdate} disabled={isSavingUpdate} className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50">
+                        {isSavingUpdate ? "Saving..." : "Save Changes"}
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={handleEditClick} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200 flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                      Edit
                     </button>
-                  </>
-                ) : isEditMode ? (
-                  <>
-                    <button onClick={handleCancelEdit} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200">Cancel</button>
-                    <button onClick={handleClearConsultationDetails} className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100">Clear All</button>
-                    <button onClick={handleSaveUpdate} disabled={isSavingUpdate} className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50">
-                      {isSavingUpdate ? "Saving..." : "Save Changes"}
-                    </button>
-                  </>
-                ) : (
-                  <button onClick={handleEditClick} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200 flex items-center gap-1">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
-                    Edit
-                  </button>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
             {isNewConsultation || isEditMode ? renderUpdateForm() : renderReadOnly()}
           </div>
@@ -898,14 +893,30 @@ export default function ConsultationView({
             </span>
           </p>
         )}
-        {!isNewConsultation && !isEditMode && (
+        {isNewConsultation ? (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCancelNewConsultation}
+              className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg border hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveAll}
+              disabled={isSavingAll}
+              className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isSavingAll ? "Saving..." : "Save and Finish Consultation"}
+            </button>
+          </div>
+        ) : !isEditMode ? (
           <button
             onClick={handleStartNewConsultation}
             className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
           >
             + Start New Consultation
           </button>
-        )}
+        ) : null}
       </div>
 
       <div className="flex flex-1 overflow-hidden">
