@@ -478,6 +478,191 @@ export default function Adherences({
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
       <div className="space-y-6">
+        {/* ── Current Intake ─────────────────────────────────────────────── */}
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            Current Intake
+          </h3>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+            {/* Carbohydrate */}
+            <div className="flex justify-between items-center">
+              <span className="text-gray-900">
+                Minimum Carbohydrate Requirement (g/kg/bw):
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.minCarbGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, minCarbGkg: e.target.value }))
+                  }
+                  style={{ color: "#111827" }}
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
+                <span className="font-medium">
+                  {fmt(adherencesData?.minCarbGkg ?? null)}
+                </span>
+              )}
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-900">
+                Minimum Carbohydrate Requirement (g):
+              </span>
+              <span className={calcClass}>{fmt(minCarbG)}</span>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span className="text-gray-900">
+                Maximum Carbohydrate Requirement (g/kg/bw):
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.maxCarbGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, maxCarbGkg: e.target.value }))
+                  }
+                  style={{ color: "#111827" }}
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
+                <span className="font-medium">
+                  {fmt(adherencesData?.maxCarbGkg ?? null)}
+                </span>
+              )}
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-900">
+                Maximum Carbohydrate Requirement (g):
+              </span>
+              <span className={calcClass}>{fmt(maxCarbG)}</span>
+            </div>
+
+            {/* Protein */}
+            <div className="flex justify-between items-center">
+              <span className="text-gray-900">
+                Minimum Protein Requirement (g/kg/bw):
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.minProteinGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({
+                      ...p,
+                      minProteinGkg: e.target.value,
+                    }))
+                  }
+                  style={{ color: "#111827" }}
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
+                <span className="font-medium">
+                  {fmt(adherencesData?.minProteinGkg ?? null)}
+                </span>
+              )}
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-900">
+                Minimum Protein Requirement (g):
+              </span>
+              <span className={calcClass}>{fmt(minProteinG)}</span>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span className="text-gray-900">
+                Maximum Protein Requirement (g/kg/bw):
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.maxProteinGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({
+                      ...p,
+                      maxProteinGkg: e.target.value,
+                    }))
+                  }
+                  style={{ color: "#111827" }}
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
+                <span className="font-medium">
+                  {fmt(adherencesData?.maxProteinGkg ?? null)}
+                </span>
+              )}
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-900">
+                Maximum Protein Requirement (g):
+              </span>
+              <span className={calcClass}>{fmt(maxProteinG)}</span>
+            </div>
+
+            {/* Fat */}
+            <div className="flex justify-between items-center">
+              <span className="text-gray-900">
+                Minimum Fat Requirement (g/kg/bw):
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.minFatGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, minFatGkg: e.target.value }))
+                  }
+                  style={{ color: "#111827" }}
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
+                <span className="font-medium">
+                  {fmt(adherencesData?.minFatGkg ?? null)}
+                </span>
+              )}
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-900">
+                Minimum Fat Requirement (g):
+              </span>
+              <span className={calcClass}>{fmt(minFatG)}</span>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span className="text-gray-900">
+                Maximum Fat Requirement (g/kg/bw):
+              </span>
+              {effectiveEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editForm.maxFatGkg}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, maxFatGkg: e.target.value }))
+                  }
+                  style={{ color: "#111827" }}
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                />
+              ) : (
+                <span className="font-medium">
+                  {fmt(adherencesData?.maxFatGkg ?? null)}
+                </span>
+              )}
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-900">
+                Maximum Fat Requirement (g):
+              </span>
+              <span className={calcClass}>{fmt(maxFatG)}</span>
+            </div>
+          </div>
+        </div>
+
         {/* ── Target Intake ──────────────────────────────────────────────── */}
         <div>
           <h3 className="text-lg font-medium text-gray-900 mb-4">
