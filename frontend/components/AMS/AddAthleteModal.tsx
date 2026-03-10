@@ -911,7 +911,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
 
                 <div>
                   <label className="block text-sm font-medium text-black mb-2">
-                    Food Allergy / Intolerances
+                    Food Allergy
                   </label>
                   <textarea
                     name="food_allergy"
