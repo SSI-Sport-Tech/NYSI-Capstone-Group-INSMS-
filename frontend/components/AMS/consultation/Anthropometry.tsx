@@ -48,6 +48,7 @@ interface AnthropometryData {
 interface EditForm {
   height: string;
   weight: string;
+  bmi_category: string;
   fat_mass: string;
   skeletal_muscle_mass: string;
   sum_of_skinfold: string;
@@ -64,12 +65,6 @@ function calcBMI(weight: number, height: number): string {
   return (weight / Math.pow(height / 100, 2)).toFixed(2);
 }
 
-function calcBMICategory(bmi: number): string {
-  if (bmi < 18.5) return "Underweight";
-  if (bmi < 25) return "Normal";
-  if (bmi < 30) return "Overweight";
-  return "Obese";
-}
 
 function calcFatMassPercent(fatMass: number, weight: number): string {
   if (!fatMass || !weight) return "";
@@ -111,6 +106,7 @@ export default function Anthropometry({
   const emptyForm: EditForm = {
     height: "",
     weight: "",
+    bmi_category: "",
     fat_mass: "",
     skeletal_muscle_mass: "",
     sum_of_skinfold: "",
@@ -150,9 +146,6 @@ export default function Anthropometry({
   const tw = parseFloat(editForm.target_weight);
 
   const calcedBMI = !isNaN(w) && !isNaN(h) ? calcBMI(w, h) : "";
-  const calcedBMICategory = calcedBMI
-    ? calcBMICategory(parseFloat(calcedBMI))
-    : "";
   const calcedFatMassPercent =
     !isNaN(fm) && !isNaN(w) ? calcFatMassPercent(fm, w) : "";
   const calcedSMMPercent =
@@ -248,6 +241,7 @@ export default function Anthropometry({
       setEditForm({
         height: data.height?.toString() ?? "",
         weight: data.weight?.toString() ?? "",
+        bmi_category: data.bmi_category ?? "",
         fat_mass: data.fat_mass?.toString() ?? "",
         skeletal_muscle_mass: data.skeletal_muscle_mass?.toString() ?? "",
         sum_of_skinfold: data.sum_of_skinfold?.toString() ?? "",
@@ -337,7 +331,7 @@ export default function Anthropometry({
         payload.motherHeightCm = parseFloat(editForm.mothers_height);
       if (editForm.fathers_height)
         payload.fatherHeightCm = parseFloat(editForm.fathers_height);
-      if (calcedBMICategory) payload.bmiCategory = calcedBMICategory;
+      if (editForm.bmi_category) payload.bmiCategory = editForm.bmi_category;
       if (editForm.athlete_potential_adult_height)
         payload.athletePotentialAdultHeightCm = parseInt(editForm.athlete_potential_adult_height, 10);
       if (editForm.date_recorded) payload.dateRecorded = editForm.date_recorded;
@@ -388,6 +382,7 @@ export default function Anthropometry({
       setEditForm({
         height: anthropometryData.height?.toString() ?? "",
         weight: anthropometryData.weight?.toString() ?? "",
+        bmi_category: anthropometryData.bmi_category ?? "",
         fat_mass: anthropometryData.fat_mass?.toString() ?? "",
         skeletal_muscle_mass:
           anthropometryData.skeletal_muscle_mass?.toString() ?? "",
@@ -464,6 +459,41 @@ export default function Anthropometry({
                 field: "weight" as const,
                 type: "number",
               },
+            ] as { label: string; field: keyof EditForm; type: string }[]
+          ).map(({ label, field, type }) => (
+            <div
+              key={field}
+              className="flex items-center justify-between gap-4"
+            >
+              <span className="text-gray-600 w-56 flex-shrink-0">{label}:</span>
+              <input
+                type={type}
+                value={editForm[field] ?? ""}
+                onChange={(e) => updateField(field, e.target.value)}
+                placeholder="—"
+                style={{ color: editForm[field] ? "#111827" : undefined }}
+                className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm text-right placeholder-gray-300"
+              />
+            </div>
+          ))}
+
+          {/* BMI Category dropdown */}
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-gray-600 w-56 flex-shrink-0">BMI Category:</span>
+            <select
+              value={editForm.bmi_category}
+              onChange={(e) => updateField("bmi_category", e.target.value)}
+              style={{ color: editForm.bmi_category ? "#111827" : "#9CA3AF" }}
+              className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+            >
+              <option value="">— Select —</option>
+              <option value="Normal">Normal</option>
+              <option value="Underweight">Underweight</option>
+              <option value="Overweight">Overweight</option>
+            </select>
+          </div>
+
+          {([
               {
                 label: "Fat Mass (kg)",
                 field: "fat_mass" as const,
@@ -524,7 +554,6 @@ export default function Anthropometry({
             </p>
             {[
               { label: "BMI", value: calcedBMI },
-              { label: "BMI Category", value: calcedBMICategory },
               {
                 label: "Fat Mass (%)",
                 value: calcedFatMassPercent ? `${calcedFatMassPercent}%` : "",
