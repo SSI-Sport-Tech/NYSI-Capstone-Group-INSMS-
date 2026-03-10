@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import {
   consultationApi,
   ConsultationApiError,
@@ -95,6 +96,7 @@ export default function Anthropometry({
   prevSessionId,
   onAnthroChange,
 }: AnthropometryProps) {
+  const [bmiLightbox, setBmiLightbox] = useState<string | null>(null);
   const [anthropometryData, setAnthropometryData] =
     useState<AnthropometryData | null>(null);
   const [prevData, setPrevData] = useState<AnthropometryData | null>(null);
@@ -574,6 +576,25 @@ export default function Anthropometry({
             ))}
           </div>
 
+          {/* BMI Chart buttons */}
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-xs text-gray-400 mb-2">BMI Reference Charts</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setBmiLightbox("/consultation/bmi-chart-male.png")}
+                className="px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
+              >
+                Male BMI Chart
+              </button>
+              <button
+                onClick={() => setBmiLightbox("/consultation/bmi-chart-female.png")}
+                className="px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
+              >
+                Female BMI Chart
+              </button>
+            </div>
+          </div>
+
           {/* Measurement details */}
           <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
             <div className="flex items-center justify-between gap-4">
@@ -605,6 +626,29 @@ export default function Anthropometry({
             </div>
           </div>
         </div>
+
+        {bmiLightbox && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+            onClick={() => setBmiLightbox(null)}
+          >
+            <div className="relative max-w-4xl max-h-[90vh] p-4" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => setBmiLightbox(null)}
+                className="absolute top-2 right-2 bg-white rounded-full w-8 h-8 flex items-center justify-center text-gray-700 hover:bg-gray-100 text-lg font-bold shadow"
+              >
+                ×
+              </button>
+              <Image
+                src={bmiLightbox}
+                alt="BMI Chart"
+                width={900}
+                height={1200}
+                className="rounded-lg max-h-[85vh] w-auto object-contain"
+              />
+            </div>
+          </div>
+        )}
       </section>
     );
   }
@@ -682,6 +726,20 @@ export default function Anthropometry({
               <Field label="Weight" value={anthropometryData?.weight} suffix="kg" />
               <Field label="BMI" value={anthropometryData?.bmi} />
               <Field label="BMI Category" value={anthropometryData?.bmi_category} />
+              <div className="col-span-2 flex gap-2">
+                <button
+                  onClick={() => setBmiLightbox("/consultation/bmi-chart-male.png")}
+                  className="px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
+                >
+                  Male BMI Chart
+                </button>
+                <button
+                  onClick={() => setBmiLightbox("/consultation/bmi-chart-female.png")}
+                  className="px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
+                >
+                  Female BMI Chart
+                </button>
+              </div>
               <Field label="Fat Mass" value={anthropometryData?.fat_mass} suffix="kg" />
               <Field label="Fat Mass (%)" value={anthropometryData?.fat_mass_percentage} suffix="%" />
               <Field label="Skeletal Muscle Mass" value={anthropometryData?.skeletal_muscle_mass} suffix="kg" />
@@ -712,6 +770,29 @@ export default function Anthropometry({
       </div>
         );
       })()}
+
+      {bmiLightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={() => setBmiLightbox(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] p-4" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setBmiLightbox(null)}
+              className="absolute top-2 right-2 bg-white rounded-full w-8 h-8 flex items-center justify-center text-gray-700 hover:bg-gray-100 text-lg font-bold shadow"
+            >
+              ×
+            </button>
+            <Image
+              src={bmiLightbox}
+              alt="BMI Chart"
+              width={900}
+              height={1200}
+              className="rounded-lg max-h-[85vh] w-auto object-contain"
+            />
+          </div>
+        </div>
+      )}
     </section>
   );
 }

@@ -488,7 +488,7 @@ export default function MedicalHistory({
                   label: "Medical Condition:",
                   field: "medicalCondition" as const,
                 },
-                { label: "Food Allergy:", field: "foodAllergy" as const },
+                { label: "Food Allergy / Intolerances:", field: "foodAllergy" as const },
                 { label: "Drug Allergy:", field: "drugAllergy" as const },
                 {
                   label: "Notable Past Injuries:",
