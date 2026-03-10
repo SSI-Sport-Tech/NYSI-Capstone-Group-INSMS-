@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChevronDown } from "lucide-react";
 
 interface NewPrescriptionFormProps {
   ensureSession: () => Promise<string>;
@@ -328,7 +327,6 @@ function PrescriptionEntryCard({
 export default function NewPrescriptionForm({
   ensureSession,
 }: NewPrescriptionFormProps) {
-  const [collapsed, setCollapsed] = useState(true);
   const [entries, setEntries] = useState<PrescriptionEntry[]>([emptyEntry()]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string>("");
@@ -417,58 +415,45 @@ export default function NewPrescriptionForm({
       className="bg-white rounded-xl shadow-lg p-6"
     >
       <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Prescription</h2>
+          <span className="text-sm text-gray-500">{today}</span>
+        </div>
         <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center gap-2 text-left"
+          onClick={handleSave}
+          disabled={saving}
+          className={`px-3 py-1 text-white text-sm rounded disabled:opacity-50 ${saved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
         >
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Prescription</h2>
-            <span className="text-sm text-gray-500">{today}</span>
-          </div>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
+          {saving ? "Saving..." : saved ? "Saved" : "Save"}
         </button>
       </div>
 
-      {!collapsed && (
-        <>
-          {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
-          {saved && (
-            <p className="text-green-600 text-sm mb-4">
-              Prescription saved successfully.
-            </p>
-          )}
-
-          <div className="space-y-8">
-            {entries.map((entry, index) => (
-              <PrescriptionEntryCard
-                key={index}
-                index={index}
-                entry={entry}
-                onChange={(updated) => updateEntry(index, updated)}
-                onRemove={() => removeEntry(index)}
-                showRemove={entries.length > 1}
-              />
-            ))}
-
-            <button
-              onClick={addEntry}
-              className="w-full py-2 border-2 border-dashed border-gray-300 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 rounded-lg transition-colors"
-            >
-              + Add More Prescriptions
-            </button>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className={`px-3 py-1 text-white text-sm rounded disabled:opacity-50 ${saved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
-            >
-              {saving ? "Saving..." : saved ? "Saved" : "Save"}
-            </button>
-          </div>
-        </>
+      {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
+      {saved && (
+        <p className="text-green-600 text-sm mb-4">
+          Prescription saved successfully.
+        </p>
       )}
+
+      <div className="space-y-8">
+        {entries.map((entry, index) => (
+          <PrescriptionEntryCard
+            key={index}
+            index={index}
+            entry={entry}
+            onChange={(updated) => updateEntry(index, updated)}
+            onRemove={() => removeEntry(index)}
+            showRemove={entries.length > 1}
+          />
+        ))}
+
+        <button
+          onClick={addEntry}
+          className="w-full py-2 border-2 border-dashed border-gray-300 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 rounded-lg transition-colors"
+        >
+          + Add More Prescriptions
+        </button>
+      </div>
     </section>
   );
 }
