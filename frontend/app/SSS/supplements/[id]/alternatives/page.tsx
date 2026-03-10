@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { upsertTab } from "@/utils/supplementTabs";
 import axios from "axios";
 import DashboardLayout from "@/components/DashboardLayout";
 import SupplementComparisonGrid from "@/components/SSS/SupplementComparisonGrid";
@@ -110,6 +111,11 @@ export default function SupplementAlternativesPage() {
     loadAlternatives(newPage);
   };
 
+  const handleOpenTab = (s: { id: string; name: string; brand: string }) => {
+    upsertTab(s);
+    router.push(`/SSS/supplements/${s.id}`);
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -211,6 +217,7 @@ export default function SupplementAlternativesPage() {
             comparisonMode="grid"
             comparisonCriteria={[]}
             alternativesData={alternativesData}
+            onOpenTab={handleOpenTab}
           />
 
           {/* Pagination Controls at Bottom */}

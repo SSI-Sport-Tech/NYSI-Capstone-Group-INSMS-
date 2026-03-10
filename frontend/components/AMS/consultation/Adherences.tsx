@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
 import { consultationApi } from "@/utils/consultationApi";
 
 interface AdherencesProps {
@@ -8,6 +7,7 @@ interface AdherencesProps {
   isNewConsultation?: boolean;
   ensureSession?: () => Promise<string>;
   readOnly?: boolean;
+  prevSessionId?: string;
   // Live values streamed from the Anthropometry card in real time
   liveWeight?: number | null;
   liveHeight?: number | null;
@@ -153,14 +153,15 @@ export default function Adherences({
   isNewConsultation,
   ensureSession,
   readOnly,
+  prevSessionId,
   liveWeight,
   liveHeight,
   liveTargetWeight,
 }: AdherencesProps) {
-  const [collapsed, setCollapsed] = useState(true);
   const [adherencesData, setAdherencesData] = useState<AdherencesData | null>(
     null,
   );
+  const [prevAdherencesData, setPrevAdherencesData] = useState<AdherencesData | null>(null);
   const [weight, setWeight] = useState<number | null>(null);
   const [height, setHeight] = useState<number | null>(null);
   const [targetWeight, setTargetWeight] = useState<number | null>(null);
@@ -235,6 +236,20 @@ export default function Adherences({
   useEffect(() => {
     fetchData();
   }, [sessionId]);
+
+  useEffect(() => {
+    if (!prevSessionId) return;
+    (async () => {
+      try {
+        const adherencesRes = await (
+          consultationApi.getAdherences(prevSessionId) as Promise<{ data: AdherencesData }>
+        );
+        setPrevAdherencesData(adherencesRes.data);
+      } catch {
+        // non-critical
+      }
+    })();
+  }, [prevSessionId]);
 
   useEffect(() => {
     if (!athleteId) return;
@@ -412,6 +427,16 @@ export default function Adherences({
     if (adherencesData) setEditForm(toEditForm(adherencesData));
   };
 
+  const PrevVal = ({ val }: { val: string | number | null | undefined }) => {
+    if (!isNewConsultation || !prevAdherencesData || val == null || val === "") return null;
+    return (
+      <p className="text-xs text-gray-400 italic mt-0.5 flex items-center gap-1">
+        <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>
+        Prev: {val}
+      </p>
+    );
+  };
+
   if (loading) {
     return (
       <section id="adherences" className="bg-white rounded-xl shadow-lg p-6 text-gray-900">
@@ -456,13 +481,7 @@ export default function Adherences({
   return (
     <section id="adherences" className="bg-white rounded-xl shadow-lg p-6 text-gray-900">
       <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center gap-2 text-left"
-        >
           <h2 className="text-xl font-semibold text-gray-900">Adherences</h2>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
-        </button>
         {!readOnly && (
           <div className="flex items-center gap-2">
             {effectiveEditing && !isNewConsultation && (
@@ -496,196 +515,9 @@ export default function Adherences({
         )}
       </div>
 
-      {!collapsed && (
-        <>
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
       <div className="space-y-6">
-        {/* ── Current Intake ─────────────────────────────────────────────── */}
-        <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            Current Intake
-          </h3>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
-            {/* Carbohydrate */}
-            <div className="flex justify-between items-center">
-              <span className="text-gray-900">
-                Minimum Carbohydrate Requirement (g/kg/bw):
-              </span>
-              {effectiveEditing ? (
-                <input
-                  type="number"
-                  step="0.1"
-                  value={editForm.minCarbGkg}
-                  onChange={(e) =>
-                    setEditForm((p) => ({ ...p, minCarbGkg: e.target.value }))
-                  }
-                  style={{ color: "#111827" }}
-                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
-                />
-              ) : (
-                <span className="font-medium">
-                  {fmt(adherencesData?.minCarbGkg ?? null)}
-                </span>
-              )}
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-900">
-                Minimum Carbohydrate Requirement (g):
-              </span>
-              <span className={calcClass}>{fmt(minCarbG)}</span>
-            </div>
-
-            <div className="flex justify-between items-center">
-              <span className="text-gray-900">
-                Maximum Carbohydrate Requirement (g/kg/bw):
-              </span>
-              {effectiveEditing ? (
-                <input
-                  type="number"
-                  step="0.1"
-                  value={editForm.maxCarbGkg}
-                  onChange={(e) =>
-                    setEditForm((p) => ({ ...p, maxCarbGkg: e.target.value }))
-                  }
-                  style={{ color: "#111827" }}
-                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
-                />
-              ) : (
-                <span className="font-medium">
-                  {fmt(adherencesData?.maxCarbGkg ?? null)}
-                </span>
-              )}
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-900">
-                Maximum Carbohydrate Requirement (g):
-              </span>
-              <span className={calcClass}>{fmt(maxCarbG)}</span>
-            </div>
-
-            {/* Protein */}
-            <div className="flex justify-between items-center">
-              <span className="text-gray-900">
-                Minimum Protein Requirement (g/kg/bw):
-              </span>
-              {effectiveEditing ? (
-                <input
-                  type="number"
-                  step="0.1"
-                  value={editForm.minProteinGkg}
-                  onChange={(e) =>
-                    setEditForm((p) => ({
-                      ...p,
-                      minProteinGkg: e.target.value,
-                    }))
-                  }
-                  style={{ color: "#111827" }}
-                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
-                />
-              ) : (
-                <span className="font-medium">
-                  {fmt(adherencesData?.minProteinGkg ?? null)}
-                </span>
-              )}
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-900">
-                Minimum Protein Requirement (g):
-              </span>
-              <span className={calcClass}>{fmt(minProteinG)}</span>
-            </div>
-
-            <div className="flex justify-between items-center">
-              <span className="text-gray-900">
-                Maximum Protein Requirement (g/kg/bw):
-              </span>
-              {effectiveEditing ? (
-                <input
-                  type="number"
-                  step="0.1"
-                  value={editForm.maxProteinGkg}
-                  onChange={(e) =>
-                    setEditForm((p) => ({
-                      ...p,
-                      maxProteinGkg: e.target.value,
-                    }))
-                  }
-                  style={{ color: "#111827" }}
-                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
-                />
-              ) : (
-                <span className="font-medium">
-                  {fmt(adherencesData?.maxProteinGkg ?? null)}
-                </span>
-              )}
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-900">
-                Maximum Protein Requirement (g):
-              </span>
-              <span className={calcClass}>{fmt(maxProteinG)}</span>
-            </div>
-
-            {/* Fat */}
-            <div className="flex justify-between items-center">
-              <span className="text-gray-900">
-                Minimum Fat Requirement (g/kg/bw):
-              </span>
-              {effectiveEditing ? (
-                <input
-                  type="number"
-                  step="0.1"
-                  value={editForm.minFatGkg}
-                  onChange={(e) =>
-                    setEditForm((p) => ({ ...p, minFatGkg: e.target.value }))
-                  }
-                  style={{ color: "#111827" }}
-                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
-                />
-              ) : (
-                <span className="font-medium">
-                  {fmt(adherencesData?.minFatGkg ?? null)}
-                </span>
-              )}
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-900">
-                Minimum Fat Requirement (g):
-              </span>
-              <span className={calcClass}>{fmt(minFatG)}</span>
-            </div>
-
-            <div className="flex justify-between items-center">
-              <span className="text-gray-900">
-                Maximum Fat Requirement (g/kg/bw):
-              </span>
-              {effectiveEditing ? (
-                <input
-                  type="number"
-                  step="0.1"
-                  value={editForm.maxFatGkg}
-                  onChange={(e) =>
-                    setEditForm((p) => ({ ...p, maxFatGkg: e.target.value }))
-                  }
-                  style={{ color: "#111827" }}
-                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
-                />
-              ) : (
-                <span className="font-medium">
-                  {fmt(adherencesData?.maxFatGkg ?? null)}
-                </span>
-              )}
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-900">
-                Maximum Fat Requirement (g):
-              </span>
-              <span className={calcClass}>{fmt(maxFatG)}</span>
-            </div>
-          </div>
-        </div>
-
         {/* ── Target Intake ──────────────────────────────────────────────── */}
         <div>
           <h3 className="text-lg font-medium text-gray-900 mb-4">
@@ -709,7 +541,10 @@ export default function Adherences({
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
-                <span className="font-medium">{fmt(adherencesData?.minCarbGkg ?? null)}</span>
+                <div className="text-right">
+                  <span className="font-medium">{fmt(adherencesData?.minCarbGkg ?? null)}</span>
+                  <PrevVal val={prevAdherencesData?.minCarbGkg != null ? fmt(prevAdherencesData.minCarbGkg) : null} />
+                </div>
               )}
             </div>
             <div className="flex justify-between items-center">
@@ -735,7 +570,10 @@ export default function Adherences({
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
-                <span className="font-medium">{fmt(adherencesData?.maxCarbGkg ?? null)}</span>
+                <div className="text-right">
+                  <span className="font-medium">{fmt(adherencesData?.maxCarbGkg ?? null)}</span>
+                  <PrevVal val={prevAdherencesData?.maxCarbGkg != null ? fmt(prevAdherencesData.maxCarbGkg) : null} />
+                </div>
               )}
             </div>
             <div className="flex justify-between items-center">
@@ -762,7 +600,10 @@ export default function Adherences({
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
-                <span className="font-medium">{fmt(adherencesData?.minProteinGkg ?? null)}</span>
+                <div className="text-right">
+                  <span className="font-medium">{fmt(adherencesData?.minProteinGkg ?? null)}</span>
+                  <PrevVal val={prevAdherencesData?.minProteinGkg != null ? fmt(prevAdherencesData.minProteinGkg) : null} />
+                </div>
               )}
             </div>
             <div className="flex justify-between items-center">
@@ -788,7 +629,10 @@ export default function Adherences({
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
-                <span className="font-medium">{fmt(adherencesData?.maxProteinGkg ?? null)}</span>
+                <div className="text-right">
+                  <span className="font-medium">{fmt(adherencesData?.maxProteinGkg ?? null)}</span>
+                  <PrevVal val={prevAdherencesData?.maxProteinGkg != null ? fmt(prevAdherencesData.maxProteinGkg) : null} />
+                </div>
               )}
             </div>
             <div className="flex justify-between items-center">
@@ -815,7 +659,10 @@ export default function Adherences({
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
-                <span className="font-medium">{fmt(adherencesData?.minFatGkg ?? null)}</span>
+                <div className="text-right">
+                  <span className="font-medium">{fmt(adherencesData?.minFatGkg ?? null)}</span>
+                  <PrevVal val={prevAdherencesData?.minFatGkg != null ? fmt(prevAdherencesData.minFatGkg) : null} />
+                </div>
               )}
             </div>
             <div className="flex justify-between items-center">
@@ -841,7 +688,10 @@ export default function Adherences({
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
               ) : (
-                <span className="font-medium">{fmt(adherencesData?.maxFatGkg ?? null)}</span>
+                <div className="text-right">
+                  <span className="font-medium">{fmt(adherencesData?.maxFatGkg ?? null)}</span>
+                  <PrevVal val={prevAdherencesData?.maxFatGkg != null ? fmt(prevAdherencesData.maxFatGkg) : null} />
+                </div>
               )}
             </div>
             <div className="flex justify-between items-center">
@@ -874,9 +724,10 @@ export default function Adherences({
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                   />
                 ) : (
-                  <span className="font-medium">
-                    {fmt(adherencesData?.estimatedCarbG ?? null)}
-                  </span>
+                  <div className="text-right">
+                    <span className="font-medium">{fmt(adherencesData?.estimatedCarbG ?? null)}</span>
+                    <PrevVal val={prevAdherencesData?.estimatedCarbG != null ? fmt(prevAdherencesData.estimatedCarbG) : null} />
+                  </div>
                 )}
               </div>
               <div className="flex justify-between items-center">
@@ -905,9 +756,10 @@ export default function Adherences({
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                   />
                 ) : (
-                  <span className="font-medium">
-                    {fmt(adherencesData?.estimatedProteinG ?? null)}
-                  </span>
+                  <div className="text-right">
+                    <span className="font-medium">{fmt(adherencesData?.estimatedProteinG ?? null)}</span>
+                    <PrevVal val={prevAdherencesData?.estimatedProteinG != null ? fmt(prevAdherencesData.estimatedProteinG) : null} />
+                  </div>
                 )}
               </div>
               <div className="flex justify-between items-center">
@@ -936,9 +788,10 @@ export default function Adherences({
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                   />
                 ) : (
-                  <span className="font-medium">
-                    {fmt(adherencesData?.estimatedFatG ?? null)}
-                  </span>
+                  <div className="text-right">
+                    <span className="font-medium">{fmt(adherencesData?.estimatedFatG ?? null)}</span>
+                    <PrevVal val={prevAdherencesData?.estimatedFatG != null ? fmt(prevAdherencesData.estimatedFatG) : null} />
+                  </div>
                 )}
               </div>
               <div className="flex justify-between items-center">
@@ -966,9 +819,10 @@ export default function Adherences({
                     }
                   />
                 ) : (
-                  <p className="text-sm text-gray-900">
-                    {adherencesData?.commentsWeekday || "—"}
-                  </p>
+                  <div>
+                    <p className="text-sm text-gray-900">{adherencesData?.commentsWeekday || "—"}</p>
+                    <PrevVal val={prevAdherencesData?.commentsWeekday} />
+                  </div>
                 )}
               </div>
               <div>
@@ -989,9 +843,10 @@ export default function Adherences({
                     }
                   />
                 ) : (
-                  <p className="text-sm text-gray-900">
-                    {adherencesData?.commentsWeekend || "—"}
-                  </p>
+                  <div>
+                    <p className="text-sm text-gray-900">{adherencesData?.commentsWeekend || "—"}</p>
+                    <PrevVal val={prevAdherencesData?.commentsWeekend} />
+                  </div>
                 )}
               </div>
             </div>
@@ -1014,9 +869,10 @@ export default function Adherences({
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
             />
           ) : (
-            <span className="font-medium">
-              {fmt(adherencesData?.pal ?? null, 2)}
-            </span>
+            <div className="text-right">
+              <span className="font-medium">{fmt(adherencesData?.pal ?? null, 2)}</span>
+              <PrevVal val={prevAdherencesData?.pal != null ? fmt(prevAdherencesData.pal, 2) : null} />
+            </div>
           )}
         </div>
 
@@ -1124,14 +980,13 @@ export default function Adherences({
               }
             />
           ) : (
-            <p className="text-sm text-gray-900">
-              {adherencesData?.otherRemarks || "—"}
-            </p>
+            <div>
+              <p className="text-sm text-gray-900">{adherencesData?.otherRemarks || "—"}</p>
+              <PrevVal val={prevAdherencesData?.otherRemarks} />
+            </div>
           )}
         </div>
       </div>
-        </>
-      )}
     </section>
   );
 }

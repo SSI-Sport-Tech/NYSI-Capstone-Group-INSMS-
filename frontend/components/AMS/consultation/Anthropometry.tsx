@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
+import Image from "next/image";
 import {
   consultationApi,
   ConsultationApiError,
@@ -11,6 +11,7 @@ interface AnthropometryProps {
   isNewConsultation?: boolean;
   ensureSession?: () => Promise<string>;
   readOnly?: boolean;
+  prevSessionId?: string;
   onAnthroChange?: (
     weight: number | null,
     height: number | null,
@@ -47,6 +48,7 @@ interface AnthropometryData {
 interface EditForm {
   height: string;
   weight: string;
+  bmi_category: string;
   fat_mass: string;
   skeletal_muscle_mass: string;
   sum_of_skinfold: string;
@@ -63,12 +65,6 @@ function calcBMI(weight: number, height: number): string {
   return (weight / Math.pow(height / 100, 2)).toFixed(2);
 }
 
-function calcBMICategory(bmi: number): string {
-  if (bmi < 18.5) return "Underweight";
-  if (bmi < 25) return "Normal";
-  if (bmi < 30) return "Overweight";
-  return "Obese";
-}
 
 function calcFatMassPercent(fatMass: number, weight: number): string {
   if (!fatMass || !weight) return "";
@@ -92,11 +88,13 @@ export default function Anthropometry({
   isNewConsultation,
   ensureSession,
   readOnly,
+  prevSessionId,
   onAnthroChange,
 }: AnthropometryProps) {
-  const [collapsed, setCollapsed] = useState(true);
+  const [bmiLightbox, setBmiLightbox] = useState<string | null>(null);
   const [anthropometryData, setAnthropometryData] =
     useState<AnthropometryData | null>(null);
+  const [prevData, setPrevData] = useState<AnthropometryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
@@ -108,6 +106,7 @@ export default function Anthropometry({
   const emptyForm: EditForm = {
     height: "",
     weight: "",
+    bmi_category: "",
     fat_mass: "",
     skeletal_muscle_mass: "",
     sum_of_skinfold: "",
@@ -147,9 +146,6 @@ export default function Anthropometry({
   const tw = parseFloat(editForm.target_weight);
 
   const calcedBMI = !isNaN(w) && !isNaN(h) ? calcBMI(w, h) : "";
-  const calcedBMICategory = calcedBMI
-    ? calcBMICategory(parseFloat(calcedBMI))
-    : "";
   const calcedFatMassPercent =
     !isNaN(fm) && !isNaN(w) ? calcFatMassPercent(fm, w) : "";
   const calcedSMMPercent =
@@ -245,6 +241,7 @@ export default function Anthropometry({
       setEditForm({
         height: data.height?.toString() ?? "",
         weight: data.weight?.toString() ?? "",
+        bmi_category: data.bmi_category ?? "",
         fat_mass: data.fat_mass?.toString() ?? "",
         skeletal_muscle_mass: data.skeletal_muscle_mass?.toString() ?? "",
         sum_of_skinfold: data.sum_of_skinfold?.toString() ?? "",
@@ -273,6 +270,42 @@ export default function Anthropometry({
     fetchAnthropometry();
   }, [sessionId]);
 
+  // Fetch previous session data for "Prev:" reference display
+  useEffect(() => {
+    if (!prevSessionId) { setPrevData(null); return; }
+    consultationApi.getAnthropometry(prevSessionId)
+      .then((res) => {
+        const apiData = (res as { data: Record<string, string | null> }).data;
+        if (!apiData) { setPrevData(null); return; }
+        setPrevData({
+          height: apiData.heightCm ? parseFloat(apiData.heightCm as string) : null,
+          weight: apiData.weightKg ? parseFloat(apiData.weightKg as string) : null,
+          bmi: apiData.bmi ? parseFloat(apiData.bmi as string) : null,
+          bmi_category: (apiData.bmiCategory as string) || null,
+          fat_mass: apiData.fatMassKg ? parseFloat(apiData.fatMassKg as string) : null,
+          fat_mass_percentage: apiData.fatMassPct ? parseFloat(apiData.fatMassPct as string) : null,
+          skeletal_muscle_mass: apiData.skeletalMuscleMassKg ? parseFloat(apiData.skeletalMuscleMassKg as string) : null,
+          skeletal_muscle_mass_percentage: apiData.skeletalMuscleMassPct ? parseFloat(apiData.skeletalMuscleMassPct as string) : null,
+          sum_of_skinfold: apiData.sumOf8Skinfold ? parseFloat(apiData.sumOf8Skinfold as string) : null,
+          target_weight: apiData.targetWeightKg ? parseFloat(apiData.targetWeightKg as string) : null,
+          target_bmi: apiData.targetBmi ? parseFloat(apiData.targetBmi as string) : null,
+          mothers_height: apiData.motherHeightCm ? parseFloat(apiData.motherHeightCm as string) : null,
+          fathers_height: apiData.fatherHeightCm ? parseFloat(apiData.fatherHeightCm as string) : null,
+          athlete_potential_adult_height: apiData.athletePotentialAdultHeightCm ? parseFloat(apiData.athletePotentialAdultHeightCm as string) : null,
+          measured_by: (apiData.measuredBy as string) || null,
+          measurement_notes: null,
+          date_recorded: (apiData.dateRecorded as string) || null,
+          body_fat_percentage: null,
+          muscle_mass: null,
+          bone_density: null,
+          water_percentage: null,
+          basal_metabolic_rate: null,
+          visceral_fat: null,
+        });
+      })
+      .catch(() => setPrevData(null));
+  }, [prevSessionId]);
+
   const handleSave = async () => {
     try {
       setSaveError("");
@@ -298,7 +331,7 @@ export default function Anthropometry({
         payload.motherHeightCm = parseFloat(editForm.mothers_height);
       if (editForm.fathers_height)
         payload.fatherHeightCm = parseFloat(editForm.fathers_height);
-      if (calcedBMICategory) payload.bmiCategory = calcedBMICategory;
+      if (editForm.bmi_category) payload.bmiCategory = editForm.bmi_category;
       if (editForm.athlete_potential_adult_height)
         payload.athletePotentialAdultHeightCm = parseInt(editForm.athlete_potential_adult_height, 10);
       if (editForm.date_recorded) payload.dateRecorded = editForm.date_recorded;
@@ -349,6 +382,7 @@ export default function Anthropometry({
       setEditForm({
         height: anthropometryData.height?.toString() ?? "",
         weight: anthropometryData.weight?.toString() ?? "",
+        bmi_category: anthropometryData.bmi_category ?? "",
         fat_mass: anthropometryData.fat_mass?.toString() ?? "",
         skeletal_muscle_mass:
           anthropometryData.skeletal_muscle_mass?.toString() ?? "",
@@ -407,33 +441,6 @@ export default function Anthropometry({
       <section id="anthropometry" className="bg-white rounded-xl shadow-lg p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-gray-900">Anthropometry</h2>
-          <div className="flex items-center gap-2">
-            {!isNewConsultation && (
-              <button
-                onClick={handleCancel}
-                className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-            )}
-            <button
-              onClick={() => {
-                setAnthropometryData(null);
-                setEditForm(emptyForm);
-                setIsSaved(false);
-                setSaveError("");
-              }}
-              className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
-            >
-              Clear All
-            </button>
-            <button
-              onClick={handleSave}
-              className={`px-3 py-1 text-white text-sm rounded ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
-            >
-              {isSaved ? "Saved" : "Save"}
-            </button>
-          </div>
         </div>
 
         {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
@@ -452,6 +459,41 @@ export default function Anthropometry({
                 field: "weight" as const,
                 type: "number",
               },
+            ] as { label: string; field: keyof EditForm; type: string }[]
+          ).map(({ label, field, type }) => (
+            <div
+              key={field}
+              className="flex items-center justify-between gap-4"
+            >
+              <span className="text-gray-600 w-56 flex-shrink-0">{label}:</span>
+              <input
+                type={type}
+                value={editForm[field] ?? ""}
+                onChange={(e) => updateField(field, e.target.value)}
+                placeholder="—"
+                style={{ color: editForm[field] ? "#111827" : undefined }}
+                className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm text-right placeholder-gray-300"
+              />
+            </div>
+          ))}
+
+          {/* BMI Category dropdown */}
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-gray-600 w-56 flex-shrink-0">BMI Category:</span>
+            <select
+              value={editForm.bmi_category}
+              onChange={(e) => updateField("bmi_category", e.target.value)}
+              style={{ color: editForm.bmi_category ? "#111827" : "#9CA3AF" }}
+              className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+            >
+              <option value="">— Select —</option>
+              <option value="Normal">Normal</option>
+              <option value="Underweight">Underweight</option>
+              <option value="Overweight">Overweight</option>
+            </select>
+          </div>
+
+          {([
               {
                 label: "Fat Mass (kg)",
                 field: "fat_mass" as const,
@@ -512,7 +554,6 @@ export default function Anthropometry({
             </p>
             {[
               { label: "BMI", value: calcedBMI },
-              { label: "BMI Category", value: calcedBMICategory },
               {
                 label: "Fat Mass (%)",
                 value: calcedFatMassPercent ? `${calcedFatMassPercent}%` : "",
@@ -535,6 +576,25 @@ export default function Anthropometry({
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* BMI Chart buttons */}
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-xs text-gray-400 mb-2">BMI Reference Charts</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setBmiLightbox("/consultation/bmi-chart-male.png")}
+                className="px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
+              >
+                Male BMI Chart
+              </button>
+              <button
+                onClick={() => setBmiLightbox("/consultation/bmi-chart-female.png")}
+                className="px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
+              >
+                Female BMI Chart
+              </button>
+            </div>
           </div>
 
           {/* Measurement details */}
@@ -568,6 +628,57 @@ export default function Anthropometry({
             </div>
           </div>
         </div>
+
+        <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
+          {!isNewConsultation && (
+            <button
+              onClick={handleCancel}
+              className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            onClick={() => {
+              setAnthropometryData(null);
+              setEditForm(emptyForm);
+              setIsSaved(false);
+              setSaveError("");
+            }}
+            className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+          >
+            Clear All
+          </button>
+          <button
+            onClick={handleSave}
+            className={`px-3 py-1 text-white text-sm rounded ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
+          >
+            {isSaved ? "Saved" : "Save"}
+          </button>
+        </div>
+
+        {bmiLightbox && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+            onClick={() => setBmiLightbox(null)}
+          >
+            <div className="relative max-w-4xl max-h-[90vh] p-4" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => setBmiLightbox(null)}
+                className="absolute top-2 right-2 bg-white rounded-full w-8 h-8 flex items-center justify-center text-gray-700 hover:bg-gray-100 text-lg font-bold shadow"
+              >
+                ×
+              </button>
+              <Image
+                src={bmiLightbox}
+                alt="BMI Chart"
+                width={900}
+                height={1200}
+                className="rounded-lg max-h-[85vh] w-auto object-contain"
+              />
+            </div>
+          </div>
+        )}
       </section>
     );
   }
@@ -576,13 +687,7 @@ export default function Anthropometry({
   return (
     <section id="anthropometry" className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center gap-2 text-left"
-        >
           <h2 className="text-xl font-semibold text-gray-900">Anthropometry</h2>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
-        </button>
         {!readOnly && (
           <button
             onClick={() => setIsEditing(true)}
@@ -593,196 +698,130 @@ export default function Anthropometry({
         )}
       </div>
 
-      {!collapsed && (
-        <>
-      <div className="space-y-6">
-        {!anthropometryData ? (
-          <div className="text-center py-8">
-            <h3 className="mt-2 text-sm font-medium text-gray-900">
-              No anthropometry data
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              No measurements have been recorded for this consultation session.
+      {/* Helper: Prev value tag shown in new consultation mode */}
+      {(() => {
+        const PrevVal = ({ val, suffix }: { val: string | number | null | undefined; suffix?: string }) => {
+          if (!isNewConsultation || !val) return null;
+          return (
+            <p className="text-xs text-gray-400 italic mt-0.5 flex items-center gap-1">
+              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>
+              Prev: {val}{suffix ? ` ${suffix}` : ""}
             </p>
+          );
+        };
+
+        const Field = ({ label, value, suffix, span2 }: { label: string; value: string | number | null | undefined; suffix?: string; span2?: boolean }) => {
+          const prevVal = prevData ? (prevData as Record<string, string | number | null>)[
+            label === "Height" ? "height" :
+            label === "Weight" ? "weight" :
+            label === "BMI" ? "bmi" :
+            label === "BMI Category" ? "bmi_category" :
+            label === "Fat Mass" ? "fat_mass" :
+            label === "Fat Mass (%)" ? "fat_mass_percentage" :
+            label === "Skeletal Muscle Mass" ? "skeletal_muscle_mass" :
+            label === "Skeletal Muscle Mass (%)" ? "skeletal_muscle_mass_percentage" :
+            label === "Sum of 8 Skinfold" ? "sum_of_skinfold" :
+            label === "Target Weight" ? "target_weight" :
+            label === "Target BMI" ? "target_bmi" :
+            label === "Mother's Height" ? "mothers_height" :
+            label === "Father's Height" ? "fathers_height" :
+            label === "Athlete's Potential Adult Height" ? "athlete_potential_adult_height" :
+            label === "Date Recorded" ? "date_recorded" :
+            label === "Measured By" ? "measured_by" : ""
+          ] : null;
+          return (
+            <div className={`flex justify-between items-start${span2 ? " col-span-2" : ""}`}>
+              <span className="text-gray-600 text-sm">{label}:</span>
+              <div className="text-right">
+                <span className="font-medium text-gray-900 text-sm">
+                  {value != null ? `${value}${suffix ? ` ${suffix}` : ""}` : (isNewConsultation ? "—" : "N/A")}
+                </span>
+                <PrevVal val={prevVal} suffix={suffix} />
+              </div>
+            </div>
+          );
+        };
+
+        return (
+      <div className="space-y-6">
+        {!anthropometryData && !isNewConsultation ? (
+          <div className="text-center py-8">
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No anthropometry data</h3>
+            <p className="mt-1 text-sm text-gray-500">No measurements have been recorded for this consultation session.</p>
           </div>
         ) : (
           <>
-            {/* Basic Measurements */}
-            <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Height:</span>
-                <div className="flex text-gray-900 items-center gap-2">
-                  <span className="font-medium ">
-                    {anthropometryData.height || "N/A"}
-                  </span>
-                  {anthropometryData.height && <span className="">cm</span>}
-                </div>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+              <Field label="Height" value={anthropometryData?.height} suffix="cm" />
+              <Field label="Weight" value={anthropometryData?.weight} suffix="kg" />
+              <Field label="BMI" value={anthropometryData?.bmi} />
+              <Field label="BMI Category" value={anthropometryData?.bmi_category} />
+              <div className="col-span-2 flex gap-2">
+                <button
+                  onClick={() => setBmiLightbox("/consultation/bmi-chart-male.png")}
+                  className="px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
+                >
+                  Male BMI Chart
+                </button>
+                <button
+                  onClick={() => setBmiLightbox("/consultation/bmi-chart-female.png")}
+                  className="px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
+                >
+                  Female BMI Chart
+                </button>
               </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Weight:</span>
-                <div className="flex text-gray-900 items-center gap-2">
-                  <span className="font-medium">
-                    {anthropometryData.weight || "N/A"}
-                  </span>
-                  {anthropometryData.weight && <span className="">kg</span>}
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">BMI:</span>
-                <span className="text-gray-900 font-medium">
-                  {anthropometryData.bmi || "N/A"}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">BMI Category:</span>
-                <span className="font-medium text-gray-900">
-                  {anthropometryData.bmi_category || "N/A"}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Fat Mass:</span>
-                <div className="flex text-gray-900 items-center gap-2">
-                  <span className="font-medium">
-                    {anthropometryData.fat_mass || "N/A"}
-                  </span>
-                  {anthropometryData.fat_mass && <span className="">kg</span>}
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Fat Mass (%):</span>
-                <span className="text-gray-900 font-medium">
-                  {anthropometryData.fat_mass_percentage || "N/A"}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Skeletal Muscle Mass:</span>
-                <div className="flex text-gray-900 items-center gap-2">
-                  <span className="font-medium">
-                    {anthropometryData.skeletal_muscle_mass || "N/A"}
-                  </span>
-                  {anthropometryData.skeletal_muscle_mass && (
-                    <span className="">kg</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Skeletal Muscle Mass (%):</span>
-                <span className="text-gray-900 font-medium">
-                  {anthropometryData.skeletal_muscle_mass_percentage || "N/A"}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Sum of 8 Skinfold:</span>
-                <div className="flex text-gray-900 items-center gap-2">
-                  <span className="font-medium">
-                    {anthropometryData.sum_of_skinfold || "N/A"}
-                  </span>
-                  {anthropometryData.sum_of_skinfold && (
-                    <span className="">mm</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Target Weight:</span>
-                <div className="flex text-gray-900 items-center gap-2">
-                  <span className="font-medium">
-                    {anthropometryData.target_weight || "N/A"}
-                  </span>
-                  {anthropometryData.target_weight && (
-                    <span className="">kg</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Target BMI:</span>
-                <span className="text-gray-900 font-medium">
-                  {anthropometryData.target_bmi || "N/A"}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Mother&apos;s Height:</span>
-                <div className="flex text-gray-900 items-center gap-2">
-                  <span className="font-medium">
-                    {anthropometryData.mothers_height || "N/A"}
-                  </span>
-                  {anthropometryData.mothers_height && (
-                    <span className="">cm</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Father&apos;s Height:</span>
-                <div className="flex text-gray-900 items-center gap-2">
-                  <span className="font-medium">
-                    {anthropometryData.fathers_height || "N/A"}
-                  </span>
-                  {anthropometryData.fathers_height && (
-                    <span className="">cm</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center col-span-2">
-                <span className="text-gray-600">
-                  Athlete&apos;s Potential Adult Height:
-                </span>
-                <div className="flex text-gray-900 items-center gap-2">
-                  <span className="font-medium">
-                    {anthropometryData.athlete_potential_adult_height || "N/A"}
-                  </span>
-                  {anthropometryData.athlete_potential_adult_height && (
-                    <span className="">cm</span>
-                  )}
-                </div>
-              </div>
+              <Field label="Fat Mass" value={anthropometryData?.fat_mass} suffix="kg" />
+              <Field label="Fat Mass (%)" value={anthropometryData?.fat_mass_percentage} suffix="%" />
+              <Field label="Skeletal Muscle Mass" value={anthropometryData?.skeletal_muscle_mass} suffix="kg" />
+              <Field label="Skeletal Muscle Mass (%)" value={anthropometryData?.skeletal_muscle_mass_percentage} suffix="%" />
+              <Field label="Sum of 8 Skinfold" value={anthropometryData?.sum_of_skinfold} suffix="mm" />
+              <Field label="Target Weight" value={anthropometryData?.target_weight} suffix="kg" />
+              <Field label="Target BMI" value={anthropometryData?.target_bmi} />
+              <Field label="Mother's Height" value={anthropometryData?.mothers_height} suffix="cm" />
+              <Field label="Father's Height" value={anthropometryData?.fathers_height} suffix="cm" />
+              <Field label="Athlete's Potential Adult Height" value={anthropometryData?.athlete_potential_adult_height} suffix="cm" span2 />
             </div>
 
             {/* Measurement Details */}
             <div className="border-t border-gray-200 pt-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Date Recorded:</span>
-                  <span className="text-gray-900">
-                    {anthropometryData.date_recorded
-                      ? new Date(
-                          anthropometryData.date_recorded,
-                        ).toLocaleDateString()
-                      : "N/A"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Measured By:</span>
-                  <span className="text-gray-900">
-                    {anthropometryData.measured_by || "N/A"}
-                  </span>
-                </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Date Recorded" value={anthropometryData?.date_recorded ? new Date(anthropometryData.date_recorded).toLocaleDateString() : null} />
+                <Field label="Measured By" value={anthropometryData?.measured_by} />
               </div>
-
-              {anthropometryData.measurement_notes && (
+              {anthropometryData?.measurement_notes && (
                 <div className="mt-3">
                   <span className="text-gray-600 text-sm">Notes:</span>
-                  <p className="text-gray-900 text-sm mt-1">
-                    {anthropometryData.measurement_notes}
-                  </p>
+                  <p className="text-gray-900 text-sm mt-1">{anthropometryData.measurement_notes}</p>
                 </div>
               )}
             </div>
           </>
         )}
       </div>
-        </>
+        );
+      })()}
+
+      {bmiLightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={() => setBmiLightbox(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] p-4" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setBmiLightbox(null)}
+              className="absolute top-2 right-2 bg-white rounded-full w-8 h-8 flex items-center justify-center text-gray-700 hover:bg-gray-100 text-lg font-bold shadow"
+            >
+              ×
+            </button>
+            <Image
+              src={bmiLightbox}
+              alt="BMI Chart"
+              width={900}
+              height={1200}
+              className="rounded-lg max-h-[85vh] w-auto object-contain"
+            />
+          </div>
+        </div>
       )}
     </section>
   );

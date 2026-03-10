@@ -9,6 +9,8 @@ import NutritionalInfo from "@/components/SSS/NutritionalInfo";
 import InventoryBatches from "@/components/SSS/InventoryBatches";
 import { ArrowLeft, Edit, Search } from "lucide-react";
 import EditSupplementModal from "@/components/SSS/EditSupplementModal";
+import SupplementTabBar from "@/components/SSS/SupplementTabBar";
+import { upsertTab } from "@/utils/supplementTabs";
 
 interface Supplement {
   id: string;
@@ -27,13 +29,14 @@ interface Supplement {
   notes?: string;
   warning_label?: string;
   certifications?: string;
-  nutritional_info_per_100g?: Record<string, unknown>;
-  nutritional_info_per_serving?: Record<string, unknown>;
+  nutritional_info_per_100g?: Record<string, number>;
+  nutritional_info_per_serving?: Record<string, number>;
 }
 
 interface Batch {
   id: number;
   batch_number: string;
+  supplement_id: string;
   supplement_name: string;
   supplement_brand: string;
   batch_status: string;
@@ -42,6 +45,9 @@ interface Batch {
   available: number;
   batch_expiration_date: string;
   batch_price: number;
+  date_added: string;
+  inv_batch_testing_org: string | null;
+  batch_unit?: string | null;
 }
 
 export default function SupplementDetailPage() {
@@ -76,40 +82,40 @@ export default function SupplementDetailPage() {
         return;
       }
 
-      // Map backend data to frontend interface
-      setSupplement({
+      const mapped: Supplement = {
         id: supplementData.id,
         supplement_name: supplementData.supplement_name,
         supplement_brand: supplementData.supplement_brand,
-        supplement_packaging_form:
-          supplementData.supplement_packaging_form || "",
-        supplement_packaging_form_id:
-          supplementData.supplement_packaging_form_id || undefined,
+        supplement_packaging_form: supplementData.supplement_packaging_form || "",
+        supplement_packaging_form_id: supplementData.supplement_packaging_form_id || undefined,
         supplement_status: supplementData.supplement_status || "",
         supplement_status_id: supplementData.supplement_status_id || undefined,
         batch_testing_org: supplementData.batch_testing_org || null,
         product_source_url: supplementData.product_source_url || null,
         description: supplementData.supplement_description || undefined,
-        serving_size:
-          supplementData.nutritional_info_per_serving_definition || undefined,
+        serving_size: supplementData.nutritional_info_per_serving_definition || undefined,
         ingredients: Array.isArray(supplementData.supplement_ingredient)
           ? supplementData.supplement_ingredient.join(", ")
           : supplementData.supplement_ingredient || undefined,
-        supplement_ingredient_raw: Array.isArray(
-          supplementData.supplement_ingredient,
-        )
+        supplement_ingredient_raw: Array.isArray(supplementData.supplement_ingredient)
           ? supplementData.supplement_ingredient
           : undefined,
         notes: supplementData.supplement_additional_information || undefined,
         warning_label: supplementData.supplement_warning_label || undefined,
         certifications: supplementData.supplement_certifications || undefined,
-        nutritional_info_per_100g:
-          supplementData.nutritional_info_per_100g || undefined,
-        nutritional_info_per_serving:
-          supplementData.nutritional_info_per_serving || undefined,
-      });
+        nutritional_info_per_100g: supplementData.nutritional_info_per_100g as Record<string, number> | undefined || undefined,
+        nutritional_info_per_serving: supplementData.nutritional_info_per_serving as Record<string, number> | undefined || undefined,
+      };
 
+      setSupplement(mapped);
       setBatches(batchesData);
+
+      // Register in tab list
+      upsertTab({
+        id: supplementData.id,
+        name: supplementData.supplement_name,
+        brand: supplementData.supplement_brand,
+      });
     } catch (err) {
       setError("Failed to load supplement details");
       console.error(err);
@@ -121,6 +127,7 @@ export default function SupplementDetailPage() {
   if (loading) {
     return (
       <DashboardLayout>
+        <SupplementTabBar activeId={String(params.id)} />
         <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
           <div className="max-w-[1600px] mx-auto px-6 py-8">
             <div className="flex items-center justify-center h-64">
@@ -135,12 +142,11 @@ export default function SupplementDetailPage() {
   if (error || !supplement) {
     return (
       <DashboardLayout>
+        <SupplementTabBar activeId={String(params.id)} />
         <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
           <div className="max-w-[1600px] mx-auto px-6 py-8">
             <div className="flex items-center justify-center h-64">
-              <div className="text-red-500">
-                {error || "Supplement not found"}
-              </div>
+              <div className="text-red-500">{error || "Supplement not found"}</div>
             </div>
           </div>
         </div>
@@ -150,21 +156,20 @@ export default function SupplementDetailPage() {
 
   return (
     <DashboardLayout>
+      <SupplementTabBar activeId={supplement.id} />
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-[1600px] mx-auto px-6 py-8">
-          {/* Header with Back Button and User Profile */}
+          {/* Header */}
           <div className="mb-8 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => router.back()}
+                onClick={() => router.push("/SSS/library")}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </button>
             </div>
-
-            {/* TO DO: User Profile - Top Right */}
           </div>
 
           {/* Supplement Title */}
@@ -172,9 +177,7 @@ export default function SupplementDetailPage() {
             <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
               {supplement.supplement_name}
             </h1>
-            <p className="text-lg text-gray-600 mt-1">
-              {supplement.supplement_brand}
-            </p>
+            <p className="text-lg text-gray-600 mt-1">{supplement.supplement_brand}</p>
           </div>
 
           {/* Action Buttons */}
@@ -187,9 +190,7 @@ export default function SupplementDetailPage() {
               Edit
             </button>
             <button
-              onClick={() =>
-                router.push(`/SSS/supplements/${params.id}/alternatives`)
-              }
+              onClick={() => router.push(`/SSS/supplements/${params.id}/alternatives`)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
             >
               <Search className="w-4 h-4" />
@@ -202,9 +203,7 @@ export default function SupplementDetailPage() {
             <SupplementInfo supplement={supplement} />
             <NutritionalInfo
               nutritionalInfoPer100g={supplement.nutritional_info_per_100g}
-              nutritionalInfoPerServing={
-                supplement.nutritional_info_per_serving
-              }
+              nutritionalInfoPerServing={supplement.nutritional_info_per_serving}
               servingDefinition={supplement.serving_size}
             />
           </div>
@@ -220,7 +219,6 @@ export default function SupplementDetailPage() {
         </div>
       </div>
 
-      {/* Edit Supplement Modal */}
       <EditSupplementModal
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}

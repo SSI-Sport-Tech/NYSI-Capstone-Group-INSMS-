@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
 
 interface OpenItemsProps {
   athleteId: string;
@@ -7,6 +6,7 @@ interface OpenItemsProps {
   isNewConsultation?: boolean;
   ensureSession?: () => Promise<string>;
   readOnly?: boolean;
+  prevSessionId?: string;
 }
 
 interface OpenItem {
@@ -39,10 +39,11 @@ export default function OpenItems({
   isNewConsultation,
   ensureSession,
   readOnly,
+  prevSessionId,
 }: OpenItemsProps) {
 
-  const [collapsed, setCollapsed] = useState(true);
   const [openItems, setOpenItems] = useState<OpenItem[]>([]);
+  const [prevItemsCount, setPrevItemsCount] = useState<number | null>(null);
   const [statuses, setStatuses] = useState<StatusLookup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -108,6 +109,24 @@ export default function OpenItems({
     fetchOpenItems();
     setSelectedIds(new Set());
   }, [sessionId]);
+
+  useEffect(() => {
+    if (!prevSessionId) return;
+    (async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/open-items/session/${prevSessionId}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        setPrevItemsCount((data.data || []).length);
+      } catch {
+        // non-critical
+      }
+    })();
+  }, [prevSessionId]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -273,13 +292,7 @@ export default function OpenItems({
       className="bg-white rounded-xl shadow-lg p-6 text-gray-900"
     >
       <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center gap-2 text-left"
-        >
           <h2 className="text-xl font-semibold text-gray-900">Open Items</h2>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
-        </button>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">
             All Actions ({openItems.length})
@@ -322,8 +335,6 @@ export default function OpenItems({
         </div>
       </div>
 
-      {!collapsed && (
-        <>
       {saveError && <p className="text-red-600 text-sm mb-3">{saveError}</p>}
 
       {/* Add New Item Form */}
@@ -486,6 +497,11 @@ export default function OpenItems({
 
       {openItems.length === 0 && (
         <div className="text-center py-8">
+          {isNewConsultation && prevItemsCount !== null && prevItemsCount > 0 && (
+            <p className="text-sm text-gray-400 italic mb-3">
+              Previous consultation had {prevItemsCount} action item{prevItemsCount !== 1 ? "s" : ""}
+            </p>
+          )}
           <h3 className="mt-2 text-sm font-medium text-gray-900">
             No open items
           </h3>
@@ -493,8 +509,6 @@ export default function OpenItems({
             Get started by creating a new action item.
           </p>
         </div>
-      )}
-        </>
       )}
     </section>
   );

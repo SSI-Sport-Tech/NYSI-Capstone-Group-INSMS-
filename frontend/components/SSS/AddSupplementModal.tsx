@@ -59,6 +59,7 @@ interface FormData {
   // Batch Information
   batchNumber: string;
   quantity: number;
+  batchUnit: string;
   price: number;
   expirationDate: string;
   batchTestingOrg: string;
@@ -80,6 +81,8 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
   const [includeBatch, setIncludeBatch] = useState(true);
   const [loading, setLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [packagingOptions, setPackagingOptions] = useState<LookupOption[]>([]);
   const [statusOptions, setStatusOptions] = useState<LookupOption[]>([]);
 
@@ -101,6 +104,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
     nutritionalPer100g: [{ nutrient: "", amount: "" }],
     batchNumber: "",
     quantity: 100,
+    batchUnit: "",
     price: 0,
     expirationDate: "",
     batchTestingOrg: "",
@@ -139,6 +143,8 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
       setShowResults(false);
       setIsNewSupplement(supplementOnly);
       setIncludeBatch(true);
+      setSubmitError("");
+      setFieldErrors({});
     } else if (isOpen && preselectedSupplement) {
       setFormData((prev) => ({
         ...prev,
@@ -248,6 +254,20 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError("");
+
+    // Client-side validation for batch fields
+    if (includeBatch && !supplementOnly && (isNewSupplement || formData.supplementId)) {
+      const errors: Record<string, string> = {};
+      if (!formData.batchNumber.trim()) errors.batchNumber = "Batch number is required.";
+      if (!formData.quantity || formData.quantity <= 0) errors.quantity = "Quantity must be greater than 0.";
+      if (!formData.expirationDate) errors.expirationDate = "Expiration date is required.";
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        return;
+      }
+    }
+    setFieldErrors({});
     setLoading(true);
 
     try {
@@ -289,6 +309,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
             supplement_id: supplementResponse.data.id,
             batch_number: formData.batchNumber,
             batch_initial_quantity: formData.quantity,
+            batch_unit: formData.batchUnit || null,
             batch_price: formData.price || null,
             batch_expiration_date: formData.expirationDate || null,
             inv_batch_testing_org: formData.batchTestingOrg || null,
@@ -304,6 +325,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
             supplement_id: formData.supplementId,
             batch_number: formData.batchNumber,
             batch_initial_quantity: formData.quantity,
+            batch_unit: formData.batchUnit || null,
             batch_price: formData.price || null,
             batch_expiration_date: formData.expirationDate || null,
             inv_batch_testing_org: formData.batchTestingOrg || null,
@@ -316,9 +338,30 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
 
       onSuccess();
       onClose();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error adding supplement:", error);
-      alert("Failed to add supplement. Please try again.");
+      const axiosError = error as { response?: { data?: { error?: string; message?: string; details?: { field: string; message: string }[] } } };
+      const data = axiosError?.response?.data;
+      if (data?.details && data.details.length > 0) {
+        // Map Zod validation field errors from backend
+        const errors: Record<string, string> = {};
+        const fieldMap: Record<string, string> = {
+          batch_number: "batchNumber",
+          batch_initial_quantity: "quantity",
+          batch_expiration_date: "expirationDate",
+          batch_price: "price",
+          inv_batch_testing_org: "batchTestingOrg",
+          batch_unit: "batchUnit",
+        };
+        data.details.forEach(({ field, message }) => {
+          const mapped = fieldMap[field] || field;
+          errors[mapped] = message;
+        });
+        setFieldErrors(errors);
+        setSubmitError("Please fix the errors below and try again.");
+      } else {
+        setSubmitError(data?.error || data?.message || "Failed to save. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -512,7 +555,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                     </div>
                     <div>
                       <label className="block text-sm text-gray-700 mb-1">
-                        Brand
+                        Brand <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -904,45 +947,63 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                   </div>
 
                   {includeBatch && <div className="grid grid-cols-2 gap-4">
+                    {submitError && (
+                      <div className="col-span-2 bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-md">
+                        {submitError}
+                      </div>
+                    )}
                     <div>
                       <label className="block text-sm text-gray-700 mb-1">
-                        Batch Number
+                        Batch Number <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
                         value={formData.batchNumber}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            batchNumber: e.target.value,
-                          }))
-                        }
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
+                        onChange={(e) => {
+                          setFormData((prev) => ({ ...prev, batchNumber: e.target.value }));
+                          setFieldErrors((prev) => ({ ...prev, batchNumber: "" }));
+                        }}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500 ${fieldErrors.batchNumber ? "border-red-400 bg-red-50" : "border-gray-300"}`}
                         placeholder="Number"
                       />
+                      {fieldErrors.batchNumber && <p className="text-red-500 text-xs mt-1">{fieldErrors.batchNumber}</p>}
                     </div>
                     <div>
                       <label className="block text-sm text-gray-700 mb-1">
-                        Quantity
+                        Quantity <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="number"
                         value={formData.quantity}
+                        onChange={(e) => {
+                          setFormData((prev) => ({ ...prev, quantity: Number(e.target.value) }));
+                          setFieldErrors((prev) => ({ ...prev, quantity: "" }));
+                        }}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500 ${fieldErrors.quantity ? "border-red-400 bg-red-50" : "border-gray-300"}`}
+                        placeholder="100"
+                      />
+                      {fieldErrors.quantity && <p className="text-red-500 text-xs mt-1">{fieldErrors.quantity}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-1">
+                        Unit <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.batchUnit}
                         onChange={(e) =>
                           setFormData((prev) => ({
                             ...prev,
-                            quantity: Number(e.target.value),
+                            batchUnit: e.target.value,
                           }))
                         }
-                        required
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
-                        placeholder="100"
+                        placeholder="e.g. capsules, g"
                       />
                     </div>
                     <div>
                       <label className="block text-sm text-gray-700 mb-1">
-                        Price
+                        Price <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="number"
@@ -961,21 +1022,18 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                     </div>
                     <div>
                       <label className="block text-sm text-gray-700 mb-1">
-                        Expiration Date
+                        Expiration Date <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="date"
                         value={formData.expirationDate}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            expirationDate: e.target.value,
-                          }))
-                        }
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                        placeholder="Date"
+                        onChange={(e) => {
+                          setFormData((prev) => ({ ...prev, expirationDate: e.target.value }));
+                          setFieldErrors((prev) => ({ ...prev, expirationDate: "" }));
+                        }}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 ${fieldErrors.expirationDate ? "border-red-400 bg-red-50" : "border-gray-300"}`}
                       />
+                      {fieldErrors.expirationDate && <p className="text-red-500 text-xs mt-1">{fieldErrors.expirationDate}</p>}
                     </div>
                     <div>
                       <label className="block text-sm text-gray-700 mb-1">

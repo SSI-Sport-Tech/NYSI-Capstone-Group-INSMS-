@@ -4,10 +4,10 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import DashboardLayout from "@/components/DashboardLayout";
 import SupplementTable from "@/components/SSS/SupplementTable";
-import ViewTabs from "@/components/SSS/ViewTabs";
 import SearchSection from "@/components/SSS/SearchSection";
 import OCRModal from "@/components/SSS/OCRModal";
 import AddSupplementModal from "@/components/SSS/AddSupplementModal";
+import SupplementTabBar from "@/components/SSS/SupplementTabBar";
 
 interface Supplement {
   id: string;
@@ -18,33 +18,6 @@ interface Supplement {
   batch_testing_org: string | null;
   product_source_url: string[] | string | null;
 }
-
-const tabs = [
-  {
-    id: "library",
-    label: "Supplement Library",
-    icon: "library",
-    href: "/SSS/library",
-  },
-  {
-    id: "inventory",
-    label: "Current Inventory View",
-    icon: "inventory",
-    href: "/SSS/inventory",
-  },
-  {
-    id: "scraper",
-    label: "Web Scraper View",
-    icon: "scraper",
-    href: "/SSS/web-scraper",
-  },
-  {
-    id: "batch-testing",
-    label: "Batch OCR Testing",
-    icon: "batch",
-    href: "/SSS/batch-testing",
-  },
-];
 
 export default function LibraryPage() {
   const [supplements, setSupplements] = useState<Supplement[]>([]);
@@ -59,6 +32,18 @@ export default function LibraryPage() {
 
   useEffect(() => {
     loadSupplements();
+    // Reopen OCR modal if user navigated away mid-session
+    try {
+      const saved = sessionStorage.getItem("ocr_modal_state");
+      if (saved) {
+        const s = JSON.parse(saved);
+        if (s.step === "verify" || s.step === "result") {
+          setOcrModalOpen(true);
+        }
+      }
+    } catch {
+      // ignore
+    }
   }, []);
 
   const loadSupplements = async (search = "", page = 1) => {
@@ -111,6 +96,7 @@ export default function LibraryPage() {
 
   return (
     <DashboardLayout>
+      <SupplementTabBar activeId="library" />
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-[1600px] mx-auto px-6 py-8">
           {/* Page Header */}
@@ -119,9 +105,6 @@ export default function LibraryPage() {
               Supplement Library
             </h1>
           </div>
-
-          {/* Tabs */}
-          <ViewTabs tabs={tabs} />
 
           {/* Error Message */}
           {error && (

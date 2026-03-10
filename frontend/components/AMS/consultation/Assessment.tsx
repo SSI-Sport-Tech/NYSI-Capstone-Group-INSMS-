@@ -54,22 +54,14 @@ export default function Assessment({ athleteId, sessionId, isNewConsultation, ne
     <section id="assessment" className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Assessment</h2>
-        <div className="flex items-center gap-2">
-          {effectiveEditing && !isNewConsultation && (
-            <button
-              onClick={handleCancel}
-              className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
-            >
-              Cancel
-            </button>
-          )}
+        {!effectiveEditing && (
           <button
-            onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
-            className={`px-3 py-1 text-white text-sm rounded ${effectiveEditing && isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
+            onClick={() => setIsEditing(true)}
+            className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
           >
-            {effectiveEditing ? (isSaved ? "Saved" : "Save") : "Edit"}
+            Edit
           </button>
-        </div>
+        )}
       </div>
 
       <div className="space-y-6">
@@ -161,6 +153,25 @@ export default function Assessment({ athleteId, sessionId, isNewConsultation, ne
           )}
         </div>
       </div>
+
+      {effectiveEditing && (
+        <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
+          {!isNewConsultation && (
+            <button
+              onClick={handleCancel}
+              className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            onClick={handleSave}
+            className={`px-3 py-1 text-white text-sm rounded ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
+          >
+            {isSaved ? "Saved" : "Save"}
+          </button>
+        </div>
+      )}
     </section>
   );
 }

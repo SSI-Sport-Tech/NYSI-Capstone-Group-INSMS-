@@ -43,7 +43,7 @@ cp .env.example .env
 
 ### Development
 \`\`\`bash
-uvicorn app.main:app --port 8001
+          uvicorn app.main:app --port 8001
 \`\`\`
 
 ### Production
