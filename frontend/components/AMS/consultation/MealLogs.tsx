@@ -247,13 +247,36 @@ export default function MealLogs({
           <h2 className="text-xl font-semibold text-gray-900">Meal Logs</h2>
           <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
         </button>
-        {!readOnly && !effectiveEditing && !collapsed && (
-          <button
-            onClick={() => setIsEditing(true)}
-            className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700"
-          >
-            Edit
-          </button>
+        {!readOnly && (
+          <div className="flex items-center gap-2">
+            {effectiveEditing && !isNewConsultation && (
+              <button
+                onClick={handleCancel}
+                className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+            )}
+            {effectiveEditing && (
+              <button
+                onClick={() => {
+                  setMealLog(null);
+                  setEditLog(emptyEditLog);
+                  setIsSaved(false);
+                  setSaveError("");
+                }}
+                className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+              >
+                Clear All
+              </button>
+            )}
+            <button
+              onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
+              className={`px-3 py-1 text-white text-sm rounded ${effectiveEditing && isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
+            >
+              {effectiveEditing ? (isSaved ? "Saved" : "Save") : "Edit"}
+            </button>
+          </div>
         )}
       </div>
 
@@ -434,36 +457,6 @@ export default function MealLogs({
           </div>
         </div>
       </div>
-
-          {!readOnly && effectiveEditing && (
-            <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
-              {!isNewConsultation && (
-                <button
-                  onClick={handleCancel}
-                  className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
-                >
-                  Cancel
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  setMealLog(null);
-                  setEditLog(emptyEditLog);
-                  setIsSaved(false);
-                  setSaveError("");
-                }}
-                className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
-              >
-                Clear All
-              </button>
-              <button
-                onClick={handleSave}
-                className={`px-3 py-1 text-white text-sm rounded ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
-              >
-                {isSaved ? "Saved" : "Save"}
-              </button>
-            </div>
-          )}
         </>
       )}
     </section>

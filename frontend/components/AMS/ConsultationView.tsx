@@ -827,23 +827,9 @@ export default function ConsultationView({
               <h1 className="text-xl font-semibold text-gray-900">Consultation Details</h1>
               <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${detailsCollapsed ? "-rotate-90" : ""}`} />
             </button>
-            {!detailsCollapsed && !isEditMode && !isNewConsultation && (
-              <button
-                onClick={handleEditClick}
-                className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200 flex items-center gap-1"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                </svg>
-                Edit
-              </button>
-            )}
-          </div>
-          {!detailsCollapsed && (
-            <>
-              {isNewConsultation || isEditMode ? renderUpdateForm() : renderReadOnly()}
-              {isNewConsultation && (
-                <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
+            <div className="flex items-center gap-2">
+              {isNewConsultation ? (
+                <>
                   <button
                     onClick={handleCancelNewConsultation}
                     className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200"
@@ -857,10 +843,9 @@ export default function ConsultationView({
                   >
                     {isSavingAll ? "Saving..." : "Save and Finish Consultation"}
                   </button>
-                </div>
-              )}
-              {isEditMode && (
-                <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
+                </>
+              ) : isEditMode ? (
+                <>
                   <button
                     onClick={handleCancelEdit}
                     className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200"
@@ -880,9 +865,22 @@ export default function ConsultationView({
                   >
                     {isSavingUpdate ? "Saving..." : "Save Changes"}
                   </button>
-                </div>
+                </>
+              ) : (
+                <button
+                  onClick={handleEditClick}
+                  className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200 flex items-center gap-1"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                  </svg>
+                  Edit
+                </button>
               )}
-            </>
+            </div>
+          </div>
+          {!detailsCollapsed && (
+            isNewConsultation || isEditMode ? renderUpdateForm() : renderReadOnly()
           )}
         </div>
 
@@ -896,56 +894,57 @@ export default function ConsultationView({
               <h2 className="text-xl font-semibold text-gray-900">Main Nutrition Diagnosis</h2>
               <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${diagnosisCollapsed ? "-rotate-90" : ""}`} />
             </button>
-            {!isNewConsultation && !diagnosisCollapsed && !isDiagnosisEditMode && (
-              <button
-                onClick={() => setIsDiagnosisEditMode(true)}
-                className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200 flex items-center gap-1"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                </svg>
-                Edit
-              </button>
+            {!isNewConsultation && (
+              <div className="flex items-center gap-2">
+                {isDiagnosisEditMode ? (
+                  <>
+                    <button
+                      onClick={() => { previousConsultRef.current?.clearAll(); }}
+                      className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+                    >
+                      Clear All
+                    </button>
+                    <button
+                      onClick={() => setIsDiagnosisEditMode(false)}
+                      className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveDiagnosis}
+                      disabled={isSavingDiagnosis}
+                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {isSavingDiagnosis ? "Saving..." : "Save Changes"}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setIsDiagnosisEditMode(true)}
+                    className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200 flex items-center gap-1"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                    Edit
+                  </button>
+                )}
+              </div>
             )}
           </div>
           {diagnosisSaveError && (
             <p className="text-red-600 text-sm mb-3">{diagnosisSaveError}</p>
           )}
           {!diagnosisCollapsed && (
-            <>
-              <PreviousConsultation
-                ref={previousConsultRef}
-                athleteId={athleteId}
-                sessionId={currentSessionId}
-                isNewConsultation={isNewConsultation}
-                ensureSession={ensureSession}
-                embedded={true}
-                isEditMode={isDiagnosisEditMode}
-              />
-              {isDiagnosisEditMode && (
-                <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
-                  <button
-                    onClick={() => { previousConsultRef.current?.clearAll(); }}
-                    className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
-                  >
-                    Clear All
-                  </button>
-                  <button
-                    onClick={() => setIsDiagnosisEditMode(false)}
-                    className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSaveDiagnosis}
-                    disabled={isSavingDiagnosis}
-                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {isSavingDiagnosis ? "Saving..." : "Save Changes"}
-                  </button>
-                </div>
-              )}
-            </>
+            <PreviousConsultation
+              ref={previousConsultRef}
+              athleteId={athleteId}
+              sessionId={currentSessionId}
+              isNewConsultation={isNewConsultation}
+              ensureSession={ensureSession}
+              embedded={true}
+              isEditMode={isDiagnosisEditMode}
+            />
           )}
         </div>
 
