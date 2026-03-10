@@ -318,9 +318,6 @@ const BatchTable: React.FC<BatchTableProps> = ({
                     <SortIcon column="supplement_brand" />
                   </div>
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
-                  <span className="whitespace-nowrap">Testing Org</span>
-                </th>
                 <th
                   onClick={() => handleSort("batch_status")}
                   className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
@@ -328,24 +325,6 @@ const BatchTable: React.FC<BatchTableProps> = ({
                   <div className="flex items-center gap-1">
                     <span className="whitespace-nowrap">Stock Status</span>
                     <SortIcon column="batch_status" />
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort("batch_initial_quantity")}
-                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
-                >
-                  <div className="flex items-center gap-1">
-                    <span className="whitespace-nowrap">Batch Size</span>
-                    <SortIcon column="batch_initial_quantity" />
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort("booked")}
-                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
-                >
-                  <div className="flex items-center gap-1">
-                    <span className="whitespace-nowrap">Booked</span>
-                    <SortIcon column="booked" />
                   </div>
                 </th>
                 <th
@@ -366,24 +345,6 @@ const BatchTable: React.FC<BatchTableProps> = ({
                     <SortIcon column="batch_expiration_date" />
                   </div>
                 </th>
-                <th
-                  onClick={() => handleSort("batch_price")}
-                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
-                >
-                  <div className="flex items-center gap-1">
-                    <span className="whitespace-nowrap">Batch Price</span>
-                    <SortIcon column="batch_price" />
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort("date_added")}
-                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
-                >
-                  <div className="flex items-center gap-1">
-                    <span className="whitespace-nowrap">Date Added</span>
-                    <SortIcon column="date_added" />
-                  </div>
-                </th>
                 <th className="px-3 py-3 text-left w-16"></th>
               </tr>
             </thead>
@@ -391,7 +352,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
               {loading ? (
                 <tr>
                   <td
-                    colSpan={13}
+                    colSpan={8}
                     className="px-6 py-8 text-center text-gray-500"
                   >
                     Loading batches...
@@ -456,7 +417,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
               ) : (
                 <tr>
                   <td
-                    colSpan={13}
+                    colSpan={8}
                     className="px-6 py-8 text-center text-gray-500"
                   >
                     {searchQuery
