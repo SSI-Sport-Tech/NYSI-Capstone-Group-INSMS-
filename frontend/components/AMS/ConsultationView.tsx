@@ -1026,6 +1026,8 @@ export default function ConsultationView({
           sessionId={currentSessionId}
           isNewConsultation={isNewConsultation}
           ensureSession={ensureSession}
+          liveWeight={liveAnthro.weight}
+          liveTargetWeight={liveAnthro.targetWeight}
         />
 
         {/* 10. New Prescription Form (only when starting a new consultation) */}

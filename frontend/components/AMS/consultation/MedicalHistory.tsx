@@ -9,6 +9,8 @@ interface MedicalHistoryProps {
   isNewConsultation?: boolean;
   ensureSession?: () => Promise<string>;
   readOnly?: boolean;
+  liveWeight?: number | null;
+  liveTargetWeight?: number | null;
 }
 
 // ---- API response shape ----
@@ -187,6 +189,8 @@ export default function MedicalHistory({
   isNewConsultation,
   ensureSession,
   readOnly,
+  liveWeight,
+  liveTargetWeight,
 }: MedicalHistoryProps) {
   const [collapsed, setCollapsed] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -695,9 +699,11 @@ export default function MedicalHistory({
                       Water Intake for Target Weight (45 ml/kg):
                     </span>
                     <span className="text-gray-900 flex-1">
-                      {hydrationInfo.waterIntakeForTargetWeight
-                        ? `${hydrationInfo.waterIntakeForTargetWeight} ml`
-                        : "—"}
+                      {liveTargetWeight != null
+                        ? `${(45 * liveTargetWeight).toFixed(0)} ml`
+                        : hydrationInfo.waterIntakeForTargetWeight
+                          ? `${hydrationInfo.waterIntakeForTargetWeight} ml`
+                          : "—"}
                     </span>
                   </div>
 
@@ -706,9 +712,11 @@ export default function MedicalHistory({
                       Requirement for Water Intake (45 ml/kg):
                     </span>
                     <span className="text-gray-900 flex-1">
-                      {hydrationInfo.requirementForWaterIntake
-                        ? `${hydrationInfo.requirementForWaterIntake} ml`
-                        : "—"}
+                      {liveWeight != null
+                        ? `${(45 * liveWeight).toFixed(0)} ml`
+                        : hydrationInfo.requirementForWaterIntake
+                          ? `${hydrationInfo.requirementForWaterIntake} ml`
+                          : "—"}
                     </span>
                   </div>
 
