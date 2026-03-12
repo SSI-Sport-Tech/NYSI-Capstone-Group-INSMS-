@@ -43,6 +43,7 @@ interface MealLogState {
   athleteActions: string;
   sleepHours: string;
   sleepComments: string;
+  sqsScore: string;
 }
 
 // Legacy API shape (what the backend stores/returns)
@@ -86,6 +87,7 @@ function makeDefaultState(): MealLogState {
     athleteActions: "",
     sleepHours: "",
     sleepComments: "",
+    sqsScore: "",
   };
 }
 
@@ -103,6 +105,7 @@ function parseOtherRemarks(raw: string | null): MealLogState {
         athleteActions: parsed.athleteActions ?? "",
         sleepHours: parsed.sleepHours ?? "",
         sleepComments: parsed.sleepComments ?? "",
+        sqsScore: parsed.sqsScore ?? "",
       };
     }
   } catch {
@@ -386,7 +389,7 @@ export default function MealLogs({
       const id =
         isNewConsultation && ensureSession ? await ensureSession() : sessionId;
 
-      const { rows, customCols, prevRecommendation, athleteActions, sleepHours, sleepComments } =
+      const { rows, customCols, prevRecommendation, athleteActions, sleepHours, sleepComments, sqsScore } =
         state;
 
       // Sums for legacy fields
@@ -414,6 +417,7 @@ export default function MealLogs({
           athleteActions,
           sleepHours,
           sleepComments,
+          sqsScore,
         }),
       };
 
@@ -925,10 +929,10 @@ export default function MealLogs({
       {/* 4. Sleep */}
       <div>
         <h3 className="text-base font-semibold text-gray-800 mb-3">Sleep</h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Sleep Hours
+              REST — Sleep Duration (hrs)
             </label>
             {effectiveEditing ? (
               <input
@@ -946,6 +950,29 @@ export default function MealLogs({
             ) : (
               <p className="text-sm text-gray-800">
                 {state.sleepHours ? `${state.sleepHours} hrs` : "—"}
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              SQS — Sleep Quality (1–10)
+            </label>
+            {effectiveEditing ? (
+              <input
+                type="number"
+                value={state.sqsScore}
+                onChange={(e) =>
+                  setState((prev) => ({ ...prev, sqsScore: e.target.value }))
+                }
+                placeholder="1–10"
+                min={1}
+                max={10}
+                step={1}
+                className="px-2 py-1.5 border border-gray-300 rounded text-sm w-24"
+              />
+            ) : (
+              <p className="text-sm text-gray-800">
+                {state.sqsScore ? `${state.sqsScore} / 10` : "—"}
               </p>
             )}
           </div>
@@ -1035,13 +1062,21 @@ export default function MealLogs({
         {/* Sleep */}
         <div>
           <h3 className="text-base font-semibold text-gray-800 mb-3">Sleep</h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Sleep Hours
+                REST — Sleep Duration (hrs)
               </label>
               <p className="text-sm text-gray-800">
                 {prevState.sleepHours ? `${prevState.sleepHours} hrs` : "—"}
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                SQS — Sleep Quality (1–10)
+              </label>
+              <p className="text-sm text-gray-800">
+                {prevState.sqsScore ? `${prevState.sqsScore} / 10` : "—"}
               </p>
             </div>
             <div>
