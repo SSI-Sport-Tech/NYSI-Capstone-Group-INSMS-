@@ -25,6 +25,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import os
 
 from app.config.settings import settings
 
@@ -278,7 +279,7 @@ def selenium_fetch_search_results(
 
     header = Headers(
     browser="chrome",  # Generate only Chrome UA
-    os="win",  # Generate only Windows platform
+    os=os.getenv("OS_TYPE"),  # Generate only Windows platform
     headers=False # generate misc headers
 )
     customUserAgent = header.generate()['User-Agent']
