@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Check, Eye, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Eye, Pencil, Menu, X } from "lucide-react";
 import {
   consultationApi,
   consultationLookupApi,
@@ -779,6 +779,7 @@ export default function ConsultationView({
             isNewConsultation={isNewConsultation}
             ensureSession={ensureSession}
             prevSessionId={prevSessionId}
+            liveWeight={liveAnthro.weight}
           />
         );
 
@@ -925,26 +926,13 @@ export default function ConsultationView({
         {/* ── Left Sidebar ─────────────────────────────────────────────────── */}
         <div className={`shrink-0 bg-white border-r border-gray-200 flex flex-col transition-all duration-200 ${sidebarCollapsed ? "w-14" : "w-60"}`}>
           {/* Sidebar header */}
-          <div className="flex items-center justify-between px-3 py-4 border-b border-gray-100">
-            {!sidebarCollapsed && (
-              <div className="flex-1 mr-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                  Progress {currentStep}/{TOTAL_STEPS}
-                </p>
-                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                    style={{ width: `${progressPct}%` }}
-                  />
-                </div>
-              </div>
-            )}
+          <div className="flex items-center justify-end px-3 py-4 border-b border-gray-100">
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 shrink-0"
               aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+              {sidebarCollapsed ? <Menu className="w-4 h-4" /> : <X className="w-4 h-4" />}
             </button>
           </div>
 
