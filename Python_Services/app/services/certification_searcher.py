@@ -33,6 +33,8 @@ logger = logging.getLogger(__name__)
 # Thread pool for running sync scrapers
 _executor = ThreadPoolExecutor(max_workers=6)
 
+from fake_headers import Headers
+
 
 # ============================================================================
 # SELENIUM WAIT FUNCTIONS (Organization-specific)
@@ -252,6 +254,9 @@ CERTIFICATION_DATABASES = {
 # SELENIUM SEARCH FUNCTIONS
 # ============================================================================
 
+
+
+
 def selenium_fetch_search_results(
     url: str,
     search_term: str,
@@ -270,6 +275,14 @@ def selenium_fetch_search_results(
     Returns:
         str: Page HTML source after search
     """
+
+    header = Headers(
+    browser="chrome",  # Generate only Chrome UA
+    os="win",  # Generate only Windows platform
+    headers=False # generate misc headers
+)
+    customUserAgent = header.generate()['User-Agent']
+
     options = Options()
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
@@ -277,6 +290,8 @@ def selenium_fetch_search_results(
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--start-maximized")
+    options.add_argument(f"user-agent={customUserAgent}")
+
     
     driver = webdriver.Chrome(options=options)
     wait = WebDriverWait(driver, 10)
