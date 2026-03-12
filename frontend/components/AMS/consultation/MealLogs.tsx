@@ -15,17 +15,19 @@ interface MealLogsProps {
   liveWeight?: number | null;
 }
 
+type MacroType = "carb" | "fat" | "protein";
+
+interface MacroEntry {
+  type: MacroType;
+  low: string;
+  high: string;
+}
+
 interface MacroRow {
   id: string;
   label: string;
-  timing: string;
   food: string;
-  highCarb: string;
-  lowCarb: string;
-  highFat: string;
-  lowFat: string;
-  highProtein: string;
-  lowProtein: string;
+  macros: MacroEntry[];
   extra: Record<string, string>;
 }
 
@@ -67,17 +69,11 @@ interface LegacyMealLogData {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 function makeDefaultRows(): MacroRow[] {
-  return Array.from({ length: 10 }, (_, i) => ({
+  return Array.from({ length: 1 }, (_, i) => ({
     id: `row-default-${i}`,
     label: "",
-    timing: "",
     food: "",
-    highCarb: "",
-    lowCarb: "",
-    highFat: "",
-    lowFat: "",
-    highProtein: "",
-    lowProtein: "",
+    macros: [],
     extra: {},
   }));
 }
@@ -115,19 +111,9 @@ function parseOtherRemarks(raw: string | null): MealLogState {
   return makeDefaultState();
 }
 
-function parseLegacy(data: LegacyMealLogData): MealLogState {
-  const state = makeDefaultState();
-  // Map legacy slots to default row indices (0-based, no pre-filled labels)
-  state.rows[0].food = data.amBreakfast?.food ?? "";
-  state.rows[1].food = data.amTraining?.food ?? "";
-  state.rows[2].food = data.pmLunch?.food ?? "";
-  state.rows[3].food = data.pmTraining?.food ?? "";
-  state.rows[4].food = data.pmDinner?.food ?? "";
-  state.rows[5].food = data.supper?.food ?? "";
-
-  // Populate totals into highCarb/highProtein/highFat on first row as a hint
-  // (legacy didn't store per-row macros, so best effort is no-op per-row)
-  return state;
+function parseLegacy(_data: LegacyMealLogData): MealLogState {
+  // Legacy format can't be meaningfully mapped to the new free-text row format
+  return makeDefaultState();
 }
 
 function fromApiData(data: LegacyMealLogData): MealLogState {
@@ -146,10 +132,11 @@ function fromApiData(data: LegacyMealLogData): MealLogState {
   return parseLegacy(data);
 }
 
-function sumCol(rows: MacroRow[], key: keyof MacroRow): number {
-  return rows.reduce((acc, r) => {
-    const v = parseFloat((r[key] as string) || "0");
-    return acc + (isNaN(v) ? 0 : v);
+function sumMacro(rows: MacroRow[], type: MacroType, field: "low" | "high"): number {
+  return rows.reduce((acc, row) => {
+    return acc + row.macros
+      .filter((m) => m.type === type)
+      .reduce((s, m) => s + (parseFloat(m[field]) || 0), 0);
   }, 0);
 }
 
@@ -162,16 +149,14 @@ function AssessmentSection({
   rows: MacroRow[];
   liveWeight?: number | null;
 }) {
-  const totals = useMemo(() => {
-    return {
-      lowCarb: sumCol(rows, "lowCarb"),
-      highCarb: sumCol(rows, "highCarb"),
-      lowFat: sumCol(rows, "lowFat"),
-      highFat: sumCol(rows, "highFat"),
-      lowProtein: sumCol(rows, "lowProtein"),
-      highProtein: sumCol(rows, "highProtein"),
-    };
-  }, [rows]);
+  const totals = useMemo(() => ({
+    lowCarb: sumMacro(rows, "carb", "low"),
+    highCarb: sumMacro(rows, "carb", "high"),
+    lowFat: sumMacro(rows, "fat", "low"),
+    highFat: sumMacro(rows, "fat", "high"),
+    lowProtein: sumMacro(rows, "protein", "low"),
+    highProtein: sumMacro(rows, "protein", "high"),
+  }), [rows]);
 
   const fmt = (low: number, high: number) => {
     if (low === 0 && high === 0) return "—";
@@ -233,35 +218,20 @@ function ReadOnlyTable({
   rows: MacroRow[];
   customCols: CustomCol[];
 }) {
-  const stdCols = [
-    { key: "food", label: "Food Intake" },
-    { key: "highCarb", label: "High Carb (g)" },
-    { key: "lowCarb", label: "Low Carb (g)" },
-    { key: "highFat", label: "High Fat (g)" },
-    { key: "lowFat", label: "Low Fat (g)" },
-    { key: "highProtein", label: "High Protein (g)" },
-    { key: "lowProtein", label: "Low Protein (g)" },
-  ] as const;
-
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse border border-gray-300 text-sm">
         <thead>
           <tr className="bg-gray-50">
             <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">
-              Time
-            </th>
-            <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">
               Meal
             </th>
-            {stdCols.map((c) => (
-              <th
-                key={c.key}
-                className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap"
-              >
-                {c.label}
-              </th>
-            ))}
+            <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">
+              Food Intake
+            </th>
+            <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">
+              Macronutrients
+            </th>
             {customCols.map((cc) => (
               <th
                 key={cc.id}
@@ -275,17 +245,28 @@ function ReadOnlyTable({
         <tbody>
           {rows.map((row) => (
             <tr key={row.id} className="even:bg-gray-50">
-              <td className="border border-gray-300 px-3 py-2 text-gray-700 whitespace-nowrap">
-                {row.timing || "—"}
-              </td>
               <td className="border border-gray-300 px-3 py-2 font-medium text-gray-800 whitespace-nowrap">
                 {row.label || "—"}
               </td>
-              {stdCols.map((c) => (
-                <td key={c.key} className="border border-gray-300 px-3 py-2 text-gray-700">
-                  {(row[c.key] as string) || "—"}
-                </td>
-              ))}
+              <td className="border border-gray-300 px-3 py-2 text-gray-700">
+                {row.food || "—"}
+              </td>
+              <td className="border border-gray-300 px-3 py-2 text-gray-700">
+                <div className="space-y-0.5">
+                  {row.macros.length === 0 ? (
+                    <span className="text-gray-400">—</span>
+                  ) : (
+                    row.macros.map((entry, idx) => (
+                      <p key={idx} className={`text-xs ${
+                        entry.type === "carb" ? "text-blue-600" :
+                        entry.type === "fat" ? "text-orange-500" : "text-green-600"
+                      }`}>
+                        {entry.type === "carb" ? "Carb" : entry.type === "fat" ? "Fat" : "Protein"}: {entry.low || "—"}–{entry.high || "—"} g
+                      </p>
+                    ))
+                  )}
+                </div>
+              </td>
               {customCols.map((cc) => (
                 <td key={cc.id} className="border border-gray-300 px-3 py-2 text-gray-700">
                   {row.extra[cc.id] || "—"}
@@ -332,6 +313,9 @@ export default function MealLogs({
   // Add-column UI
   const [addingCol, setAddingCol] = useState(false);
   const [newColLabel, setNewColLabel] = useState("");
+
+  // Add-macro UI
+  const [addingMacroRowId, setAddingMacroRowId] = useState<string | null>(null);
 
   const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
 
@@ -406,9 +390,9 @@ export default function MealLogs({
         state;
 
       // Sums for legacy fields
-      const highCarbSum = sumCol(rows, "highCarb");
-      const highProteinSum = sumCol(rows, "highProtein");
-      const highFatSum = sumCol(rows, "highFat");
+      const highCarbSum = sumMacro(rows, "carb", "high");
+      const highProteinSum = sumMacro(rows, "protein", "high");
+      const highFatSum = sumMacro(rows, "fat", "high");
 
       const payload = {
         // Legacy compat fields
@@ -476,9 +460,7 @@ export default function MealLogs({
       ...prev,
       rows: prev.rows.map((r) => {
         if (r.id !== id) return r;
-        if (field in r && field !== "extra") {
-          return { ...r, [field]: value };
-        }
+        if (field === "label" || field === "food") return { ...r, [field]: value };
         return r;
       }),
     }));
@@ -497,14 +479,8 @@ export default function MealLogs({
     const newRow: MacroRow = {
       id: `row-${Date.now()}`,
       label: "",
-      timing: "",
       food: "",
-      highCarb: "",
-      lowCarb: "",
-      highFat: "",
-      lowFat: "",
-      highProtein: "",
-      lowProtein: "",
+      macros: [],
       extra: {},
     };
     setState((prev) => ({ ...prev, rows: [...prev.rows, newRow] }));
@@ -542,6 +518,46 @@ export default function MealLogs({
     }));
   };
 
+  // ── Macro entry helpers ────────────────────────────────────────────────────
+  const addMacroEntry = (rowId: string, type: MacroType) => {
+    setState((prev) => ({
+      ...prev,
+      rows: prev.rows.map((r) =>
+        r.id === rowId
+          ? { ...r, macros: [...r.macros, { type, low: "", high: "" }] }
+          : r
+      ),
+    }));
+    setAddingMacroRowId(null);
+  };
+
+  const removeMacroEntry = (rowId: string, index: number) => {
+    setState((prev) => ({
+      ...prev,
+      rows: prev.rows.map((r) =>
+        r.id === rowId
+          ? { ...r, macros: r.macros.filter((_, i) => i !== index) }
+          : r
+      ),
+    }));
+  };
+
+  const updateMacroEntry = (rowId: string, index: number, field: "low" | "high", value: string) => {
+    setState((prev) => ({
+      ...prev,
+      rows: prev.rows.map((r) =>
+        r.id === rowId
+          ? {
+              ...r,
+              macros: r.macros.map((m, i) =>
+                i === index ? { ...m, [field]: value } : m
+              ),
+            }
+          : r
+      ),
+    }));
+  };
+
   // ── Loading / Error states ─────────────────────────────────────────────────
   if (loading) {
     return (
@@ -574,19 +590,8 @@ export default function MealLogs({
   }
 
   // ── Standard table columns ─────────────────────────────────────────────────
-  const stdEditCols: {
-    key: keyof MacroRow;
-    label: string;
-    type?: "text" | "number";
-    wide?: boolean;
-  }[] = [
-    { key: "food", label: "Food Intake", type: "text", wide: true },
-    { key: "highCarb", label: "High Carb (g)", type: "number" },
-    { key: "lowCarb", label: "Low Carb (g)", type: "number" },
-    { key: "highFat", label: "High Fat (g)", type: "number" },
-    { key: "lowFat", label: "Low Fat (g)", type: "number" },
-    { key: "highProtein", label: "High Protein (g)", type: "number" },
-    { key: "lowProtein", label: "Low Protein (g)", type: "number" },
+  const stdEditCols = [
+    { key: "food" as keyof MacroRow, label: "Food Intake", type: "text" as const, wide: true },
   ];
 
   // ── Current Session Tab content (JSX variable, NOT a component — avoids remount on state change)
@@ -602,9 +607,6 @@ export default function MealLogs({
             <thead>
               <tr className="bg-gray-50">
                 <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">
-                  Time
-                </th>
-                <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">
                   Meal
                 </th>
                 {stdEditCols.map((c) => (
@@ -615,6 +617,9 @@ export default function MealLogs({
                     {c.label}
                   </th>
                 ))}
+                <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">
+                  Macronutrients
+                </th>
                 {state.customCols.map((cc) => (
                   <th
                     key={cc.id}
@@ -644,28 +649,15 @@ export default function MealLogs({
             <tbody>
               {state.rows.map((row) => (
                 <tr key={row.id} className="even:bg-gray-50">
-                  {/* Time */}
-                  <td className="border border-gray-300 px-2 py-1 whitespace-nowrap">
-                    {effectiveEditing ? (
-                      <input
-                        type="time"
-                        value={row.timing}
-                        onChange={(e) => updateRow(row.id, "timing", e.target.value)}
-                        className="px-1 py-0.5 border border-gray-300 rounded text-sm w-28"
-                      />
-                    ) : (
-                      <span className="text-gray-700">{row.timing || "—"}</span>
-                    )}
-                  </td>
-                  {/* Meal label */}
+                  {/* Meal (free text) */}
                   <td className="border border-gray-300 px-2 py-1 whitespace-nowrap">
                     {effectiveEditing ? (
                       <input
                         type="text"
                         value={row.label}
                         onChange={(e) => updateRow(row.id, "label", e.target.value)}
-                        placeholder="Meal name"
-                        className="w-28 px-1 py-0.5 border border-gray-300 rounded text-sm"
+                        placeholder="e.g. 8am Breakfast"
+                        className="w-36 px-1 py-0.5 border border-gray-300 rounded text-sm"
                       />
                     ) : (
                       <span className="font-medium text-gray-800">
@@ -693,6 +685,90 @@ export default function MealLogs({
                       )}
                     </td>
                   ))}
+
+                  {/* Macronutrients cell */}
+                  <td className="border border-gray-300 px-2 py-2 min-w-[200px]">
+                    {effectiveEditing ? (
+                      <div className="space-y-1.5">
+                        {row.macros.map((entry, idx) => (
+                          <div key={idx} className="flex items-center gap-1">
+                            <span className={`text-xs font-medium w-14 shrink-0 ${
+                              entry.type === "carb" ? "text-blue-600" :
+                              entry.type === "fat" ? "text-orange-500" : "text-green-600"
+                            }`}>
+                              {entry.type === "carb" ? "Carb" : entry.type === "fat" ? "Fat" : "Protein"}
+                            </span>
+                            <input
+                              type="number"
+                              value={entry.low}
+                              onChange={(e) => updateMacroEntry(row.id, idx, "low", e.target.value)}
+                              placeholder="low"
+                              className="w-14 px-1 py-0.5 border border-gray-300 rounded text-xs"
+                            />
+                            <span className="text-gray-400 text-xs">–</span>
+                            <input
+                              type="number"
+                              value={entry.high}
+                              onChange={(e) => updateMacroEntry(row.id, idx, "high", e.target.value)}
+                              placeholder="high"
+                              className="w-14 px-1 py-0.5 border border-gray-300 rounded text-xs"
+                            />
+                            <span className="text-gray-400 text-xs">g</span>
+                            <button
+                              onClick={() => removeMacroEntry(row.id, idx)}
+                              className="text-red-400 hover:text-red-600 ml-0.5"
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
+                        ))}
+                        {/* + picker */}
+                        {addingMacroRowId === row.id ? (
+                          <div className="flex items-center gap-1 mt-1">
+                            {(["carb", "fat", "protein"] as MacroType[]).map((t) => (
+                              <button
+                                key={t}
+                                onClick={() => addMacroEntry(row.id, t)}
+                                className={`px-2 py-0.5 text-xs rounded border font-medium ${
+                                  t === "carb" ? "border-blue-300 text-blue-600 hover:bg-blue-50" :
+                                  t === "fat" ? "border-orange-300 text-orange-500 hover:bg-orange-50" :
+                                  "border-green-300 text-green-600 hover:bg-green-50"
+                                }`}
+                              >
+                                {t === "carb" ? "Carb" : t === "fat" ? "Fat" : "Protein"}
+                              </button>
+                            ))}
+                            <button
+                              onClick={() => setAddingMacroRowId(null)}
+                              className="text-gray-400 hover:text-gray-600 text-xs ml-1"
+                            >✕</button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setAddingMacroRowId(row.id)}
+                            className="flex items-center gap-0.5 text-xs text-gray-400 hover:text-gray-600 mt-0.5"
+                          >
+                            <Plus size={11} /> Add
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-0.5">
+                        {row.macros.length === 0 ? (
+                          <span className="text-gray-400">—</span>
+                        ) : (
+                          row.macros.map((entry, idx) => (
+                            <p key={idx} className={`text-xs ${
+                              entry.type === "carb" ? "text-blue-600" :
+                              entry.type === "fat" ? "text-orange-500" : "text-green-600"
+                            }`}>
+                              {entry.type === "carb" ? "Carb" : entry.type === "fat" ? "Fat" : "Protein"}: {entry.low || "—"}–{entry.high || "—"} g
+                            </p>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </td>
 
                   {/* Custom columns */}
                   {state.customCols.map((cc) => (
