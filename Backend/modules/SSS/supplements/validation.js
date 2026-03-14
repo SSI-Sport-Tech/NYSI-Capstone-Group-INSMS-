@@ -35,6 +35,11 @@ export const createSupplementSchema = z.object({
         })
         .describe('Organization name if Batch Tested (e.g., "NSF", "USP"), "NIL" if Not Batch Tested'),
 
+    batch_testing_org_id: uuidSchema
+        .optional()
+        .nullable()
+        .describe('FK reference to batch_testing_org_lookup; controller resolves text value from this ID'),
+
     // ---- OPTIONAL TEXT FIELDS ----
 
     supplement_brand: z.string()

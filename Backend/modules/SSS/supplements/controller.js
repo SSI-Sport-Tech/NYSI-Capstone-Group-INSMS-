@@ -120,6 +120,7 @@ export async function getSupplementDetails(req, res) {
                 supplement_warning_label: supplement.supplement_warning_label || null,
                 supplement_certifications: supplement.supplement_certifications || null,
                 batch_testing_org: supplement.batch_testing_org || null,
+                batch_testing_org_id: supplement.batch_testing_org_id || null,
                 product_source_url: supplement.product_source_url || null
             },
             stockSummary: {
@@ -181,6 +182,21 @@ export async function createSupplement(req, res) {
         console.log('Step 2: Getting supplement status...');
         const status = await getSupplementStatusById(pool, validatedData.supplement_status_id);
         console.log(`Status: ${status.supplement_status}`);
+
+        // STEP 2b: Resolve batch_testing_org text from ID if ID was provided
+        if (validatedData.batch_testing_org_id) {
+            const orgResult = await pool.query(
+                'SELECT batch_testing_org FROM SSS.batch_testing_org_lookup WHERE id = $1 AND is_active = true',
+                [validatedData.batch_testing_org_id]
+            );
+            if (orgResult.rows.length === 0) {
+                return res.status(400).json({
+                    error: 'Validation failed',
+                    details: [{ field: 'batch_testing_org_id', message: 'Invalid batch testing organisation ID' }]
+                });
+            }
+            validatedData.batch_testing_org = orgResult.rows[0].batch_testing_org;
+        }
 
         // STEP 3: Validate and set batch_testing_org based on status
         console.log('Step 3: Validating batch_testing_org...');
@@ -346,6 +362,22 @@ export async function updateSupplement(req, res) {
 
         // STEP 4: Handle supplement_status_id change (business logic)
         console.log('Step 4: Applying business logic...');
+
+        // Resolve batch_testing_org text from ID if ID was provided
+        if (validatedData.batch_testing_org_id) {
+            const orgResult = await pool.query(
+                'SELECT batch_testing_org FROM SSS.batch_testing_org_lookup WHERE id = $1 AND is_active = true',
+                [validatedData.batch_testing_org_id]
+            );
+            if (orgResult.rows.length === 0) {
+                return res.status(400).json({
+                    error: 'Validation failed',
+                    details: [{ field: 'batch_testing_org_id', message: 'Invalid batch testing organisation ID' }]
+                });
+            }
+            validatedData.batch_testing_org = orgResult.rows[0].batch_testing_org;
+        }
+
         if (validatedData.supplement_status_id) {
             // Get the new status
             const newStatus = await getSupplementStatusById(pool, validatedData.supplement_status_id);
@@ -723,6 +755,23 @@ export async function getTicketStatusesController(req, res) {
         console.error('Error fetching ticket statuses:', error);
         res.status(500).json({
             error: 'Failed to fetch ticket statuses',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}
+
+export async function getBatchTestingOrgsController(req, res) {
+    try {
+        const includeInactive = req.query.includeInactive === 'true';
+        const result = await services.getBatchTestingOrgs(!includeInactive);
+
+        res.json({
+            data: result.rows
+        });
+    } catch (error) {
+        console.error('Error fetching batch testing orgs:', error);
+        res.status(500).json({
+            error: 'Failed to fetch batch testing organisations',
             message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
         });
     }

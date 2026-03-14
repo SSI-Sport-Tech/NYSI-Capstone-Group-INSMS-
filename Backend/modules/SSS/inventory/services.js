@@ -165,6 +165,7 @@ export async function getBatchById(batchId) {
             ib.batch_expiration_date,
             ib.batch_manufacture_date,
             ib.inv_batch_testing_org,
+            ib.inv_batch_testing_org_id,
             ib.batch_unit,
             ib.batch_stock_status_id,
             ib.date_added,
@@ -239,9 +240,10 @@ export async function createBatch(batchData, userId) {
             batch_expiration_date,
             batch_manufacture_date,
             inv_batch_testing_org,
+            inv_batch_testing_org_id,
             batch_unit
         ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
         )
         RETURNING
             id,
@@ -253,6 +255,7 @@ export async function createBatch(batchData, userId) {
             batch_expiration_date,
             batch_manufacture_date,
             inv_batch_testing_org,
+            inv_batch_testing_org_id,
             batch_unit,
             date_added
     `;
@@ -266,6 +269,7 @@ export async function createBatch(batchData, userId) {
     batchData.batch_expiration_date || null,
     batchData.batch_manufacture_date || null,
     batchData.inv_batch_testing_org || null,
+    batchData.inv_batch_testing_org_id || null,
     batchData.batch_unit || null,
   ];
 
@@ -291,6 +295,7 @@ export async function updateBatch(batchId, updateData, userId) {
     batch_expiration_date: updateData.batch_expiration_date,
     batch_manufacture_date: updateData.batch_manufacture_date,
     inv_batch_testing_org: updateData.inv_batch_testing_org,
+    inv_batch_testing_org_id: updateData.inv_batch_testing_org_id,
     batch_unit: updateData.batch_unit,
   };
 
@@ -322,6 +327,7 @@ export async function updateBatch(batchId, updateData, userId) {
             batch_expiration_date,
             batch_manufacture_date,
             inv_batch_testing_org,
+            inv_batch_testing_org_id,
             batch_unit
     `;
 

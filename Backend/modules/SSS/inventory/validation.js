@@ -45,6 +45,11 @@ export const createBatchSchema = z.object({
         .optional()
         .nullable(),
 
+    inv_batch_testing_org_id: uuidSchema
+        .optional()
+        .nullable()
+        .describe('FK reference to batch_testing_org_lookup'),
+
     batch_unit: z.string()
         .max(50, 'Unit must be less than 50 characters')
         .trim()

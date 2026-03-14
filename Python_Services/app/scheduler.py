@@ -11,6 +11,50 @@ load_dotenv()
 
 scheduler = AsyncIOScheduler()
 
+# ── Scheduler config DB helpers ───────────────────────────────────────────────
+
+def get_config_from_db() -> dict:
+    """Read scheduler config from DB. Falls back to defaults if table missing."""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT is_enabled, interval_days, is_running,
+                           last_run_at, next_run_at, updated_at
+                    FROM sss.scraper_schedule_config
+                    LIMIT 1
+                """)
+                row = cur.fetchone()
+                if row:
+                    return {
+                        "is_enabled": row[0],
+                        "interval_days": row[1],
+                        "is_running": row[2],
+                        "last_run_at": row[3],
+                        "next_run_at": row[4],
+                        "updated_at": row[5],
+                    }
+    except Exception as e:
+        print(f"⚠️ Could not read scheduler config from DB: {e}")
+    return {"is_enabled": True, "interval_days": 14, "is_running": False,
+            "last_run_at": None, "next_run_at": None, "updated_at": None}
+
+
+def update_run_timestamps_in_db(last_run_at: datetime, next_run_at):
+    """Write last_run_at and next_run_at to DB after a run completes."""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE sss.scraper_schedule_config
+                    SET last_run_at = %s, next_run_at = %s,
+                        is_running = false, updated_at = now()
+                """, (last_run_at, next_run_at))
+            conn.commit()
+    except Exception as e:
+        print(f"⚠️ Could not update run timestamps in DB: {e}")
+
+
 # ── Configure your catalog URLs here ──────────────────────────────────────────
 
 
@@ -102,20 +146,35 @@ async def run_full_scrape_job():
         except Exception as e:
             print(f"  ❌ Failed for {catalog_url}: {e}")
 
-    print(f"\n⏰ SCHEDULED SCRAPE FINISHED: {datetime.now().isoformat()}\n")
+    finished_at = datetime.now()
+    print(f"\n⏰ SCHEDULED SCRAPE FINISHED: {finished_at.isoformat()}\n")
+
+    # Write timestamps back to DB
+    job = scheduler.get_job("full_scrape")
+    next_run = job.next_run_time if job else None
+    update_run_timestamps_in_db(finished_at, next_run)
 
 
 def start_scheduler():
+    config = get_config_from_db()
+    interval_days = config.get("interval_days", 14)
+    is_enabled = config.get("is_enabled", True)
+
     scheduler.add_job(
         run_full_scrape_job,
-        trigger=IntervalTrigger(weeks=2),
+        trigger=IntervalTrigger(days=interval_days),
         id="full_scrape",
-        name="Bi-weekly full catalog scrape",
+        name=f"Full catalog scrape every {interval_days} days",
         replace_existing=True,
         misfire_grace_time=3600  # allow 1hr late start if server was down
     )
     scheduler.start()
-    print("✅ Scheduler started — full scrape every 2 weeks")
+
+    if not is_enabled:
+        scheduler.pause_job("full_scrape")
+        print(f"✅ Scheduler started (PAUSED) — interval: {interval_days} days")
+    else:
+        print(f"✅ Scheduler started — full scrape every {interval_days} days")
 
 
 def stop_scheduler():

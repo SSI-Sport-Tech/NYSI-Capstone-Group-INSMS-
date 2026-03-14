@@ -48,7 +48,7 @@ interface FormData {
   warningLabel: string;
   certifications: string;
   additionalNotes: string;
-  testingOrganisation: string;
+  testingOrganisationId: string;
   productSourceUrl: string;
 
   // Nutritional Information
@@ -62,7 +62,7 @@ interface FormData {
   batchUnit: string;
   price: number;
   expirationDate: string;
-  batchTestingOrg: string;
+  batchTestingOrgId: string;
 }
 
 const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
@@ -85,6 +85,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [packagingOptions, setPackagingOptions] = useState<LookupOption[]>([]);
   const [statusOptions, setStatusOptions] = useState<LookupOption[]>([]);
+  const [batchTestingOrgOptions, setBatchTestingOrgOptions] = useState<LookupOption[]>([]);
 
   const emptyForm: FormData = {
     supplementId: null,
@@ -97,7 +98,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
     warningLabel: "",
     certifications: "",
     additionalNotes: "",
-    testingOrganisation: "",
+    testingOrganisationId: "",
     productSourceUrl: "",
     servingDefinition: "",
     nutritionalPerServing: [{ nutrient: "", amount: "" }],
@@ -107,7 +108,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
     batchUnit: "",
     price: 0,
     expirationDate: "",
-    batchTestingOrg: "",
+    batchTestingOrgId: "",
   };
 
   const [formData, setFormData] = useState<FormData>(emptyForm);
@@ -130,6 +131,14 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
             label: r.supplement_status,
           }),
         ),
+      );
+    });
+    axios.get("/api/SSS/lookups/batch-testing-orgs").then((res) => {
+      setBatchTestingOrgOptions(
+        (res.data.data ?? []).map((r: { id: string; label: string }) => ({
+          id: r.id,
+          label: r.label,
+        })),
       );
     });
   }, []);
@@ -291,7 +300,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
           supplement_warning_label: formData.warningLabel || null,
           supplement_certifications: formData.certifications || null,
           supplement_additional_information: formData.additionalNotes || null,
-          batch_testing_org: formData.testingOrganisation || null,
+          batch_testing_org_id: formData.testingOrganisationId || null,
           product_source_url: formData.productSourceUrl || null,
           nutritional_info_per_serving_definition: formData.servingDefinition || null,
           nutritional_info_per_serving: rowsToObj(formData.nutritionalPerServing),
@@ -312,7 +321,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
             batch_unit: formData.batchUnit || null,
             batch_price: formData.price || null,
             batch_expiration_date: formData.expirationDate || null,
-            inv_batch_testing_org: formData.batchTestingOrg || null,
+            inv_batch_testing_org_id: formData.batchTestingOrgId || null,
           };
           await axios.post("/api/SSS/batches", batchData, {
             headers: { Authorization: `Bearer ${token}` },
@@ -328,7 +337,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
             batch_unit: formData.batchUnit || null,
             batch_price: formData.price || null,
             batch_expiration_date: formData.expirationDate || null,
-            inv_batch_testing_org: formData.batchTestingOrg || null,
+            inv_batch_testing_org_id: formData.batchTestingOrgId || null,
           };
           await axios.post("/api/SSS/batches", batchData, {
             headers: { Authorization: `Bearer ${token}` },
@@ -350,7 +359,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
           batch_initial_quantity: "quantity",
           batch_expiration_date: "expirationDate",
           batch_price: "price",
-          inv_batch_testing_org: "batchTestingOrg",
+          inv_batch_testing_org_id: "batchTestingOrgId",
           batch_unit: "batchUnit",
         };
         data.details.forEach(({ field, message }) => {
@@ -370,7 +379,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-[70] overflow-y-auto">
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
 
@@ -610,15 +619,20 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                           <label className="block text-sm text-gray-700 mb-1">
                             Batch Testing Org
                           </label>
-                          <input
-                            type="text"
-                            value={formData.testingOrganisation}
+                          <select
+                            value={formData.testingOrganisationId}
                             onChange={(e) =>
-                              setFormData((prev) => ({ ...prev, testingOrganisation: e.target.value }))
+                              setFormData((prev) => ({ ...prev, testingOrganisationId: e.target.value }))
                             }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
-                            placeholder="e.g. Informed-Sport"
-                          />
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                          >
+                            <option value="">— Select testing organisation —</option>
+                            {batchTestingOrgOptions.map((o) => (
+                              <option key={o.id} value={o.id}>
+                                {o.label}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                         <div className="col-span-2">
                           <label className="block text-sm text-gray-700 mb-1">
@@ -1051,18 +1065,23 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                       <label className="block text-sm text-gray-700 mb-1">
                         Batch Testing Organisation
                       </label>
-                      <input
-                        type="text"
-                        value={formData.batchTestingOrg}
+                      <select
+                        value={formData.batchTestingOrgId}
                         onChange={(e) =>
                           setFormData((prev) => ({
                             ...prev,
-                            batchTestingOrg: e.target.value,
+                            batchTestingOrgId: e.target.value,
                           }))
                         }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
-                        placeholder="e.g. Informed Sport"
-                      />
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                      >
+                        <option value="">— Select testing organisation —</option>
+                        {batchTestingOrgOptions.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>}
                 </div>

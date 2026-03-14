@@ -183,6 +183,7 @@ export async function getSupplementById(supplementId) {
       s.supplement_warning_label,
       s.supplement_certifications,
       s.batch_testing_org,
+      s.batch_testing_org_id,
       s.supplement_packaging_form_id,
       s.supplement_status_id
     FROM SSS.Supplement s
@@ -284,6 +285,7 @@ export async function createSupplement(supplementData, userId) {
       supplement_status_id,
       approved_by,
       batch_testing_org,
+      batch_testing_org_id,
       supplement_description,
       supplement_ingredient,
       nutritional_info_per_100g,
@@ -297,7 +299,7 @@ export async function createSupplement(supplementData, userId) {
       vector_100g_ingredient,
       vector_perserving_ingredient
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
     )
     RETURNING
       id,
@@ -307,6 +309,7 @@ export async function createSupplement(supplementData, userId) {
       supplement_status_id,
       approved_by,
       batch_testing_org,
+      batch_testing_org_id,
       supplement_input_type
   `;
 
@@ -324,28 +327,29 @@ export async function createSupplement(supplementData, userId) {
     supplementData.supplement_status_id, // $4
     supplementData.approved_by, // $5
     supplementData.batch_testing_org || null, // $6
-    supplementData.supplement_description || null, // $7
+    supplementData.batch_testing_org_id || null, // $7
+    supplementData.supplement_description || null, // $8
     supplementData.supplement_ingredient && supplementData.supplement_ingredient.length > 0
       ? JSON.stringify(supplementData.supplement_ingredient)
-      : '[]', // $8 - JSONB: stringify array
+      : '[]', // $9 - JSONB: stringify array
     supplementData.nutritional_info_per_100g
       ? JSON.stringify(supplementData.nutritional_info_per_100g)
-      : null, // $9 - JSONB: stringify object
+      : null, // $10 - JSONB: stringify object
     supplementData.nutritional_info_per_serving
       ? JSON.stringify(supplementData.nutritional_info_per_serving)
-      : null, // $10 - JSONB: stringify object
-    supplementData.nutritional_info_per_serving_definition || null, // $11
-    supplementData.supplement_warning_label || null, // $12
-    supplementData.supplement_certifications || null, // $13
-    supplementData.supplement_additional_information || null, // $14
-    urlArray, // $15 - TEXT[]: pg handles array conversion
-    supplementData.supplement_input_type || "Manual", // $16
+      : null, // $11 - JSONB: stringify object
+    supplementData.nutritional_info_per_serving_definition || null, // $12
+    supplementData.supplement_warning_label || null, // $13
+    supplementData.supplement_certifications || null, // $14
+    supplementData.supplement_additional_information || null, // $15
+    urlArray, // $16 - TEXT[]: pg handles array conversion
+    supplementData.supplement_input_type || "Manual", // $17
     supplementData.vector_100g_ingredient
       ? JSON.stringify(supplementData.vector_100g_ingredient)
-      : null, // $17 - vector: stringify array for pgvector
+      : null, // $18 - vector: stringify array for pgvector
     supplementData.vector_perserving_ingredient
       ? JSON.stringify(supplementData.vector_perserving_ingredient)
-      : null, // $18 - vector: stringify array for pgvector
+      : null, // $19 - vector: stringify array for pgvector
   ];
 
   return withUserContext(userId, async (client) => {
@@ -398,6 +402,7 @@ export async function updateSupplement(supplementId, updateData, userId) {
     supplement_packaging_form_id: updateData.supplement_packaging_form_id,
     supplement_status_id: updateData.supplement_status_id,
     batch_testing_org: updateData.batch_testing_org,
+    batch_testing_org_id: updateData.batch_testing_org_id,
     supplement_description: updateData.supplement_description,
     supplement_ingredient: updateData.supplement_ingredient
       ? JSON.stringify(updateData.supplement_ingredient)
@@ -453,6 +458,7 @@ export async function updateSupplement(supplementId, updateData, userId) {
       supplement_packaging_form_id,
       supplement_status_id,
       batch_testing_org,
+      batch_testing_org_id,
       supplement_description,
       supplement_ingredient,
       nutritional_info_per_100g,
@@ -723,6 +729,22 @@ export async function getSupplementStatuses(activeOnly = true) {
         FROM SSS.Supplement_Status_Lookup
         ${activeOnly ? 'WHERE is_active = true' : ''}
         ORDER BY supplement_status ASC
+    `;
+
+  return await pool.query(query);
+}
+
+/**
+ * Get all batch testing org options for dropdowns
+ */
+export async function getBatchTestingOrgs(activeOnly = true) {
+  const query = `
+        SELECT
+            id,
+            batch_testing_org as label
+        FROM SSS.batch_testing_org_lookup
+        ${activeOnly ? 'WHERE is_active = true' : ''}
+        ORDER BY batch_testing_org ASC
     `;
 
   return await pool.query(query);
