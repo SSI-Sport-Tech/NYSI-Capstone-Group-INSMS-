@@ -14,7 +14,7 @@ const optionalDateSchema = z.string()
 // CREATE PRESCRIPTION SCHEMA
 // ============================================================================
 
-export const createPrescriptionSchema = z.object({
+export const createSupplementDispensingSchema = z.object({
     sessions_id: uuidSchema.describe('Session UUID'),
     batch_id: uuidSchema.describe('Inventory batch UUID'),
     prescribed_quantity: z.number().int().positive('Prescribed quantity must be a positive integer'),
@@ -34,7 +34,7 @@ export const createPrescriptionSchema = z.object({
 // UPDATE PRESCRIPTION SCHEMA (all fields optional)
 // ============================================================================
 
-export const updatePrescriptionSchema = z.object({
+export const updateSupplementDispensingSchema = z.object({
     batch_id: uuidSchema.optional(),
     prescribed_quantity: z.number().int().positive('Prescribed quantity must be a positive integer').optional(),
     dosage: z.number().int().positive().optional(),

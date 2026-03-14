@@ -10,13 +10,13 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/Consultation/open-items/statuses:
+ * /api/Consultation/actionables/statuses:
  *   get:
  *     summary: Get Open Item Statuses (Lookup)
  *     description: |
  *       Returns all active open item statuses for dropdown selection.
  *       Currently: "In Progress" and "Completed".
- *     tags: [Consultation - Open Items]
+ *     tags: [Consultation - Actionables]
  *     responses:
  *       200:
  *         description: List of active statuses
@@ -39,7 +39,7 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/open-items/statuses', controller.getOpenItemStatuses);
+router.get('/actionables/statuses', controller.getOpenItemStatuses);
 
 // ============================================================================
 // OPEN ITEMS CARD ROUTES
@@ -47,14 +47,14 @@ router.get('/open-items/statuses', controller.getOpenItemStatuses);
 
 /**
  * @swagger
- * /api/Consultation/open-items/session/{sessionId}:
+ * /api/Consultation/actionables/session/{sessionId}:
  *   get:
  *     summary: Get Open Items by Session
  *     description: |
  *       Get all open items for a specific consultation session.
  *       Returns items sorted by due date (earliest first, nulls last).
  *       Includes the joined status name from the lookup table.
- *     tags: [Consultation - Open Items]
+ *     tags: [Consultation - Actionables]
  *     parameters:
  *       - name: sessionId
  *         in: path
@@ -111,11 +111,11 @@ router.get('/open-items/statuses', controller.getOpenItemStatuses);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/open-items/session/:sessionId', controller.getOpenItems);
+router.get('/actionables/session/:sessionId', controller.getOpenItems);
 
 /**
  * @swagger
- * /api/Consultation/open-items:
+ * /api/Consultation/actionables:
  *   post:
  *     summary: Create Open Item
  *     description: |
@@ -123,7 +123,7 @@ router.get('/open-items/session/:sessionId', controller.getOpenItems);
  *       Validates that sessions_id exists and open_item_status_id is active.
  *       The `owner` field is automatically set to the logged-in nutritionist's name.
  *       For testing in Swagger, supply `nutritionist_id` to override the logged-in user lookup.
- *     tags: [Consultation - Open Items]
+ *     tags: [Consultation - Actionables]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -186,18 +186,18 @@ router.get('/open-items/session/:sessionId', controller.getOpenItems);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/open-items', authenticateToken, controller.createOpenItem);
+router.post('/actionables', authenticateToken, controller.createOpenItem);
 
 /**
  * @swagger
- * /api/Consultation/open-items/{id}:
+ * /api/Consultation/actionables/{id}:
  *   patch:
  *     summary: Update Open Item
  *     description: |
  *       Update an open item. All fields are optional — only provided fields are modified.
  *       Use this to change the status (e.g. mark as completed), update description, etc.
  *       sessions_id cannot be changed after creation.
- *     tags: [Consultation - Open Items]
+ *     tags: [Consultation - Actionables]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -252,16 +252,16 @@ router.post('/open-items', authenticateToken, controller.createOpenItem);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch('/open-items/:id', authenticateToken, controller.updateOpenItem);
+router.patch('/actionables/:id', authenticateToken, controller.updateOpenItem);
 
 /**
  * @swagger
- * /api/Consultation/open-items:
+ * /api/Consultation/actionables:
  *   delete:
  *     summary: Delete Open Items (Bulk)
  *     description: |
  *       Delete one or more open items by ID.
- *     tags: [Consultation - Open Items]
+ *     tags: [Consultation - Actionables]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -303,6 +303,6 @@ router.patch('/open-items/:id', authenticateToken, controller.updateOpenItem);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete('/open-items', authenticateToken, controller.deleteOpenItems);
+router.delete('/actionables', authenticateToken, controller.deleteOpenItems);
 
 export default router;

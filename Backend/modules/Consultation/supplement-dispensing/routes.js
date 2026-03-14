@@ -10,7 +10,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/Consultation/prescription/session/{sessionId}:
+ * /api/Consultation/supplement-dispensing/session/{sessionId}:
  *   get:
  *     summary: Get All Prescriptions for a Session
  *     description: |
@@ -18,7 +18,7 @@ const router = express.Router();
  *       Each prescription includes joined batch details (batch_number, price, expiration_date)
  *       and supplement details (name, brand, batch_testing_org) auto-populated from the batch.
  *       The intervention_status represents the user-selected classification (e.g. Batch Tested / Not Batch Tested).
- *     tags: [Consultation - Prescription]
+ *     tags: [Consultation - Supplement Dispensing]
  *     parameters:
  *       - name: sessionId
  *         in: path
@@ -109,11 +109,11 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/prescription/session/:sessionId', controller.getPrescriptions);
+router.get('/supplement-dispensing/session/:sessionId', controller.getPrescriptions);
 
 /**
  * @swagger
- * /api/Consultation/prescription:
+ * /api/Consultation/supplement-dispensing:
  *   post:
  *     summary: Create Prescription
  *     description: |
@@ -122,7 +122,7 @@ router.get('/prescription/session/:sessionId', controller.getPrescriptions);
  *       - `intervention_status_id` is the user-selected classification (e.g. Batch Tested / Not Batch Tested).
  *         Use `GET /api/Consultation/lookups/intervention-statuses` for available options.
  *       - `batch_testing_org` and supplement fields are stored in SSS and returned via GET.
- *     tags: [Consultation - Prescription]
+ *     tags: [Consultation - Supplement Dispensing]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -223,17 +223,17 @@ router.get('/prescription/session/:sessionId', controller.getPrescriptions);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/prescription', authenticateToken, controller.createPrescription);
+router.post('/supplement-dispensing', authenticateToken, controller.createPrescription);
 
 /**
  * @swagger
- * /api/Consultation/prescription/{id}:
+ * /api/Consultation/supplement-dispensing/{id}:
  *   patch:
  *     summary: Update Prescription
  *     description: |
  *       Partially update a prescription. All fields are optional — only provided fields are modified.
  *       sessions_id cannot be changed after creation.
- *     tags: [Consultation - Prescription]
+ *     tags: [Consultation - Supplement Dispensing]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -314,15 +314,15 @@ router.post('/prescription', authenticateToken, controller.createPrescription);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch('/prescription/:id', authenticateToken, controller.updatePrescription);
+router.patch('/supplement-dispensing/:id', authenticateToken, controller.updatePrescription);
 
 /**
  * @swagger
- * /api/Consultation/prescription/{id}:
+ * /api/Consultation/supplement-dispensing/{id}:
  *   delete:
  *     summary: Delete Prescription
  *     description: Permanently remove a prescription from a consultation session.
- *     tags: [Consultation - Prescription]
+ *     tags: [Consultation - Supplement Dispensing]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -354,6 +354,6 @@ router.patch('/prescription/:id', authenticateToken, controller.updatePrescripti
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete('/prescription/:id', authenticateToken, controller.deletePrescription);
+router.delete('/supplement-dispensing/:id', authenticateToken, controller.deletePrescription);
 
 export default router;

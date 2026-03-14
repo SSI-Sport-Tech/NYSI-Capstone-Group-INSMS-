@@ -16,7 +16,7 @@ export const validateGetSessionId = [
   handleValidation,
 ];
 
-export const validatePatchAdherences = [
+export const validatePatchNutritionRequirements = [
   param("sessionId").isUUID().withMessage("sessionId must be a valid UUID"),
 
   body("pal").optional().isFloat({ min: 0, max: 9.99 }).withMessage("pal must be a number"),

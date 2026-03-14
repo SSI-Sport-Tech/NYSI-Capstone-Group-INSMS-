@@ -1,8 +1,8 @@
 import * as services from './services.js';
 import { InsufficientStockError } from './services.js';
 import {
-    createPrescriptionSchema,
-    updatePrescriptionSchema,
+    createSupplementDispensingSchema,
+    updateSupplementDispensingSchema,
     sessionIdParamSchema,
     uuidParamSchema,
 } from './validation.js';
@@ -24,7 +24,7 @@ export async function getPrescriptions(req, res) {
             return res.status(404).json({ error: 'Session not found' });
         }
 
-        const data = await services.getPrescriptionsBySessionId(sessionId);
+        const data = await services.getSupplementDispensingBySessionId(sessionId);
         res.json({ data });
 
     } catch (error) {
@@ -45,7 +45,7 @@ export async function getPrescriptions(req, res) {
 
 export async function createPrescription(req, res) {
     try {
-        const validated = createPrescriptionSchema.parse(req.body);
+        const validated = createSupplementDispensingSchema.parse(req.body);
 
         // Validate session exists
         const sessionCheck = await pool.query(
@@ -81,7 +81,7 @@ export async function createPrescription(req, res) {
             validated.prescriber = `${first_name} ${last_name}`.trim();
         }
 
-        const prescription = await services.createPrescription(validated, req.user.userId);
+        const prescription = await services.createSupplementDispensing(validated, req.user.userId);
         res.status(201).json({
             message: 'Prescription created successfully',
             data: prescription,
@@ -113,7 +113,7 @@ export async function createPrescription(req, res) {
 export async function updatePrescription(req, res) {
     try {
         const { id } = uuidParamSchema.parse(req.params);
-        const validated = updatePrescriptionSchema.parse(req.body);
+        const validated = updateSupplementDispensingSchema.parse(req.body);
 
         // Check prescription exists
         const exists = await pool.query(
@@ -138,7 +138,7 @@ export async function updatePrescription(req, res) {
             }
         }
 
-        const updated = await services.updatePrescription(id, validated, req.user.userId);
+        const updated = await services.updateSupplementDispensing(id, validated, req.user.userId);
         if (!updated) {
             return res.status(400).json({ error: 'No fields to update' });
         }
@@ -177,7 +177,7 @@ export async function deletePrescription(req, res) {
             return res.status(404).json({ error: 'Prescription not found' });
         }
 
-        await services.deletePrescription(id, req.user.userId);
+        await services.deleteSupplementDispensing(id, req.user.userId);
         res.json({ message: 'Prescription deleted successfully', id });
 
     } catch (error) {

@@ -84,16 +84,16 @@ const swaggerOptions = {
                 description: "Consultation Session — session-level fields (consult date, follow-up date, nutritionist, consult type)",
             },
             {
-                name: "Consultation - Open Items",
-                description: "Open Items card — follow-up action items for a consultation session",
+                name: "Consultation - Actionables",
+                description: "Actionables card — follow-up action items for a consultation session",
             },
             {
                 name: "Consultation - Lookups",
                 description: "Consultation lookup tables for dropdowns (consult types, nutrition diagnoses)",
             },
             {
-                name: "Consultation - Nutrition Diagnosis",
-                description: "Nutrition Diagnosis — session-level notes, nutrition diagnosis reviews, and remarks",
+                name: "Consultation - Nutrition Diagnosis Summary",
+                description: "Nutrition Diagnosis Summary — session-level notes, nutrition diagnosis reviews, and remarks",
             },
 
             {
@@ -110,16 +110,16 @@ const swaggerOptions = {
                 description: "Anthropometry card — height/weight/body composition + BMI category for a session",
             },
             {
-                name: "Consultation - Adherences",
-                description: "Adherences card — nutrition requirements, estimated intake, PAL, comments, and computed outputs",
+                name: "Consultation - Nutrition Requirements",
+                description: "Nutrition Requirements card — nutrition requirements, estimated intake, PAL, comments, and computed outputs",
             },
             {
                 name: "Consultation - Medical History",
                 description: "Medical History card — athlete medical conditions, allergies, puberty, bowel movement, hydration, and period data",
             },
             {
-                name: "Consultation - Prescription",
-                description: "Prescription card — manage supplement prescriptions per session, with automatic inventory ticket creation and batch stock status updates",
+                name: "Consultation - Supplement Dispensing",
+                description: "Supplement Dispensing card — manage supplement dispensing per session, with automatic inventory ticket creation and batch stock status updates",
             },
             // ==================== Other ====================
             {
@@ -331,7 +331,7 @@ const swaggerOptions = {
                     },
                 },
                   
-                  AdherencesPatchRequest: {
+                  NutritionRequirementsPatchRequest: {
                     type: "object",
                     properties: {
                       pal: { type: "number", format: "float", nullable: true },
@@ -353,7 +353,7 @@ const swaggerOptions = {
                     },
                 },
                   
-                  AdherencesResponse: {
+                  NutritionRequirementsResponse: {
                     type: "object",
                     properties: {
                       id: { type: "string", format: "uuid", nullable: true },

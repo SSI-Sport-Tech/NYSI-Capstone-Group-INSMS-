@@ -4,13 +4,13 @@ import { useState, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
-import OpenItems from "@/components/AMS/consultation/OpenItems";
+import Actionables from "@/components/AMS/consultation/Actionables";
 import PreviousConsultation from "@/components/AMS/consultation/PreviousConsultation";
-import Prescription from "@/components/AMS/consultation/Prescription";
+import SupplementDispensing from "@/components/AMS/consultation/SupplementDispensing";
 import TrainingSchedule from "@/components/AMS/consultation/TrainingSchedule";
 import MealLogs from "@/components/AMS/consultation/MealLogs";
 import Anthropometry from "@/components/AMS/consultation/Anthropometry";
-import Adherences from "@/components/AMS/consultation/Adherences";
+import NutritionRequirements from "@/components/AMS/consultation/NutritionRequirements";
 import MedicalHistory from "@/components/AMS/consultation/MedicalHistory";
 
 interface SessionData {
@@ -167,7 +167,7 @@ export default function ConsultationDetailsPage() {
                 onClick={() => setDiagnosisCollapsed(!diagnosisCollapsed)}
                 className="flex items-center gap-2 text-left"
               >
-                <h2 className="text-xl font-semibold text-gray-900">Main Nutrition Diagnosis</h2>
+                <h2 className="text-xl font-semibold text-gray-900">Nutrition Diagnosis Summary</h2>
                 <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${diagnosisCollapsed ? "-rotate-90" : ""}`} />
               </button>
             </div>
@@ -183,14 +183,14 @@ export default function ConsultationDetailsPage() {
             )}
           </div>
 
-          <OpenItems
+          <Actionables
             athleteId={athleteId}
             sessionId={sessionId}
 
             readOnly
           />
 
-          <Prescription
+          <SupplementDispensing
             athleteId={athleteId}
             sessionId={sessionId}
 
@@ -218,7 +218,7 @@ export default function ConsultationDetailsPage() {
             readOnly
           />
 
-          <Adherences
+          <NutritionRequirements
             athleteId={athleteId}
             sessionId={sessionId}
 
