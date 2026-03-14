@@ -29,13 +29,13 @@ async function getOrCreateNutritionReview(sessionId, client) {
   return created.rows[0];
 }
 
-function mapResponse(row) {
+function mapResponse(row, pal) {
   return {
     id: row.id ?? null,
     sessionId: row.sessions_id,
 
-    // inputs (editable on your UI)
-    pal: row.training_physical_activity_level_pal ?? null,
+    // PAL is owned by training schedule (session_training), read-only here
+    pal: pal ?? null,
 
     minCarbGkg: row.minimum_carbohydrate_requirment_g_kg_bw ?? null,
     maxCarbGkg: row.maximum_carbohydrate_requirment_g_kg_bw ?? null,
@@ -83,23 +83,37 @@ function mapResponse(row) {
   };
 }
 
+async function getPalFromTraining(sessionId) {
+  const { rows } = await pool.query(
+    `SELECT physical_activity_level_pal
+     FROM consultation.session_training
+     WHERE sessions_id = $1
+     LIMIT 1`,
+    [sessionId]
+  );
+  return rows[0]?.physical_activity_level_pal ?? null;
+}
+
 export async function getAdherencesBySessionId(sessionId) {
   await assertSessionExists(sessionId);
   await getOrCreateNutritionReview(sessionId);
 
-  const { rows } = await pool.query(
-    `SELECT * FROM consultation.session_nutrition_review WHERE sessions_id = $1 LIMIT 1`,
-    [sessionId]
-  );
-  return mapResponse(rows[0]);
+  const [{ rows }, pal] = await Promise.all([
+    pool.query(
+      `SELECT * FROM consultation.session_nutrition_review WHERE sessions_id = $1 LIMIT 1`,
+      [sessionId]
+    ),
+    getPalFromTraining(sessionId),
+  ]);
+
+  return mapResponse(rows[0], pal);
 }
 
 export async function patchAdherencesBySessionId(sessionId, payload, userId) {
   await assertSessionExists(sessionId);
 
   const fields = {
-    training_physical_activity_level_pal: payload.pal,
-
+    // pal is owned by training schedule (session_training) — not editable here
     minimum_carbohydrate_requirment_g_kg_bw: payload.minCarbGkg,
     maximum_carbohydrate_requirment_g_kg_bw: payload.maxCarbGkg,
     minimum_protein_requirment_g_kg_bw: payload.minProteinGkg,

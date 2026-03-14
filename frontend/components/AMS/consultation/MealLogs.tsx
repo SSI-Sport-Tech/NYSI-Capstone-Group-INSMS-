@@ -25,125 +25,202 @@ interface MacroEntry {
 
 interface MacroRow {
   id: string;
-  label: string;
+  foodTime: string; // "HH:MM" or ""
   food: string;
   macros: MacroEntry[];
-  extra: Record<string, string>;
-}
-
-interface CustomCol {
-  id: string;
-  label: string;
 }
 
 interface MealLogState {
   rows: MacroRow[];
-  customCols: CustomCol[];
-  prevRecommendation: string;
-  athleteActions: string;
-  sleepHours: string;
-  sleepComments: string;
-  sqsScore: string;
+  mealOtherRemarks: string;
+  sleep: {
+    sleepDurationH: string;
+    sleepQuality: string;
+    otherRemarks: string;
+  };
 }
 
-// Legacy API shape (what the backend stores/returns)
-interface LegacyMealSlot {
-  food: string | null;
-  macro: string | null;
+// API shapes (v9)
+interface MealEntryApi {
+  foodTime: string | null;
+  mealDescription: string;
+  lowerCarbG: number | null;
+  upperCarbG: number | null;
+  lowerProteinG: number | null;
+  upperProteinG: number | null;
+  lowerFatG: number | null;
+  upperFatG: number | null;
 }
 
-interface LegacyMealLogData {
-  id: string | null;
-  sessionId: string;
-  amBreakfast: LegacyMealSlot;
-  amTraining: LegacyMealSlot;
-  pmLunch: LegacyMealSlot;
-  pmTraining: LegacyMealSlot;
-  pmDinner: LegacyMealSlot;
-  supper: LegacyMealSlot;
-  totalCarbohydrateIntake: number | null;
-  totalProteinIntake: number | null;
-  totalFatIntake: number | null;
-  otherRemarks: string | null;
+interface MealLogApiData {
+  entries: MealEntryApi[];
+  mealOtherRemarks: string | null;
+  sleep: {
+    sleepDurationH: number | null;
+    sleepQuality: number | null;
+    otherRemarks: string | null;
+  } | null;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 function makeDefaultRows(): MacroRow[] {
-  return Array.from({ length: 1 }, (_, i) => ({
-    id: `row-default-${i}`,
-    label: "",
-    food: "",
-    macros: [],
-    extra: {},
-  }));
+  return [{ id: `row-default-0`, foodTime: "", food: "", macros: [] }];
 }
 
 function makeDefaultState(): MealLogState {
   return {
     rows: makeDefaultRows(),
-    customCols: [],
-    prevRecommendation: "",
-    athleteActions: "",
-    sleepHours: "",
-    sleepComments: "",
-    sqsScore: "",
+    mealOtherRemarks: "",
+    sleep: { sleepDurationH: "", sleepQuality: "", otherRemarks: "" },
   };
 }
 
 // ─── Serialization ────────────────────────────────────────────────────────────
 
-function parseOtherRemarks(raw: string | null): MealLogState {
-  if (!raw) return makeDefaultState();
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed.__mlv === 2) {
+function fromApiData(data: MealLogApiData): MealLogState {
+  const rows: MacroRow[] = data.entries.length
+    ? data.entries.map((e, i) => {
+        const macros: MacroEntry[] = [];
+        if (e.lowerCarbG !== null || e.upperCarbG !== null)
+          macros.push({
+            type: "carb",
+            low: e.lowerCarbG !== null ? String(e.lowerCarbG) : "",
+            high: e.upperCarbG !== null ? String(e.upperCarbG) : "",
+          });
+        if (e.lowerProteinG !== null || e.upperProteinG !== null)
+          macros.push({
+            type: "protein",
+            low: e.lowerProteinG !== null ? String(e.lowerProteinG) : "",
+            high: e.upperProteinG !== null ? String(e.upperProteinG) : "",
+          });
+        if (e.lowerFatG !== null || e.upperFatG !== null)
+          macros.push({
+            type: "fat",
+            low: e.lowerFatG !== null ? String(e.lowerFatG) : "",
+            high: e.upperFatG !== null ? String(e.upperFatG) : "",
+          });
+        return {
+          id: `row-api-${i}`,
+          foodTime: e.foodTime ? e.foodTime.substring(0, 5) : "",
+          food: e.mealDescription ?? "",
+          macros,
+        };
+      })
+    : makeDefaultRows();
+
+  return {
+    rows,
+    mealOtherRemarks: data.mealOtherRemarks ?? "",
+    sleep: {
+      sleepDurationH:
+        data.sleep?.sleepDurationH != null
+          ? String(data.sleep.sleepDurationH)
+          : "",
+      sleepQuality:
+        data.sleep?.sleepQuality != null ? String(data.sleep.sleepQuality) : "",
+      otherRemarks: data.sleep?.otherRemarks ?? "",
+    },
+  };
+}
+
+function toApiPayload(state: MealLogState) {
+  const entries = state.rows
+    .filter((r) => r.food.trim())
+    .map((r) => {
+      const carb = r.macros.find((m) => m.type === "carb");
+      const protein = r.macros.find((m) => m.type === "protein");
+      const fat = r.macros.find((m) => m.type === "fat");
       return {
-        rows: parsed.rows ?? makeDefaultRows(),
-        customCols: parsed.customCols ?? [],
-        prevRecommendation: parsed.prevRecommendation ?? "",
-        athleteActions: parsed.athleteActions ?? "",
-        sleepHours: parsed.sleepHours ?? "",
-        sleepComments: parsed.sleepComments ?? "",
-        sqsScore: parsed.sqsScore ?? "",
+        foodTime: r.foodTime || null,
+        mealDescription: r.food.trim(),
+        lowerCarbG: carb && carb.low !== "" ? parseFloat(carb.low) : null,
+        upperCarbG: carb && carb.high !== "" ? parseFloat(carb.high) : null,
+        lowerProteinG: protein && protein.low !== "" ? parseFloat(protein.low) : null,
+        upperProteinG: protein && protein.high !== "" ? parseFloat(protein.high) : null,
+        lowerFatG: fat && fat.low !== "" ? parseFloat(fat.low) : null,
+        upperFatG: fat && fat.high !== "" ? parseFloat(fat.high) : null,
       };
-    }
-  } catch {
-    // fall through to legacy
-  }
-  return makeDefaultState();
+    });
+
+  const { sleep } = state;
+  return {
+    entries,
+    mealOtherRemarks: state.mealOtherRemarks.trim() || null,
+    sleep: {
+      sleepDurationH:
+        sleep.sleepDurationH !== "" ? parseFloat(sleep.sleepDurationH) : null,
+      sleepQuality:
+        sleep.sleepQuality !== "" ? parseInt(sleep.sleepQuality, 10) : null,
+      otherRemarks: sleep.otherRemarks.trim() || null,
+    },
+  };
 }
 
-function parseLegacy(_data: LegacyMealLogData): MealLogState {
-  // Legacy format can't be meaningfully mapped to the new free-text row format
-  return makeDefaultState();
+// ─── TimePicker ───────────────────────────────────────────────────────────────
+
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) =>
+  String(i).padStart(2, "0")
+);
+const MINUTE_OPTIONS = [
+  "00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55",
+];
+
+function TimePicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [hh, mm] = value ? value.split(":") : ["", ""];
+
+  const update = (newHH: string, newMM: string) => {
+    if (newHH && newMM) onChange(`${newHH}:${newMM}`);
+    else if (newHH) onChange(`${newHH}:${mm || "00"}`);
+    else if (newMM) onChange(`${hh || "00"}:${newMM}`);
+    else onChange("");
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <select
+        value={hh || ""}
+        onChange={(e) => update(e.target.value, mm || "00")}
+        className="px-1 py-0.5 border border-gray-300 rounded text-sm w-14"
+      >
+        <option value="">HH</option>
+        {HOUR_OPTIONS.map((h) => (
+          <option key={h} value={h}>{h}</option>
+        ))}
+      </select>
+      <span className="text-gray-500 text-sm">:</span>
+      <select
+        value={mm || ""}
+        onChange={(e) => update(hh || "00", e.target.value)}
+        className="px-1 py-0.5 border border-gray-300 rounded text-sm w-14"
+      >
+        <option value="">MM</option>
+        {MINUTE_OPTIONS.map((m) => (
+          <option key={m} value={m}>{m}</option>
+        ))}
+      </select>
+    </div>
+  );
 }
 
-function fromApiData(data: LegacyMealLogData): MealLogState {
-  const raw = data.otherRemarks ?? null;
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (parsed.__mlv === 2) {
-        return parseOtherRemarks(raw);
-      }
-    } catch {
-      // fall through
-    }
-  }
-  // Legacy format
-  return parseLegacy(data);
-}
+// ─── Assessment ───────────────────────────────────────────────────────────────
 
 function sumMacro(rows: MacroRow[], type: MacroType, field: "low" | "high"): number {
-  return rows.reduce((acc, row) => {
-    return acc + row.macros
-      .filter((m) => m.type === type)
-      .reduce((s, m) => s + (parseFloat(m[field]) || 0), 0);
-  }, 0);
+  return rows.reduce(
+    (acc, row) =>
+      acc +
+      row.macros
+        .filter((m) => m.type === type)
+        .reduce((s, m) => s + (parseFloat(m[field]) || 0), 0),
+    0
+  );
 }
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function AssessmentSection({
   rows,
@@ -152,19 +229,20 @@ function AssessmentSection({
   rows: MacroRow[];
   liveWeight?: number | null;
 }) {
-  const totals = useMemo(() => ({
-    lowCarb: sumMacro(rows, "carb", "low"),
-    highCarb: sumMacro(rows, "carb", "high"),
-    lowFat: sumMacro(rows, "fat", "low"),
-    highFat: sumMacro(rows, "fat", "high"),
-    lowProtein: sumMacro(rows, "protein", "low"),
-    highProtein: sumMacro(rows, "protein", "high"),
-  }), [rows]);
+  const totals = useMemo(
+    () => ({
+      lowCarb: sumMacro(rows, "carb", "low"),
+      highCarb: sumMacro(rows, "carb", "high"),
+      lowFat: sumMacro(rows, "fat", "low"),
+      highFat: sumMacro(rows, "fat", "high"),
+      lowProtein: sumMacro(rows, "protein", "low"),
+      highProtein: sumMacro(rows, "protein", "high"),
+    }),
+    [rows]
+  );
 
-  const fmt = (low: number, high: number) => {
-    if (low === 0 && high === 0) return "—";
-    return `${low} – ${high} g`;
-  };
+  const fmt = (low: number, high: number) =>
+    low === 0 && high === 0 ? "—" : `${low} – ${high} g`;
 
   const fmtKg = (low: number, high: number) => {
     if (!liveWeight) return null;
@@ -172,31 +250,19 @@ function AssessmentSection({
     return `${(low / liveWeight).toFixed(1)} – ${(high / liveWeight).toFixed(1)} g/kg/bw`;
   };
 
-  const rows2 = [
-    {
-      label: "Total Carb Intake (g)",
-      val: fmt(totals.lowCarb, totals.highCarb),
-      kg: fmtKg(totals.lowCarb, totals.highCarb),
-    },
-    {
-      label: "Total Fat Intake (g)",
-      val: fmt(totals.lowFat, totals.highFat),
-      kg: fmtKg(totals.lowFat, totals.highFat),
-    },
-    {
-      label: "Total Protein Intake (g)",
-      val: fmt(totals.lowProtein, totals.highProtein),
-      kg: fmtKg(totals.lowProtein, totals.highProtein),
-    },
+  const items = [
+    { label: "Total Carb Intake (g)", val: fmt(totals.lowCarb, totals.highCarb), kg: fmtKg(totals.lowCarb, totals.highCarb) },
+    { label: "Total Fat Intake (g)", val: fmt(totals.lowFat, totals.highFat), kg: fmtKg(totals.lowFat, totals.highFat) },
+    { label: "Total Protein Intake (g)", val: fmt(totals.lowProtein, totals.highProtein), kg: fmtKg(totals.lowProtein, totals.highProtein) },
   ];
 
   return (
     <div className="bg-gray-50 rounded-lg p-4">
-      <h3 className="text-base font-semibold text-gray-800 mb-3">
+      <h3 className="text-base font-semibold text-gray-800 mb-3 underline">
         Assessment (auto-calculated)
       </h3>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {rows2.map(({ label, val, kg }) => (
+        {items.map(({ label, val, kg }) => (
           <div key={label} className="bg-white rounded p-3 border border-gray-200">
             <p className="text-xs text-gray-500 mb-1">{label}</p>
             <p className="text-sm font-semibold text-gray-900">{val}</p>
@@ -214,46 +280,26 @@ function AssessmentSection({
   );
 }
 
-function ReadOnlyTable({
-  rows,
-  customCols,
-}: {
-  rows: MacroRow[];
-  customCols: CustomCol[];
-}) {
+// ─── Read-only table ──────────────────────────────────────────────────────────
+
+function ReadOnlyTable({ rows }: { rows: MacroRow[] }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse border border-gray-300 text-sm">
         <thead>
           <tr className="bg-gray-50">
-            <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">
-              Meal
-            </th>
-            <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">
-              Food Intake
-            </th>
-            <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">
-              Macronutrients
-            </th>
-            {customCols.map((cc) => (
-              <th
-                key={cc.id}
-                className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap"
-              >
-                {cc.label}
-              </th>
-            ))}
+            <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">Meal</th>
+            <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">Food Intake</th>
+            <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">Macronutrients</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.id} className="even:bg-gray-50">
               <td className="border border-gray-300 px-3 py-2 font-medium text-gray-800 whitespace-nowrap">
-                {row.label || "—"}
+                {row.foodTime || "—"}
               </td>
-              <td className="border border-gray-300 px-3 py-2 text-gray-700">
-                {row.food || "—"}
-              </td>
+              <td className="border border-gray-300 px-3 py-2 text-gray-700">{row.food || "—"}</td>
               <td className="border border-gray-300 px-3 py-2 text-gray-700">
                 <div className="space-y-0.5">
                   {row.macros.length === 0 ? (
@@ -270,11 +316,6 @@ function ReadOnlyTable({
                   )}
                 </div>
               </td>
-              {customCols.map((cc) => (
-                <td key={cc.id} className="border border-gray-300 px-3 py-2 text-gray-700">
-                  {row.extra[cc.id] || "—"}
-                </td>
-              ))}
             </tr>
           ))}
         </tbody>
@@ -296,53 +337,33 @@ export default function MealLogs({
 }: MealLogsProps) {
   const [activeTab, setActiveTab] = useState<"current" | "previous">("current");
 
-  // Current session state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [saveError, setSaveError] = useState<string>("");
 
-  // The persisted data (what was last saved/loaded)
-  const [savedData, setSavedData] = useState<LegacyMealLogData | null>(null);
-
-  // Edit state (the new v2 format)
+  const [savedData, setSavedData] = useState<MealLogApiData | null>(null);
   const [state, setState] = useState<MealLogState>(makeDefaultState());
 
-  // Previous session
   const [prevLoading, setPrevLoading] = useState(false);
   const [prevState, setPrevState] = useState<MealLogState | null>(null);
 
-  // Add-column UI
-  const [addingCol, setAddingCol] = useState(false);
-  const [newColLabel, setNewColLabel] = useState("");
-
-  // Add-macro UI
   const [addingMacroRowId, setAddingMacroRowId] = useState<string | null>(null);
 
   const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
 
-  // Reset isSaved when state changes
-  useEffect(() => {
-    setIsSaved(false);
-  }, [state]);
+  useEffect(() => { setIsSaved(false); }, [state]);
 
   // ── Fetch current session ──────────────────────────────────────────────────
-  const fetchMealLogs = async () => {
-    if (!sessionId) {
-      setState(makeDefaultState());
-      setLoading(false);
-      return;
-    }
+  const fetchData = async () => {
+    if (!sessionId) { setState(makeDefaultState()); setLoading(false); return; }
     try {
       setLoading(true);
       setError("");
-      const response = (await consultationApi.getMealLogs(sessionId)) as {
-        data: LegacyMealLogData;
-      };
-      const data = response.data;
-      setSavedData(data);
-      setState(fromApiData(data));
+      const response = (await consultationApi.getMealLogs(sessionId)) as { data: MealLogApiData };
+      setSavedData(response.data);
+      setState(fromApiData(response.data));
     } catch (err) {
       if (err instanceof ConsultationApiError && err.status === 404) {
         setSavedData(null);
@@ -357,22 +378,17 @@ export default function MealLogs({
   };
 
   useEffect(() => {
-    fetchMealLogs();
+    fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
   // ── Fetch previous session ─────────────────────────────────────────────────
   useEffect(() => {
-    if (!prevSessionId) {
-      setPrevState(null);
-      return;
-    }
+    if (!prevSessionId) { setPrevState(null); return; }
     setPrevLoading(true);
     (async () => {
       try {
-        const response = (await consultationApi.getMealLogs(prevSessionId)) as {
-          data: LegacyMealLogData;
-        };
+        const response = (await consultationApi.getMealLogs(prevSessionId)) as { data: MealLogApiData };
         setPrevState(fromApiData(response.data));
       } catch {
         setPrevState(null);
@@ -386,60 +402,21 @@ export default function MealLogs({
   const handleSave = async () => {
     try {
       setSaveError("");
-      const id =
-        isNewConsultation && ensureSession ? await ensureSession() : sessionId;
-
-      const { rows, customCols, prevRecommendation, athleteActions, sleepHours, sleepComments, sqsScore } =
-        state;
-
-      // Sums for legacy fields
-      const highCarbSum = sumMacro(rows, "carb", "high");
-      const highProteinSum = sumMacro(rows, "protein", "high");
-      const highFatSum = sumMacro(rows, "fat", "high");
-
-      const payload = {
-        // Legacy compat fields
-        amBreakfast: { food: rows[0]?.food ?? null, macro: null },
-        amTraining: { food: rows[2]?.food ?? null, macro: null },
-        pmLunch: { food: rows[3]?.food ?? null, macro: null },
-        pmTraining: { food: rows[5]?.food ?? null, macro: null },
-        pmDinner: { food: rows[6]?.food ?? null, macro: null },
-        supper: { food: rows[8]?.food ?? null, macro: null },
-        totalCarbohydrateIntake: highCarbSum || null,
-        totalProteinIntake: highProteinSum || null,
-        totalFatIntake: highFatSum || null,
-        // New format stored in otherRemarks
-        otherRemarks: JSON.stringify({
-          __mlv: 2,
-          rows,
-          customCols,
-          prevRecommendation,
-          athleteActions,
-          sleepHours,
-          sleepComments,
-          sqsScore,
-        }),
-      };
-
+      const id = isNewConsultation && ensureSession ? await ensureSession() : sessionId;
+      const payload = toApiPayload(state);
       const token = localStorage.getItem("token");
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${id}/meal-log`,
         {
           method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         }
       );
-
       if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
-      const updated = (await response.json()) as { data: LegacyMealLogData };
+      const updated = (await response.json()) as { data: MealLogApiData };
       setSavedData(updated.data);
-      if (!isNewConsultation) {
-        setState(fromApiData(updated.data));
-      }
+      if (!isNewConsultation) setState(fromApiData(updated.data));
       setIsEditing(false);
       setIsSaved(true);
     } catch (err) {
@@ -451,85 +428,38 @@ export default function MealLogs({
   const handleCancel = () => {
     setIsEditing(false);
     setSaveError("");
-    if (savedData) {
-      setState(fromApiData(savedData));
-    } else {
-      setState(makeDefaultState());
-    }
+    if (savedData) setState(fromApiData(savedData));
+    else setState(makeDefaultState());
   };
 
   // ── Row helpers ────────────────────────────────────────────────────────────
-  const updateRow = (id: string, field: keyof MacroRow | string, value: string) => {
+  const updateRow = (id: string, field: "foodTime" | "food", value: string) => {
     setState((prev) => ({
       ...prev,
-      rows: prev.rows.map((r) => {
-        if (r.id !== id) return r;
-        if (field === "label" || field === "food") return { ...r, [field]: value };
-        return r;
-      }),
-    }));
-  };
-
-  const updateRowExtra = (id: string, colId: string, value: string) => {
-    setState((prev) => ({
-      ...prev,
-      rows: prev.rows.map((r) =>
-        r.id === id ? { ...r, extra: { ...r.extra, [colId]: value } } : r
-      ),
+      rows: prev.rows.map((r) => (r.id !== id ? r : { ...r, [field]: value })),
     }));
   };
 
   const addRow = () => {
-    const newRow: MacroRow = {
-      id: `row-${Date.now()}`,
-      label: "",
-      food: "",
-      macros: [],
-      extra: {},
-    };
-    setState((prev) => ({ ...prev, rows: [...prev.rows, newRow] }));
+    setState((prev) => ({
+      ...prev,
+      rows: [
+        ...prev.rows,
+        { id: `row-${Date.now()}`, foodTime: "", food: "", macros: [] },
+      ],
+    }));
   };
 
   const deleteRow = (id: string) => {
-    setState((prev) => ({
-      ...prev,
-      rows: prev.rows.filter((r) => r.id !== id),
-    }));
+    setState((prev) => ({ ...prev, rows: prev.rows.filter((r) => r.id !== id) }));
   };
 
-  const addCustomCol = () => {
-    const label = newColLabel.trim();
-    if (!label) return;
-    const colId = `col-${Date.now()}`;
-    setState((prev) => ({
-      ...prev,
-      customCols: [...prev.customCols, { id: colId, label }],
-      rows: prev.rows.map((r) => ({ ...r, extra: { ...r.extra, [colId]: "" } })),
-    }));
-    setNewColLabel("");
-    setAddingCol(false);
-  };
-
-  const removeCustomCol = (colId: string) => {
-    setState((prev) => ({
-      ...prev,
-      customCols: prev.customCols.filter((c) => c.id !== colId),
-      rows: prev.rows.map((r) => {
-        const extra = { ...r.extra };
-        delete extra[colId];
-        return { ...r, extra };
-      }),
-    }));
-  };
-
-  // ── Macro entry helpers ────────────────────────────────────────────────────
+  // ── Macro helpers ──────────────────────────────────────────────────────────
   const addMacroEntry = (rowId: string, type: MacroType) => {
     setState((prev) => ({
       ...prev,
       rows: prev.rows.map((r) =>
-        r.id === rowId
-          ? { ...r, macros: [...r.macros, { type, low: "", high: "" }] }
-          : r
+        r.id === rowId ? { ...r, macros: [...r.macros, { type, low: "", high: "" }] } : r
       ),
     }));
     setAddingMacroRowId(null);
@@ -539,9 +469,7 @@ export default function MealLogs({
     setState((prev) => ({
       ...prev,
       rows: prev.rows.map((r) =>
-        r.id === rowId
-          ? { ...r, macros: r.macros.filter((_, i) => i !== index) }
-          : r
+        r.id === rowId ? { ...r, macros: r.macros.filter((_, i) => i !== index) } : r
       ),
     }));
   };
@@ -551,18 +479,13 @@ export default function MealLogs({
       ...prev,
       rows: prev.rows.map((r) =>
         r.id === rowId
-          ? {
-              ...r,
-              macros: r.macros.map((m, i) =>
-                i === index ? { ...m, [field]: value } : m
-              ),
-            }
+          ? { ...r, macros: r.macros.map((m, i) => (i === index ? { ...m, [field]: value } : m)) }
           : r
       ),
     }));
   };
 
-  // ── Loading / Error states ─────────────────────────────────────────────────
+  // ── Loading / Error ────────────────────────────────────────────────────────
   if (loading) {
     return (
       <section id="meal-logs" className="bg-white rounded-xl shadow-lg p-6">
@@ -582,10 +505,7 @@ export default function MealLogs({
       <section id="meal-logs" className="bg-white rounded-xl shadow-lg p-6">
         <div className="text-center py-4">
           <p className="text-red-600">{error}</p>
-          <button
-            onClick={fetchMealLogs}
-            className="mt-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
+          <button onClick={fetchData} className="mt-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
             Retry
           </button>
         </div>
@@ -593,104 +513,53 @@ export default function MealLogs({
     );
   }
 
-  // ── Standard table columns ─────────────────────────────────────────────────
-  const stdEditCols = [
-    { key: "food" as keyof MacroRow, label: "Food Intake", type: "text" as const, wide: true },
-  ];
-
-  // ── Current Session Tab content (JSX variable, NOT a component — avoids remount on state change)
+  // ── Current Session Tab ────────────────────────────────────────────────────
   const currentTabContent = (
     <div className="space-y-6">
-      {/* 1. Meal + Macro Table */}
+      {/* 1. Meal & Macro Table */}
       <div>
-        <h3 className="text-base font-semibold text-gray-800 mb-3">
-          Meal &amp; Macronutrient Log
-        </h3>
+        <h3 className="text-base font-semibold text-gray-800 mb-3 underline">Meal &amp; Macronutrient Log</h3>
         <div className="overflow-x-auto">
           <table className="border-collapse border border-gray-300 text-sm min-w-full">
             <thead>
               <tr className="bg-gray-50">
-                <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">
-                  Meal
-                </th>
-                {stdEditCols.map((c) => (
-                  <th
-                    key={c.key}
-                    className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap"
-                  >
-                    {c.label}
-                  </th>
-                ))}
-                <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">
-                  Macronutrients
-                </th>
-                {state.customCols.map((cc) => (
-                  <th
-                    key={cc.id}
-                    className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap"
-                  >
-                    <span className="flex items-center gap-1">
-                      {cc.label}
-                      {effectiveEditing && (
-                        <button
-                          onClick={() => removeCustomCol(cc.id)}
-                          className="text-red-400 hover:text-red-600 ml-1"
-                          title="Remove column"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      )}
-                    </span>
-                  </th>
-                ))}
-                {effectiveEditing && (
-                  <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap w-10">
-                    {/* Delete col */}
-                  </th>
-                )}
+                <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">Meal</th>
+                <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">Food Intake</th>
+                <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">Macronutrients</th>
+                {effectiveEditing && <th className="border border-gray-300 px-3 py-2 w-10" />}
               </tr>
             </thead>
             <tbody>
               {state.rows.map((row) => (
                 <tr key={row.id} className="even:bg-gray-50">
-                  {/* Meal (free text) */}
+                  {/* Meal (time picker) */}
                   <td className="border border-gray-300 px-2 py-1 whitespace-nowrap">
                     {effectiveEditing ? (
-                      <input
-                        type="text"
-                        value={row.label}
-                        onChange={(e) => updateRow(row.id, "label", e.target.value)}
-                        placeholder="e.g. 8am Breakfast"
-                        className="w-36 px-1 py-0.5 border border-gray-300 rounded text-sm"
+                      <TimePicker
+                        value={row.foodTime}
+                        onChange={(v) => updateRow(row.id, "foodTime", v)}
                       />
                     ) : (
-                      <span className="font-medium text-gray-800">
-                        {row.label || "—"}
-                      </span>
+                      <span className="font-medium text-gray-800">{row.foodTime || "—"}</span>
                     )}
                   </td>
 
-                  {/* Standard columns */}
-                  {stdEditCols.map((c) => (
-                    <td key={c.key} className="border border-gray-300 px-2 py-1">
-                      {effectiveEditing ? (
-                        <input
-                          type={c.type ?? "text"}
-                          value={row[c.key] as string}
-                          onChange={(e) => updateRow(row.id, c.key, e.target.value)}
-                          className={`px-1 py-0.5 border border-gray-300 rounded text-sm ${
-                            c.wide ? "w-40" : "w-20"
-                          }`}
-                        />
-                      ) : (
-                        <span className="text-gray-700">
-                          {(row[c.key] as string) || "—"}
-                        </span>
-                      )}
-                    </td>
-                  ))}
+                  {/* Food Intake */}
+                  <td className="border border-gray-300 px-2 py-1">
+                    {effectiveEditing ? (
+                      <input
+                        type="text"
+                        value={row.food}
+                        onChange={(e) => updateRow(row.id, "food", e.target.value)}
+                        placeholder="e.g. Rice with chicken"
+                        className="w-40 px-1 py-0.5 border border-gray-300 rounded text-sm"
+                      />
+                    ) : (
+                      <span className="text-gray-700">{row.food || "—"}</span>
+                    )}
+                  </td>
 
-                  {/* Macronutrients cell */}
+                  {/* Macronutrients */}
                   <td className="border border-gray-300 px-2 py-2 min-w-[200px]">
                     {effectiveEditing ? (
                       <div className="space-y-1.5">
@@ -718,43 +587,38 @@ export default function MealLogs({
                               className="w-14 px-1 py-0.5 border border-gray-300 rounded text-xs"
                             />
                             <span className="text-gray-400 text-xs">g</span>
-                            <button
-                              onClick={() => removeMacroEntry(row.id, idx)}
-                              className="text-red-400 hover:text-red-600 ml-0.5"
-                            >
+                            <button onClick={() => removeMacroEntry(row.id, idx)} className="text-red-400 hover:text-red-600 ml-0.5">
                               <Trash2 size={11} />
                             </button>
                           </div>
                         ))}
-                        {/* + picker */}
                         {addingMacroRowId === row.id ? (
                           <div className="flex items-center gap-1 mt-1">
-                            {(["carb", "fat", "protein"] as MacroType[]).map((t) => (
-                              <button
-                                key={t}
-                                onClick={() => addMacroEntry(row.id, t)}
-                                className={`px-2 py-0.5 text-xs rounded border font-medium ${
-                                  t === "carb" ? "border-blue-300 text-blue-600 hover:bg-blue-50" :
-                                  t === "fat" ? "border-orange-300 text-orange-500 hover:bg-orange-50" :
-                                  "border-green-300 text-green-600 hover:bg-green-50"
-                                }`}
-                              >
-                                {t === "carb" ? "Carb" : t === "fat" ? "Fat" : "Protein"}
-                              </button>
-                            ))}
-                            <button
-                              onClick={() => setAddingMacroRowId(null)}
-                              className="text-gray-400 hover:text-gray-600 text-xs ml-1"
-                            >✕</button>
+                            {(["carb", "fat", "protein"] as MacroType[])
+                              .filter((t) => !row.macros.some((m) => m.type === t))
+                              .map((t) => (
+                                <button
+                                  key={t}
+                                  onClick={() => addMacroEntry(row.id, t)}
+                                  className={`px-2 py-0.5 text-xs rounded border font-medium ${
+                                    t === "carb" ? "border-blue-300 text-blue-600 hover:bg-blue-50" :
+                                    t === "fat" ? "border-orange-300 text-orange-500 hover:bg-orange-50" :
+                                    "border-green-300 text-green-600 hover:bg-green-50"
+                                  }`}
+                                >
+                                  {t === "carb" ? "Carb" : t === "fat" ? "Fat" : "Protein"}
+                                </button>
+                              ))}
+                            <button onClick={() => setAddingMacroRowId(null)} className="text-gray-400 hover:text-gray-600 text-xs ml-1">✕</button>
                           </div>
-                        ) : (
+                        ) : row.macros.length < 3 ? (
                           <button
                             onClick={() => setAddingMacroRowId(row.id)}
                             className="flex items-center gap-0.5 text-xs text-gray-400 hover:text-gray-600 mt-0.5"
                           >
                             <Plus size={11} /> Add
                           </button>
-                        )}
+                        ) : null}
                       </div>
                     ) : (
                       <div className="space-y-0.5">
@@ -774,35 +638,11 @@ export default function MealLogs({
                     )}
                   </td>
 
-                  {/* Custom columns */}
-                  {state.customCols.map((cc) => (
-                    <td key={cc.id} className="border border-gray-300 px-2 py-1">
-                      {effectiveEditing ? (
-                        <input
-                          type="text"
-                          value={row.extra[cc.id] ?? ""}
-                          onChange={(e) =>
-                            updateRowExtra(row.id, cc.id, e.target.value)
-                          }
-                          className="w-24 px-1 py-0.5 border border-gray-300 rounded text-sm"
-                        />
-                      ) : (
-                        <span className="text-gray-700">
-                          {row.extra[cc.id] || "—"}
-                        </span>
-                      )}
-                    </td>
-                  ))}
-
                   {/* Delete row */}
                   {effectiveEditing && (
                     <td className="border border-gray-300 px-2 py-1 text-center">
                       {state.rows.length > 1 && (
-                        <button
-                          onClick={() => deleteRow(row.id)}
-                          className="text-red-400 hover:text-red-600"
-                          title="Delete row"
-                        >
+                        <button onClick={() => deleteRow(row.id)} className="text-red-400 hover:text-red-600" title="Delete row">
                           <Trash2 size={14} />
                         </button>
                       )}
@@ -814,59 +654,11 @@ export default function MealLogs({
           </table>
         </div>
 
-        {/* Add Row / Add Column buttons */}
         {effectiveEditing && (
-          <div className="mt-3 flex items-center gap-3 flex-wrap">
-            <button
-              onClick={addRow}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100"
-            >
-              <Plus size={14} />
-              Add Row
+          <div className="mt-3">
+            <button onClick={addRow} className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100">
+              <Plus size={14} /> Add Row
             </button>
-
-            {!addingCol ? (
-              <button
-                onClick={() => setAddingCol(true)}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-50 text-gray-700 border border-gray-200 rounded hover:bg-gray-100"
-              >
-                <Plus size={14} />
-                Add Column
-              </button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={newColLabel}
-                  onChange={(e) => setNewColLabel(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") addCustomCol();
-                    if (e.key === "Escape") {
-                      setAddingCol(false);
-                      setNewColLabel("");
-                    }
-                  }}
-                  placeholder="Column name"
-                  className="px-2 py-1 border border-gray-300 rounded text-sm w-36"
-                  autoFocus
-                />
-                <button
-                  onClick={addCustomCol}
-                  className="px-2 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Confirm
-                </button>
-                <button
-                  onClick={() => {
-                    setAddingCol(false);
-                    setNewColLabel("");
-                  }}
-                  className="px-2 py-1 text-sm bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -874,129 +666,74 @@ export default function MealLogs({
       {/* 2. Assessment */}
       <AssessmentSection rows={state.rows} liveWeight={liveWeight} />
 
-      {/* 3. Prev Recommendation & Athlete Actions */}
+      {/* 3. Other Remarks */}
       <div>
-        <h3 className="text-base font-semibold text-gray-800 mb-3">
-          Previous Recommendation &amp; Athlete Actions
-        </h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Previous Recommendation
-            </label>
-            {effectiveEditing ? (
-              <textarea
-                value={state.prevRecommendation}
-                onChange={(e) =>
-                  setState((prev) => ({
-                    ...prev,
-                    prevRecommendation: e.target.value,
-                  }))
-                }
-                rows={5}
-                placeholder="Enter previous recommendation..."
-                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm resize-y"
-              />
-            ) : (
-              <p className="text-sm text-gray-800 whitespace-pre-wrap">
-                {state.prevRecommendation || "—"}
-              </p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Athlete Actions
-            </label>
-            {effectiveEditing ? (
-              <textarea
-                value={state.athleteActions}
-                onChange={(e) =>
-                  setState((prev) => ({ ...prev, athleteActions: e.target.value }))
-                }
-                rows={5}
-                placeholder="Enter athlete actions..."
-                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm resize-y"
-              />
-            ) : (
-              <p className="text-sm text-gray-800 whitespace-pre-wrap">
-                {state.athleteActions || "—"}
-              </p>
-            )}
-          </div>
-        </div>
+        <label className="block text-sm font-medium text-gray-700 mb-1 underline">
+          Other Remarks
+        </label>
+        {effectiveEditing ? (
+          <textarea
+            value={state.mealOtherRemarks}
+            onChange={(e) =>
+              setState((prev) => ({ ...prev, mealOtherRemarks: e.target.value }))
+            }
+            rows={3}
+            placeholder="Enter any additional remarks..."
+            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm resize-y"
+          />
+        ) : (
+          <p className="text-sm text-gray-800 whitespace-pre-wrap">
+            {state.mealOtherRemarks || "—"}
+          </p>
+        )}
       </div>
 
       {/* 4. Sleep */}
       <div>
-        <h3 className="text-base font-semibold text-gray-800 mb-3">Sleep</h3>
+        <h3 className="text-base font-semibold text-gray-800 mb-3 underline">Sleep</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              REST — Sleep Duration (hrs)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1 underline">Sleep Duration (hrs)</label>
             {effectiveEditing ? (
               <input
                 type="number"
-                value={state.sleepHours}
-                onChange={(e) =>
-                  setState((prev) => ({ ...prev, sleepHours: e.target.value }))
-                }
+                value={state.sleep.sleepDurationH}
+                onChange={(e) => setState((prev) => ({ ...prev, sleep: { ...prev.sleep, sleepDurationH: e.target.value } }))}
                 placeholder="e.g. 7.5"
-                min={0}
-                max={24}
-                step={0.5}
+                min={0} max={24} step={0.5}
                 className="px-2 py-1.5 border border-gray-300 rounded text-sm w-32"
               />
             ) : (
-              <p className="text-sm text-gray-800">
-                {state.sleepHours ? `${state.sleepHours} hrs` : "—"}
-              </p>
+              <p className="text-sm text-gray-800">{state.sleep.sleepDurationH ? `${state.sleep.sleepDurationH} hrs` : "—"}</p>
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              SQS — Sleep Quality (1–10)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1 underline">Sleep Quality (1–10)</label>
             {effectiveEditing ? (
               <input
                 type="number"
-                value={state.sqsScore}
-                onChange={(e) =>
-                  setState((prev) => ({ ...prev, sqsScore: e.target.value }))
-                }
+                value={state.sleep.sleepQuality}
+                onChange={(e) => setState((prev) => ({ ...prev, sleep: { ...prev.sleep, sleepQuality: e.target.value } }))}
                 placeholder="1–10"
-                min={1}
-                max={10}
-                step={1}
+                min={1} max={10} step={1}
                 className="px-2 py-1.5 border border-gray-300 rounded text-sm w-24"
               />
             ) : (
-              <p className="text-sm text-gray-800">
-                {state.sqsScore ? `${state.sqsScore} / 10` : "—"}
-              </p>
+              <p className="text-sm text-gray-800">{state.sleep.sleepQuality ? `${state.sleep.sleepQuality} / 10` : "—"}</p>
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Comments on Sleep
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1 underline">Comments on Sleep</label>
             {effectiveEditing ? (
               <textarea
-                value={state.sleepComments}
-                onChange={(e) =>
-                  setState((prev) => ({
-                    ...prev,
-                    sleepComments: e.target.value,
-                  }))
-                }
+                value={state.sleep.otherRemarks}
+                onChange={(e) => setState((prev) => ({ ...prev, sleep: { ...prev.sleep, otherRemarks: e.target.value } }))}
                 rows={3}
                 placeholder="Enter comments on sleep..."
                 className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm resize-y"
               />
             ) : (
-              <p className="text-sm text-gray-800 whitespace-pre-wrap">
-                {state.sleepComments || "—"}
-              </p>
+              <p className="text-sm text-gray-800 whitespace-pre-wrap">{state.sleep.otherRemarks || "—"}</p>
             )}
           </div>
         </div>
@@ -1004,88 +741,30 @@ export default function MealLogs({
     </div>
   );
 
-  // ── Previous Session Tab content (IIFE JSX variable, NOT a component)
+  // ── Previous Session Tab ───────────────────────────────────────────────────
   const previousTabContent = (() => {
-    if (!prevSessionId) {
-      return (
-        <p className="text-sm text-gray-500 py-6 text-center">
-          No previous session data available.
-        </p>
-      );
-    }
-    if (prevLoading) {
-      return (
-        <div className="animate-pulse space-y-3 py-4">
-          <div className="h-4 bg-gray-200 rounded" />
-          <div className="h-4 bg-gray-200 rounded w-3/4" />
-        </div>
-      );
-    }
-    if (!prevState) {
-      return (
-        <p className="text-sm text-gray-500 py-6 text-center">
-          No previous session data available.
-        </p>
-      );
-    }
+    if (!prevSessionId) return <p className="text-sm text-gray-500 py-6 text-center">No previous session data available.</p>;
+    if (prevLoading) return <div className="animate-pulse space-y-3 py-4"><div className="h-4 bg-gray-200 rounded" /><div className="h-4 bg-gray-200 rounded w-3/4" /></div>;
+    if (!prevState) return <p className="text-sm text-gray-500 py-6 text-center">No previous session data available.</p>;
 
     return (
       <div className="space-y-6">
-        <ReadOnlyTable rows={prevState.rows} customCols={prevState.customCols} />
+        <ReadOnlyTable rows={prevState.rows} />
         <AssessmentSection rows={prevState.rows} liveWeight={liveWeight} />
-
-        {/* Prev Rec & Athlete Actions */}
         <div>
-          <h3 className="text-base font-semibold text-gray-800 mb-3">
-            Previous Recommendation &amp; Athlete Actions
-          </h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Previous Recommendation
-              </label>
-              <p className="text-sm text-gray-800 whitespace-pre-wrap">
-                {prevState.prevRecommendation || "—"}
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Athlete Actions
-              </label>
-              <p className="text-sm text-gray-800 whitespace-pre-wrap">
-                {prevState.athleteActions || "—"}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Sleep */}
-        <div>
-          <h3 className="text-base font-semibold text-gray-800 mb-3">Sleep</h3>
+          <h3 className="text-base font-semibold text-gray-800 mb-3 underline">Sleep</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                REST — Sleep Duration (hrs)
-              </label>
-              <p className="text-sm text-gray-800">
-                {prevState.sleepHours ? `${prevState.sleepHours} hrs` : "—"}
-              </p>
+              <label className="block text-sm font-medium text-gray-700 mb-1 underline">Sleep Duration (hrs)</label>
+              <p className="text-sm text-gray-800">{prevState.sleep.sleepDurationH ? `${prevState.sleep.sleepDurationH} hrs` : "—"}</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                SQS — Sleep Quality (1–10)
-              </label>
-              <p className="text-sm text-gray-800">
-                {prevState.sqsScore ? `${prevState.sqsScore} / 10` : "—"}
-              </p>
+              <label className="block text-sm font-medium text-gray-700 mb-1 underline">Sleep Quality (1–10)</label>
+              <p className="text-sm text-gray-800">{prevState.sleep.sleepQuality ? `${prevState.sleep.sleepQuality} / 10` : "—"}</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Comments on Sleep
-              </label>
-              <p className="text-sm text-gray-800 whitespace-pre-wrap">
-                {prevState.sleepComments || "—"}
-              </p>
+              <label className="block text-sm font-medium text-gray-700 mb-1 underline">Comments on Sleep</label>
+              <p className="text-sm text-gray-800 whitespace-pre-wrap">{prevState.sleep.otherRemarks || "—"}</p>
             </div>
           </div>
         </div>
@@ -1096,27 +775,16 @@ export default function MealLogs({
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <section id="meal-logs" className="bg-white rounded-xl shadow-lg p-6">
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">Meal Logs</h2>
+        <h2 className="text-xl font-semibold text-gray-900 underline">Meal Log &amp; Sleep</h2>
         {!readOnly && activeTab === "current" && (
           <div className="flex items-center gap-2">
             {effectiveEditing && !isNewConsultation && (
-              <button
-                onClick={handleCancel}
-                className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
-              >
-                Cancel
-              </button>
+              <button onClick={handleCancel} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200">Cancel</button>
             )}
             {effectiveEditing && (
               <button
-                onClick={() => {
-                  setState(makeDefaultState());
-                  setSavedData(null);
-                  setIsSaved(false);
-                  setSaveError("");
-                }}
+                onClick={() => { setState(makeDefaultState()); setSavedData(null); setIsSaved(false); setSaveError(""); }}
                 className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
               >
                 Clear All
@@ -1124,11 +792,7 @@ export default function MealLogs({
             )}
             <button
               onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
-              className={`px-3 py-1 text-white text-sm rounded ${
-                effectiveEditing && isSaved
-                  ? "bg-green-600 hover:bg-green-700"
-                  : "bg-gray-800 hover:bg-gray-700"
-              }`}
+              className={`px-3 py-1 text-white text-sm rounded ${effectiveEditing && isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
             >
               {effectiveEditing ? (isSaved ? "Saved" : "Save") : "Edit"}
             </button>
@@ -1136,37 +800,24 @@ export default function MealLogs({
         )}
       </div>
 
-      {saveError && (
-        <p className="text-red-600 text-sm mb-4">{saveError}</p>
-      )}
+      {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
-      {/* Tabs */}
       <div className="border-b border-gray-200 mb-6">
         <nav className="flex gap-6">
-          <button
-            onClick={() => setActiveTab("current")}
-            className={`pb-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "current"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Current Session
-          </button>
-          <button
-            onClick={() => setActiveTab("previous")}
-            className={`pb-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "previous"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Previous Session
-          </button>
+          {(["current", "previous"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`pb-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === tab ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab === "current" ? "Current Session" : "Previous Session"}
+            </button>
+          ))}
         </nav>
       </div>
 
-      {/* Tab content */}
       {activeTab === "current" ? currentTabContent : previousTabContent}
     </section>
   );

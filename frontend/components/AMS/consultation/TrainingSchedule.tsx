@@ -1,6 +1,75 @@
 import { useState, useEffect } from "react";
 import { consultationApi } from "@/utils/consultationApi";
 
+// ============================================================
+// TYPES
+// ============================================================
+
+type DayKey =
+  | "Monday"
+  | "Tuesday"
+  | "Wednesday"
+  | "Thursday"
+  | "Friday"
+  | "Saturday"
+  | "Sunday";
+
+const DAY_KEYS: { key: DayKey; label: string }[] = [
+  { key: "Monday", label: "Monday" },
+  { key: "Tuesday", label: "Tuesday" },
+  { key: "Wednesday", label: "Wednesday" },
+  { key: "Thursday", label: "Thursday" },
+  { key: "Friday", label: "Friday" },
+  { key: "Saturday", label: "Saturday" },
+  { key: "Sunday", label: "Sunday" },
+];
+
+interface ScheduleEntryApi {
+  dayOfWeek: DayKey;
+  timeStart: string | null;
+  timeEnd: string | null;
+  activity: string;
+  rpe: number | null;
+}
+
+interface TrainingInfoApi {
+  upcomingMajorCompetitions: string | null;
+  upcomingLocalCompetitions: string | null;
+  currentPerformance: string | null;
+  coachPerformanceGoals: string | null;
+  athletePerformanceGoals: string | null;
+  otherRemarks: string | null;
+  pal: number | null;
+  rpeWeek: number;
+}
+
+interface TrainingScheduleData {
+  trainingInfo: TrainingInfoApi;
+  schedule: ScheduleEntryApi[];
+}
+
+interface ScheduleEntryForm {
+  dayOfWeek: DayKey;
+  timeStart: string;
+  timeEnd: string;
+  activity: string;
+  rpe: string;
+}
+
+interface EditForm {
+  trainingInfo: {
+    upcomingMajorCompetitions: string;
+    upcomingLocalCompetitions: string;
+    currentPerformance: string;
+    coachPerformanceGoals: string;
+    athletePerformanceGoals: string;
+    otherRemarks: string;
+    pal: string;
+    rpeWeek: string;
+  };
+  schedule: ScheduleEntryForm[];
+}
+
 interface TrainingScheduleProps {
   athleteId: string;
   sessionId: string;
@@ -10,154 +79,676 @@ interface TrainingScheduleProps {
   prevSessionId?: string;
 }
 
-interface DayApiData {
-  am: string | null;
-  pm: string | null;
-  trainingHours: number;
-  rpe: number;
+// ============================================================
+// HELPERS
+// ============================================================
+
+/** Calculate duration in hours between two HH:MM strings. Returns 0 if either is missing. */
+function calcHours(start: string, end: string): number {
+  if (!start || !end) return 0;
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  return Math.max(0, (eh * 60 + em - (sh * 60 + sm)) / 60);
 }
 
-interface TrainingScheduleData {
-  id: string | null;
-  sessionId: string;
-  days: Record<DayKey, DayApiData>;
-  totalTrainingHours: number;
-  pal: string;
-  trainingDetails: {
-    upcomingMajorCompetitions: string | null;
-    upcomingLocalCompetitions: string | null;
-  };
-  performanceDetails: {
-    currentPerformance: string | null;
-    coachPerformanceGoals: string | null;
-    athletePerformanceGoals: string | null;
-    otherRemarks: string | null;
-  };
+/** Sum of training hours for a day's entries. */
+function dailyHours(entries: ScheduleEntryForm[]): number {
+  return entries.reduce((sum, e) => sum + calcHours(e.timeStart, e.timeEnd), 0);
 }
 
-type DayKey =
-  | "monday"
-  | "tuesday"
-  | "wednesday"
-  | "thursday"
-  | "friday"
-  | "saturday"
-  | "sunday";
-
-const DAY_KEYS: { key: DayKey; label: string }[] = [
-  { key: "monday", label: "Monday" },
-  { key: "tuesday", label: "Tuesday" },
-  { key: "wednesday", label: "Wednesday" },
-  { key: "thursday", label: "Thursday" },
-  { key: "friday", label: "Friday" },
-  { key: "saturday", label: "Saturday" },
-  { key: "sunday", label: "Sunday" },
-];
-
-interface SlotEdit {
-  text: string;
-  trainingHours: string;
-  rpe: string;
+function dailyHoursFromApi(entries: ScheduleEntryApi[]): number {
+  return entries.reduce(
+    (sum, e) => sum + calcHours(e.timeStart ?? "", e.timeEnd ?? ""),
+    0
+  );
 }
 
-interface DayEdit {
-  am: SlotEdit;
-  pm: SlotEdit;
+function formatHours(h: number): string {
+  if (h === 0) return "—";
+  return `${h % 1 === 0 ? h : h.toFixed(2)}h`;
 }
 
-interface EditForm {
-  days: Record<DayKey, DayEdit>;
-  upcomingMajorCompetitions: string;
-  upcomingLocalCompetitions: string;
-  pal: string;
-  currentPerformance: string;
-  coachPerformanceGoals: string;
-  athletePerformanceGoals: string;
-  otherText: string;
+function formatTimeslot(start: string | null, end: string | null): string {
+  if (!start && !end) return "—";
+  if (start && end) return `${start} – ${end}`;
+  return start ?? end ?? "—";
 }
-
-const emptySlot = (): SlotEdit => ({ text: "", trainingHours: "", rpe: "" });
-const emptyDayEdit = (): DayEdit => ({ am: emptySlot(), pm: emptySlot() });
 
 const makeEmptyForm = (): EditForm => ({
-  days: Object.fromEntries(
-    DAY_KEYS.map(({ key }) => [key, emptyDayEdit()])
-  ) as Record<DayKey, DayEdit>,
-  upcomingMajorCompetitions: "",
-  upcomingLocalCompetitions: "",
-  pal: "",
-  currentPerformance: "",
-  coachPerformanceGoals: "",
-  athletePerformanceGoals: "",
-  otherText: "",
+  trainingInfo: {
+    upcomingMajorCompetitions: "",
+    upcomingLocalCompetitions: "",
+    currentPerformance: "",
+    coachPerformanceGoals: "",
+    athletePerformanceGoals: "",
+    otherRemarks: "",
+    pal: "",
+    rpeWeek: "0",
+  },
+  schedule: [],
 });
 
 function parseFromApi(data: TrainingScheduleData): EditForm {
-  const rawOther = data.performanceDetails?.otherRemarks ?? null;
-  let richDays: Record<DayKey, DayEdit> | null = null;
-  let otherText = "";
-
-  if (rawOther) {
-    try {
-      const parsed = JSON.parse(rawOther);
-      if (parsed.__tsv === 2 && parsed.days) {
-        richDays = parsed.days as Record<DayKey, DayEdit>;
-        otherText = parsed.otherText || "";
-      } else {
-        otherText = rawOther;
-      }
-    } catch {
-      otherText = rawOther;
-    }
-  }
-
-  // Migrate v2 activities[] format → text string
-  if (richDays) {
-    DAY_KEYS.forEach(({ key }) => {
-      const day = richDays![key];
-      for (const slot of ["am", "pm"] as const) {
-        const s = day[slot] as SlotEdit & { activities?: string[] };
-        if (Array.isArray(s.activities)) {
-          s.text = s.activities.filter(Boolean).join("\n");
-          delete s.activities;
-        }
-      }
-    });
-  }
-
-  if (!richDays) {
-    richDays = {} as Record<DayKey, DayEdit>;
-    DAY_KEYS.forEach(({ key }) => {
-      const d = data.days?.[key];
-      richDays![key] = {
-        am: {
-          text: d?.am ?? "",
-          trainingHours: d?.trainingHours?.toString() ?? "",
-          rpe: d?.rpe?.toString() ?? "",
-        },
-        pm: {
-          text: d?.pm ?? "",
-          trainingHours: "",
-          rpe: "",
-        },
-      };
-    });
-  }
-
+  const info = data.trainingInfo;
   return {
-    days: richDays,
-    upcomingMajorCompetitions:
-      data.trainingDetails?.upcomingMajorCompetitions ?? "",
-    upcomingLocalCompetitions:
-      data.trainingDetails?.upcomingLocalCompetitions ?? "",
-    pal: data.pal ?? "",
-    currentPerformance: data.performanceDetails?.currentPerformance ?? "",
-    coachPerformanceGoals: data.performanceDetails?.coachPerformanceGoals ?? "",
-    athletePerformanceGoals:
-      data.performanceDetails?.athletePerformanceGoals ?? "",
-    otherText,
+    trainingInfo: {
+      upcomingMajorCompetitions: info.upcomingMajorCompetitions ?? "",
+      upcomingLocalCompetitions: info.upcomingLocalCompetitions ?? "",
+      currentPerformance: info.currentPerformance ?? "",
+      coachPerformanceGoals: info.coachPerformanceGoals ?? "",
+      athletePerformanceGoals: info.athletePerformanceGoals ?? "",
+      otherRemarks: info.otherRemarks ?? "",
+      pal: info.pal !== null && info.pal !== undefined ? String(info.pal) : "",
+      rpeWeek: String(info.rpeWeek ?? 0),
+    },
+    schedule: data.schedule.map((s) => ({
+      dayOfWeek: s.dayOfWeek,
+      // Strip seconds if DB returns HH:MM:SS format — Zod/TimePicker expect HH:MM
+      timeStart: s.timeStart ? s.timeStart.substring(0, 5) : "",
+      timeEnd: s.timeEnd ? s.timeEnd.substring(0, 5) : "",
+      activity: s.activity,
+      rpe: s.rpe !== null && s.rpe !== undefined ? String(s.rpe) : "",
+    })),
   };
 }
+
+// ============================================================
+// TIME PICKER (separate HH / MM selects, 5-min intervals)
+// Matches the pattern used in ConsultationView.tsx
+// ============================================================
+
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) =>
+  String(i).padStart(2, "0")
+);
+const MINUTE_OPTIONS = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
+
+function TimePicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const [curH = "", curM = ""] = value ? value.split(":") : [];
+
+  const setH = (h: string) => {
+    if (!h) { onChange(""); return; }
+    onChange(`${h}:${curM || "00"}`);
+  };
+  const setM = (m: string) => {
+    if (!m) { onChange(""); return; }
+    onChange(`${curH || "00"}:${m}`);
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <select
+        value={curH}
+        onChange={(e) => setH(e.target.value)}
+        className="w-14 px-1 py-1 border border-gray-300 rounded text-xs bg-white focus:outline-none focus:border-blue-400"
+      >
+        <option value="">HH</option>
+        {HOUR_OPTIONS.map((h) => (
+          <option key={h} value={h}>{h}</option>
+        ))}
+      </select>
+      <span className="text-gray-500 font-medium text-xs">:</span>
+      <select
+        value={curM}
+        onChange={(e) => setM(e.target.value)}
+        className="w-14 px-1 py-1 border border-gray-300 rounded text-xs bg-white focus:outline-none focus:border-blue-400"
+      >
+        <option value="">MM</option>
+        {MINUTE_OPTIONS.map((m) => (
+          <option key={m} value={m}>{m}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+// ============================================================
+// TABLE COMPONENTS
+// ============================================================
+
+/** Read-only table for a given schedule data set */
+function ScheduleTable({ data }: { data: TrainingScheduleData }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse border border-gray-300 text-sm">
+        <thead>
+          <tr className="bg-gray-50">
+            <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 w-28">
+              Day
+            </th>
+            <th className="border border-gray-300 px-3 py-2 text-center font-medium text-gray-700 w-32">
+              Timeslot
+            </th>
+            <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700">
+              Activity
+            </th>
+            <th className="border border-gray-300 px-3 py-2 text-center font-medium text-gray-700 w-24">
+              RPE (1–10)
+            </th>
+            <th className="border border-gray-300 px-3 py-2 text-center font-medium text-gray-700 w-32">
+              Training Hours
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {DAY_KEYS.map(({ key, label }) => {
+            const entries = data.schedule.filter((e) => e.dayOfWeek === key);
+            const hours = dailyHoursFromApi(entries);
+
+            if (entries.length === 0) {
+              return (
+                <tr key={key} className="align-middle">
+                  <td className="border border-gray-300 px-3 py-3 font-medium text-gray-900 text-center bg-gray-50">
+                    {label}
+                  </td>
+                  <td className="border border-gray-300 px-3 py-3 text-center text-gray-400">
+                    —
+                  </td>
+                  <td className="border border-gray-300 px-3 py-3 text-gray-400 italic">
+                    Rest / No activities
+                  </td>
+                  <td className="border border-gray-300 px-3 py-3 text-center text-gray-400">
+                    —
+                  </td>
+                  <td className="border border-gray-300 px-3 py-3 text-center text-gray-400">
+                    —
+                  </td>
+                </tr>
+              );
+            }
+
+            return entries.map((entry, i) => (
+              <tr key={`${key}-${i}`} className="align-middle">
+                {i === 0 && (
+                  <td
+                    rowSpan={entries.length}
+                    className="border border-gray-300 px-3 py-3 font-medium text-gray-900 text-center align-middle bg-gray-50"
+                  >
+                    {label}
+                  </td>
+                )}
+                <td className="border border-gray-300 px-3 py-3 text-center text-gray-700">
+                  {formatTimeslot(entry.timeStart, entry.timeEnd)}
+                </td>
+                <td className="border border-gray-300 px-3 py-3 text-gray-900">
+                  {entry.activity}
+                </td>
+                <td className="border border-gray-300 px-3 py-3 text-center text-gray-700">
+                  {entry.rpe ?? "—"}
+                </td>
+                {i === 0 && (
+                  <td
+                    rowSpan={entries.length}
+                    className="border border-gray-300 px-3 py-3 text-center align-middle font-medium text-gray-700"
+                  >
+                    {formatHours(hours)}
+                  </td>
+                )}
+              </tr>
+            ));
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Editable table bound to EditForm state */
+function EditableScheduleTable({
+  form,
+  onChange,
+}: {
+  form: EditForm;
+  onChange: (updated: EditForm) => void;
+}) {
+  const updateEntry = (
+    idx: number,
+    field: keyof ScheduleEntryForm,
+    val: string
+  ) => {
+    const updated = form.schedule.map((e, i) =>
+      i === idx ? { ...e, [field]: val } : e
+    );
+    onChange({ ...form, schedule: updated });
+  };
+
+  const removeEntry = (idx: number) => {
+    onChange({
+      ...form,
+      schedule: form.schedule.filter((_, i) => i !== idx),
+    });
+  };
+
+  const addEntry = (day: DayKey) => {
+    onChange({
+      ...form,
+      schedule: [
+        ...form.schedule,
+        { dayOfWeek: day, timeStart: "", timeEnd: "", activity: "", rpe: "" },
+      ],
+    });
+  };
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse border border-gray-300 text-sm">
+        <thead>
+          <tr className="bg-gray-50">
+            <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 w-28">
+              Day
+            </th>
+            <th className="border border-gray-300 px-3 py-2 text-center font-medium text-gray-700 w-52">
+              Timeslot
+            </th>
+            <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700">
+              Activity
+            </th>
+            <th className="border border-gray-300 px-3 py-2 text-center font-medium text-gray-700 w-24">
+              RPE (1–10)
+            </th>
+            <th className="border border-gray-300 px-3 py-2 text-center font-medium text-gray-700 w-32">
+              Training Hours
+            </th>
+            <th className="border border-gray-300 px-2 py-2 w-8" />
+          </tr>
+        </thead>
+        <tbody>
+          {DAY_KEYS.map(({ key, label }) => {
+            const entries = form.schedule
+              .map((e, globalIdx) => ({ ...e, globalIdx }))
+              .filter((e) => e.dayOfWeek === key);
+
+            const hours = dailyHours(entries);
+            const totalSpan = Math.max(entries.length, 1);
+
+            return (
+              <>
+                {entries.length === 0 ? (
+                  /* Empty day: one placeholder row */
+                  <tr key={`${key}-empty`} className="align-middle bg-white">
+                    <td
+                      rowSpan={1}
+                      className="border border-gray-300 px-3 py-3 font-medium text-gray-900 text-center align-middle bg-gray-50"
+                    >
+                      {label}
+                    </td>
+                    <td className="border border-gray-300 px-3 py-3 text-center text-gray-400 italic">
+                      —
+                    </td>
+                    <td className="border border-gray-300 px-3 py-3 text-gray-400 italic">
+                      No activities
+                    </td>
+                    <td className="border border-gray-300 px-3 py-3 text-center text-gray-400">
+                      —
+                    </td>
+                    <td className="border border-gray-300 px-3 py-3 text-center text-gray-400">
+                      —
+                    </td>
+                    <td className="border border-gray-300 px-2 py-3 text-center" />
+                  </tr>
+                ) : (
+                  entries.map((entry, i) => (
+                    <tr key={`${key}-${entry.globalIdx}`} className="align-middle bg-white">
+                      {i === 0 && (
+                        <td
+                          rowSpan={totalSpan}
+                          className="border border-gray-300 px-3 py-3 font-medium text-gray-900 text-center align-middle bg-gray-50"
+                        >
+                          {label}
+                        </td>
+                      )}
+                      {/* Timeslot: HH:MM pickers for start and end */}
+                      <td className="border border-gray-300 px-2 py-2">
+                        <div className="flex flex-col gap-1">
+                          <TimePicker
+                            value={entry.timeStart}
+                            onChange={(val) =>
+                              updateEntry(entry.globalIdx, "timeStart", val)
+                            }
+                          />
+                          <span className="text-gray-400 text-xs text-center">to</span>
+                          <TimePicker
+                            value={entry.timeEnd}
+                            onChange={(val) =>
+                              updateEntry(entry.globalIdx, "timeEnd", val)
+                            }
+                          />
+                        </div>
+                      </td>
+                      {/* Activity */}
+                      <td className="border border-gray-300 px-2 py-2">
+                        <input
+                          type="text"
+                          value={entry.activity}
+                          onChange={(e) =>
+                            updateEntry(entry.globalIdx, "activity", e.target.value)
+                          }
+                          placeholder="e.g. Swimming, Gym, Track"
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-400"
+                        />
+                      </td>
+                      {/* RPE */}
+                      <td className="border border-gray-300 px-2 py-2 text-center">
+                        <input
+                          type="number"
+                          min="1"
+                          max="10"
+                          step="1"
+                          value={entry.rpe}
+                          onChange={(e) =>
+                            updateEntry(entry.globalIdx, "rpe", e.target.value)
+                          }
+                          className="w-14 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                        />
+                      </td>
+                      {/* Training Hours — rowspan, first row only */}
+                      {i === 0 && (
+                        <td
+                          rowSpan={totalSpan}
+                          className="border border-gray-300 px-3 py-3 text-center align-middle font-medium text-gray-700"
+                        >
+                          {formatHours(hours)}
+                        </td>
+                      )}
+                      {/* Delete button */}
+                      <td className="border border-gray-300 px-1 py-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => removeEntry(entry.globalIdx)}
+                          className="text-red-400 hover:text-red-600 text-xs px-1 py-0.5 rounded hover:bg-red-50"
+                          title="Remove activity"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+                {/* Add Activity row for each day */}
+                <tr key={`${key}-add`}>
+                  <td
+                    colSpan={6}
+                    className="border border-gray-300 px-3 py-1 bg-gray-50"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => addEntry(key)}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium py-0.5"
+                    >
+                      + Add activity for {label}
+                    </button>
+                  </td>
+                </tr>
+              </>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ============================================================
+// TRAINING INFO SECTION
+// ============================================================
+
+const INFO_FIELDS: {
+  field: keyof EditForm["trainingInfo"];
+  label: string;
+  type?: "text" | "number";
+  min?: number;
+  max?: number;
+  step?: number;
+  placeholder?: string;
+}[] = [
+  {
+    field: "upcomingMajorCompetitions",
+    label: "Upcoming Major Competitions",
+    placeholder: "e.g. SEA Games 2026",
+  },
+  {
+    field: "upcomingLocalCompetitions",
+    label: "Upcoming Local Competitions",
+    placeholder: "e.g. National Championships",
+  },
+  {
+    field: "pal",
+    label: "Physical Activity Level (PAL)",
+    type: "number",
+    min: 0,
+    max: 5,
+    step: 0.01,
+  },
+  {
+    field: "rpeWeek",
+    label: "Weekly RPE Summary",
+    type: "number",
+    min: 0,
+    max: 10,
+    step: 1,
+  },
+  { field: "currentPerformance", label: "Current Performance" },
+  { field: "coachPerformanceGoals", label: "Coach Performance Goals" },
+  { field: "athletePerformanceGoals", label: "Athlete Performance Goals" },
+  { field: "otherRemarks", label: "Other Remarks" },
+];
+
+function TrainingInfoSection({
+  form,
+  editing,
+  apiData,
+  onChange,
+}: {
+  form: EditForm;
+  editing: boolean;
+  apiData: TrainingScheduleData | null;
+  onChange: (updated: EditForm) => void;
+}) {
+  const info = form.trainingInfo;
+
+  const setField = (field: keyof EditForm["trainingInfo"], val: string) =>
+    onChange({ ...form, trainingInfo: { ...info, [field]: val } });
+
+  if (!editing) {
+    const src = apiData?.trainingInfo;
+    return (
+      <div className="grid md:grid-cols-2 gap-8 text-sm">
+        <div>
+          <h3 className="text-base font-medium text-gray-900 mb-4">
+            Training Details
+          </h3>
+          <div className="space-y-2">
+            {[
+              { label: "PAL", val: src?.pal != null ? String(src.pal) : null },
+              {
+                label: "Weekly RPE",
+                val: src?.rpeWeek != null ? String(src.rpeWeek) : null,
+              },
+              {
+                label: "Major Competitions",
+                val: src?.upcomingMajorCompetitions,
+              },
+              {
+                label: "Local Competitions",
+                val: src?.upcomingLocalCompetitions,
+              },
+            ].map(({ label, val }) => (
+              <div key={label} className="flex justify-between gap-4">
+                <span className="text-gray-600 shrink-0">{label}:</span>
+                <span className="text-gray-900 text-right">
+                  {val || "Not specified"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <h3 className="text-base font-medium text-gray-900 mb-4">
+            Performance Details
+          </h3>
+          <div className="space-y-3">
+            {[
+              { label: "Current Performance", val: src?.currentPerformance },
+              {
+                label: "Coach Performance Goals",
+                val: src?.coachPerformanceGoals,
+              },
+              {
+                label: "Athlete Performance Goals",
+                val: src?.athletePerformanceGoals,
+              },
+              { label: "Other Remarks", val: src?.otherRemarks },
+            ].map(({ label, val }) => (
+              <div key={label}>
+                <p className="text-gray-600 mb-0.5">{label}:</p>
+                <p className="text-gray-900">{val || "—"}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Edit mode
+  return (
+    <div className="grid md:grid-cols-2 gap-8 text-sm">
+      <div>
+        <h3 className="text-base font-medium text-gray-900 mb-4">
+          Training Details
+        </h3>
+        <div className="space-y-4">
+          {INFO_FIELDS.slice(0, 4).map(
+            ({ field, label, type, min, max, step, placeholder }) => (
+              <div key={field}>
+                <label className="block text-gray-600 mb-1">{label}:</label>
+                <input
+                  type={type ?? "text"}
+                  min={min}
+                  max={max}
+                  step={step}
+                  value={info[field]}
+                  placeholder={placeholder}
+                  onChange={(e) => setField(field, e.target.value)}
+                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                />
+              </div>
+            )
+          )}
+        </div>
+      </div>
+      <div>
+        <h3 className="text-base font-medium text-gray-900 mb-4">
+          Performance Details
+        </h3>
+        <div className="space-y-4">
+          {INFO_FIELDS.slice(4).map(({ field, label, placeholder }) => (
+            <div key={field}>
+              <label className="block text-gray-600 mb-1">{label}:</label>
+              <textarea
+                rows={2}
+                value={info[field]}
+                placeholder={placeholder ?? "Input text here"}
+                onChange={(e) => setField(field, e.target.value)}
+                className="w-full px-2 py-1 border border-gray-300 rounded text-sm resize-y"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// PREVIOUS SESSION READ-ONLY VIEW
+// ============================================================
+
+function PreviousSessionView({ data }: { data: TrainingScheduleData | null }) {
+  if (!data) {
+    return (
+      <div className="py-10 text-center text-gray-400 text-sm">
+        No previous session data available.
+      </div>
+    );
+  }
+
+  const src = data.trainingInfo;
+  const totalHours = DAY_KEYS.reduce(
+    (sum, { key }) =>
+      sum +
+      dailyHoursFromApi(data.schedule.filter((e) => e.dayOfWeek === key)),
+    0
+  );
+
+  return (
+    <div className="space-y-6">
+      <ScheduleTable data={data} />
+      <div className="grid md:grid-cols-2 gap-8 text-sm">
+        <div>
+          <h3 className="text-base font-medium text-gray-900 mb-3">
+            Training Details
+          </h3>
+          <div className="space-y-2">
+            {[
+              { label: "Total Weekly Hours", val: formatHours(totalHours) },
+              {
+                label: "PAL",
+                val: src.pal != null ? String(src.pal) : "Not set",
+              },
+              {
+                label: "Weekly RPE",
+                val: src.rpeWeek != null ? String(src.rpeWeek) : "Not set",
+              },
+              {
+                label: "Major Competitions",
+                val: src.upcomingMajorCompetitions || "Not specified",
+              },
+              {
+                label: "Local Competitions",
+                val: src.upcomingLocalCompetitions || "Not specified",
+              },
+            ].map(({ label, val }) => (
+              <div key={label} className="flex justify-between gap-4">
+                <span className="text-gray-600 shrink-0">{label}:</span>
+                <span className="text-right">{val}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <h3 className="text-base font-medium text-gray-900 mb-3">
+            Performance Details
+          </h3>
+          <div className="space-y-3">
+            {[
+              { label: "Current Performance", val: src.currentPerformance },
+              { label: "Coach Goals", val: src.coachPerformanceGoals },
+              { label: "Athlete Goals", val: src.athletePerformanceGoals },
+              { label: "Other Remarks", val: src.otherRemarks },
+            ].map(({ label, val }) =>
+              val ? (
+                <div key={label}>
+                  <p className="text-xs text-gray-500 mb-0.5">{label}</p>
+                  <p className="text-gray-800">{val}</p>
+                </div>
+              ) : null
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// MAIN COMPONENT
+// ============================================================
 
 export default function TrainingSchedule({
   athleteId: _athleteId,
@@ -173,16 +764,19 @@ export default function TrainingSchedule({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState("");
-  const [trainingData, setTrainingData] = useState<TrainingScheduleData | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>(makeEmptyForm);
   const [isSaved, setIsSaved] = useState(false);
-  const [prevData, setPrevData] = useState<TrainingScheduleData | null>(null);
   const [activeTab, setActiveTab] = useState<"current" | "previous">("current");
 
+  const [trainingData, setTrainingData] = useState<TrainingScheduleData | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>(makeEmptyForm);
+  const [prevData, setPrevData] = useState<TrainingScheduleData | null>(null);
+
+  // Reset saved indicator when form changes
   useEffect(() => {
     setIsSaved(false);
   }, [editForm]);
 
+  // Load current session data
   useEffect(() => {
     if (!sessionId) {
       setLoading(false);
@@ -208,6 +802,7 @@ export default function TrainingSchedule({
     })();
   }, [sessionId]);
 
+  // Load previous session data
   useEffect(() => {
     if (!prevSessionId) return;
     (async () => {
@@ -222,37 +817,6 @@ export default function TrainingSchedule({
     })();
   }, [prevSessionId]);
 
-  const updateSlotText = (day: DayKey, slot: "am" | "pm", val: string) => {
-    setEditForm((prev) => ({
-      ...prev,
-      days: {
-        ...prev.days,
-        [day]: {
-          ...prev.days[day],
-          [slot]: { ...prev.days[day][slot], text: val },
-        },
-      },
-    }));
-  };
-
-  const updateSlotField = (
-    day: DayKey,
-    slot: "am" | "pm",
-    field: "trainingHours" | "rpe",
-    val: string
-  ) => {
-    setEditForm((prev) => ({
-      ...prev,
-      days: {
-        ...prev.days,
-        [day]: {
-          ...prev.days[day],
-          [slot]: { ...prev.days[day][slot], [field]: val },
-        },
-      },
-    }));
-  };
-
   const handleSave = async () => {
     try {
       setSaveError("");
@@ -260,27 +824,29 @@ export default function TrainingSchedule({
         isNewConsultation && ensureSession ? await ensureSession() : sessionId;
       const token = localStorage.getItem("token");
 
-      const dayPayload = (key: DayKey) => {
-        const d = editForm.days[key];
-        const amH = parseFloat(d.am.trainingHours) || 0;
-        const pmH = parseFloat(d.pm.trainingHours) || 0;
-        return {
-          am: d.am.text || null,
-          pm: d.pm.text || null,
-          trainingHours: amH + pmH || null,
-          rpe: d.am.rpe
-            ? parseFloat(d.am.rpe)
-            : d.pm.rpe
-            ? parseFloat(d.pm.rpe)
-            : null,
-        };
-      };
+      const info = editForm.trainingInfo;
 
-      const richOther = JSON.stringify({
-        __tsv: 2,
-        days: editForm.days,
-        otherText: editForm.otherText,
-      });
+      const body = {
+        trainingInfo: {
+          upcomingMajorCompetitions: info.upcomingMajorCompetitions || null,
+          upcomingLocalCompetitions: info.upcomingLocalCompetitions || null,
+          currentPerformance: info.currentPerformance || null,
+          coachPerformanceGoals: info.coachPerformanceGoals || null,
+          athletePerformanceGoals: info.athletePerformanceGoals || null,
+          otherRemarks: info.otherRemarks || null,
+          pal: info.pal !== "" ? parseFloat(info.pal) : null,
+          rpeWeek: info.rpeWeek !== "" ? parseInt(info.rpeWeek, 10) : 0,
+        },
+        schedule: editForm.schedule
+          .filter((e) => e.activity.trim() !== "")
+          .map((e) => ({
+            dayOfWeek: e.dayOfWeek,
+            timeStart: e.timeStart || null,
+            timeEnd: e.timeEnd || null,
+            activity: e.activity.trim(),
+            rpe: e.rpe !== "" ? parseInt(e.rpe, 10) : null,
+          })),
+      };
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${id}/training-schedule`,
@@ -290,27 +856,12 @@ export default function TrainingSchedule({
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            days: Object.fromEntries(
-              DAY_KEYS.map(({ key }) => [key, dayPayload(key)])
-            ),
-            trainingDetails: {
-              upcomingMajorCompetitions:
-                editForm.upcomingMajorCompetitions || null,
-              upcomingLocalCompetitions:
-                editForm.upcomingLocalCompetitions || null,
-            },
-            performanceDetails: {
-              currentPerformance: editForm.currentPerformance || null,
-              coachPerformanceGoals: editForm.coachPerformanceGoals || null,
-              athletePerformanceGoals: editForm.athletePerformanceGoals || null,
-              otherRemarks: richOther,
-            },
-            pal: editForm.pal ? parseFloat(editForm.pal) : null,
-          }),
+          body: JSON.stringify(body),
         }
       );
+
       if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+
       const updated = (await response.json()) as { data: TrainingScheduleData };
       setTrainingData(updated.data);
       if (!isNewConsultation) setEditForm(parseFromApi(updated.data));
@@ -326,440 +877,8 @@ export default function TrainingSchedule({
     setIsEditing(false);
     setSaveError("");
     if (trainingData) setEditForm(parseFromApi(trainingData));
+    else setEditForm(makeEmptyForm());
   };
-
-  const editTotalHours = DAY_KEYS.reduce((sum, { key }) => {
-    const d = editForm.days[key];
-    return (
-      sum + (parseFloat(d.am.trainingHours) || 0) + (parseFloat(d.pm.trainingHours) || 0)
-    );
-  }, 0);
-
-  // Current session tab content
-  const currentTabContent = (
-    <div className="space-y-6">
-      {/* Training schedule table */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse border border-gray-300 text-sm">
-          <thead>
-            <tr className="bg-gray-50">
-              <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 w-28">Day</th>
-              <th className="border border-gray-300 px-3 py-2 text-center font-medium text-gray-700 w-16">Slot</th>
-              <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700">Activities</th>
-              <th className="border border-gray-300 px-3 py-2 text-center font-medium text-gray-700 w-32">Training Hours</th>
-              <th className="border border-gray-300 px-3 py-2 text-center font-medium text-gray-700 w-28">RPE (1–10)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {DAY_KEYS.map(({ key, label }) => {
-              const day = editForm.days[key];
-              return (
-                <>
-                  {/* AM row */}
-                  <tr key={`${key}-am`} className="align-top">
-                    <td
-                      rowSpan={2}
-                      className="border border-gray-300 px-3 py-3 font-medium text-gray-900 align-middle text-center bg-gray-50"
-                    >
-                      {label}
-                    </td>
-                    <td className="border border-gray-300 px-2 py-3 text-center">
-                      <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded border text-amber-600 bg-amber-50 border-amber-200">
-                        AM
-                      </span>
-                    </td>
-                    <td className="border border-gray-300 px-3 py-2">
-                      {effectiveEditing ? (
-                        <textarea
-                          value={day.am.text}
-                          onChange={(e) => updateSlotText(key, "am", e.target.value)}
-                          placeholder="Type activities here"
-                          rows={2}
-                          className="w-full px-2 py-1 border border-gray-200 rounded text-sm resize-y focus:outline-none focus:border-blue-400"
-                        />
-                      ) : (
-                        day.am.text ? (
-                          <p className="whitespace-pre-wrap text-sm">{day.am.text}</p>
-                        ) : (
-                          <span className="text-gray-400 italic text-sm">Rest</span>
-                        )
-                      )}
-                    </td>
-                    <td className="border border-gray-300 px-3 py-3 text-center align-middle">
-                      {effectiveEditing ? (
-                        <input
-                          type="number"
-                          min="0"
-                          max="24"
-                          step="0.5"
-                          value={day.am.trainingHours}
-                          onChange={(e) => updateSlotField(key, "am", "trainingHours", e.target.value)}
-                          className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
-                        />
-                      ) : (
-                        day.am.trainingHours || "—"
-                      )}
-                    </td>
-                    <td className="border border-gray-300 px-3 py-3 text-center align-middle">
-                      {effectiveEditing ? (
-                        <input
-                          type="number"
-                          min="0"
-                          max="10"
-                          step="1"
-                          value={day.am.rpe}
-                          onChange={(e) => updateSlotField(key, "am", "rpe", e.target.value)}
-                          className="w-14 px-2 py-1 border border-gray-300 rounded text-sm text-center"
-                        />
-                      ) : (
-                        day.am.rpe || "—"
-                      )}
-                    </td>
-                  </tr>
-                  {/* PM row */}
-                  <tr key={`${key}-pm`} className="align-top">
-                    <td className="border border-gray-300 px-2 py-3 text-center">
-                      <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded border text-indigo-600 bg-indigo-50 border-indigo-200">
-                        PM
-                      </span>
-                    </td>
-                    <td className="border border-gray-300 px-3 py-2">
-                      {effectiveEditing ? (
-                        <textarea
-                          value={day.pm.text}
-                          onChange={(e) => updateSlotText(key, "pm", e.target.value)}
-                          placeholder="Type activities here"
-                          rows={2}
-                          className="w-full px-2 py-1 border border-gray-200 rounded text-sm resize-y focus:outline-none focus:border-blue-400"
-                        />
-                      ) : (
-                        day.pm.text ? (
-                          <p className="whitespace-pre-wrap text-sm">{day.pm.text}</p>
-                        ) : (
-                          <span className="text-gray-400 italic text-sm">Rest</span>
-                        )
-                      )}
-                    </td>
-                    <td className="border border-gray-300 px-3 py-3 text-center align-middle">
-                      {effectiveEditing ? (
-                        <input
-                          type="number"
-                          min="0"
-                          max="24"
-                          step="0.5"
-                          value={day.pm.trainingHours}
-                          onChange={(e) => updateSlotField(key, "pm", "trainingHours", e.target.value)}
-                          className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
-                        />
-                      ) : (
-                        day.pm.trainingHours || "—"
-                      )}
-                    </td>
-                    <td className="border border-gray-300 px-3 py-3 text-center align-middle">
-                      {effectiveEditing ? (
-                        <input
-                          type="number"
-                          min="0"
-                          max="10"
-                          step="1"
-                          value={day.pm.rpe}
-                          onChange={(e) => updateSlotField(key, "pm", "rpe", e.target.value)}
-                          className="w-14 px-2 py-1 border border-gray-300 rounded text-sm text-center"
-                        />
-                      ) : (
-                        day.pm.rpe || "—"
-                      )}
-                    </td>
-                  </tr>
-                </>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Training & Performance Details */}
-      <div className="grid md:grid-cols-2 gap-8">
-        <div>
-          <h3 className="text-base font-medium text-gray-900 mb-4">
-            Training Details
-          </h3>
-          <div className="space-y-4 text-sm">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Total Training Hours:</span>
-              <span className="text-gray-900 font-medium">
-                {effectiveEditing
-                  ? editTotalHours.toFixed(1)
-                  : (trainingData?.totalTrainingHours ?? 0)}
-              </span>
-            </div>
-
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">
-                Physical Activity Level (PAL):
-              </span>
-              {effectiveEditing ? (
-                <input
-                  type="number"
-                  min="1"
-                  max="5"
-                  step="0.01"
-                  value={editForm.pal}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({ ...prev, pal: e.target.value }))
-                  }
-                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
-                />
-              ) : (
-                <span className="text-gray-900">
-                  {trainingData?.pal ? parseFloat(trainingData.pal) : "Not set"}
-                </span>
-              )}
-            </div>
-
-            <div className="flex justify-between items-start gap-4">
-              <span className="text-gray-600 shrink-0">
-                Upcoming Major Competitions:
-              </span>
-              {effectiveEditing ? (
-                <input
-                  type="text"
-                  value={editForm.upcomingMajorCompetitions}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      upcomingMajorCompetitions: e.target.value,
-                    }))
-                  }
-                  placeholder="e.g. SEA Games 2026"
-                  className="w-48 px-2 py-1 border border-gray-300 rounded text-sm"
-                />
-              ) : (
-                <span className="text-gray-900 text-right">
-                  {trainingData?.trainingDetails?.upcomingMajorCompetitions ||
-                    "Not specified"}
-                </span>
-              )}
-            </div>
-
-            <div className="flex justify-between items-start gap-4">
-              <span className="text-gray-600 shrink-0">
-                Upcoming Local Competitions:
-              </span>
-              {effectiveEditing ? (
-                <input
-                  type="text"
-                  value={editForm.upcomingLocalCompetitions}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      upcomingLocalCompetitions: e.target.value,
-                    }))
-                  }
-                  placeholder="e.g. National Championships"
-                  className="w-48 px-2 py-1 border border-gray-300 rounded text-sm"
-                />
-              ) : (
-                <span className="text-gray-900 text-right">
-                  {trainingData?.trainingDetails?.upcomingLocalCompetitions ||
-                    "Not specified"}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <h3 className="text-base font-medium text-gray-900 mb-4">
-            Performance Details
-          </h3>
-          <div className="space-y-4 text-sm">
-            {(
-              [
-                {
-                  field: "currentPerformance" as const,
-                  label: "Current Performance",
-                },
-                {
-                  field: "coachPerformanceGoals" as const,
-                  label: "Coach Performance Goals",
-                },
-                {
-                  field: "athletePerformanceGoals" as const,
-                  label: "Athlete Performance Goals",
-                },
-                { field: "otherText" as const, label: "Other Remarks" },
-              ] as const
-            ).map(({ field, label }) => (
-              <div key={field}>
-                <label className="block text-gray-600 mb-1">{label}:</label>
-                {effectiveEditing ? (
-                  <textarea
-                    className="w-full h-16 px-3 py-2 border border-gray-300 rounded text-sm"
-                    placeholder="Input Text Here"
-                    value={editForm[field]}
-                    onChange={(e) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        [field]: e.target.value,
-                      }))
-                    }
-                  />
-                ) : (
-                  <p className="text-sm text-gray-900">
-                    {editForm[field] || "—"}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Previous session tab content
-  const previousTabContent = (() => {
-    if (!prevData) {
-      return (
-        <div className="py-10 text-center text-gray-400 text-sm">
-          No previous session data available.
-        </div>
-      );
-    }
-    const prevForm = parseFromApi(prevData);
-    const prevTotal = DAY_KEYS.reduce((sum, { key }) => {
-      const d = prevForm.days[key];
-      return (
-        sum +
-        (parseFloat(d.am.trainingHours) || 0) +
-        (parseFloat(d.pm.trainingHours) || 0)
-      );
-    }, 0);
-    return (
-      <div className="space-y-6">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse border border-gray-300 text-sm">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700 w-28">Day</th>
-                <th className="border border-gray-300 px-3 py-2 text-center font-medium text-gray-700 w-16">Slot</th>
-                <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700">Activities</th>
-                <th className="border border-gray-300 px-3 py-2 text-center font-medium text-gray-700 w-32">Training Hours</th>
-                <th className="border border-gray-300 px-3 py-2 text-center font-medium text-gray-700 w-28">RPE (1–10)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {DAY_KEYS.map(({ key, label }) => {
-                const day = prevForm.days[key];
-                return (
-                  <>
-                    <tr key={`${key}-am`} className="align-top">
-                      <td
-                        rowSpan={2}
-                        className="border border-gray-300 px-3 py-3 font-medium text-gray-900 align-middle text-center bg-gray-50"
-                      >
-                        {label}
-                      </td>
-                      <td className="border border-gray-300 px-2 py-3 text-center">
-                        <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded border text-amber-600 bg-amber-50 border-amber-200">AM</span>
-                      </td>
-                      <td className="border border-gray-300 px-3 py-3 text-sm">
-                        {day.am.text ? (
-                          <p className="whitespace-pre-wrap">{day.am.text}</p>
-                        ) : (
-                          <span className="text-gray-400 italic">Rest</span>
-                        )}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-3 text-center align-middle">{day.am.trainingHours || "—"}</td>
-                      <td className="border border-gray-300 px-3 py-3 text-center align-middle">{day.am.rpe || "—"}</td>
-                    </tr>
-                    <tr key={`${key}-pm`} className="align-top">
-                      <td className="border border-gray-300 px-2 py-3 text-center">
-                        <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded border text-indigo-600 bg-indigo-50 border-indigo-200">PM</span>
-                      </td>
-                      <td className="border border-gray-300 px-3 py-3 text-sm">
-                        {day.pm.text ? (
-                          <p className="whitespace-pre-wrap">{day.pm.text}</p>
-                        ) : (
-                          <span className="text-gray-400 italic">Rest</span>
-                        )}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-3 text-center align-middle">{day.pm.trainingHours || "—"}</td>
-                      <td className="border border-gray-300 px-3 py-3 text-center align-middle">{day.pm.rpe || "—"}</td>
-                    </tr>
-                  </>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-8 text-sm">
-          <div>
-            <h3 className="text-base font-medium text-gray-900 mb-3">
-              Training Details
-            </h3>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Total Hours:</span>
-                <span>{prevTotal.toFixed(1)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">PAL:</span>
-                <span>
-                  {prevData.pal ? parseFloat(prevData.pal) : "Not set"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Major Competitions:</span>
-                <span>
-                  {prevData.trainingDetails?.upcomingMajorCompetitions ||
-                    "Not specified"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Local Competitions:</span>
-                <span>
-                  {prevData.trainingDetails?.upcomingLocalCompetitions ||
-                    "Not specified"}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div>
-            <h3 className="text-base font-medium text-gray-900 mb-3">
-              Performance Details
-            </h3>
-            <div className="space-y-3">
-              {[
-                {
-                  label: "Current Performance",
-                  val: prevForm.currentPerformance,
-                },
-                {
-                  label: "Coach Goals",
-                  val: prevForm.coachPerformanceGoals,
-                },
-                {
-                  label: "Athlete Goals",
-                  val: prevForm.athletePerformanceGoals,
-                },
-                { label: "Other Remarks", val: prevForm.otherText },
-              ].map(({ label, val }) =>
-                val ? (
-                  <div key={label}>
-                    <p className="text-xs text-gray-500 mb-0.5">{label}</p>
-                    <p className="text-gray-800">{val}</p>
-                  </div>
-                ) : null
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  })();
 
   if (loading) {
     return (
@@ -768,10 +887,8 @@ export default function TrainingSchedule({
         className="bg-white rounded-xl shadow-lg p-6 text-gray-900"
       >
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-gray-600">
-            Loading training schedule...
-          </span>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+          <span className="ml-2 text-gray-600">Loading training schedule...</span>
         </div>
       </section>
     );
@@ -798,9 +915,7 @@ export default function TrainingSchedule({
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">
-          Training Schedule
-        </h2>
+        <h2 className="text-xl font-semibold text-gray-900">Training Schedule</h2>
         {!readOnly && (
           <div className="flex items-center gap-2">
             {effectiveEditing && !isNewConsultation && (
@@ -825,9 +940,7 @@ export default function TrainingSchedule({
               </button>
             )}
             <button
-              onClick={
-                effectiveEditing ? handleSave : () => setIsEditing(true)
-              }
+              onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
               className={`px-3 py-1 text-white text-sm rounded ${
                 effectiveEditing && isSaved
                   ? "bg-green-600 hover:bg-green-700"
@@ -840,9 +953,7 @@ export default function TrainingSchedule({
         )}
       </div>
 
-      {saveError && (
-        <p className="text-red-600 text-sm mb-4">{saveError}</p>
-      )}
+      {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200 mb-6">
@@ -861,7 +972,23 @@ export default function TrainingSchedule({
         ))}
       </div>
 
-      {activeTab === "current" ? currentTabContent : previousTabContent}
+      {activeTab === "current" ? (
+        <div className="space-y-6">
+          {effectiveEditing ? (
+            <EditableScheduleTable form={editForm} onChange={setEditForm} />
+          ) : (
+            trainingData && <ScheduleTable data={trainingData} />
+          )}
+          <TrainingInfoSection
+            form={editForm}
+            editing={effectiveEditing}
+            apiData={trainingData}
+            onChange={setEditForm}
+          />
+        </div>
+      ) : (
+        <PreviousSessionView data={prevData} />
+      )}
     </section>
   );
 }
