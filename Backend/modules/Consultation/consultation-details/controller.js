@@ -2,6 +2,7 @@ import * as services from './services.js';
 import { createDetailsSchema, updateDetailsSchema, sessionIdParamSchema } from './validation.js';
 import pool from '../../../config/db.js';
 
+
 // ============================================================================
 // GET CONSULTATION DETAILS
 // ============================================================================
@@ -50,16 +51,7 @@ export async function createConsultationDetails(req, res) {
             return res.status(404).json({ error: 'Session not found' });
         }
 
-        // Validate review_id FKs
         const { sessions_id, ...detailFields } = validated;
-        const fkErrors = await services.validateReviewIds(detailFields);
-        if (fkErrors.length > 0) {
-            return res.status(400).json({
-                error: 'Validation failed',
-                details: fkErrors,
-            });
-        }
-
         const result = await services.upsertConsultationDetails(sessions_id, detailFields, req.user.userId);
 
         res.status(201).json({
@@ -98,15 +90,6 @@ export async function updateConsultationDetails(req, res) {
         );
         if (sessionCheck.rows.length === 0) {
             return res.status(404).json({ error: 'Session not found' });
-        }
-
-        // Validate review_id FKs
-        const fkErrors = await services.validateReviewIds(validated);
-        if (fkErrors.length > 0) {
-            return res.status(400).json({
-                error: 'Validation failed',
-                details: fkErrors,
-            });
         }
 
         const result = await services.upsertConsultationDetails(sessionId, validated, req.user.userId);

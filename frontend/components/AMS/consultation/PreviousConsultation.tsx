@@ -27,20 +27,9 @@ interface ConsultationData {
   consult_type?: string;
   details: {
     main_nutrition_diagnosis: string | null;
-    carbohydrates_review_id: string | null;
-    carbohydrates_review_diagnosis: string | null;
-    protein_review_id: string | null;
-    protein_review_diagnosis: string | null;
-    fat_review_id: string | null;
-    fat_review_diagnosis: string | null;
-    fibre_review_id: string | null;
-    fibre_review_diagnosis: string | null;
-    iron_review_id: string | null;
-    iron_review_diagnosis: string | null;
-    calcium_review_id: string | null;
-    calcium_review_diagnosis: string | null;
-    micronutrients_review_id: string | null;
-    micronutrients_review_diagnosis: string | null;
+    carbohydrates_review: string | null;
+    protein_review: string | null;
+    fat_review: string | null;
     other_review: string | null;
     intervention_note: string | null;
     follow_up_note: string | null;
@@ -68,12 +57,6 @@ interface ConsultType {
   type_of_consult: string;
 }
 
-interface NutritionDiagnosis {
-  id: string;
-  category: string;
-  diagnosis: string;
-}
-
 interface CurrentConsultForm {
   consult_type: string;
   intervention_status: string;
@@ -81,10 +64,6 @@ interface CurrentConsultForm {
   carbohydrates_review: string;
   protein_review: string;
   fat_review: string;
-  fibre_review: string;
-  iron_review: string;
-  calcium_review: string;
-  micronutrients_review: string;
   other_review: string;
   intervention_note: string;
   follow_up_note: string;
@@ -98,10 +77,6 @@ const emptyForm: CurrentConsultForm = {
   carbohydrates_review: "",
   protein_review: "",
   fat_review: "",
-  fibre_review: "",
-  iron_review: "",
-  calcium_review: "",
-  micronutrients_review: "",
   other_review: "",
   intervention_note: "",
   follow_up_note: "",
@@ -141,7 +116,6 @@ const PreviousConsultation = forwardRef<
   const consultTypesRef = useRef<ConsultType[]>([]);
 
   const [consultTypes, setConsultTypes] = useState<ConsultType[]>([]);
-  const [nutritionDiagnoses, setNutritionDiagnoses] = useState<NutritionDiagnosis[]>([]);
 
   // Pre-populate / reset form when isEditMode changes
   const prevIsEditModeRef = useRef(false);
@@ -154,13 +128,9 @@ const PreviousConsultation = forwardRef<
         consult_type: "",
         intervention_status: consultationData.intervention_status || "",
         main_nutrition_diagnosis: d.main_nutrition_diagnosis || "",
-        carbohydrates_review: d.carbohydrates_review_id || "",
-        protein_review: d.protein_review_id || "",
-        fat_review: d.fat_review_id || "",
-        fibre_review: d.fibre_review_id || "",
-        iron_review: d.iron_review_id || "",
-        calcium_review: d.calcium_review_id || "",
-        micronutrients_review: d.micronutrients_review_id || "",
+        carbohydrates_review: d.carbohydrates_review || "",
+        protein_review: d.protein_review || "",
+        fat_review: d.fat_review || "",
         other_review: d.other_review || "",
         intervention_note: d.intervention_note || "",
         follow_up_note: d.follow_up_note || "",
@@ -213,13 +183,9 @@ const PreviousConsultation = forwardRef<
             body: JSON.stringify({
               sessions_id: id,
               main_nutrition_diagnosis: currentForm.main_nutrition_diagnosis || undefined,
-              carbohydrates_review_id: currentForm.carbohydrates_review || null,
-              protein_review_id: currentForm.protein_review || null,
-              fat_review_id: currentForm.fat_review || null,
-              fibre_review_id: currentForm.fibre_review || null,
-              iron_review_id: currentForm.iron_review || null,
-              calcium_review_id: currentForm.calcium_review || null,
-              micronutrients_review_id: currentForm.micronutrients_review || null,
+              carbohydrates_review: currentForm.carbohydrates_review || undefined,
+              protein_review: currentForm.protein_review || undefined,
+              fat_review: currentForm.fat_review || undefined,
               other_review: currentForm.other_review || undefined,
               intervention_note: currentForm.intervention_note || undefined,
               follow_up_note: currentForm.follow_up_note || undefined,
@@ -306,13 +272,9 @@ const PreviousConsultation = forwardRef<
     const fetchLookups = async () => {
       try {
         const { consultationLookupApi } = await import("../../../utils/consultationApi");
-        const [typesResponse, diagResponse] = await Promise.all([
-          consultationLookupApi.getConsultationTypes(),
-          consultationLookupApi.getNutritionDiagnoses(),
-        ]);
+        const typesResponse = await consultationLookupApi.getConsultationTypes();
         setConsultTypes(typesResponse.data ?? []);
         consultTypesRef.current = typesResponse.data ?? [];
-        setNutritionDiagnoses(diagResponse.data ?? []);
       } catch (err) {
         console.error("Failed to fetch consultation lookups:", err);
       }
@@ -352,13 +314,9 @@ const PreviousConsultation = forwardRef<
           body: JSON.stringify({
             sessions_id: id,
             main_nutrition_diagnosis: form.main_nutrition_diagnosis || undefined,
-            carbohydrates_review_id: form.carbohydrates_review || null,
-            protein_review_id: form.protein_review || null,
-            fat_review_id: form.fat_review || null,
-            fibre_review_id: form.fibre_review || null,
-            iron_review_id: form.iron_review || null,
-            calcium_review_id: form.calcium_review || null,
-            micronutrients_review_id: form.micronutrients_review || null,
+            carbohydrates_review: form.carbohydrates_review || undefined,
+            protein_review: form.protein_review || undefined,
+            fat_review: form.fat_review || undefined,
             other_review: form.other_review || undefined,
             intervention_note: form.intervention_note || undefined,
             follow_up_note: form.follow_up_note || undefined,
@@ -393,13 +351,9 @@ const PreviousConsultation = forwardRef<
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             main_nutrition_diagnosis: formRef.current.main_nutrition_diagnosis || undefined,
-            carbohydrates_review_id: formRef.current.carbohydrates_review || null,
-            protein_review_id: formRef.current.protein_review || null,
-            fat_review_id: formRef.current.fat_review || null,
-            fibre_review_id: formRef.current.fibre_review || null,
-            iron_review_id: formRef.current.iron_review || null,
-            calcium_review_id: formRef.current.calcium_review || null,
-            micronutrients_review_id: formRef.current.micronutrients_review || null,
+            carbohydrates_review: formRef.current.carbohydrates_review || undefined,
+            protein_review: formRef.current.protein_review || undefined,
+            fat_review: formRef.current.fat_review || undefined,
             other_review: formRef.current.other_review || undefined,
             intervention_note: formRef.current.intervention_note || undefined,
             follow_up_note: formRef.current.follow_up_note || undefined,
@@ -479,41 +433,23 @@ const PreviousConsultation = forwardRef<
             <div className="grid grid-cols-4 gap-3 text-sm">
               {(
                 [
-                  { label: "Carbohydrate", field: "carbohydrates_review" as const, category: "CARB" },
-                  { label: "Protein", field: "protein_review" as const, category: "PROTEIN" },
-                  { label: "Fat", field: "fat_review" as const, category: "FAT" },
-                  { label: "Fibre", field: "fibre_review" as const, category: "FIBRE" },
-                  { label: "Iron", field: "iron_review" as const, category: "IRON" },
-                  { label: "Calcium", field: "calcium_review" as const, category: "CALCIUM" },
-                  { label: "Micronutrients", field: "micronutrients_review" as const, category: "MICRO" },
-                ] as { label: string; field: keyof CurrentConsultForm; category: string }[]
-              ).map(({ label, field, category }) => (
+                  { label: "Carbohydrate", field: "carbohydrates_review" as const },
+                  { label: "Protein", field: "protein_review" as const },
+                  { label: "Fat", field: "fat_review" as const },
+                  { label: "Other", field: "other_review" as const },
+                ] as { label: string; field: keyof CurrentConsultForm }[]
+              ).map(({ label, field }) => (
                 <div key={field}>
                   <label className="block text-xs text-gray-500 mb-1">{label}</label>
-                  <select
+                  <input
+                    type="text"
                     value={form[field]}
                     onChange={(e) => updateForm(field, e.target.value)}
+                    placeholder={`${label}...`}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-900"
-                  >
-                    <option value="">—</option>
-                    {nutritionDiagnoses
-                      .filter((d) => d.category === category)
-                      .map((d) => (
-                        <option key={d.id} value={d.id}>{d.diagnosis}</option>
-                      ))}
-                  </select>
+                  />
                 </div>
               ))}
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Other</label>
-                <input
-                  type="text"
-                  value={form.other_review}
-                  onChange={(e) => updateForm("other_review", e.target.value)}
-                  placeholder="Other..."
-                  className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-900"
-                />
-              </div>
             </div>
           </div>
 
@@ -630,22 +566,9 @@ const PreviousConsultation = forwardRef<
       <div className="space-y-4">
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: "Carbohydrate", value: consultationData.details?.carbohydrates_review_diagnosis },
-            { label: "Protein", value: consultationData.details?.protein_review_diagnosis },
-            { label: "Fat", value: consultationData.details?.fat_review_diagnosis },
-            { label: "Fibre", value: consultationData.details?.fibre_review_diagnosis },
-          ].map(({ label, value }) => (
-            <div key={label} className="text-center">
-              <p className="text-xs text-gray-500 mb-1">{label}</p>
-              <p className="text-sm font-medium text-gray-900">{value || "N/A"}</p>
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-4 gap-4">
-          {[
-            { label: "Iron", value: consultationData.details?.iron_review_diagnosis },
-            { label: "Calcium", value: consultationData.details?.calcium_review_diagnosis },
-            { label: "Micronutrients", value: consultationData.details?.micronutrients_review_diagnosis },
+            { label: "Carbohydrate", value: consultationData.details?.carbohydrates_review },
+            { label: "Protein", value: consultationData.details?.protein_review },
+            { label: "Fat", value: consultationData.details?.fat_review },
             { label: "Other", value: consultationData.details?.other_review },
           ].map(({ label, value }) => (
             <div key={label} className="text-center">
