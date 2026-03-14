@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict nqZOqpn2tzAiSdfPZh8yT7qWMYmdPGKfuTRRBppwxYvkn4aHmyjEUWuN5y7kL9V
+\restrict Y1zcRrlj4DY6faSGq7sbQBa3wGhiXBmt2cwfWaOaT8YxVgKpp66iOSo2huV3yMj
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.8 (Homebrew)
@@ -846,6 +846,26 @@ CREATE TABLE sss.inventory_ticket (
 
 
 --
+-- Name: scraper_schedule_config; Type: TABLE; Schema: sss; Owner: -
+--
+
+CREATE TABLE sss.scraper_schedule_config (
+    id uuid DEFAULT public.uuid_generate_v7() NOT NULL,
+    is_enabled boolean DEFAULT true NOT NULL,
+    interval_days integer DEFAULT 14 NOT NULL,
+    is_running boolean DEFAULT false NOT NULL,
+    run_started_at timestamp with time zone,
+    last_run_at timestamp with time zone,
+    next_run_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by uuid,
+    CONSTRAINT interval_days_positive CHECK ((interval_days > 0))
+);
+
+
+--
 -- Name: supplement; Type: TABLE; Schema: sss; Owner: -
 --
 
@@ -1342,6 +1362,14 @@ ALTER TABLE ONLY sss.inventory_batch
 
 ALTER TABLE ONLY sss.inventory_ticket
     ADD CONSTRAINT inventory_ticket_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: scraper_schedule_config scraper_schedule_config_pkey; Type: CONSTRAINT; Schema: sss; Owner: -
+--
+
+ALTER TABLE ONLY sss.scraper_schedule_config
+    ADD CONSTRAINT scraper_schedule_config_pkey PRIMARY KEY (id);
 
 
 --
@@ -1936,6 +1964,13 @@ CREATE TRIGGER audit_packaging_lookup_changes AFTER INSERT OR DELETE OR UPDATE O
 
 
 --
+-- Name: scraper_schedule_config audit_scraper_config_changes; Type: TRIGGER; Schema: sss; Owner: -
+--
+
+CREATE TRIGGER audit_scraper_config_changes AFTER INSERT OR DELETE OR UPDATE ON sss.scraper_schedule_config FOR EACH ROW EXECUTE FUNCTION audit.audit_trigger_func();
+
+
+--
 -- Name: batch_stock_status_lookup audit_stock_status_lookup_changes; Type: TRIGGER; Schema: sss; Owner: -
 --
 
@@ -1982,6 +2017,13 @@ CREATE TRIGGER audit_webscraper_url_changes AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 CREATE TRIGGER set_timestamp_inventory_batch BEFORE UPDATE ON sss.inventory_batch FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
+
+
+--
+-- Name: scraper_schedule_config set_timestamp_scraper_config; Type: TRIGGER; Schema: sss; Owner: -
+--
+
+CREATE TRIGGER set_timestamp_scraper_config BEFORE UPDATE ON sss.scraper_schedule_config FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
 
 
 --
@@ -2624,6 +2666,22 @@ ALTER TABLE ONLY sss.inventory_batch
 
 
 --
+-- Name: scraper_schedule_config scraper_schedule_config_created_by_fkey; Type: FK CONSTRAINT; Schema: sss; Owner: -
+--
+
+ALTER TABLE ONLY sss.scraper_schedule_config
+    ADD CONSTRAINT scraper_schedule_config_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: scraper_schedule_config scraper_schedule_config_updated_by_fkey; Type: FK CONSTRAINT; Schema: sss; Owner: -
+--
+
+ALTER TABLE ONLY sss.scraper_schedule_config
+    ADD CONSTRAINT scraper_schedule_config_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id);
+
+
+--
 -- Name: supplement supplement_batch_testing_org_id_fkey; Type: FK CONSTRAINT; Schema: sss; Owner: -
 --
 
@@ -2667,5 +2725,5 @@ ALTER TABLE ONLY sss.supplement
 -- PostgreSQL database dump complete
 --
 
-\unrestrict nqZOqpn2tzAiSdfPZh8yT7qWMYmdPGKfuTRRBppwxYvkn4aHmyjEUWuN5y7kL9V
+\unrestrict Y1zcRrlj4DY6faSGq7sbQBa3wGhiXBmt2cwfWaOaT8YxVgKpp66iOSo2huV3yMj
 

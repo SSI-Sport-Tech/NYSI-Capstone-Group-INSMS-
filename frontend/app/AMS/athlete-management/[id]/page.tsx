@@ -32,6 +32,16 @@ interface AthleteProfile {
     approved_start_date: string;
     approved_end_date: string;
   } | null;
+  medical: {
+    id: string;
+    athlete_id: string;
+    medical_condition: string | null;
+    food_allergy: string | null;
+    drug_allergy: string | null;
+    past_injury: string | null;
+    medical_remarks: string | null;
+    dietary_restriction: string | null;
+  } | null;
   coaches: {
     coach_id: string;
     is_active: boolean;
@@ -61,6 +71,12 @@ interface EditForm {
   athlete_notified_on: string;
   coach_ids: string[];
   nutritionist_ids: string[];
+  medical_condition: string;
+  food_allergy: string;
+  drug_allergy: string;
+  past_injury: string;
+  medical_remarks: string;
+  dietary_restriction: string;
 }
 
 interface SportOption {
@@ -243,6 +259,12 @@ export default function AthleteDetailPage() {
       nutritionist_ids: profile.nutritionists
         .filter((n) => n.is_active)
         .map((n) => n.nutritionist_id),
+      medical_condition: profile.medical?.medical_condition || "",
+      food_allergy: profile.medical?.food_allergy || "",
+      drug_allergy: profile.medical?.drug_allergy || "",
+      past_injury: profile.medical?.past_injury || "",
+      medical_remarks: profile.medical?.medical_remarks || "",
+      dietary_restriction: profile.medical?.dietary_restriction || "",
     });
 
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
@@ -301,6 +323,12 @@ export default function AthleteDetailPage() {
       carding_end_date: editForm.carding_end_date || undefined,
       athlete_notified_on: editForm.athlete_notified_on || undefined,
       coach_ids: editForm.coach_ids,
+      medical_condition: editForm.medical_condition || undefined,
+      food_allergy: editForm.food_allergy || undefined,
+      drug_allergy: editForm.drug_allergy || undefined,
+      past_injury: editForm.past_injury || undefined,
+      medical_remarks: editForm.medical_remarks || undefined,
+      dietary_restriction: editForm.dietary_restriction || undefined,
     };
 
     if (isAdmin) {
@@ -903,6 +931,122 @@ export default function AthleteDetailPage() {
                     </div>
                   )}
 
+                  {/* Medical Information */}
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-4 underline underline-offset-2">
+                      Medical Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {/* Medical Condition */}
+                      <div>
+                        <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
+                          Medical Condition
+                        </label>
+                        {isEditing && editForm ? (
+                          <textarea
+                            value={editForm.medical_condition}
+                            onChange={(e) => setEditForm({ ...editForm, medical_condition: e.target.value })}
+                            rows={2}
+                            placeholder="e.g. Asthma"
+                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-900">{profile.medical?.medical_condition || "-"}</p>
+                        )}
+                      </div>
+
+                      {/* Food Allergy */}
+                      <div>
+                        <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
+                          Food Allergy
+                        </label>
+                        {isEditing && editForm ? (
+                          <textarea
+                            value={editForm.food_allergy}
+                            onChange={(e) => setEditForm({ ...editForm, food_allergy: e.target.value })}
+                            rows={2}
+                            placeholder="e.g. Peanuts"
+                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-900">{profile.medical?.food_allergy || "-"}</p>
+                        )}
+                      </div>
+
+                      {/* Drug Allergy */}
+                      <div>
+                        <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
+                          Drug Allergy
+                        </label>
+                        {isEditing && editForm ? (
+                          <textarea
+                            value={editForm.drug_allergy}
+                            onChange={(e) => setEditForm({ ...editForm, drug_allergy: e.target.value })}
+                            rows={2}
+                            placeholder="e.g. Penicillin"
+                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-900">{profile.medical?.drug_allergy || "-"}</p>
+                        )}
+                      </div>
+
+                      {/* Past Injury */}
+                      <div>
+                        <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
+                          Past Injury
+                        </label>
+                        {isEditing && editForm ? (
+                          <textarea
+                            value={editForm.past_injury}
+                            onChange={(e) => setEditForm({ ...editForm, past_injury: e.target.value })}
+                            rows={2}
+                            placeholder="e.g. ACL tear (2022)"
+                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-900">{profile.medical?.past_injury || "-"}</p>
+                        )}
+                      </div>
+
+                      {/* Dietary Restriction */}
+                      <div>
+                        <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
+                          Dietary Restriction
+                        </label>
+                        {isEditing && editForm ? (
+                          <textarea
+                            value={editForm.dietary_restriction}
+                            onChange={(e) => setEditForm({ ...editForm, dietary_restriction: e.target.value })}
+                            rows={2}
+                            placeholder="e.g. Vegetarian"
+                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-900">{profile.medical?.dietary_restriction || "-"}</p>
+                        )}
+                      </div>
+
+                      {/* Medical Remarks */}
+                      <div>
+                        <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
+                          Medical Remarks
+                        </label>
+                        {isEditing && editForm ? (
+                          <textarea
+                            value={editForm.medical_remarks}
+                            onChange={(e) => setEditForm({ ...editForm, medical_remarks: e.target.value })}
+                            rows={2}
+                            placeholder="Additional notes"
+                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-900">{profile.medical?.medical_remarks || "-"}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Sport Information */}
                   <div>
                     <h3 className="text-xl font-semibold text-gray-900 mb-4 underline underline-offset-2">
@@ -944,7 +1088,7 @@ export default function AthleteDetailPage() {
                               setEditForm({ ...editForm, sport_start_date: e.target.value })
                             }
                             placeholder="e.g. 8"
-                            min={1}
+                            min={0}
                             max={99}
                             className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
