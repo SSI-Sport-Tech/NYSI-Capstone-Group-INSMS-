@@ -169,7 +169,7 @@ export default function ConsultationView({
   useEffect(() => {
     if (!currentSessionId || isNewConsultation) { setFetchedPrevSessionId(undefined); return; }
     const token = localStorage.getItem("token");
-    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/${currentSessionId}/previous`, {
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${currentSessionId}/previous`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.ok ? r.json() : null)
@@ -193,7 +193,7 @@ export default function ConsultationView({
         if (!defaultTypeId) throw new Error("No active consult types found");
 
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update`,
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session`,
           {
             method: "POST",
             headers: {
@@ -396,7 +396,7 @@ export default function ConsultationView({
         if (form.consultation_objective) body.consultation_objective = form.consultation_objective;
         if (Object.keys(body).length === 0) return;
         await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/${id}`,
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${id}`,
           {
             method: "PATCH",
             headers: {
@@ -471,7 +471,7 @@ export default function ConsultationView({
       if (updateForm.consultation_objective) body.consultation_objective = updateForm.consultation_objective;
       if (Object.keys(body).length === 0) return;
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/${currentSessionId}`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${currentSessionId}`,
         {
           method: "PATCH",
           headers: {
@@ -517,7 +517,7 @@ export default function ConsultationView({
         return;
       }
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/${id}`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${id}`,
         {
           method: "PATCH",
           headers: {
@@ -846,6 +846,7 @@ export default function ConsultationView({
               ensureSession={ensureSession}
               embedded={true}
               isEditMode={isDiagnosisEditMode}
+              prevSessionId={prevSessionId}
             />
           </div>
         );

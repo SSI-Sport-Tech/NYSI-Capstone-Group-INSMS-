@@ -5,19 +5,19 @@ import { authenticateToken } from '../../Auth/authMiddleware.js';
 const router = express.Router();
 
 // ============================================================================
-// CONSULTATION DETAILS CARD ROUTES
+// NUTRITION DIAGNOSIS ROUTES
 // ============================================================================
 
 /**
  * @swagger
- * /api/Consultation/consultation-details/{sessionId}:
+ * /api/Consultation/nutrition-diagnosis/{sessionId}:
  *   get:
- *     summary: Get Consultation Details Card
+ *     summary: Get Nutrition Diagnosis
  *     description: |
  *       Get the consultation details card data for a specific session.
  *       Returns session_note fields with joined nutrition diagnosis names.
  *       If the session exists but no note row exists yet, returns null fields.
- *     tags: [Consultation - Consultation Details]
+ *     tags: [Consultation - Nutrition Diagnosis]
  *     parameters:
  *       - name: sessionId
  *         in: path
@@ -28,7 +28,7 @@ const router = express.Router();
  *           format: uuid
  *     responses:
  *       200:
- *         description: Consultation details data
+ *         description: Nutrition diagnosis data
  *         content:
  *           application/json:
  *             schema:
@@ -138,19 +138,19 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/consultation-details/:sessionId', controller.getConsultationDetails);
+router.get('/nutrition-diagnosis/:sessionId', controller.getConsultationDetails);
 
 /**
  * @swagger
- * /api/Consultation/consultation-details:
+ * /api/Consultation/nutrition-diagnosis:
  *   post:
- *     summary: Create Consultation Details
+ *     summary: Create Nutrition Diagnosis
  *     description: |
  *       Create or update consultation details for a session (upsert pattern).
  *       If a session_note row already exists (e.g. created by consultation-session with objective),
  *       the existing row is updated. Otherwise a new row is inserted.
  *       Validates that all review_id FKs exist and are active in nutrition_diagnosis_lookup.
- *     tags: [Consultation - Consultation Details]
+ *     tags: [Consultation - Nutrition Diagnosis]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -222,7 +222,7 @@ router.get('/consultation-details/:sessionId', controller.getConsultationDetails
  *             other_remarks: "Athlete is motivated"
  *     responses:
  *       201:
- *         description: Consultation details saved successfully
+ *         description: Nutrition diagnosis saved successfully
  *         content:
  *           application/json:
  *             schema:
@@ -233,7 +233,7 @@ router.get('/consultation-details/:sessionId', controller.getConsultationDetails
  *                 data:
  *                   type: object
  *             example:
- *               message: "Consultation details saved successfully"
+ *               message: "Nutrition diagnosis saved successfully"
  *               data:
  *                 id: "b3f1e2d4-a5c6-7890-bcde-f01234567890"
  *                 sessions_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
@@ -257,19 +257,19 @@ router.get('/consultation-details/:sessionId', controller.getConsultationDetails
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/consultation-details', authenticateToken, controller.createConsultationDetails);
+router.post('/nutrition-diagnosis', authenticateToken, controller.createConsultationDetails);
 
 /**
  * @swagger
- * /api/Consultation/consultation-details/{sessionId}:
+ * /api/Consultation/nutrition-diagnosis/{sessionId}:
  *   patch:
- *     summary: Update Consultation Details
+ *     summary: Update Nutrition Diagnosis
  *     description: |
  *       Update consultation details for a session. All fields are optional — only provided fields are modified.
  *       Uses upsert pattern: if session_note doesn't exist yet, inserts; if exists, updates.
  *       sessions_id and consultation_objective cannot be changed through this endpoint.
  *       Validates review_id FKs if provided.
- *     tags: [Consultation - Consultation Details]
+ *     tags: [Consultation - Nutrition Diagnosis]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -340,7 +340,7 @@ router.post('/consultation-details', authenticateToken, controller.createConsult
  *             other_remarks: null
  *     responses:
  *       200:
- *         description: Consultation details updated successfully
+ *         description: Nutrition diagnosis updated successfully
  *         content:
  *           application/json:
  *             schema:
@@ -351,7 +351,7 @@ router.post('/consultation-details', authenticateToken, controller.createConsult
  *                 data:
  *                   type: object
  *             example:
- *               message: "Consultation details updated successfully"
+ *               message: "Nutrition diagnosis updated successfully"
  *               data:
  *                 id: "b3f1e2d4-a5c6-7890-bcde-f01234567890"
  *                 sessions_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
@@ -375,6 +375,6 @@ router.post('/consultation-details', authenticateToken, controller.createConsult
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch('/consultation-details/:sessionId', authenticateToken, controller.updateConsultationDetails);
+router.patch('/nutrition-diagnosis/:sessionId', authenticateToken, controller.updateConsultationDetails);
 
 export default router;

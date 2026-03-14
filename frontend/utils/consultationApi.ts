@@ -87,19 +87,19 @@ export const consultationApi = {
   // Get latest consultation for athlete
   getLatestConsultation: async (athleteId: string) => {
     return apiCall(
-      `/api/Consultation/consultation-update/athlete/${athleteId}/latest`,
+      `/api/Consultation/consultation-session/athlete/${athleteId}/latest`,
     );
   },
 
   // Get a specific consultation session by ID
   getConsultationById: async (sessionId: string) => {
-    return apiCall(`/api/Consultation/consultation-update/${sessionId}`);
+    return apiCall(`/api/Consultation/consultation-session/${sessionId}`);
   },
 
   // Get all consultation sessions for an athlete
   getAllConsultations: async (athleteId: string) => {
     return apiCall(
-      `/api/Consultation/consultation-update/athlete/${athleteId}/all`,
+      `/api/Consultation/consultation-session/athlete/${athleteId}/all`,
     );
   },
 
@@ -140,7 +140,7 @@ export const consultationApi = {
 
   // Clear the scheduled booking flag on a session
   clearScheduledBooking: async (sessionId: string) => {
-    return apiPatch(`/api/Consultation/consultation-update/${sessionId}`, {
+    return apiPatch(`/api/Consultation/consultation-session/${sessionId}`, {
       is_scheduled_booking: false,
     });
   },

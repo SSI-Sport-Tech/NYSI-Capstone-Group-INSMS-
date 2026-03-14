@@ -10,7 +10,7 @@ export const sessionIdParamSchema = z.object({
 });
 
 // ============================================================================
-// CREATE CONSULTATION DETAILS SCHEMA
+// CREATE NUTRITION DIAGNOSIS SCHEMA
 // ============================================================================
 
 export const createDetailsSchema = z.object({
@@ -26,7 +26,7 @@ export const createDetailsSchema = z.object({
 }).strict();
 
 // ============================================================================
-// UPDATE CONSULTATION DETAILS SCHEMA (all fields optional, sessions_id rejected)
+// UPDATE NUTRITION DIAGNOSIS SCHEMA (all fields optional, sessions_id rejected)
 // ============================================================================
 
 export const updateDetailsSchema = z.object({

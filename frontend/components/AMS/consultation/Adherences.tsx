@@ -279,7 +279,7 @@ export default function Adherences({
         const token = localStorage.getItem("token");
         const headers = { Authorization: `Bearer ${token}` };
         const latestRes = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/athlete/${athleteId}/latest`,
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/athlete/${athleteId}/latest`,
           { headers },
         );
         if (!latestRes.ok) return;

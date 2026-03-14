@@ -174,13 +174,13 @@ const PreviousConsultation = forwardRef<
           );
           if (typeMatch) {
             await fetch(
-              `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/${id}`,
+              `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${id}`,
               { method: "PATCH", headers, body: JSON.stringify({ type_of_consult_id: typeMatch.id }) },
             );
           }
         }
         await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-details`,
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis`,
           {
             method: "POST",
             headers,
@@ -217,7 +217,7 @@ const PreviousConsultation = forwardRef<
 
         if (readOnly && sessionId) {
           const sessionRes = (await apiCall(
-            `/api/Consultation/consultation-update/${sessionId}`,
+            `/api/Consultation/consultation-session/${sessionId}`,
           )) as { data: { id: string; athlete_id: string; date_of_consult: string; nutritionist_name: string } };
           targetId = sessionRes.data.id;
           dateOfConsult = sessionRes.data.date_of_consult;
@@ -235,7 +235,7 @@ const PreviousConsultation = forwardRef<
         }
 
         const [detailsResponse, prescriptionsResponse] = await Promise.allSettled([
-          apiCall(`/api/Consultation/consultation-details/${targetId}`),
+          apiCall(`/api/Consultation/nutrition-diagnosis/${targetId}`),
           consultationApi.getPrescriptions(targetId),
         ]);
 
@@ -275,8 +275,8 @@ const PreviousConsultation = forwardRef<
     (async () => {
       try {
         const [sessionRes, detailsRes, prescRes] = await Promise.allSettled([
-          apiCall(`/api/Consultation/consultation-update/${prevSessionId}`),
-          apiCall(`/api/Consultation/consultation-details/${prevSessionId}`),
+          apiCall(`/api/Consultation/consultation-session/${prevSessionId}`),
+          apiCall(`/api/Consultation/nutrition-diagnosis/${prevSessionId}`),
           consultationApi.getPrescriptions(prevSessionId),
         ]);
         const sessionData = sessionRes.status === "fulfilled"
@@ -336,14 +336,14 @@ const PreviousConsultation = forwardRef<
         const typeMatch = consultTypes.find((t) => t.type_of_consult === form.consult_type);
         if (typeMatch) {
           await fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/${id}`,
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${id}`,
             { method: "PATCH", headers, body: JSON.stringify({ type_of_consult_id: typeMatch.id }) },
           );
         }
       }
 
       const detailsRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-details`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis`,
         {
           method: "POST",
           headers,
@@ -381,7 +381,7 @@ const PreviousConsultation = forwardRef<
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-details/${sessionId}`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis/${sessionId}`,
         {
           method: "PATCH",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -425,6 +425,70 @@ const PreviousConsultation = forwardRef<
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [isNewConsultation, isEditMode, sessionId]);
+
+  // ─── Shared display data + tab bar (used in both form and read-only paths) ──
+  const displayData = activeTab === "previous" && prevConsultData ? prevConsultData : consultationData;
+
+  const tabBar = prevSessionId ? (
+    <div className="flex border-b border-gray-200 mb-6">
+      {(["current", "previous"] as const).map((tab) => (
+        <button
+          key={tab}
+          onClick={() => setActiveTab(tab)}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            activeTab === tab
+              ? "border-gray-800 text-gray-900"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          {tab === "current" ? "Current Session" : "Previous Session"}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
+  const prevReadOnlyContent = (
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <h3 className="text-base font-medium text-gray-900">Main Nutrition Diagnosis</h3>
+        <p className="text-base font-bold text-gray-900 leading-relaxed">
+          {prevConsultData?.details?.main_nutrition_diagnosis || "No diagnosis available"}
+        </p>
+      </div>
+      <div className="space-y-4">
+        <div className="grid grid-cols-4 gap-4">
+          {[
+            { label: "Carbohydrate", value: prevConsultData?.details?.carbohydrates_review },
+            { label: "Protein", value: prevConsultData?.details?.protein_review },
+            { label: "Fat", value: prevConsultData?.details?.fat_review },
+            { label: "Other", value: prevConsultData?.details?.other_review },
+          ].map(({ label, value }) => (
+            <div key={label} className="text-center">
+              <p className="text-xs text-gray-500 mb-1">{label}</p>
+              <p className="text-sm font-medium text-gray-900">{value || "N/A"}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-4">
+        <h3 className="text-base font-medium text-gray-900">Notes</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <h4 className="text-xs text-gray-500 mb-2">Intervention Plan</h4>
+            <p className="text-sm text-gray-900">{prevConsultData?.details?.intervention_note || "No intervention notes available"}</p>
+          </div>
+          <div>
+            <h4 className="text-xs text-gray-500 mb-2">Follow-Up Notes</h4>
+            <p className="text-sm text-gray-900">{prevConsultData?.details?.follow_up_note || "No follow-up notes available"}</p>
+          </div>
+          <div>
+            <h4 className="text-xs text-gray-500 mb-2">Other Remarks</h4>
+            <p className="text-sm text-gray-900">{prevConsultData?.details?.other_remarks || "No remarks"}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   // ─── Editable form (new consultation or parent edit mode) ───────────────────
   const showForm = (isNewConsultation && !readOnly) || (isEditMode && !readOnly);
@@ -526,7 +590,12 @@ const PreviousConsultation = forwardRef<
     );
 
     if (embedded) {
-      return <div className="pt-2">{content}</div>;
+      return (
+        <div className="pt-2">
+          {tabBar}
+          {activeTab === "previous" ? prevReadOnlyContent : content}
+        </div>
+      );
     }
 
     return (
@@ -536,15 +605,18 @@ const PreviousConsultation = forwardRef<
             <h2 className="text-xl font-semibold text-gray-900">Current Consultation</h2>
             <span className="text-sm text-gray-500">{today}</span>
           </div>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className={`px-3 py-1 text-white text-sm rounded disabled:opacity-50 ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
-          >
-            {saving ? "Saving..." : isSaved ? "Saved" : "Save"}
-          </button>
+          {activeTab !== "previous" && (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className={`px-3 py-1 text-white text-sm rounded disabled:opacity-50 ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
+            >
+              {saving ? "Saving..." : isSaved ? "Saved" : "Save"}
+            </button>
+          )}
         </div>
-        {content}
+        {tabBar}
+        {activeTab === "previous" ? prevReadOnlyContent : content}
       </section>
     );
   }
@@ -590,26 +662,6 @@ const PreviousConsultation = forwardRef<
   }
 
   // ─── Read-only view ─────────────────────────────────────────────────────────
-  const displayData = activeTab === "previous" && prevConsultData ? prevConsultData : consultationData;
-
-  const tabBar = prevSessionId ? (
-    <div className="flex border-b border-gray-200 mb-6">
-      {(["current", "previous"] as const).map((tab) => (
-        <button
-          key={tab}
-          onClick={() => setActiveTab(tab)}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-            activeTab === tab
-              ? "border-gray-800 text-gray-900"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          {tab === "current" ? "Current Session" : "Previous Session"}
-        </button>
-      ))}
-    </div>
-  ) : null;
-
   const readOnlyContent = (
     <div className="space-y-6">
       <div className="space-y-4">

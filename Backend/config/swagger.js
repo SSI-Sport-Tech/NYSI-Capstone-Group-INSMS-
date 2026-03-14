@@ -92,8 +92,8 @@ const swaggerOptions = {
                 description: "Consultation lookup tables for dropdowns (consult types, nutrition diagnoses)",
             },
             {
-                name: "Consultation - Consultation Details",
-                description: "Consultation Details card — session-level notes, nutrition diagnosis reviews, and remarks",
+                name: "Consultation - Nutrition Diagnosis",
+                description: "Nutrition Diagnosis — session-level notes, nutrition diagnosis reviews, and remarks",
             },
 
             {
@@ -1514,7 +1514,7 @@ const swaggerOptions = {
         "./modules/Consultation/consultation-session/routes.js",
         "./modules/Consultation/open-items/routes.js",
         "./modules/Consultation/consultation-lookups/routes.js",
-        "./modules/Consultation/consultation-details/routes.js",
+        "./modules/Consultation/nutrition-diagnosis/routes.js",
         "./modules/Consultation/medical-history/routes.js",
         "./modules/Consultation/prescription/routes.js",
         "./modules/OCR/routes.js",

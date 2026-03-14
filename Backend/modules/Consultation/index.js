@@ -2,7 +2,7 @@ import express from "express";
 import consultationSessionRoutes from "./consultation-session/routes.js";
 import openItemsRoutes from "./open-items/routes.js";
 import consultationLookupsRoutes from "./consultation-lookups/routes.js";
-import consultationDetailsRoutes from "./consultation-details/routes.js";
+import nutritionDiagnosisRoutes from "./nutrition-diagnosis/routes.js";
 import trainingScheduleRoutes from "./trainingSchedule/routes.js"; // ✅ ADD
 import mealLogRoutes from "./mealLog/routes.js";
 import anthropometryRoutes from "./anthropometry/routes.js";
@@ -16,7 +16,7 @@ const router = express.Router();
 router.use(consultationSessionRoutes);
 router.use(openItemsRoutes);
 router.use(consultationLookupsRoutes);
-router.use(consultationDetailsRoutes);
+router.use(nutritionDiagnosisRoutes);
 router.use(trainingScheduleRoutes); // ✅ ADD
 router.use(mealLogRoutes);
 router.use(anthropometryRoutes);

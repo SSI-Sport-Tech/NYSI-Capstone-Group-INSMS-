@@ -1,7 +1,7 @@
 import pool, { withUserContext } from "../../../config/db.js";
 
 // ============================================================================
-// CONSULTATION DETAILS CARD SERVICES
+// NUTRITION DIAGNOSIS SERVICES
 // ============================================================================
 
 // Fields managed by this card (excludes consultation_objective which is owned by consultation-session)

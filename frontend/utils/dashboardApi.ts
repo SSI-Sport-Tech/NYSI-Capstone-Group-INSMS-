@@ -114,7 +114,7 @@ export const dashboardApi = {
     venue?: string;
     is_scheduled_booking?: boolean;
   }): Promise<{ data: ConsultationSession }> => {
-    return apiCall("/api/Consultation/consultation-update", {
+    return apiCall("/api/Consultation/consultation-session", {
       method: "POST",
       body: JSON.stringify(sessionData),
     });
@@ -125,7 +125,7 @@ export const dashboardApi = {
     sessionId: string,
     updates: Partial<ConsultationSession>
   ): Promise<{ data: ConsultationSession }> => {
-    return apiCall(`/api/Consultation/consultation-update/${sessionId}`, {
+    return apiCall(`/api/Consultation/consultation-session/${sessionId}`, {
       method: "PATCH",
       body: JSON.stringify(updates),
     });
@@ -136,30 +136,30 @@ export const dashboardApi = {
     endDate?: string
   ): Promise<{ data: ConsultationSession[] }> => {
     if (!startDate || !endDate) return { data: [] };
-    return apiCall(`/api/Consultation/consultation-update/range?from=${startDate}&to=${endDate}`);
+    return apiCall(`/api/Consultation/consultation-session/range?from=${startDate}&to=${endDate}`);
   },
 
   getTodaySessions: async (date?: string): Promise<{ data: ConsultationSession[] }> => {
     const query = date ? `?date=${date}` : "";
-    return apiCall(`/api/Consultation/consultation-update/today${query}`);
+    return apiCall(`/api/Consultation/consultation-session/today${query}`);
   },
 
   updateSessionStatus: async (
     sessionId: string,
     status: "scheduled" | "completed" | "cancelled" | "in-progress"
   ): Promise<{ data: ConsultationSession }> => {
-    return apiCall(`/api/Consultation/consultation-update/${sessionId}/status`, {
+    return apiCall(`/api/Consultation/consultation-session/${sessionId}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
     });
   },
 
   getUpcomingSessions: async (): Promise<{ data: ConsultationSession[] }> => {
-    return apiCall("/api/Consultation/consultation-update/upcoming");
+    return apiCall("/api/Consultation/consultation-session/upcoming");
   },
 
   cancelConsultationSession: async (sessionId: string): Promise<void> => {
-    await apiCall(`/api/Consultation/consultation-update/${sessionId}`, {
+    await apiCall(`/api/Consultation/consultation-session/${sessionId}`, {
       method: "DELETE",
     });
   },
@@ -178,7 +178,7 @@ export const dashboardApi = {
     };
   }> => {
     const [todayRes, athletesRes] = await Promise.allSettled([
-      apiCall<{ data: ConsultationSession[] }>("/api/Consultation/consultation-update/today"),
+      apiCall<{ data: ConsultationSession[] }>("/api/Consultation/consultation-session/today"),
       apiCall<{ totalCount: number }>("/api/AMS/athletes"),
     ]);
 

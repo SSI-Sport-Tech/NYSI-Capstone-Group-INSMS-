@@ -4,7 +4,7 @@ import pool from '../../../config/db.js';
 
 
 // ============================================================================
-// GET CONSULTATION DETAILS
+// GET NUTRITION DIAGNOSIS
 // ============================================================================
 
 export async function getConsultationDetails(req, res) {
@@ -35,7 +35,7 @@ export async function getConsultationDetails(req, res) {
 }
 
 // ============================================================================
-// CREATE CONSULTATION DETAILS (POST - upsert)
+// CREATE NUTRITION DIAGNOSIS (POST - upsert)
 // ============================================================================
 
 export async function createConsultationDetails(req, res) {
@@ -75,7 +75,7 @@ export async function createConsultationDetails(req, res) {
 }
 
 // ============================================================================
-// PATCH CONSULTATION DETAILS (upsert)
+// PATCH NUTRITION DIAGNOSIS (upsert)
 // ============================================================================
 
 export async function updateConsultationDetails(req, res) {

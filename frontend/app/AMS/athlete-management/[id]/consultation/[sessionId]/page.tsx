@@ -41,7 +41,7 @@ export default function ConsultationDetailsPage() {
       try {
         const token = localStorage.getItem("token");
         const headers = { Authorization: `Bearer ${token}` };
-        const base = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update`;
+        const base = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session`;
         const res = await fetch(`${base}/${sessionId}`, { headers });
         if (res.ok) {
           const data = await res.json();

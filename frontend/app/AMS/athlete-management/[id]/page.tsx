@@ -163,7 +163,7 @@ export default function AthleteDetailPage() {
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
         const token = localStorage.getItem("token");
         const res = await fetch(
-          `${backendUrl}/api/Consultation/consultation-update/athlete/${athleteId}/all`,
+          `${backendUrl}/api/Consultation/consultation-session/athlete/${athleteId}/all`,
           { headers: { Authorization: `Bearer ${token}` } },
         );
         if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
