@@ -224,7 +224,7 @@ export default function MedicalHistory({
   // Show Period section only for female athletes; show as fallback when gender unknown
   const isFemale = gender === null || gender.toLowerCase().startsWith("f");
 
-  const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
+  const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly && activeTab !== "previous";
 
   const fetchMedicalHistory = async () => {
     if (!sessionId) {
@@ -421,7 +421,7 @@ export default function MedicalHistory({
   }
 
   // Compute display state for tabs (previous tab shows prevData in read-only, current shows live state)
-  const showPrev = activeTab === "previous" && !effectiveEditing;
+  const showPrev = activeTab === "previous";
   const displayGeneral = showPrev && prevData ? prevData.general : generalInfo;
   const displayPuberty = showPrev && prevData ? prevData.puberty : pubertyInfo;
   const displayBowel = showPrev && prevData ? prevData.bowelMovement : bowelMovement;
@@ -487,7 +487,7 @@ export default function MedicalHistory({
       </div>
 
       {/* Tab bar */}
-      {prevSessionId && !effectiveEditing && (
+      {prevSessionId && (
         <div className="flex border-b border-gray-200 mb-6">
           {(["current", "previous"] as const).map((tab) => (
             <button

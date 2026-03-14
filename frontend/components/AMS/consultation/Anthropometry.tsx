@@ -437,12 +437,30 @@ export default function Anthropometry({
   }
 
   // Edit mode layout
-  if (effectiveEditing) {
+  if (effectiveEditing && activeTab !== "previous") {
     return (
       <section id="anthropometry" className="bg-white rounded-xl shadow-lg p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-gray-900">Anthropometry</h2>
         </div>
+
+        {prevSessionId && (
+          <div className="flex border-b border-gray-200 mb-6">
+            {(["current", "previous"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  activeTab === tab
+                    ? "border-gray-800 text-gray-900"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {tab === "current" ? "Current Session" : "Previous Session"}
+              </button>
+            ))}
+          </div>
+        )}
 
         {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 

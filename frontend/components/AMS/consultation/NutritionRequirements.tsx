@@ -174,7 +174,7 @@ export default function NutritionRequirements({
   const [gender, setGender] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
 
-  const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
+  const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly && activeTab !== "previous";
 
   useEffect(() => {
     setIsSaved(false);
@@ -316,7 +316,7 @@ export default function NutritionRequirements({
   const effectiveTargetWeight = liveTargetWeight ?? targetWeight;
 
   // When viewing the "Previous Session" tab, display data from the previous session
-  const displayData = activeTab === "previous" && !effectiveEditing ? prevNutritionRequirementsData : nutritionRequirementsData;
+  const displayData = activeTab === "previous" ? prevNutritionRequirementsData : nutritionRequirementsData;
 
   const livePal = effectiveEditing ? n(editForm.pal) : (displayData?.pal ?? null);
   const liveMinCarbGkg = effectiveEditing ? n(editForm.minCarbGkg) : (displayData?.minCarbGkg ?? null);
@@ -520,7 +520,7 @@ export default function NutritionRequirements({
       </div>
 
       {/* Tab bar */}
-      {prevSessionId && !effectiveEditing && (
+      {prevSessionId && (
         <div className="flex border-b border-gray-200 mb-6">
           {(["current", "previous"] as const).map((tab) => (
             <button

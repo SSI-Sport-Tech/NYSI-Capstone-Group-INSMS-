@@ -4,6 +4,19 @@ import { useState, useEffect, useRef } from "react";
 
 interface NewSupplementDispensingFormProps {
   ensureSession: () => Promise<string>;
+  prevSessionId?: string;
+}
+
+interface PrevPrescription {
+  id: string;
+  supplement_name: string;
+  prescriber: string;
+  batch_number: string;
+  dosage: number;
+  dosage_unit: string;
+  dosage_frequency: string;
+  prescription_date: string;
+  intervention_status: string;
 }
 
 interface SupplementResult {
@@ -326,15 +339,36 @@ function DispensingEntryCard({
 
 export default function NewSupplementDispensingForm({
   ensureSession,
+  prevSessionId,
 }: NewSupplementDispensingFormProps) {
   const [entries, setEntries] = useState<DispensingEntry[]>([emptyEntry()]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string>("");
   const [saved, setSaved] = useState(false);
+  const [activeTab, setActiveTab] = useState<"current" | "previous">("current");
+  const [prevPrescriptions, setPrevPrescriptions] = useState<PrevPrescription[]>([]);
 
   useEffect(() => {
     setSaved(false);
   }, [entries]);
+
+  useEffect(() => {
+    if (!prevSessionId) return;
+    (async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/supplement-dispensing/session/${prevSessionId}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        setPrevPrescriptions(data.data || []);
+      } catch {
+        // non-critical
+      }
+    })();
+  }, [prevSessionId]);
 
   const updateEntry = (index: number, updated: DispensingEntry) => {
     setEntries((prev) => prev.map((e, i) => (i === index ? updated : e)));
@@ -428,32 +462,77 @@ export default function NewSupplementDispensingForm({
         </button>
       </div>
 
-      {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
-      {saved && (
-        <p className="text-green-600 text-sm mb-4">
-          Dispensing saved successfully.
-        </p>
+      {prevSessionId && (
+        <div className="flex border-b border-gray-200 mb-6">
+          {(["current", "previous"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                activeTab === tab
+                  ? "border-gray-800 text-gray-900"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab === "current" ? "Current Session" : "Previous Session"}
+            </button>
+          ))}
+        </div>
       )}
 
-      <div className="space-y-8">
-        {entries.map((entry, index) => (
-          <DispensingEntryCard
-            key={index}
-            index={index}
-            entry={entry}
-            onChange={(updated) => updateEntry(index, updated)}
-            onRemove={() => removeEntry(index)}
-            showRemove={entries.length > 1}
-          />
-        ))}
+      {activeTab === "previous" ? (
+        <div>
+          {prevPrescriptions.length === 0 ? (
+            <div className="text-center py-8">
+              <h3 className="text-sm font-medium text-gray-900">No dispensing from previous session</h3>
+              <p className="mt-1 text-sm text-gray-500">The previous session had no dispensing.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {prevPrescriptions.map((p) => (
+                <div key={p.id} className="border border-gray-200 rounded-lg p-4 text-sm text-gray-900">
+                  <div className="font-medium text-base mb-2">{p.supplement_name}</div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><span className="text-gray-500">Batch:</span> <span className="font-medium">{p.batch_number || "—"}</span></div>
+                    <div><span className="text-gray-500">Dosage:</span> <span className="font-medium">{p.dosage ? `${p.dosage} ${p.dosage_unit}` : "—"}</span></div>
+                    <div><span className="text-gray-500">Frequency:</span> <span className="font-medium">{p.dosage_frequency || "—"}</span></div>
+                    <div><span className="text-gray-500">Status:</span> <span className="font-medium">{p.intervention_status || "—"}</span></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
+          {saved && (
+            <p className="text-green-600 text-sm mb-4">
+              Dispensing saved successfully.
+            </p>
+          )}
 
-        <button
-          onClick={addEntry}
-          className="w-full py-2 border-2 border-dashed border-gray-300 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 rounded-lg transition-colors"
-        >
-          + Add More Dispensing
-        </button>
-      </div>
+          <div className="space-y-8">
+            {entries.map((entry, index) => (
+              <DispensingEntryCard
+                key={index}
+                index={index}
+                entry={entry}
+                onChange={(updated) => updateEntry(index, updated)}
+                onRemove={() => removeEntry(index)}
+                showRemove={entries.length > 1}
+              />
+            ))}
+
+            <button
+              onClick={addEntry}
+              className="w-full py-2 border-2 border-dashed border-gray-300 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 rounded-lg transition-colors"
+            >
+              + Add More Dispensing
+            </button>
+          </div>
+        </>
+      )}
     </section>
   );
 }

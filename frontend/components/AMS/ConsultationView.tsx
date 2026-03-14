@@ -113,6 +113,7 @@ export default function ConsultationView({
 }: ConsultationViewProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [consultDetailsTab, setConsultDetailsTab] = useState<"current" | "previous">("current");
   const [latestConsultation, setLatestConsultation] =
     useState<LatestConsultation | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
@@ -741,7 +742,30 @@ export default function ConsultationView({
                 </div>
               )}
             </div>
-            {isNewConsultation || isEditMode ? renderUpdateForm() : renderReadOnly()}
+            {isNewConsultation && latestConsultation && (
+              <div className="flex border-b border-gray-200 mb-6">
+                {(["current", "previous"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setConsultDetailsTab(tab)}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                      consultDetailsTab === tab
+                        ? "border-gray-800 text-gray-900"
+                        : "border-transparent text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    {tab === "current" ? "Current Session" : "Previous Session"}
+                  </button>
+                ))}
+              </div>
+            )}
+            {isNewConsultation
+              ? consultDetailsTab === "previous"
+                ? renderReadOnly()
+                : renderUpdateForm()
+              : isEditMode
+              ? renderUpdateForm()
+              : renderReadOnly()}
           </div>
         );
 
@@ -866,7 +890,7 @@ export default function ConsultationView({
       // ── Step 9: Supplement Dispensing ──────────────────────────────────────
       case 9:
         return isNewConsultation ? (
-          <NewSupplementDispensingForm ensureSession={ensureSession} />
+          <NewSupplementDispensingForm ensureSession={ensureSession} prevSessionId={prevSessionId} />
         ) : (
           <SupplementDispensing athleteId={athleteId} sessionId={currentSessionId} prevSessionId={prevSessionId} />
         );
@@ -880,7 +904,7 @@ export default function ConsultationView({
 
   // ─── Main render ───────────────────────────────────────────────────────────
 
-  const prevSessionId = isNewConsultation ? currentSessionId : fetchedPrevSessionId;
+  const prevSessionId = isNewConsultation ? (latestConsultation?.id ?? undefined) : fetchedPrevSessionId;
 
   return (
     <>
