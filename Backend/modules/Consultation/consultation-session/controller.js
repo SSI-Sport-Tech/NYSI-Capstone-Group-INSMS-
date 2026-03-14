@@ -3,14 +3,14 @@ import { createSessionSchema, updateSessionSchema, updateStatusSchema, uuidParam
 import pool from '../../../config/db.js';
 
 // ============================================================================
-// GET CONSULTATION UPDATE CARD
+// GET CONSULTATION SESSION
 // ============================================================================
 
-export async function getConsultationUpdate(req, res) {
+export async function getConsultationSession(req, res) {
     try {
         const { id } = uuidParamSchema.parse(req.params);
 
-        const session = await services.getConsultationUpdate(id);
+        const session = await services.getConsultationSession(id);
 
         if (!session) {
             return res.status(404).json({ error: 'Session not found' });
@@ -28,8 +28,8 @@ export async function getConsultationUpdate(req, res) {
                 })),
             });
         }
-        console.error('Error fetching consultation update:', error);
-        res.status(500).json({ error: 'Failed to fetch consultation update', message: error.message });
+        console.error('Error fetching consultation session:', error);
+        res.status(500).json({ error: 'Failed to fetch consultation session', message: error.message });
     }
 }
 

@@ -147,7 +147,7 @@ router.get('/consultation-details/:sessionId', controller.getConsultationDetails
  *     summary: Create Consultation Details
  *     description: |
  *       Create or update consultation details for a session (upsert pattern).
- *       If a session_note row already exists (e.g. created by consultation-update with objective),
+ *       If a session_note row already exists (e.g. created by consultation-session with objective),
  *       the existing row is updated. Otherwise a new row is inserted.
  *       Validates that all review_id FKs exist and are active in nutrition_diagnosis_lookup.
  *     tags: [Consultation - Consultation Details]

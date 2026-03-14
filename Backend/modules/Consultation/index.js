@@ -1,5 +1,5 @@
 import express from "express";
-import consultationUpdateRoutes from "./consultation-update/routes.js";
+import consultationSessionRoutes from "./consultation-session/routes.js";
 import openItemsRoutes from "./open-items/routes.js";
 import consultationLookupsRoutes from "./consultation-lookups/routes.js";
 import consultationDetailsRoutes from "./consultation-details/routes.js";
@@ -13,7 +13,7 @@ import prescriptionRoutes from './prescription/routes.js';
 const router = express.Router();
 
 // Card-based routes
-router.use(consultationUpdateRoutes);
+router.use(consultationSessionRoutes);
 router.use(openItemsRoutes);
 router.use(consultationLookupsRoutes);
 router.use(consultationDetailsRoutes);

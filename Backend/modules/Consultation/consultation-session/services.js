@@ -1,16 +1,16 @@
 import pool, { withUserContext } from "../../../config/db.js";
 
 // ============================================================================
-// CONSULTATION UPDATE CARD SERVICES
+// CONSULTATION SESSION SERVICES
 // ============================================================================
 
 /**
- * Get consultation update card data for a session
+ * Get consultation session data
  * Returns session fields with joined nutritionist name, athlete name, and consult type
  * @param {string} sessionId - UUID of session
  * @returns {Promise<Object|null>} Session card data or null
  */
-export async function getConsultationUpdate(sessionId) {
+export async function getConsultationSession(sessionId) {
     const query = `
         SELECT
             s.id,
@@ -84,7 +84,7 @@ export async function createConsultationSession(data, userId) {
         return session.id;
     });
 
-    return getConsultationUpdate(sessionId);
+    return getConsultationSession(sessionId);
 }
 
 /**

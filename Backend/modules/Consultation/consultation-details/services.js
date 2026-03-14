@@ -4,7 +4,7 @@ import pool, { withUserContext } from "../../../config/db.js";
 // CONSULTATION DETAILS CARD SERVICES
 // ============================================================================
 
-// Fields managed by this card (excludes consultation_objective which is owned by consultation-update)
+// Fields managed by this card (excludes consultation_objective which is owned by consultation-session)
 const DETAIL_FIELDS = [
     'main_nutrition_diagnosis',
     'carbohydrates_review',
@@ -68,7 +68,7 @@ export async function getConsultationDetails(sessionId) {
 
 /**
  * Create or update consultation details (upsert pattern)
- * If session_note already exists (e.g. created by consultation-update with objective), UPDATE.
+ * If session_note already exists (e.g. created by consultation-session with objective), UPDATE.
  * Otherwise INSERT.
  * @param {string} sessionId - UUID of session
  * @param {Object} data - Fields to set

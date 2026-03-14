@@ -10,7 +10,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/Consultation/consultation-update/athlete/{athleteId}/latest:
+ * /api/Consultation/consultation-session/athlete/{athleteId}/latest:
  *   get:
  *     summary: Get Latest Consultation Session for an Athlete
  *     description: |
@@ -18,7 +18,7 @@ const router = express.Router();
  *       ordered by date_of_consult DESC. Includes joined nutritionist name,
  *       athlete name, consult type, and consultation objective.
  *       Returns 404 if the athlete has no sessions yet.
- *     tags: [Consultation - Consultation Update]
+ *     tags: [Consultation - Consultation Session]
  *     parameters:
  *       - name: athleteId
  *         in: path
@@ -88,22 +88,22 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/consultation-update/upcoming', controller.getUpcomingConsultationSessions);
-router.get('/consultation-update/today', authenticateToken, controller.getTodaySessionsForNutritionist);
-router.get('/consultation-update/range', controller.getSessionsByDateRange);
-router.get('/consultation-update/athlete/:athleteId/latest', controller.getLatestConsultationSession);
-router.get('/consultation-update/athlete/:athleteId/all', controller.getAllConsultationSessions);
-router.get('/consultation-update/:id/previous', controller.getPreviousConsultationSession);
+router.get('/consultation-session/upcoming', controller.getUpcomingConsultationSessions);
+router.get('/consultation-session/today', authenticateToken, controller.getTodaySessionsForNutritionist);
+router.get('/consultation-session/range', controller.getSessionsByDateRange);
+router.get('/consultation-session/athlete/:athleteId/latest', controller.getLatestConsultationSession);
+router.get('/consultation-session/athlete/:athleteId/all', controller.getAllConsultationSessions);
+router.get('/consultation-session/:id/previous', controller.getPreviousConsultationSession);
 
 /**
  * @swagger
- * /api/Consultation/consultation-update/{id}:
+ * /api/Consultation/consultation-session/{id}:
  *   get:
- *     summary: Get Consultation Update Card
+ *     summary: Get Consultation Session
  *     description: |
- *       Get the consultation update card data for a specific session.
+ *       Get the consultation session data for a specific session.
  *       Returns session fields with joined nutritionist name, athlete name, and consult type.
- *     tags: [Consultation - Consultation Update]
+ *     tags: [Consultation - Consultation Session]
  *     parameters:
  *       - name: id
  *         in: path
@@ -173,11 +173,11 @@ router.get('/consultation-update/:id/previous', controller.getPreviousConsultati
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/consultation-update/:id', controller.getConsultationUpdate);
+router.get('/consultation-session/:id', controller.getConsultationSession);
 
 /**
  * @swagger
- * /api/Consultation/consultation-update:
+ * /api/Consultation/consultation-session:
  *   post:
  *     summary: Create Consultation Session
  *     description: |
@@ -186,7 +186,7 @@ router.get('/consultation-update/:id', controller.getConsultationUpdate);
  *       (useful for Swagger testing when not authenticated as a nutritionist).
  *       Validates that athlete_id exists and type_of_consult_id is active.
  *       date_of_consult defaults to today if not provided.
- *     tags: [Consultation - Consultation Update]
+ *     tags: [Consultation - Consultation Session]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -301,18 +301,18 @@ router.get('/consultation-update/:id', controller.getConsultationUpdate);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/consultation-update', authenticateToken, controller.createConsultationSession);
+router.post('/consultation-session', authenticateToken, controller.createConsultationSession);
 
 /**
  * @swagger
- * /api/Consultation/consultation-update/{id}:
+ * /api/Consultation/consultation-session/{id}:
  *   patch:
  *     summary: Update Consultation Session
  *     description: |
  *       Update a consultation session. All fields are optional — only provided fields are modified.
  *       athlete_id and nutritionist_id cannot be changed after creation.
  *       Validates type_of_consult_id is active if provided.
- *     tags: [Consultation - Consultation Update]
+ *     tags: [Consultation - Consultation Session]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -384,8 +384,8 @@ router.post('/consultation-update', authenticateToken, controller.createConsulta
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch('/consultation-update/:id', authenticateToken, controller.updateConsultationSession);
-router.patch('/consultation-update/:id/status', authenticateToken, controller.updateSessionStatus);
-router.delete('/consultation-update/:id', authenticateToken, controller.cancelConsultationSession);
+router.patch('/consultation-session/:id', authenticateToken, controller.updateConsultationSession);
+router.patch('/consultation-session/:id/status', authenticateToken, controller.updateSessionStatus);
+router.delete('/consultation-session/:id', authenticateToken, controller.cancelConsultationSession);
 
 export default router;

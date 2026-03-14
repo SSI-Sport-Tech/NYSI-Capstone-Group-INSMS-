@@ -80,8 +80,8 @@ const swaggerOptions = {
             },
             // ==================== Consultation ====================
             {
-                name: "Consultation - Consultation Update",
-                description: "Consultation Update card — session-level fields (consult date, follow-up date, nutritionist, consult type)",
+                name: "Consultation - Consultation Session",
+                description: "Consultation Session — session-level fields (consult date, follow-up date, nutritionist, consult type)",
             },
             {
                 name: "Consultation - Open Items",
@@ -1511,7 +1511,7 @@ const swaggerOptions = {
         "./modules/AMS/sport/routes.js",
         "./modules/AMS/coach/routes.js",
         "./modules/AMS/nutritionist/routes.js",
-        "./modules/Consultation/consultation-update/routes.js",
+        "./modules/Consultation/consultation-session/routes.js",
         "./modules/Consultation/open-items/routes.js",
         "./modules/Consultation/consultation-lookups/routes.js",
         "./modules/Consultation/consultation-details/routes.js",
