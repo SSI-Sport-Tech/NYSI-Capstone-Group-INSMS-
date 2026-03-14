@@ -94,7 +94,7 @@ async function getPalFromTraining(sessionId) {
   return rows[0]?.physical_activity_level_pal ?? null;
 }
 
-export async function getAdherencesBySessionId(sessionId) {
+export async function getNutritionRequirementsBySessionId(sessionId) {
   await assertSessionExists(sessionId);
   await getOrCreateNutritionReview(sessionId);
 
@@ -109,7 +109,7 @@ export async function getAdherencesBySessionId(sessionId) {
   return mapResponse(rows[0], pal);
 }
 
-export async function patchAdherencesBySessionId(sessionId, payload, userId) {
+export async function patchNutritionRequirementsBySessionId(sessionId, payload, userId) {
   await assertSessionExists(sessionId);
 
   const fields = {
@@ -155,5 +155,5 @@ export async function patchAdherencesBySessionId(sessionId, payload, userId) {
     }
   });
 
-  return getAdherencesBySessionId(sessionId);
+  return getNutritionRequirementsBySessionId(sessionId);
 }

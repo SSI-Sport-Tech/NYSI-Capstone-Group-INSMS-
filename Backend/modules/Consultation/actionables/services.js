@@ -8,7 +8,7 @@ import pool, { withUserContext } from "../../../config/db.js";
  * Get all active open item statuses from lookup table
  * @returns {Promise<Array>} Array of { id, open_item_status }
  */
-export async function getOpenItemStatuses() {
+export async function getActionableStatuses() {
     const query = `
         SELECT id, open_item_status, is_active
         FROM consultation.open_item_status_lookup
@@ -24,7 +24,7 @@ export async function getOpenItemStatuses() {
  * @param {string} sessionId - UUID of session
  * @returns {Promise<Array>} Array of open item rows
  */
-export async function getOpenItemsBySessionId(sessionId) {
+export async function getActionablesBySessionId(sessionId) {
     const query = `
         SELECT
             oi.id,
@@ -51,7 +51,7 @@ export async function getOpenItemsBySessionId(sessionId) {
  * @param {Object} data - Open item fields
  * @returns {Promise<Object>} Created open item row
  */
-export async function createOpenItem(data, userId) {
+export async function createActionable(data, userId) {
     const query = `
         INSERT INTO consultation.session_open_item (
             sessions_id, open_item_status_id, description,
@@ -80,7 +80,7 @@ export async function createOpenItem(data, userId) {
  * @param {Object} updateData - Fields to update
  * @returns {Promise<Object|null>} Updated open item or null
  */
-export async function updateOpenItem(openItemId, updateData, userId) {
+export async function updateActionable(openItemId, updateData, userId) {
     const fields = [];
     const values = [];
     let paramCounter = 1;
@@ -126,7 +126,7 @@ export async function updateOpenItem(openItemId, updateData, userId) {
  * @param {Array<string>} ids - Array of UUIDs
  * @returns {Promise<Array>} Array of deleted rows
  */
-export async function deleteOpenItems(ids, userId) {
+export async function deleteActionables(ids, userId) {
     const query = `
         DELETE FROM consultation.session_open_item
         WHERE id = ANY($1::uuid[])

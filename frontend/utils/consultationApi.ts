@@ -103,14 +103,14 @@ export const consultationApi = {
     );
   },
 
-  // Get open items for session
-  getOpenItems: async (sessionId: string) => {
-    return apiCall(`/api/Consultation/open-items/session/${sessionId}`);
+  // Get actionables for session
+  getActionables: async (sessionId: string) => {
+    return apiCall(`/api/Consultation/actionables/session/${sessionId}`);
   },
 
-  // Get prescriptions for session
-  getPrescriptions: async (sessionId: string) => {
-    return apiCall(`/api/Consultation/prescription/session/${sessionId}`);
+  // Get supplement dispensing for session
+  getSupplementDispensing: async (sessionId: string) => {
+    return apiCall(`/api/Consultation/supplement-dispensing/session/${sessionId}`);
   },
 
   // Get anthropometry for session
@@ -133,9 +133,9 @@ export const consultationApi = {
     return apiCall(`/api/Consultation/medical-history/${sessionId}`);
   },
 
-  // Get adherences for session
-  getAdherences: async (sessionId: string) => {
-    return apiCall(`/api/Consultation/sessions/${sessionId}/adherences`);
+  // Get nutrition requirements for session
+  getNutritionRequirements: async (sessionId: string) => {
+    return apiCall(`/api/Consultation/sessions/${sessionId}/nutrition-requirements`);
   },
 
   // Clear the scheduled booking flag on a session

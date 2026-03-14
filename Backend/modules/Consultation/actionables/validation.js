@@ -22,7 +22,7 @@ export const sessionIdParamSchema = z.object({
 // CREATE OPEN ITEM SCHEMA
 // ============================================================================
 
-export const createOpenItemSchema = z.object({
+export const createActionableSchema = z.object({
     sessions_id: uuidSchema.describe('Session UUID'),
     open_item_status_id: uuidSchema.describe('Open item status UUID'),
     description: z.string().trim().optional(),
@@ -42,7 +42,7 @@ export const createOpenItemSchema = z.object({
 // UPDATE OPEN ITEM SCHEMA (all fields optional)
 // ============================================================================
 
-export const updateOpenItemSchema = z.object({
+export const updateActionableSchema = z.object({
     open_item_status_id: uuidSchema.optional(),
     description: z.string().trim().optional(),
     open_item: z.string().trim().optional(),

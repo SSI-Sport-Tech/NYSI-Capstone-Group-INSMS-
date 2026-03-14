@@ -1,7 +1,7 @@
 import * as services from './services.js';
 import {
-    createOpenItemSchema,
-    updateOpenItemSchema,
+    createActionableSchema,
+    updateActionableSchema,
     sessionIdParamSchema,
     uuidParamSchema,
     bulkDeleteSchema,
@@ -14,7 +14,7 @@ import pool from '../../../config/db.js';
 
 export async function getOpenItemStatuses(req, res) {
     try {
-        const statuses = await services.getOpenItemStatuses();
+        const statuses = await services.getActionableStatuses();
         res.json({ data: statuses });
     } catch (error) {
         console.error('Error fetching open item statuses:', error);
@@ -39,7 +39,7 @@ export async function getOpenItems(req, res) {
             return res.status(404).json({ error: 'Session not found' });
         }
 
-        const items = await services.getOpenItemsBySessionId(sessionId);
+        const items = await services.getActionablesBySessionId(sessionId);
 
         res.json({ data: items });
 
@@ -64,7 +64,7 @@ export async function getOpenItems(req, res) {
 
 export async function createOpenItem(req, res) {
     try {
-        const validated = createOpenItemSchema.parse(req.body);
+        const validated = createActionableSchema.parse(req.body);
 
         // Validate session exists
         const sessionCheck = await pool.query(
@@ -117,7 +117,7 @@ export async function createOpenItem(req, res) {
             owner = nutritionistResult.rows[0].name;
         }
 
-        const item = await services.createOpenItem({ ...validated, owner }, req.user.userId);
+        const item = await services.createActionable({ ...validated, owner }, req.user.userId);
 
         res.status(201).json({
             message: 'Open item created successfully',
@@ -146,7 +146,7 @@ export async function createOpenItem(req, res) {
 export async function updateOpenItem(req, res) {
     try {
         const { id } = uuidParamSchema.parse(req.params);
-        const validated = updateOpenItemSchema.parse(req.body);
+        const validated = updateActionableSchema.parse(req.body);
 
         // Check open item exists
         const exists = await pool.query(
@@ -171,7 +171,7 @@ export async function updateOpenItem(req, res) {
             }
         }
 
-        const updated = await services.updateOpenItem(id, validated, req.user.userId);
+        const updated = await services.updateActionable(id, validated, req.user.userId);
 
         if (!updated) {
             return res.status(400).json({ error: 'No fields to update' });
@@ -205,7 +205,7 @@ export async function deleteOpenItems(req, res) {
     try {
         const { ids } = bulkDeleteSchema.parse(req.body);
 
-        const deleted = await services.deleteOpenItems(ids, req.user.userId);
+        const deleted = await services.deleteActionables(ids, req.user.userId);
 
         res.json({
             message: `Successfully deleted ${deleted.length} open item(s)`,

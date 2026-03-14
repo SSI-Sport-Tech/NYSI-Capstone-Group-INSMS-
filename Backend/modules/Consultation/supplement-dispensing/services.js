@@ -109,7 +109,7 @@ async function recalculateBatchStatus(client, batchId) {
  * @param {string} sessionId - UUID of session
  * @returns {Promise<Array>} List of prescriptions with joined data
  */
-export async function getPrescriptionsBySessionId(sessionId) {
+export async function getSupplementDispensingBySessionId(sessionId) {
     const result = await pool.query(
         `${PRESCRIPTION_SELECT} WHERE sp.sessions_id = $1 ORDER BY sp.id`,
         [sessionId]
@@ -122,7 +122,7 @@ export async function getPrescriptionsBySessionId(sessionId) {
  * @param {string} id - UUID of prescription
  * @returns {Promise<Object|null>} Prescription with joined data or null
  */
-export async function getPrescriptionById(id) {
+export async function getSupplementDispensingById(id) {
     const result = await pool.query(
         `${PRESCRIPTION_SELECT} WHERE sp.id = $1`,
         [id]
@@ -146,7 +146,7 @@ export async function getPrescriptionById(id) {
  * @returns {Promise<Object>} Created prescription with joined data
  * @throws {InsufficientStockError} If prescribed_quantity exceeds available stock
  */
-export async function createPrescription(data, userId) {
+export async function createSupplementDispensing(data, userId) {
     return withUserContext(userId, async (client) => {
         // 1. Lock the batch row and read initial quantity
         const batchResult = await client.query(`
@@ -223,7 +223,7 @@ export async function createPrescription(data, userId) {
         // 8. Recalculate and correct batch stock status
         await recalculateBatchStatus(client, data.batch_id);
 
-        return getPrescriptionById(prescriptionId);
+        return getSupplementDispensingById(prescriptionId);
     });
 }
 
@@ -243,7 +243,7 @@ export async function createPrescription(data, userId) {
  * @returns {Promise<Object|null>} Updated prescription or null if no fields given
  * @throws {InsufficientStockError} If new prescribed_quantity exceeds available stock
  */
-export async function updatePrescription(id, updateData, userId) {
+export async function updateSupplementDispensing(id, updateData, userId) {
     return withUserContext(userId, async (client) => {
         let didUpdate = false;
 
@@ -321,7 +321,7 @@ export async function updatePrescription(id, updateData, userId) {
         }
 
         if (!didUpdate) return null;
-        return getPrescriptionById(id);
+        return getSupplementDispensingById(id);
     });
 }
 
@@ -337,7 +337,7 @@ export async function updatePrescription(id, updateData, userId) {
  * @param {string} id - UUID of prescription
  * @returns {Promise<string|null>} Deleted prescription ID or null
  */
-export async function deletePrescription(id, userId) {
+export async function deleteSupplementDispensing(id, userId) {
     return withUserContext(userId, async (client) => {
         // Get the batch_id from the linked ticket before deleting
         const ticketResult = await client.query(`

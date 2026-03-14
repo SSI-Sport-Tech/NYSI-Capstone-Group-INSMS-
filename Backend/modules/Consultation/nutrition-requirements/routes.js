@@ -1,16 +1,16 @@
 import { Router } from "express";
-import { getAdherences, patchAdherences } from "./controller.js";
-import { validateGetSessionId, validatePatchAdherences } from "./validation.js";
+import { getNutritionRequirements, patchNutritionRequirements } from "./controller.js";
+import { validateGetSessionId, validatePatchNutritionRequirements } from "./validation.js";
 import { authenticateToken } from "../../Auth/authMiddleware.js";
 
 const router = Router();
 
 /**
  * @swagger
- * /api/Consultation/sessions/{sessionId}/adherences:
+ * /api/Consultation/sessions/{sessionId}/nutrition-requirements:
  *   get:
- *     summary: Retrieve adherences (nutrition review inputs + computed outputs) for a session
- *     tags: [Consultation - Adherences]
+ *     summary: Retrieve nutrition requirements (nutrition review inputs + computed outputs) for a session
+ *     tags: [Consultation - Nutrition Requirements]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -23,14 +23,14 @@ const router = Router();
  *           format: uuid
  *     responses:
  *       200:
- *         description: Successfully retrieved adherences
+ *         description: Successfully retrieved nutrition requirements
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 data:
- *                   $ref: "#/components/schemas/AdherencesResponse"
+ *                   $ref: "#/components/schemas/NutritionRequirementsResponse"
  *       400:
  *         $ref: "#/components/responses/BadRequest"
  *       404:
@@ -39,8 +39,8 @@ const router = Router();
  *         $ref: "#/components/responses/InternalServerError"
  *
  *   patch:
- *     summary: Update adherences inputs for a session (partial update)
- *     tags: [Consultation - Adherences]
+ *     summary: Update nutrition requirements inputs for a session (partial update)
+ *     tags: [Consultation - Nutrition Requirements]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -56,17 +56,17 @@ const router = Router();
  *       content:
  *         application/json:
  *           schema:
- *             $ref: "#/components/schemas/AdherencesPatchRequest"
+ *             $ref: "#/components/schemas/NutritionRequirementsPatchRequest"
  *     responses:
  *       200:
- *         description: Successfully updated adherences
+ *         description: Successfully updated nutrition requirements
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 data:
- *                   $ref: "#/components/schemas/AdherencesResponse"
+ *                   $ref: "#/components/schemas/NutritionRequirementsResponse"
  *       400:
  *         $ref: "#/components/responses/BadRequest"
  *       404:
@@ -75,7 +75,7 @@ const router = Router();
  *         $ref: "#/components/responses/InternalServerError"
  */
 
-router.get("/sessions/:sessionId/adherences", validateGetSessionId, getAdherences);
-router.patch("/sessions/:sessionId/adherences", authenticateToken, validatePatchAdherences, patchAdherences);
+router.get("/sessions/:sessionId/nutrition-requirements", validateGetSessionId, getNutritionRequirements);
+router.patch("/sessions/:sessionId/nutrition-requirements", authenticateToken, validatePatchNutritionRequirements, patchNutritionRequirements);
 
 export default router;

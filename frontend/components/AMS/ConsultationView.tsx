@@ -7,15 +7,15 @@ import {
   consultationLookupApi,
   ConsultationApiError,
 } from "../../utils/consultationApi";
-import OpenItems from "./consultation/OpenItems";
+import Actionables from "./consultation/Actionables";
 import PreviousConsultation, { type PreviousConsultationHandle } from "./consultation/PreviousConsultation";
-import Prescription from "./consultation/Prescription";
+import SupplementDispensing from "./consultation/SupplementDispensing";
 import TrainingSchedule from "./consultation/TrainingSchedule";
 import MealLogs from "./consultation/MealLogs";
 import Anthropometry from "./consultation/Anthropometry";
 import MedicalHistory from "./consultation/MedicalHistory";
-import Adherences from "./consultation/Adherences";
-import NewPrescriptionForm from "./consultation/NewPrescriptionForm";
+import NutritionRequirements from "./consultation/NutritionRequirements";
+import NewSupplementDispensingForm from "./consultation/NewSupplementDispensingForm";
 import ScheduledSessionSelectorModal, {
   type ScheduledSession,
 } from "./consultation/ScheduledSessionSelectorModal";
@@ -67,10 +67,10 @@ const STEPS = [
   { id: 3, label: "Medical History" },
   { id: 4, label: "Training Schedule" },
   { id: 5, label: "Meal Logs" },
-  { id: 6, label: "Adherences" },
-  { id: 7, label: "Nutrition Diagnosis" },
-  { id: 8, label: "Open Items" },
-  { id: 9, label: "Prescription" },
+  { id: 6, label: "Nutrition Requirements" },
+  { id: 7, label: "Nutrition Diagnosis Summary" },
+  { id: 8, label: "Actionables" },
+  { id: 9, label: "Supplement Dispensing" },
 ];
 
 const TOTAL_STEPS = STEPS.length;
@@ -797,10 +797,10 @@ export default function ConsultationView({
           />
         );
 
-      // ── Step 6: Adherences ─────────────────────────────────────────────────
+      // ── Step 6: Nutrition Requirements ─────────────────────────────────────
       case 6:
         return (
-          <Adherences
+          <NutritionRequirements
             athleteId={athleteId}
             sessionId={isNewConsultation ? "" : currentSessionId}
             isNewConsultation={isNewConsultation}
@@ -812,12 +812,12 @@ export default function ConsultationView({
           />
         );
 
-      // ── Step 7: Main Nutrition Diagnosis ───────────────────────────────────
+      // ── Step 7: Nutrition Diagnosis Summary ────────────────────────────────
       case 7:
         return (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-gray-900">Main Nutrition Diagnosis</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Nutrition Diagnosis Summary</h2>
               {!isNewConsultation && (
                 <div className="flex items-center gap-2">
                   {isDiagnosisEditMode ? (
@@ -851,10 +851,10 @@ export default function ConsultationView({
           </div>
         );
 
-      // ── Step 8: Open Items ─────────────────────────────────────────────────
+      // ── Step 8: Actionables ────────────────────────────────────────────────
       case 8:
         return (
-          <OpenItems
+          <Actionables
             athleteId={athleteId}
             sessionId={isNewConsultation ? "" : currentSessionId}
             isNewConsultation={isNewConsultation}
@@ -863,12 +863,12 @@ export default function ConsultationView({
           />
         );
 
-      // ── Step 9: Prescription ───────────────────────────────────────────────
+      // ── Step 9: Supplement Dispensing ──────────────────────────────────────
       case 9:
         return isNewConsultation ? (
-          <NewPrescriptionForm ensureSession={ensureSession} />
+          <NewSupplementDispensingForm ensureSession={ensureSession} />
         ) : (
-          <Prescription athleteId={athleteId} sessionId={currentSessionId} prevSessionId={prevSessionId} />
+          <SupplementDispensing athleteId={athleteId} sessionId={currentSessionId} prevSessionId={prevSessionId} />
         );
 
       default:
@@ -977,7 +977,7 @@ export default function ConsultationView({
                   >
                     <StepIcon stepId={step.id} status={status} />
                     {!sidebarCollapsed && (
-                      <span className={`text-sm truncate ${isActive ? "font-semibold" : "font-medium"}`}>
+                      <span className={`text-sm ${isActive ? "font-semibold" : "font-medium"}`}>
                         {step.label}
                       </span>
                     )}
