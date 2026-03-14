@@ -73,7 +73,9 @@ export default function ConsultationDetailsPage() {
       case 1:
         return (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Consultation Details</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">
+              Consultation Details
+            </h2>
             {sessionData ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-900">
                 <div>
@@ -94,39 +96,51 @@ export default function ConsultationDetailsPage() {
                   <span className="text-gray-500">Follow Up Date:</span>
                   <span className="ml-2 font-medium">
                     {sessionData.date_of_next_follow_up
-                      ? new Date(sessionData.date_of_next_follow_up).toLocaleDateString()
+                      ? new Date(
+                          sessionData.date_of_next_follow_up,
+                        ).toLocaleDateString()
                       : "Not set"}
-                    {sessionData.date_of_next_follow_up && sessionData.time_of_next_follow_up && (
-                      <span className="ml-1 text-gray-600">
-                        {sessionData.time_of_next_follow_up.substring(0, 5)}
-                      </span>
-                    )}
+                    {sessionData.date_of_next_follow_up &&
+                      sessionData.time_of_next_follow_up && (
+                        <span className="ml-1 text-gray-600">
+                          {sessionData.time_of_next_follow_up.substring(0, 5)}
+                        </span>
+                      )}
                   </span>
                 </div>
                 <div>
                   <span className="text-gray-500">Consulted By:</span>
-                  <span className="ml-2 font-medium">{sessionData.nutritionist_name || "—"}</span>
+                  <span className="ml-2 font-medium">
+                    {sessionData.nutritionist_name || "—"}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-500">Consult Type:</span>
-                  <span className="ml-2 font-medium">{sessionData.type_of_consult || "—"}</span>
+                  <span className="ml-2 font-medium">
+                    {sessionData.type_of_consult || "—"}
+                  </span>
                 </div>
                 {sessionData.venue && (
                   <div>
                     <span className="text-gray-500">Venue:</span>
-                    <span className="ml-2 font-medium">{sessionData.venue}</span>
+                    <span className="ml-2 font-medium">
+                      {sessionData.venue}
+                    </span>
                   </div>
                 )}
                 {sessionData.title_description && (
                   <div>
                     <span className="text-gray-500">Title:</span>
-                    <span className="ml-2 font-medium">{sessionData.title_description}</span>
+                    <span className="ml-2 font-medium">
+                      {sessionData.title_description}
+                    </span>
                   </div>
                 )}
                 <div className="md:col-span-2">
                   <span className="text-gray-500">Objective:</span>
                   <span className="ml-2 font-medium">
-                    {sessionData.consultation_objective || "No objective specified"}
+                    {sessionData.consultation_objective ||
+                      "No objective specified"}
                   </span>
                 </div>
               </div>
@@ -140,21 +154,58 @@ export default function ConsultationDetailsPage() {
           </div>
         );
       case 2:
-        return <Anthropometry athleteId={athleteId} sessionId={sessionId} readOnly />;
+        return (
+          <Anthropometry athleteId={athleteId} sessionId={sessionId} readOnly />
+        );
       case 3:
-        return <MedicalHistory athleteId={athleteId} sessionId={sessionId} readOnly />;
+        return (
+          <MedicalHistory
+            athleteId={athleteId}
+            sessionId={sessionId}
+            readOnly
+          />
+        );
       case 4:
-        return <TrainingSchedule athleteId={athleteId} sessionId={sessionId} readOnly />;
+        return (
+          <TrainingSchedule
+            athleteId={athleteId}
+            sessionId={sessionId}
+            readOnly
+          />
+        );
       case 5:
-        return <MealLogs athleteId={athleteId} sessionId={sessionId} readOnly />;
+        return (
+          <MealLogs athleteId={athleteId} sessionId={sessionId} readOnly />
+        );
       case 6:
-        return <NutritionRequirements athleteId={athleteId} sessionId={sessionId} readOnly />;
+        return (
+          <NutritionRequirements
+            athleteId={athleteId}
+            sessionId={sessionId}
+            readOnly
+          />
+        );
       case 7:
-        return <PreviousConsultation athleteId={athleteId} sessionId={sessionId} readOnly embedded />;
+        return (
+          <PreviousConsultation
+            athleteId={athleteId}
+            sessionId={sessionId}
+            readOnly
+            embedded
+          />
+        );
       case 8:
-        return <Actionables athleteId={athleteId} sessionId={sessionId} readOnly />;
+        return (
+          <Actionables athleteId={athleteId} sessionId={sessionId} readOnly />
+        );
       case 9:
-        return <SupplementDispensing athleteId={athleteId} sessionId={sessionId} readOnly />;
+        return (
+          <SupplementDispensing
+            athleteId={athleteId}
+            sessionId={sessionId}
+            readOnly
+          />
+        );
       default:
         return null;
     }
@@ -169,13 +220,25 @@ export default function ConsultationDetailsPage() {
             onClick={handleBack}
             className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
             Back to History
           </button>
           <span className="text-gray-300">|</span>
-          <h1 className="text-base font-medium text-gray-900">Consultation Details</h1>
+          <h1 className="text-base font-medium text-gray-900">
+            Consultation Details
+          </h1>
           {sessionData && (
             <>
               <span className="text-gray-300">|</span>
@@ -183,10 +246,14 @@ export default function ConsultationDetailsPage() {
                 {new Date(sessionData.date_of_consult).toLocaleDateString()}
               </span>
               {sessionData.nutritionist_name && (
-                <span className="text-sm text-gray-500">· {sessionData.nutritionist_name}</span>
+                <span className="text-sm text-gray-500">
+                  · {sessionData.nutritionist_name}
+                </span>
               )}
               {sessionData.type_of_consult && (
-                <span className="text-sm text-gray-500">· {sessionData.type_of_consult}</span>
+                <span className="text-sm text-gray-500">
+                  · {sessionData.type_of_consult}
+                </span>
               )}
             </>
           )}
@@ -223,9 +290,7 @@ export default function ConsultationDetailsPage() {
           </div>
 
           {/* Right content area */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {renderCard()}
-          </div>
+          <div className="flex-1 overflow-y-auto p-6">{renderCard()}</div>
         </div>
       </div>
     </DashboardLayout>
