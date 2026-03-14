@@ -163,6 +163,20 @@ export default function ConsultationView({
   const ensureSessionForUpdateRef = useRef<() => Promise<string>>(async () => "");
   const previousConsultRef = useRef<PreviousConsultationHandle>(null);
 
+  // Previous session ID — fetched when viewing an existing session
+  const [fetchedPrevSessionId, setFetchedPrevSessionId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!currentSessionId || isNewConsultation) { setFetchedPrevSessionId(undefined); return; }
+    const token = localStorage.getItem("token");
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/${currentSessionId}/previous`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((json) => setFetchedPrevSessionId(json?.data?.id ?? undefined))
+      .catch(() => {});
+  }, [currentSessionId, isNewConsultation]);
+
   // Session selector modal
   const [showSessionSelector, setShowSessionSelector] = useState(false);
 
@@ -229,7 +243,7 @@ export default function ConsultationView({
     consultationLookupApi
       .getConsultationTypes()
       .then((res) => setConsultTypes(res.data ?? []))
-      .catch(() => {});
+      .catch(() => { });
   }, [isEditMode, isNewConsultation]);
 
   const fetchSessionById = async (sessionId: string) => {
@@ -579,7 +593,7 @@ export default function ConsultationView({
   // ─── Time picker helper ────────────────────────────────────────────────────
 
   const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
-  const MINUTE_OPTIONS = ["00","05","10","15","20","25","30","35","40","45","50","55"];
+  const MINUTE_OPTIONS = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
 
   const renderTimePicker = (value: string, onChange: (val: string) => void) => {
     const [curH = "", curM = ""] = value ? value.split(":") : [];
@@ -658,7 +672,7 @@ export default function ConsultationView({
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-900">
         <div>
-          <span className="text-gray-500">Last Consult Date:</span>
+          <span className="text-gray-500">Date of Consult:</span>
           <span className="ml-2 font-medium">
             {(d.date_of_consult ? new Date(d.date_of_consult) : new Date()).toLocaleDateString()}
             {d.time_of_consult && <span className="ml-1 text-gray-600">{d.time_of_consult.substring(0, 5)}</span>}
@@ -825,14 +839,14 @@ export default function ConsultationView({
             </div>
             {diagnosisSaveError && <p className="text-red-600 text-sm mb-3">{diagnosisSaveError}</p>}
             <PreviousConsultation
-                ref={previousConsultRef}
-                athleteId={athleteId}
-                sessionId={currentSessionId}
-                isNewConsultation={isNewConsultation}
-                ensureSession={ensureSession}
-                embedded={true}
-                isEditMode={isDiagnosisEditMode}
-              />
+              ref={previousConsultRef}
+              athleteId={athleteId}
+              sessionId={currentSessionId}
+              isNewConsultation={isNewConsultation}
+              ensureSession={ensureSession}
+              embedded={true}
+              isEditMode={isDiagnosisEditMode}
+            />
           </div>
         );
 
@@ -865,7 +879,7 @@ export default function ConsultationView({
 
   // ─── Main render ───────────────────────────────────────────────────────────
 
-  const prevSessionId = isNewConsultation ? currentSessionId : undefined;
+  const prevSessionId = isNewConsultation ? currentSessionId : fetchedPrevSessionId;
 
   return (
     <>
@@ -879,137 +893,136 @@ export default function ConsultationView({
 
       <div className="flex flex-col h-full">
 
-      {/* ── Session header strip ─────────────────────────────────────────── */}
-      <div className="shrink-0 px-6 py-3 bg-white border-b border-gray-200 flex items-center justify-between">
-        {isNewConsultation ? (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-            New Consultation
-          </span>
-        ) : (
-          <p className="text-sm font-medium text-gray-700">
-            Last Consultation:{" "}
-            <span className="text-gray-500">
-              {latestConsultation?.date_of_consult
-                ? new Date(latestConsultation.date_of_consult).toLocaleDateString()
-                : "—"}
+        {/* ── Session header strip ─────────────────────────────────────────── */}
+        <div className="shrink-0 px-6 py-3 bg-white border-b border-gray-200 flex items-center justify-between">
+          {isNewConsultation ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+              New Consultation
             </span>
-          </p>
-        )}
-        {isNewConsultation ? (
-          <div className="flex items-center gap-2">
+          ) : (
+            <p className="text-sm font-medium text-gray-700">
+              Last Consultation:{" "}
+              <span className="text-gray-500">
+                {latestConsultation?.date_of_consult
+                  ? new Date(latestConsultation.date_of_consult).toLocaleDateString()
+                  : "—"}
+              </span>
+            </p>
+          )}
+          {isNewConsultation ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCancelNewConsultation}
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg border hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveAll}
+                disabled={isSavingAll}
+                className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isSavingAll ? "Saving..." : "Save and Finish Consultation"}
+              </button>
+            </div>
+          ) : !isEditMode ? (
             <button
-              onClick={handleCancelNewConsultation}
-              className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg border hover:bg-gray-200"
+              onClick={handleStartNewConsultation}
+              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
             >
-              Cancel
+              + Start New Consultation
             </button>
-            <button
-              onClick={handleSaveAll}
-              disabled={isSavingAll}
-              className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
-              {isSavingAll ? "Saving..." : "Save and Finish Consultation"}
-            </button>
-          </div>
-        ) : !isEditMode ? (
-          <button
-            onClick={handleStartNewConsultation}
-            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
-          >
-            + Start New Consultation
-          </button>
-        ) : null}
-      </div>
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* ── Left Sidebar ─────────────────────────────────────────────────── */}
-        <div className={`shrink-0 bg-white border-r border-gray-200 flex flex-col transition-all duration-200 ${sidebarCollapsed ? "w-14" : "w-60"}`}>
-          {/* Sidebar header */}
-          <div className="flex items-center justify-end px-3 py-4 border-b border-gray-100">
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 shrink-0"
-              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {sidebarCollapsed ? <Menu className="w-4 h-4" /> : <X className="w-4 h-4" />}
-            </button>
-          </div>
-
-          {/* Step list */}
-          <nav className="flex-1 overflow-y-auto py-2">
-            {STEPS.map((step) => {
-              const isActive = step.id === currentStep;
-              const isDirtyStep =
-                (step.id === 1 && (isEditMode || isNewConsultation)) ||
-                (step.id === 7 && isDiagnosisEditMode);
-              const status: StepStatus = isActive
-                ? isDirtyStep
-                  ? "dirty"
-                  : "viewing"
-                : stepSaved.has(step.id)
-                ? "saved"
-                : "default";
-              return (
-                <button
-                  key={step.id}
-                  onClick={() => setCurrentStep(step.id)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${
-                    isActive
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-gray-600 hover:bg-gray-50"
-                  }`}
-                  title={sidebarCollapsed ? step.label : undefined}
-                >
-                  <StepIcon stepId={step.id} status={status} />
-                  {!sidebarCollapsed && (
-                    <span className={`text-sm truncate ${isActive ? "font-semibold" : "font-medium"}`}>
-                      {step.label}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
+          ) : null}
         </div>
 
-        {/* ── Right Content Area ────────────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Top bar: step label */}
-          <div className="shrink-0 bg-white border-b border-gray-100 px-6 py-3">
-            <p className="text-xs text-gray-400 font-medium">Step {currentStep} of {TOTAL_STEPS}</p>
-            <h2 className="text-base font-semibold text-gray-900">{STEPS[currentStep - 1].label}</h2>
+        <div className="flex flex-1 overflow-hidden">
+          {/* ── Left Sidebar ─────────────────────────────────────────────────── */}
+          <div className={`shrink-0 bg-white border-r border-gray-200 flex flex-col transition-all duration-200 ${sidebarCollapsed ? "w-14" : "w-60"}`}>
+            {/* Sidebar header */}
+            <div className="flex items-center justify-end px-3 py-4 border-b border-gray-100">
+              <button
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 shrink-0"
+                aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {sidebarCollapsed ? <Menu className="w-4 h-4" /> : <X className="w-4 h-4" />}
+              </button>
+            </div>
+
+            {/* Step list */}
+            <nav className="flex-1 overflow-y-auto py-2">
+              {STEPS.map((step) => {
+                const isActive = step.id === currentStep;
+                const isDirtyStep =
+                  (step.id === 1 && (isEditMode || isNewConsultation)) ||
+                  (step.id === 7 && isDiagnosisEditMode);
+                const status: StepStatus = isActive
+                  ? isDirtyStep
+                    ? "dirty"
+                    : "viewing"
+                  : stepSaved.has(step.id)
+                    ? "saved"
+                    : "default";
+                return (
+                  <button
+                    key={step.id}
+                    onClick={() => setCurrentStep(step.id)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${isActive
+                        ? "bg-blue-50 text-blue-700"
+                        : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                    title={sidebarCollapsed ? step.label : undefined}
+                  >
+                    <StepIcon stepId={step.id} status={status} />
+                    {!sidebarCollapsed && (
+                      <span className={`text-sm truncate ${isActive ? "font-semibold" : "font-medium"}`}>
+                        {step.label}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
           </div>
 
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {renderStepContent()}
-          </div>
+          {/* ── Right Content Area ────────────────────────────────────────────── */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Top bar: step label */}
+            <div className="shrink-0 bg-white border-b border-gray-100 px-6 py-3">
+              <p className="text-xs text-gray-400 font-medium">Step {currentStep} of {TOTAL_STEPS}</p>
+              <h2 className="text-base font-semibold text-gray-900">{STEPS[currentStep - 1].label}</h2>
+            </div>
 
-          {/* Bottom navigation */}
-          <div className="shrink-0 bg-white border-t border-gray-200 px-6 py-3 flex items-center justify-between">
-            <button
-              onClick={() => setCurrentStep((s) => Math.max(1, s - 1))}
-              disabled={currentStep === 1}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Previous step
-            </button>
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {renderStepContent()}
+            </div>
 
-            <span className="text-xs text-gray-400">{currentStep} / {TOTAL_STEPS}</span>
+            {/* Bottom navigation */}
+            <div className="shrink-0 bg-white border-t border-gray-200 px-6 py-3 flex items-center justify-between">
+              <button
+                onClick={() => setCurrentStep((s) => Math.max(1, s - 1))}
+                disabled={currentStep === 1}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Previous step
+              </button>
 
-            <button
-              onClick={() => setCurrentStep((s) => Math.min(TOTAL_STEPS, s + 1))}
-              disabled={currentStep === TOTAL_STEPS}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Next step
-              <ChevronRight className="w-4 h-4" />
-            </button>
+              <span className="text-xs text-gray-400">{currentStep} / {TOTAL_STEPS}</span>
+
+              <button
+                onClick={() => setCurrentStep((s) => Math.min(TOTAL_STEPS, s + 1))}
+                disabled={currentStep === TOTAL_STEPS}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next step
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </>
   );

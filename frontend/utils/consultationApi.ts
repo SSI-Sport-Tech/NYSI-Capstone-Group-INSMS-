@@ -80,11 +80,6 @@ export const consultationLookupApi = {
   getConsultationTypes: async (): Promise<{ data: any[] }> => {
     return apiCall("/api/Consultation/lookups/consult-types");
   },
-
-  // Get nutrition diagnoses  
-  getNutritionDiagnoses: async (): Promise<{ data: any[] }> => {
-    return apiCall("/api/Consultation/lookups/nutrition-diagnoses");
-  },
 };
 
 // Consultation-specific API functions

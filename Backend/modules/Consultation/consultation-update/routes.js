@@ -93,6 +93,7 @@ router.get('/consultation-update/today', authenticateToken, controller.getTodayS
 router.get('/consultation-update/range', controller.getSessionsByDateRange);
 router.get('/consultation-update/athlete/:athleteId/latest', controller.getLatestConsultationSession);
 router.get('/consultation-update/athlete/:athleteId/all', controller.getAllConsultationSessions);
+router.get('/consultation-update/:id/previous', controller.getPreviousConsultationSession);
 
 /**
  * @swagger

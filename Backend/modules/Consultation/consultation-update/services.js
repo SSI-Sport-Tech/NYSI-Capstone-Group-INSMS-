@@ -205,6 +205,30 @@ export async function getLatestConsultationSession(athleteId) {
 }
 
 /**
+ * Get the consultation session that occurred immediately before the given session (same athlete)
+ * @param {string} sessionId - UUID of the current session
+ * @returns {Promise<Object|null>} Previous session { id, date_of_consult } or null
+ */
+export async function getPreviousConsultationSession(sessionId) {
+    const query = `
+        WITH curr AS (
+            SELECT athlete_id, created_at
+            FROM consultation.sessions
+            WHERE id = $1
+        )
+        SELECT s.id, s.date_of_consult
+        FROM consultation.sessions s, curr
+        WHERE s.athlete_id = curr.athlete_id
+          AND s.id != $1
+          AND s.created_at < curr.created_at
+        ORDER BY s.created_at DESC
+        LIMIT 1
+    `;
+    const result = await pool.query(query, [sessionId]);
+    return result.rows.length > 0 ? result.rows[0] : null;
+}
+
+/**
  * Get all consultation sessions for an athlete, ordered by date_of_consult DESC
  * @param {string} athleteId - Athlete UUID
  * @returns {Promise<Array>} All session card data rows

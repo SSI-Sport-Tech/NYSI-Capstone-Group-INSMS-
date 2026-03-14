@@ -16,6 +16,8 @@ interface PreviousConsultationProps {
   embedded?: boolean;
   /** When true (parent edit mode): shows editable form pre-populated with current data */
   isEditMode?: boolean;
+  /** Previous session ID for the Previous Session tab */
+  prevSessionId?: string;
 }
 
 interface ConsultationData {
@@ -87,11 +89,13 @@ const PreviousConsultation = forwardRef<
   PreviousConsultationHandle,
   PreviousConsultationProps
 >(function PreviousConsultation(
-  { athleteId, sessionId, isNewConsultation, ensureSession, readOnly, embedded, isEditMode },
+  { athleteId, sessionId, isNewConsultation, ensureSession, readOnly, embedded, isEditMode, prevSessionId },
   ref,
 ) {
   const [consultationData, setConsultationData] =
     useState<ConsultationData | null>(null);
+  const [prevConsultData, setPrevConsultData] = useState<ConsultationData | null>(null);
+  const [activeTab, setActiveTab] = useState<"current" | "previous">("current");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<CurrentConsultForm>(emptyForm);
@@ -264,6 +268,38 @@ const PreviousConsultation = forwardRef<
       fetchPreviousConsultation();
     }
   }, [athleteId, sessionId, readOnly]);
+
+  // Fetch previous session's nutrition diagnosis data for the "Previous Session" tab
+  useEffect(() => {
+    if (!prevSessionId) return;
+    (async () => {
+      try {
+        const [sessionRes, detailsRes, prescRes] = await Promise.allSettled([
+          apiCall(`/api/Consultation/consultation-update/${prevSessionId}`),
+          apiCall(`/api/Consultation/consultation-details/${prevSessionId}`),
+          consultationApi.getPrescriptions(prevSessionId),
+        ]);
+        const sessionData = sessionRes.status === "fulfilled"
+          ? (sessionRes.value as { data: { id: string; athlete_id: string; date_of_consult: string; nutritionist_name: string } }).data
+          : null;
+        if (!sessionData) return;
+        setPrevConsultData({
+          id: sessionData.id,
+          athlete_id: sessionData.athlete_id,
+          date_of_consult: sessionData.date_of_consult,
+          nutritionist_name: sessionData.nutritionist_name,
+          details: detailsRes.status === "fulfilled"
+            ? (detailsRes.value as { data: ConsultationData["details"] }).data
+            : null,
+          prescriptions: prescRes.status === "fulfilled"
+            ? ((prescRes.value as { data: ConsultationData["prescriptions"] }).data || [])
+            : [],
+        });
+      } catch {
+        // non-critical
+      }
+    })();
+  }, [prevSessionId]);
 
   // Fetch lookup tables for new-consultation or edit-mode forms
   useEffect(() => {
@@ -554,22 +590,42 @@ const PreviousConsultation = forwardRef<
   }
 
   // ─── Read-only view ─────────────────────────────────────────────────────────
+  const displayData = activeTab === "previous" && prevConsultData ? prevConsultData : consultationData;
+
+  const tabBar = prevSessionId ? (
+    <div className="flex border-b border-gray-200 mb-6">
+      {(["current", "previous"] as const).map((tab) => (
+        <button
+          key={tab}
+          onClick={() => setActiveTab(tab)}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            activeTab === tab
+              ? "border-gray-800 text-gray-900"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          {tab === "current" ? "Current Session" : "Previous Session"}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
   const readOnlyContent = (
     <div className="space-y-6">
       <div className="space-y-4">
         <h3 className="text-base font-medium text-gray-900">Main Nutrition Diagnosis</h3>
         <p className="text-base font-bold text-gray-900 leading-relaxed">
-          {consultationData.details?.main_nutrition_diagnosis || "No diagnosis available"}
+          {displayData?.details?.main_nutrition_diagnosis || "No diagnosis available"}
         </p>
       </div>
 
       <div className="space-y-4">
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: "Carbohydrate", value: consultationData.details?.carbohydrates_review },
-            { label: "Protein", value: consultationData.details?.protein_review },
-            { label: "Fat", value: consultationData.details?.fat_review },
-            { label: "Other", value: consultationData.details?.other_review },
+            { label: "Carbohydrate", value: displayData?.details?.carbohydrates_review },
+            { label: "Protein", value: displayData?.details?.protein_review },
+            { label: "Fat", value: displayData?.details?.fat_review },
+            { label: "Other", value: displayData?.details?.other_review },
           ].map(({ label, value }) => (
             <div key={label} className="text-center">
               <p className="text-xs text-gray-500 mb-1">{label}</p>
@@ -585,34 +641,34 @@ const PreviousConsultation = forwardRef<
           <div>
             <h4 className="text-xs text-gray-500 mb-2">Intervention Plan</h4>
             <p className="text-sm text-gray-900">
-              {consultationData.details?.intervention_note || "No intervention notes available"}
+              {displayData?.details?.intervention_note || "No intervention notes available"}
             </p>
           </div>
           <div>
             <h4 className="text-xs text-gray-500 mb-2">Follow-Up Notes</h4>
             <p className="text-sm text-gray-900">
-              {consultationData.details?.follow_up_note || "No follow-up notes available"}
+              {displayData?.details?.follow_up_note || "No follow-up notes available"}
             </p>
           </div>
           <div>
             <h4 className="text-xs text-gray-500 mb-2">Other Remarks</h4>
             <p className="text-sm text-gray-900">
-              {consultationData.details?.other_remarks || "No remarks"}
+              {displayData?.details?.other_remarks || "No remarks"}
             </p>
           </div>
         </div>
       </div>
 
-      {!embedded && (
+      {!embedded && displayData && (
         <div className="space-y-4">
           <h3 className="text-base font-medium text-gray-900">Prescription</h3>
-          {consultationData.prescriptions.length === 0 ? (
+          {displayData.prescriptions.length === 0 ? (
             <div className="bg-gray-50 rounded-lg p-4 text-center text-gray-500">
               No prescriptions available
             </div>
           ) : (
             <div className="space-y-4">
-              {consultationData.prescriptions.map((prescription, index) => (
+              {displayData.prescriptions.map((prescription, index) => (
                 <div key={index} className="bg-gray-50 rounded-lg p-4">
                   <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
                     <div>
@@ -650,19 +706,20 @@ const PreviousConsultation = forwardRef<
   );
 
   if (embedded) {
-    return <div className="pt-2">{readOnlyContent}</div>;
+    return <div className="pt-2">{tabBar}{readOnlyContent}</div>;
   }
 
   return (
     <section id="previous-consultation" className="bg-white rounded-xl shadow-lg p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-gray-900">
           {readOnly ? "Consultation Notes" : "Previous Consultation"}
         </h2>
         <span className="text-sm text-gray-500">
-          {new Date(consultationData.date_of_consult).toLocaleDateString()}
+          {displayData ? new Date(displayData.date_of_consult).toLocaleDateString() : ""}
         </span>
       </div>
+      {tabBar}
       {readOnlyContent}
     </section>
   );

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { consultationApi } from "@/utils/consultationApi";
 
 // ============================================================
@@ -367,7 +367,7 @@ function EditableScheduleTable({
             const totalSpan = Math.max(entries.length, 1);
 
             return (
-              <>
+              <React.Fragment key={key}>
                 {entries.length === 0 ? (
                   /* Empty day: one placeholder row */
                   <tr key={`${key}-empty`} className="align-middle bg-white">
@@ -484,7 +484,7 @@ function EditableScheduleTable({
                     </button>
                   </td>
                 </tr>
-              </>
+              </React.Fragment>
             );
           })}
         </tbody>

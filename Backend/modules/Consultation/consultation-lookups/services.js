@@ -13,17 +13,3 @@ export async function getConsultTypes() {
     `);
     return result.rows;
 }
-
-/**
- * Get all active nutrition diagnoses
- * @returns {Promise<Array>} List of { id, category, diagnosis }
- */
-export async function getNutritionDiagnoses() {
-    const result = await pool.query(`
-        SELECT id, category, diagnosis
-        FROM consultation.nutrition_diagnosis_lookup
-        WHERE is_active = true
-        ORDER BY category, diagnosis ASC
-    `);
-    return result.rows;
-}

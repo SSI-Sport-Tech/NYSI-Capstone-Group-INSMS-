@@ -62,7 +62,8 @@ export default function Prescription({
   prevSessionId,
 }: PrescriptionProps) {
   const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([]);
-  const [prevPrescriptionsCount, setPrevPrescriptionsCount] = useState<number | null>(null);
+  const [prevPrescriptions, setPrevPrescriptions] = useState<PrescriptionItem[]>([]);
+  const [activeTab, setActiveTab] = useState<"current" | "previous">("current");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
@@ -137,7 +138,7 @@ export default function Prescription({
         );
         if (!res.ok) return;
         const data = await res.json();
-        setPrevPrescriptionsCount((data.data || []).length);
+        setPrevPrescriptions(data.data || []);
       } catch {
         // non-critical
       }
@@ -297,12 +298,14 @@ export default function Prescription({
     );
   }
 
+  const displayPrescriptions = activeTab === "previous" ? prevPrescriptions : prescriptions;
+
   return (
     <section id="prescription" className="bg-white rounded-xl shadow-lg p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-900">Prescription</h2>
         <div className="flex items-center gap-2">
-          {!readOnly && !showAddForm && (
+          {!readOnly && activeTab === "current" && !showAddForm && (
             <button
               onClick={() => setShowAddForm(true)}
               className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
@@ -316,8 +319,27 @@ export default function Prescription({
         </div>
       </div>
 
+      {/* Tab bar */}
+      {prevSessionId && (
+        <div className="flex border-b border-gray-200 mb-6">
+          {(["current", "previous"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                activeTab === tab
+                  ? "border-gray-800 text-gray-900"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab === "current" ? "Current Session" : "Previous Session"}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Add prescription inline form */}
-      {showAddForm && (
+      {activeTab === "current" && showAddForm && (
         <div className="border border-blue-200 rounded-lg p-5 mb-6 bg-blue-50">
           <h3 className="text-sm font-semibold text-gray-800 mb-4">New Prescription</h3>
 
@@ -458,26 +480,28 @@ export default function Prescription({
 
       {/* Existing prescriptions list */}
       <div className="space-y-6">
-        {prescriptions.length === 0 ? (
+        {displayPrescriptions.length === 0 ? (
           <div className="text-center py-8">
-            {isNewConsultation && prevPrescriptionsCount !== null && prevPrescriptionsCount > 0 && (
+            {isNewConsultation && prevPrescriptions.length > 0 && (
               <p className="text-sm text-gray-400 italic mb-3">
-                Previous consultation had {prevPrescriptionsCount} prescription{prevPrescriptionsCount !== 1 ? "s" : ""}
+                Previous consultation had {prevPrescriptions.length} prescription{prevPrescriptions.length !== 1 ? "s" : ""}
               </p>
             )}
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No prescriptions</h3>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              {activeTab === "previous" ? "No prescriptions from previous session" : "No prescriptions"}
+            </h3>
             <p className="mt-1 text-sm text-gray-500">
-              No prescriptions have been made for this consultation session.
+              {activeTab === "previous" ? "The previous session had no prescriptions." : "No prescriptions have been made for this consultation session."}
             </p>
           </div>
         ) : (
-          prescriptions.map((prescription) => (
+          displayPrescriptions.map((prescription) => (
             <div
               key={prescription.id}
               className="border-b border-gray-200 pb-6 last:border-b-0"
             >
               {/* Delete confirmation row */}
-              {!readOnly && confirmDeleteId === prescription.id ? (
+              {!readOnly && activeTab === "current" && confirmDeleteId === prescription.id ? (
                 <div className="flex items-center gap-3 mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm">
                   <span className="text-red-700 flex-1">
                     Delete <span className="font-medium">{prescription.supplement_name}</span>? This will also release the inventory back to stock.
@@ -536,7 +560,7 @@ export default function Prescription({
                 )}
               </div>
 
-              {!readOnly && confirmDeleteId !== prescription.id && (
+              {!readOnly && activeTab === "current" && confirmDeleteId !== prescription.id && (
                 <div className="mt-3 flex justify-end">
                   <button
                     onClick={() => { setConfirmDeleteId(prescription.id); setDeleteError(""); }}

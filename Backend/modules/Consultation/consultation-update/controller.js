@@ -110,6 +110,24 @@ export async function getAllConsultationSessions(req, res) {
 }
 
 // ============================================================================
+// GET PREVIOUS CONSULTATION SESSION
+// ============================================================================
+
+export async function getPreviousConsultationSession(req, res) {
+    try {
+        const { id } = req.params;
+        const data = await services.getPreviousConsultationSession(id);
+        if (!data) {
+            return res.status(404).json({ error: 'No previous session found' });
+        }
+        res.json({ data });
+    } catch (error) {
+        console.error('Error fetching previous consultation session:', error);
+        res.status(500).json({ error: 'Failed to fetch previous session', message: error.message });
+    }
+}
+
+// ============================================================================
 // GET UPCOMING CONSULTATION SESSIONS
 // ============================================================================
 

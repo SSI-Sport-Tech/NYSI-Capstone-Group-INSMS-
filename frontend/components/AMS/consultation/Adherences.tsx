@@ -162,6 +162,7 @@ export default function Adherences({
     null,
   );
   const [prevAdherencesData, setPrevAdherencesData] = useState<AdherencesData | null>(null);
+  const [activeTab, setActiveTab] = useState<"current" | "previous">("current");
   const [weight, setWeight] = useState<number | null>(null);
   const [height, setHeight] = useState<number | null>(null);
   const [targetWeight, setTargetWeight] = useState<number | null>(null);
@@ -314,42 +315,45 @@ export default function Adherences({
   const effectiveHeight = liveHeight ?? height;
   const effectiveTargetWeight = liveTargetWeight ?? targetWeight;
 
-  const livePal = effectiveEditing ? n(editForm.pal) : (adherencesData?.pal ?? null);
-  const liveMinCarbGkg = effectiveEditing ? n(editForm.minCarbGkg) : (adherencesData?.minCarbGkg ?? null);
-  const liveMaxCarbGkg = effectiveEditing ? n(editForm.maxCarbGkg) : (adherencesData?.maxCarbGkg ?? null);
-  const liveMinProteinGkg = effectiveEditing ? n(editForm.minProteinGkg) : (adherencesData?.minProteinGkg ?? null);
-  const liveMaxProteinGkg = effectiveEditing ? n(editForm.maxProteinGkg) : (adherencesData?.maxProteinGkg ?? null);
-  const liveMinFatGkg = effectiveEditing ? n(editForm.minFatGkg) : (adherencesData?.minFatGkg ?? null);
-  const liveMaxFatGkg = effectiveEditing ? n(editForm.maxFatGkg) : (adherencesData?.maxFatGkg ?? null);
-  const liveEstCarbG = effectiveEditing ? n(editForm.estimatedCarbG) : (adherencesData?.estimatedCarbG ?? null);
-  const liveEstProteinG = effectiveEditing ? n(editForm.estimatedProteinG) : (adherencesData?.estimatedProteinG ?? null);
-  const liveEstFatG = effectiveEditing ? n(editForm.estimatedFatG) : (adherencesData?.estimatedFatG ?? null);
+  // When viewing the "Previous Session" tab, display data from the previous session
+  const displayData = activeTab === "previous" && !effectiveEditing ? prevAdherencesData : adherencesData;
+
+  const livePal = effectiveEditing ? n(editForm.pal) : (displayData?.pal ?? null);
+  const liveMinCarbGkg = effectiveEditing ? n(editForm.minCarbGkg) : (displayData?.minCarbGkg ?? null);
+  const liveMaxCarbGkg = effectiveEditing ? n(editForm.maxCarbGkg) : (displayData?.maxCarbGkg ?? null);
+  const liveMinProteinGkg = effectiveEditing ? n(editForm.minProteinGkg) : (displayData?.minProteinGkg ?? null);
+  const liveMaxProteinGkg = effectiveEditing ? n(editForm.maxProteinGkg) : (displayData?.maxProteinGkg ?? null);
+  const liveMinFatGkg = effectiveEditing ? n(editForm.minFatGkg) : (displayData?.minFatGkg ?? null);
+  const liveMaxFatGkg = effectiveEditing ? n(editForm.maxFatGkg) : (displayData?.maxFatGkg ?? null);
+  const liveEstCarbG = effectiveEditing ? n(editForm.estimatedCarbG) : (displayData?.estimatedCarbG ?? null);
+  const liveEstProteinG = effectiveEditing ? n(editForm.estimatedProteinG) : (displayData?.estimatedProteinG ?? null);
+  const liveEstFatG = effectiveEditing ? n(editForm.estimatedFatG) : (displayData?.estimatedFatG ?? null);
 
   // Derived g values — current weight
   const calcG = (gkg: number | null, w: number | null) =>
     gkg !== null && w !== null ? +(gkg * w).toFixed(1) : null;
 
-  const minCarbG = effectiveEditing ? calcG(liveMinCarbGkg, effectiveWeight) : (adherencesData?.minCarbG ?? null);
-  const maxCarbG = effectiveEditing ? calcG(liveMaxCarbGkg, effectiveWeight) : (adherencesData?.maxCarbG ?? null);
-  const minProteinG = effectiveEditing ? calcG(liveMinProteinGkg, effectiveWeight) : (adherencesData?.minProteinG ?? null);
-  const maxProteinG = effectiveEditing ? calcG(liveMaxProteinGkg, effectiveWeight) : (adherencesData?.maxProteinG ?? null);
-  const minFatG = effectiveEditing ? calcG(liveMinFatGkg, effectiveWeight) : (adherencesData?.minFatG ?? null);
-  const maxFatG = effectiveEditing ? calcG(liveMaxFatGkg, effectiveWeight) : (adherencesData?.maxFatG ?? null);
+  const minCarbG = effectiveEditing ? calcG(liveMinCarbGkg, effectiveWeight) : (displayData?.minCarbG ?? null);
+  const maxCarbG = effectiveEditing ? calcG(liveMaxCarbGkg, effectiveWeight) : (displayData?.maxCarbG ?? null);
+  const minProteinG = effectiveEditing ? calcG(liveMinProteinGkg, effectiveWeight) : (displayData?.minProteinG ?? null);
+  const maxProteinG = effectiveEditing ? calcG(liveMaxProteinGkg, effectiveWeight) : (displayData?.maxProteinG ?? null);
+  const minFatG = effectiveEditing ? calcG(liveMinFatGkg, effectiveWeight) : (displayData?.minFatG ?? null);
+  const maxFatG = effectiveEditing ? calcG(liveMaxFatGkg, effectiveWeight) : (displayData?.maxFatG ?? null);
 
   // Derived g values — target weight (use independent target g/kg/bw inputs)
-  const liveTgtMinCarbGkg = effectiveEditing ? n(editForm.targetMinCarbGkg) : (adherencesData?.minCarbGkg ?? null);
-  const liveTgtMaxCarbGkg = effectiveEditing ? n(editForm.targetMaxCarbGkg) : (adherencesData?.maxCarbGkg ?? null);
-  const liveTgtMinProteinGkg = effectiveEditing ? n(editForm.targetMinProteinGkg) : (adherencesData?.minProteinGkg ?? null);
-  const liveTgtMaxProteinGkg = effectiveEditing ? n(editForm.targetMaxProteinGkg) : (adherencesData?.maxProteinGkg ?? null);
-  const liveTgtMinFatGkg = effectiveEditing ? n(editForm.targetMinFatGkg) : (adherencesData?.minFatGkg ?? null);
-  const liveTgtMaxFatGkg = effectiveEditing ? n(editForm.targetMaxFatGkg) : (adherencesData?.maxFatGkg ?? null);
+  const liveTgtMinCarbGkg = effectiveEditing ? n(editForm.targetMinCarbGkg) : (displayData?.minCarbGkg ?? null);
+  const liveTgtMaxCarbGkg = effectiveEditing ? n(editForm.targetMaxCarbGkg) : (displayData?.maxCarbGkg ?? null);
+  const liveTgtMinProteinGkg = effectiveEditing ? n(editForm.targetMinProteinGkg) : (displayData?.minProteinGkg ?? null);
+  const liveTgtMaxProteinGkg = effectiveEditing ? n(editForm.targetMaxProteinGkg) : (displayData?.maxProteinGkg ?? null);
+  const liveTgtMinFatGkg = effectiveEditing ? n(editForm.targetMinFatGkg) : (displayData?.minFatGkg ?? null);
+  const liveTgtMaxFatGkg = effectiveEditing ? n(editForm.targetMaxFatGkg) : (displayData?.maxFatGkg ?? null);
 
-  const targetMinCarbG = effectiveEditing ? calcG(liveTgtMinCarbGkg, effectiveTargetWeight) : (adherencesData?.targetMinCarbG ?? null);
-  const targetMaxCarbG = effectiveEditing ? calcG(liveTgtMaxCarbGkg, effectiveTargetWeight) : (adherencesData?.targetMaxCarbG ?? null);
-  const targetMinProteinG = effectiveEditing ? calcG(liveTgtMinProteinGkg, effectiveTargetWeight) : (adherencesData?.targetMinProteinG ?? null);
-  const targetMaxProteinG = effectiveEditing ? calcG(liveTgtMaxProteinGkg, effectiveTargetWeight) : (adherencesData?.targetMaxProteinG ?? null);
-  const targetMinFatG = effectiveEditing ? calcG(liveTgtMinFatGkg, effectiveTargetWeight) : (adherencesData?.targetMinFatG ?? null);
-  const targetMaxFatG = effectiveEditing ? calcG(liveTgtMaxFatGkg, effectiveTargetWeight) : (adherencesData?.targetMaxFatG ?? null);
+  const targetMinCarbG = effectiveEditing ? calcG(liveTgtMinCarbGkg, effectiveTargetWeight) : (displayData?.targetMinCarbG ?? null);
+  const targetMaxCarbG = effectiveEditing ? calcG(liveTgtMaxCarbGkg, effectiveTargetWeight) : (displayData?.targetMaxCarbG ?? null);
+  const targetMinProteinG = effectiveEditing ? calcG(liveTgtMinProteinGkg, effectiveTargetWeight) : (displayData?.targetMinProteinG ?? null);
+  const targetMaxProteinG = effectiveEditing ? calcG(liveTgtMaxProteinGkg, effectiveTargetWeight) : (displayData?.targetMaxProteinG ?? null);
+  const targetMinFatG = effectiveEditing ? calcG(liveTgtMinFatGkg, effectiveTargetWeight) : (displayData?.targetMinFatG ?? null);
+  const targetMaxFatG = effectiveEditing ? calcG(liveTgtMaxFatGkg, effectiveTargetWeight) : (displayData?.targetMaxFatG ?? null);
 
   // % of minimum required
   const calcPct = (estimated: number | null, minG: number | null) =>
@@ -357,9 +361,9 @@ export default function Adherences({
       ? +((estimated / minG) * 100).toFixed(1)
       : null;
 
-  const pctMinCarb = effectiveEditing ? calcPct(liveEstCarbG, minCarbG) : (adherencesData?.pctMinCarb ?? null);
-  const pctMinProtein = effectiveEditing ? calcPct(liveEstProteinG, minProteinG) : (adherencesData?.pctMinProtein ?? null);
-  const pctMinFat = effectiveEditing ? calcPct(liveEstFatG, minFatG) : (adherencesData?.pctMinFat ?? null);
+  const pctMinCarb = effectiveEditing ? calcPct(liveEstCarbG, minCarbG) : (displayData?.pctMinCarb ?? null);
+  const pctMinProtein = effectiveEditing ? calcPct(liveEstProteinG, minProteinG) : (displayData?.pctMinProtein ?? null);
+  const pctMinFat = effectiveEditing ? calcPct(liveEstFatG, minFatG) : (displayData?.pctMinFat ?? null);
 
   // RMR/TEE — Male (formula: 11.1 × weight + 8.4 × height − 340)
   const calcRMR = (w: number | null, h: number | null, offset: number) =>
@@ -367,16 +371,16 @@ export default function Adherences({
   const calcTEE = (rmr: number | null, pal: number | null) =>
     rmr !== null && pal !== null ? +(rmr * pal).toFixed(0) : null;
 
-  const rmrMale = effectiveEditing ? calcRMR(effectiveWeight, effectiveHeight, 340) : (adherencesData?.rmrMale ?? null);
-  const teeMale = effectiveEditing ? calcTEE(rmrMale, livePal) : (adherencesData?.teeMale ?? null);
-  const targetRmrMale = effectiveEditing ? calcRMR(effectiveTargetWeight, effectiveHeight, 340) : (adherencesData?.targetRmrMale ?? null);
-  const targetTeeMale = effectiveEditing ? calcTEE(targetRmrMale, livePal) : (adherencesData?.targetTeeMale ?? null);
+  const rmrMale = effectiveEditing ? calcRMR(effectiveWeight, effectiveHeight, 340) : (displayData?.rmrMale ?? null);
+  const teeMale = effectiveEditing ? calcTEE(rmrMale, livePal) : (displayData?.teeMale ?? null);
+  const targetRmrMale = effectiveEditing ? calcRMR(effectiveTargetWeight, effectiveHeight, 340) : (displayData?.targetRmrMale ?? null);
+  const targetTeeMale = effectiveEditing ? calcTEE(targetRmrMale, livePal) : (displayData?.targetTeeMale ?? null);
 
   // RMR/TEE — Female (formula: 11.1 × weight + 8.4 × height − 540)
-  const rmrFemale = effectiveEditing ? calcRMR(effectiveWeight, effectiveHeight, 540) : (adherencesData?.rmrFemale ?? null);
-  const teeFemale = effectiveEditing ? calcTEE(rmrFemale, livePal) : (adherencesData?.teeFemale ?? null);
-  const targetRmrFemale = effectiveEditing ? calcRMR(effectiveTargetWeight, effectiveHeight, 540) : (adherencesData?.targetRmrFemale ?? null);
-  const targetTeeFemale = effectiveEditing ? calcTEE(targetRmrFemale, livePal) : (adherencesData?.targetTeeFemale ?? null);
+  const rmrFemale = effectiveEditing ? calcRMR(effectiveWeight, effectiveHeight, 540) : (displayData?.rmrFemale ?? null);
+  const teeFemale = effectiveEditing ? calcTEE(rmrFemale, livePal) : (displayData?.teeFemale ?? null);
+  const targetRmrFemale = effectiveEditing ? calcRMR(effectiveTargetWeight, effectiveHeight, 540) : (displayData?.targetRmrFemale ?? null);
+  const targetTeeFemale = effectiveEditing ? calcTEE(targetRmrFemale, livePal) : (displayData?.targetTeeFemale ?? null);
 
   const handleSave = async () => {
     try {
@@ -480,7 +484,7 @@ export default function Adherences({
 
   return (
     <section id="adherences" className="bg-white rounded-xl shadow-lg p-6 text-gray-900">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-900">Adherences</h2>
         {!readOnly && (
           <div className="flex items-center gap-2">
@@ -515,6 +519,25 @@ export default function Adherences({
         )}
       </div>
 
+      {/* Tab bar */}
+      {prevSessionId && !effectiveEditing && (
+        <div className="flex border-b border-gray-200 mb-6">
+          {(["current", "previous"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                activeTab === tab
+                  ? "border-gray-800 text-gray-900"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab === "current" ? "Current Session" : "Previous Session"}
+            </button>
+          ))}
+        </div>
+      )}
+
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
       <div className="space-y-6">
@@ -542,7 +565,7 @@ export default function Adherences({
                 />
               ) : (
                 <div className="text-right">
-                  <span className="font-medium">{fmt(adherencesData?.minCarbGkg ?? null)}</span>
+                  <span className="font-medium">{fmt(displayData?.minCarbGkg ?? null)}</span>
                   <PrevVal val={prevAdherencesData?.minCarbGkg != null ? fmt(prevAdherencesData.minCarbGkg) : null} />
                 </div>
               )}
@@ -571,7 +594,7 @@ export default function Adherences({
                 />
               ) : (
                 <div className="text-right">
-                  <span className="font-medium">{fmt(adherencesData?.maxCarbGkg ?? null)}</span>
+                  <span className="font-medium">{fmt(displayData?.maxCarbGkg ?? null)}</span>
                   <PrevVal val={prevAdherencesData?.maxCarbGkg != null ? fmt(prevAdherencesData.maxCarbGkg) : null} />
                 </div>
               )}
@@ -601,7 +624,7 @@ export default function Adherences({
                 />
               ) : (
                 <div className="text-right">
-                  <span className="font-medium">{fmt(adherencesData?.minProteinGkg ?? null)}</span>
+                  <span className="font-medium">{fmt(displayData?.minProteinGkg ?? null)}</span>
                   <PrevVal val={prevAdherencesData?.minProteinGkg != null ? fmt(prevAdherencesData.minProteinGkg) : null} />
                 </div>
               )}
@@ -630,7 +653,7 @@ export default function Adherences({
                 />
               ) : (
                 <div className="text-right">
-                  <span className="font-medium">{fmt(adherencesData?.maxProteinGkg ?? null)}</span>
+                  <span className="font-medium">{fmt(displayData?.maxProteinGkg ?? null)}</span>
                   <PrevVal val={prevAdherencesData?.maxProteinGkg != null ? fmt(prevAdherencesData.maxProteinGkg) : null} />
                 </div>
               )}
@@ -660,7 +683,7 @@ export default function Adherences({
                 />
               ) : (
                 <div className="text-right">
-                  <span className="font-medium">{fmt(adherencesData?.minFatGkg ?? null)}</span>
+                  <span className="font-medium">{fmt(displayData?.minFatGkg ?? null)}</span>
                   <PrevVal val={prevAdherencesData?.minFatGkg != null ? fmt(prevAdherencesData.minFatGkg) : null} />
                 </div>
               )}
@@ -689,7 +712,7 @@ export default function Adherences({
                 />
               ) : (
                 <div className="text-right">
-                  <span className="font-medium">{fmt(adherencesData?.maxFatGkg ?? null)}</span>
+                  <span className="font-medium">{fmt(displayData?.maxFatGkg ?? null)}</span>
                   <PrevVal val={prevAdherencesData?.maxFatGkg != null ? fmt(prevAdherencesData.maxFatGkg) : null} />
                 </div>
               )}
@@ -725,7 +748,7 @@ export default function Adherences({
                   />
                 ) : (
                   <div className="text-right">
-                    <span className="font-medium">{fmt(adherencesData?.estimatedCarbG ?? null)}</span>
+                    <span className="font-medium">{fmt(displayData?.estimatedCarbG ?? null)}</span>
                     <PrevVal val={prevAdherencesData?.estimatedCarbG != null ? fmt(prevAdherencesData.estimatedCarbG) : null} />
                   </div>
                 )}
@@ -757,7 +780,7 @@ export default function Adherences({
                   />
                 ) : (
                   <div className="text-right">
-                    <span className="font-medium">{fmt(adherencesData?.estimatedProteinG ?? null)}</span>
+                    <span className="font-medium">{fmt(displayData?.estimatedProteinG ?? null)}</span>
                     <PrevVal val={prevAdherencesData?.estimatedProteinG != null ? fmt(prevAdherencesData.estimatedProteinG) : null} />
                   </div>
                 )}
@@ -789,7 +812,7 @@ export default function Adherences({
                   />
                 ) : (
                   <div className="text-right">
-                    <span className="font-medium">{fmt(adherencesData?.estimatedFatG ?? null)}</span>
+                    <span className="font-medium">{fmt(displayData?.estimatedFatG ?? null)}</span>
                     <PrevVal val={prevAdherencesData?.estimatedFatG != null ? fmt(prevAdherencesData.estimatedFatG) : null} />
                   </div>
                 )}
@@ -820,7 +843,7 @@ export default function Adherences({
                   />
                 ) : (
                   <div>
-                    <p className="text-sm text-gray-900">{adherencesData?.commentsWeekday || "—"}</p>
+                    <p className="text-sm text-gray-900">{displayData?.commentsWeekday || "—"}</p>
                     <PrevVal val={prevAdherencesData?.commentsWeekday} />
                   </div>
                 )}
@@ -844,7 +867,7 @@ export default function Adherences({
                   />
                 ) : (
                   <div>
-                    <p className="text-sm text-gray-900">{adherencesData?.commentsWeekend || "—"}</p>
+                    <p className="text-sm text-gray-900">{displayData?.commentsWeekend || "—"}</p>
                     <PrevVal val={prevAdherencesData?.commentsWeekend} />
                   </div>
                 )}
@@ -870,7 +893,7 @@ export default function Adherences({
             />
           ) : (
             <div className="text-right">
-              <span className="font-medium">{fmt(adherencesData?.pal ?? null, 2)}</span>
+              <span className="font-medium">{fmt(displayData?.pal ?? null, 2)}</span>
               <PrevVal val={prevAdherencesData?.pal != null ? fmt(prevAdherencesData.pal, 2) : null} />
             </div>
           )}
@@ -981,7 +1004,7 @@ export default function Adherences({
             />
           ) : (
             <div>
-              <p className="text-sm text-gray-900">{adherencesData?.otherRemarks || "—"}</p>
+              <p className="text-sm text-gray-900">{displayData?.otherRemarks || "—"}</p>
               <PrevVal val={prevAdherencesData?.otherRemarks} />
             </div>
           )}

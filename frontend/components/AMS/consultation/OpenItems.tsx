@@ -43,7 +43,8 @@ export default function OpenItems({
 }: OpenItemsProps) {
 
   const [openItems, setOpenItems] = useState<OpenItem[]>([]);
-  const [prevItemsCount, setPrevItemsCount] = useState<number | null>(null);
+  const [prevItems, setPrevItems] = useState<OpenItem[]>([]);
+  const [activeTab, setActiveTab] = useState<"current" | "previous">("current");
   const [statuses, setStatuses] = useState<StatusLookup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -121,7 +122,7 @@ export default function OpenItems({
         );
         if (!res.ok) return;
         const data = await res.json();
-        setPrevItemsCount((data.data || []).length);
+        setPrevItems(data.data || []);
       } catch {
         // non-critical
       }
@@ -286,18 +287,20 @@ export default function OpenItems({
     );
   }
 
+  const displayItems = activeTab === "previous" ? prevItems : openItems;
+
   return (
     <section
       id="open-items"
       className="bg-white rounded-xl shadow-lg p-6 text-gray-900"
     >
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-900">Open Items</h2>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">
-            All Actions ({openItems.length})
+            All Actions ({displayItems.length})
           </span>
-          {!readOnly && (
+          {!readOnly && activeTab === "current" && (
             <>
               <button
                 onClick={handleMarkCompleted}
@@ -335,10 +338,29 @@ export default function OpenItems({
         </div>
       </div>
 
+      {/* Tab bar */}
+      {prevSessionId && (
+        <div className="flex border-b border-gray-200 mb-6">
+          {(["current", "previous"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                activeTab === tab
+                  ? "border-gray-800 text-gray-900"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab === "current" ? "Current Session" : "Previous Session"}
+            </button>
+          ))}
+        </div>
+      )}
+
       {saveError && <p className="text-red-600 text-sm mb-3">{saveError}</p>}
 
       {/* Add New Item Form */}
-      {!readOnly && showAddForm && (
+      {!readOnly && activeTab === "current" && showAddForm && (
         <div className="mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50 space-y-3">
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
@@ -418,7 +440,7 @@ export default function OpenItems({
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-gray-200">
-              {!readOnly && (
+              {!readOnly && activeTab === "current" && (
                 <th className="py-3 px-2">
                   <input
                     type="checkbox"
@@ -449,12 +471,12 @@ export default function OpenItems({
             </tr>
           </thead>
           <tbody>
-            {openItems.map((item) => (
+            {displayItems.map((item) => (
               <tr
                 key={item.id}
                 className="border-b border-gray-100 hover:bg-gray-50"
               >
-                {!readOnly && (
+                {!readOnly && activeTab === "current" && (
                   <td className="py-3 px-2">
                     <input
                       type="checkbox"
@@ -495,18 +517,18 @@ export default function OpenItems({
         </table>
       </div>
 
-      {openItems.length === 0 && (
+      {displayItems.length === 0 && (
         <div className="text-center py-8">
-          {isNewConsultation && prevItemsCount !== null && prevItemsCount > 0 && (
+          {isNewConsultation && prevItems.length > 0 && (
             <p className="text-sm text-gray-400 italic mb-3">
-              Previous consultation had {prevItemsCount} action item{prevItemsCount !== 1 ? "s" : ""}
+              Previous consultation had {prevItems.length} action item{prevItems.length !== 1 ? "s" : ""}
             </p>
           )}
           <h3 className="mt-2 text-sm font-medium text-gray-900">
-            No open items
+            {activeTab === "previous" ? "No open items from previous session" : "No open items"}
           </h3>
           <p className="mt-1 text-sm text-gray-500">
-            Get started by creating a new action item.
+            {activeTab === "previous" ? "The previous session had no action items." : "Get started by creating a new action item."}
           </p>
         </div>
       )}

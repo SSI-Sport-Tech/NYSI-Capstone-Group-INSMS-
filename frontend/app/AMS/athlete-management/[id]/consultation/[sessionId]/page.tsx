@@ -40,13 +40,13 @@ export default function ConsultationDetailsPage() {
     const fetchSession = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/${sessionId}`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        setSessionData(data.data);
+        const headers = { Authorization: `Bearer ${token}` };
+        const base = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update`;
+        const res = await fetch(`${base}/${sessionId}`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setSessionData(data.data);
+        }
       } catch {
         // non-critical — other cards still load independently
       }
@@ -96,7 +96,7 @@ export default function ConsultationDetailsPage() {
                 {sessionData ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-900">
                     <div>
-                      <span className="text-gray-900">Last Consult Date:</span>
+                      <span className="text-gray-900">Date of Consult:</span>
                       <span className="ml-2 font-medium">
                         {(sessionData.date_of_consult
                           ? new Date(sessionData.date_of_consult)
@@ -176,6 +176,7 @@ export default function ConsultationDetailsPage() {
               <PreviousConsultation
                 athleteId={athleteId}
                 sessionId={sessionId}
+    
                 readOnly
                 embedded
               />
@@ -185,42 +186,49 @@ export default function ConsultationDetailsPage() {
           <OpenItems
             athleteId={athleteId}
             sessionId={sessionId}
+
             readOnly
           />
 
           <Prescription
             athleteId={athleteId}
             sessionId={sessionId}
+
             readOnly
           />
 
           <TrainingSchedule
             athleteId={athleteId}
             sessionId={sessionId}
+
             readOnly
           />
 
           <MealLogs
             athleteId={athleteId}
             sessionId={sessionId}
+
             readOnly
           />
 
           <Anthropometry
             athleteId={athleteId}
             sessionId={sessionId}
+
             readOnly
           />
 
           <Adherences
             athleteId={athleteId}
             sessionId={sessionId}
+
             readOnly
           />
 
           <MedicalHistory
             athleteId={athleteId}
             sessionId={sessionId}
+
             readOnly
           />
         </div>
