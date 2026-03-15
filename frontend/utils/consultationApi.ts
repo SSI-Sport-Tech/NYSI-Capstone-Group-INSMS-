@@ -80,6 +80,10 @@ export const consultationLookupApi = {
   getConsultationTypes: async (): Promise<{ data: any[] }> => {
     return apiCall("/api/Consultation/lookups/consult-types");
   },
+  // Get consultation objectives (lookup table)
+  getConsultationObjectives: async (): Promise<{ data: { id: string; consultation_objective: string }[] }> => {
+    return apiCall("/api/Consultation/lookups/consultation-objectives");
+  },
 };
 
 // Consultation-specific API functions

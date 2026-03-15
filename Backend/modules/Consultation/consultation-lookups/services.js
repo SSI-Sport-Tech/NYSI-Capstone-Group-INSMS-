@@ -13,3 +13,17 @@ export async function getConsultTypes() {
     `);
     return result.rows;
 }
+
+/**
+ * Get all active consultation objectives
+ * @returns {Promise<Array>} List of { id, consultation_objective }
+ */
+export async function getConsultationObjectives() {
+    const result = await pool.query(`
+        SELECT id, consultation_objective
+        FROM consultation.consultation_objective_lookup
+        WHERE is_active = true
+        ORDER BY consultation_objective ASC
+    `);
+    return result.rows;
+}

@@ -28,7 +28,8 @@ interface LatestConsultation {
   date_of_next_follow_up: string;
   time_of_next_follow_up: string;
   nutritionist_name: string;
-  consultation_objective: string;
+  consultation_objective_id: string | null;
+  consultation_objective: string | null;
   type_of_consult: string;
   type_of_consult_id: string;
   venue: string;
@@ -57,7 +58,7 @@ const EMPTY_UPDATE_FORM = {
   time_of_consult: "",
   date_of_next_follow_up: "",
   time_of_next_follow_up: "",
-  consultation_objective: "",
+  consultation_objective_id: "",
 };
 type UpdateForm = typeof EMPTY_UPDATE_FORM;
 
@@ -151,6 +152,7 @@ export default function ConsultationView({
   // Edit mode state — Step 1 (Consultation Details)
   const [isEditMode, setIsEditMode] = useState(false);
   const [consultTypes, setConsultTypes] = useState<ConsultType[]>([]);
+  const [consultObjectives, setConsultObjectives] = useState<{ id: string; consultation_objective: string }[]>([]);
   const [updateForm, setUpdateForm] = useState<UpdateForm>(EMPTY_UPDATE_FORM);
   const [isSavingUpdate, setIsSavingUpdate] = useState(false);
   const [isSavingAll, setIsSavingAll] = useState(false);
@@ -241,10 +243,8 @@ export default function ConsultationView({
 
   useEffect(() => {
     if (!isEditMode && !isNewConsultation) return;
-    consultationLookupApi
-      .getConsultationTypes()
-      .then((res) => setConsultTypes(res.data ?? []))
-      .catch(() => { });
+    consultationLookupApi.getConsultationTypes().then((res) => setConsultTypes(res.data ?? [])).catch(() => {});
+    consultationLookupApi.getConsultationObjectives().then((res) => setConsultObjectives(res.data ?? [])).catch(() => {});
   }, [isEditMode, isNewConsultation]);
 
   const fetchSessionById = async (sessionId: string) => {
@@ -329,7 +329,7 @@ export default function ConsultationView({
       time_of_consult: session.time_of_consult ?? "",
       date_of_next_follow_up: session.date_of_next_follow_up ?? "",
       time_of_next_follow_up: session.time_of_next_follow_up ?? "",
-      consultation_objective: session.consultation_objective ?? "",
+      consultation_objective_id: session.consultation_objective_id ?? "",
     });
     setShowSessionSelector(false);
     setIsNewConsultation(true);
@@ -394,7 +394,7 @@ export default function ConsultationView({
         if (form.time_of_consult) body.time_of_consult = form.time_of_consult;
         if (form.date_of_next_follow_up) body.date_of_next_follow_up = form.date_of_next_follow_up;
         if (form.time_of_next_follow_up) body.time_of_next_follow_up = form.time_of_next_follow_up;
-        if (form.consultation_objective) body.consultation_objective = form.consultation_objective;
+        if (form.consultation_objective_id) body.consultation_objective_id = form.consultation_objective_id;
         if (Object.keys(body).length === 0) return;
         await fetch(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${id}`,
@@ -426,7 +426,7 @@ export default function ConsultationView({
         ? d.date_of_next_follow_up.split("T")[0]
         : "",
       time_of_next_follow_up: d.time_of_next_follow_up ? d.time_of_next_follow_up.substring(0, 5) : "",
-      consultation_objective: d.consultation_objective || "",
+      consultation_objective_id: d.consultation_objective_id || "",
     });
     setIsEditMode(true);
   };
@@ -469,7 +469,7 @@ export default function ConsultationView({
       if (updateForm.time_of_consult) body.time_of_consult = updateForm.time_of_consult;
       if (updateForm.date_of_next_follow_up) body.date_of_next_follow_up = updateForm.date_of_next_follow_up;
       if (updateForm.time_of_next_follow_up) body.time_of_next_follow_up = updateForm.time_of_next_follow_up;
-      if (updateForm.consultation_objective) body.consultation_objective = updateForm.consultation_objective;
+      if (updateForm.consultation_objective_id) body.consultation_objective_id = updateForm.consultation_objective_id;
       if (Object.keys(body).length === 0) return;
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${currentSessionId}`,
@@ -512,7 +512,7 @@ export default function ConsultationView({
       if (updateForm.time_of_consult) body.time_of_consult = updateForm.time_of_consult;
       if (updateForm.date_of_next_follow_up) body.date_of_next_follow_up = updateForm.date_of_next_follow_up;
       if (updateForm.time_of_next_follow_up) body.time_of_next_follow_up = updateForm.time_of_next_follow_up;
-      if (updateForm.consultation_objective) body.consultation_objective = updateForm.consultation_objective;
+      if (updateForm.consultation_objective_id) body.consultation_objective_id = updateForm.consultation_objective_id;
       if (Object.keys(body).length === 0) {
         setIsSavingUpdate(false);
         return;
@@ -654,7 +654,10 @@ export default function ConsultationView({
         </div>
         <div className="md:col-span-2">
           <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Consultation Objective</label>
-          <textarea value={updateForm.consultation_objective} onChange={(e) => setUpdateForm((f) => ({ ...f, consultation_objective: e.target.value }))} placeholder="Describe consultation objective..." className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm text-gray-900" />
+          <select value={updateForm.consultation_objective_id} onChange={(e) => setUpdateForm((f) => ({ ...f, consultation_objective_id: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900">
+            <option value="">Select objective...</option>
+            {consultObjectives.map((o) => (<option key={o.id} value={o.id}>{o.consultation_objective}</option>))}
+          </select>
         </div>
       </div>
       {isNewConsultation && (
@@ -714,191 +717,182 @@ export default function ConsultationView({
     );
   };
 
-  // Renders the content card for the current step
-  const renderStepContent = () => {
-    switch (currentStep) {
-      // ── Step 1: Consultation Details ───────────────────────────────────────
-      case 1:
-        return (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-gray-900">Consultation Details</h2>
-              {!isNewConsultation && (
-                <div className="flex items-center gap-2">
-                  {isEditMode ? (
-                    <>
-                      <button onClick={handleCancelEdit} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200">Cancel</button>
-                      <button onClick={handleClearConsultationDetails} className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100">Clear All</button>
-                      <button onClick={handleSaveUpdate} disabled={isSavingUpdate} className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50">
-                        {isSavingUpdate ? "Saving..." : "Save Changes"}
-                      </button>
-                    </>
-                  ) : (
-                    <button onClick={handleEditClick} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200 flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
-                      Edit
+  // Renders all step content cards — all steps stay mounted, inactive ones are hidden.
+  // This preserves each card's fetched data and form state when navigating between steps.
+  const renderStepContent = (prevSessionId: string | undefined) => (
+    <>
+      {/* Step 1: Consultation Details */}
+      <div className={currentStep === 1 ? "" : "hidden"}>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-semibold text-gray-900">Consultation Details</h2>
+            {!isNewConsultation && (
+              <div className="flex items-center gap-2">
+                {isEditMode ? (
+                  <>
+                    <button onClick={handleCancelEdit} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200">Cancel</button>
+                    <button onClick={handleClearConsultationDetails} className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100">Clear All</button>
+                    <button onClick={handleSaveUpdate} disabled={isSavingUpdate} className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50">
+                      {isSavingUpdate ? "Saving..." : "Save Changes"}
                     </button>
-                  )}
-                </div>
-              )}
-            </div>
-            {isNewConsultation && latestConsultation && (
-              <div className="flex border-b border-gray-200 mb-6">
-                {(["current", "previous"] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setConsultDetailsTab(tab)}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                      consultDetailsTab === tab
-                        ? "border-gray-800 text-gray-900"
-                        : "border-transparent text-gray-500 hover:text-gray-700"
-                    }`}
-                  >
-                    {tab === "current" ? "Current Session" : "Previous Session"}
+                  </>
+                ) : (
+                  <button onClick={handleEditClick} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200 flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                    Edit
                   </button>
-                ))}
+                )}
               </div>
             )}
-            {isNewConsultation
-              ? consultDetailsTab === "previous"
-                ? renderReadOnly()
-                : renderUpdateForm()
-              : isEditMode
-              ? renderUpdateForm()
-              : renderReadOnly()}
           </div>
-        );
-
-      // ── Step 2: Anthropometry ──────────────────────────────────────────────
-      case 2:
-        return (
-          <Anthropometry
-            athleteId={athleteId}
-            sessionId={isNewConsultation ? "" : currentSessionId}
-            isNewConsultation={isNewConsultation}
-            ensureSession={ensureSession}
-            onAnthroChange={handleAnthroChange}
-            prevSessionId={prevSessionId}
-          />
-        );
-
-      // ── Step 3: Medical History ────────────────────────────────────────────
-      case 3:
-        return (
-          <MedicalHistory
-            athleteId={athleteId}
-            sessionId={currentSessionId}
-            isNewConsultation={isNewConsultation}
-            ensureSession={ensureSession}
-            prevSessionId={prevSessionId}
-            liveWeight={liveAnthro.weight}
-            liveTargetWeight={liveAnthro.targetWeight}
-          />
-        );
-
-      // ── Step 4: Training Schedule ──────────────────────────────────────────
-      case 4:
-        return (
-          <TrainingSchedule
-            athleteId={athleteId}
-            sessionId={currentSessionId}
-            isNewConsultation={isNewConsultation}
-            ensureSession={ensureSession}
-            prevSessionId={prevSessionId}
-          />
-        );
-
-      // ── Step 5: Meal Logs ──────────────────────────────────────────────────
-      case 5:
-        return (
-          <MealLogs
-            athleteId={athleteId}
-            sessionId={currentSessionId}
-            isNewConsultation={isNewConsultation}
-            ensureSession={ensureSession}
-            prevSessionId={prevSessionId}
-            liveWeight={liveAnthro.weight}
-          />
-        );
-
-      // ── Step 6: Nutrition Requirements ─────────────────────────────────────
-      case 6:
-        return (
-          <NutritionRequirements
-            athleteId={athleteId}
-            sessionId={isNewConsultation ? "" : currentSessionId}
-            isNewConsultation={isNewConsultation}
-            ensureSession={ensureSession}
-            liveWeight={liveAnthro.weight}
-            liveHeight={liveAnthro.height}
-            liveTargetWeight={liveAnthro.targetWeight}
-            prevSessionId={prevSessionId}
-          />
-        );
-
-      // ── Step 7: Nutrition Diagnosis Summary ────────────────────────────────
-      case 7:
-        return (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-gray-900">Nutrition Diagnosis Summary</h2>
-              {!isNewConsultation && (
-                <div className="flex items-center gap-2">
-                  {isDiagnosisEditMode ? (
-                    <>
-                      <button onClick={() => previousConsultRef.current?.clearAll()} className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100">Clear All</button>
-                      <button onClick={() => setIsDiagnosisEditMode(false)} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200">Cancel</button>
-                      <button onClick={handleSaveDiagnosis} disabled={isSavingDiagnosis} className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50">
-                        {isSavingDiagnosis ? "Saving..." : "Save Changes"}
-                      </button>
-                    </>
-                  ) : (
-                    <button onClick={() => setIsDiagnosisEditMode(true)} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200 flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
-                      Edit
-                    </button>
-                  )}
-                </div>
-              )}
+          {isNewConsultation && latestConsultation && (
+            <div className="flex border-b border-gray-200 mb-6">
+              {(["current", "previous"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setConsultDetailsTab(tab)}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                    consultDetailsTab === tab
+                      ? "border-gray-800 text-gray-900"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {tab === "current" ? "Current Session" : "Previous Session"}
+                </button>
+              ))}
             </div>
-            {diagnosisSaveError && <p className="text-red-600 text-sm mb-3">{diagnosisSaveError}</p>}
-            <PreviousConsultation
-              ref={previousConsultRef}
-              athleteId={athleteId}
-              sessionId={currentSessionId}
-              isNewConsultation={isNewConsultation}
-              ensureSession={ensureSession}
-              embedded={true}
-              isEditMode={isDiagnosisEditMode}
-              prevSessionId={prevSessionId}
-            />
-          </div>
-        );
+          )}
+          {isNewConsultation
+            ? consultDetailsTab === "previous"
+              ? renderReadOnly()
+              : renderUpdateForm()
+            : isEditMode
+            ? renderUpdateForm()
+            : renderReadOnly()}
+        </div>
+      </div>
 
-      // ── Step 8: Actionables ────────────────────────────────────────────────
-      case 8:
-        return (
-          <Actionables
+      {/* Step 2: Anthropometry */}
+      <div className={currentStep === 2 ? "" : "hidden"}>
+        <Anthropometry
+          athleteId={athleteId}
+          sessionId={isNewConsultation ? "" : currentSessionId}
+          isNewConsultation={isNewConsultation}
+          ensureSession={ensureSession}
+          onAnthroChange={handleAnthroChange}
+          prevSessionId={prevSessionId}
+        />
+      </div>
+
+      {/* Step 3: Medical History */}
+      <div className={currentStep === 3 ? "" : "hidden"}>
+        <MedicalHistory
+          athleteId={athleteId}
+          sessionId={currentSessionId}
+          isNewConsultation={isNewConsultation}
+          ensureSession={ensureSession}
+          prevSessionId={prevSessionId}
+          liveWeight={liveAnthro.weight}
+          liveTargetWeight={liveAnthro.targetWeight}
+        />
+      </div>
+
+      {/* Step 4: Training Schedule */}
+      <div className={currentStep === 4 ? "" : "hidden"}>
+        <TrainingSchedule
+          athleteId={athleteId}
+          sessionId={currentSessionId}
+          isNewConsultation={isNewConsultation}
+          ensureSession={ensureSession}
+          prevSessionId={prevSessionId}
+        />
+      </div>
+
+      {/* Step 5: Meal Logs */}
+      <div className={currentStep === 5 ? "" : "hidden"}>
+        <MealLogs
+          athleteId={athleteId}
+          sessionId={currentSessionId}
+          isNewConsultation={isNewConsultation}
+          ensureSession={ensureSession}
+          prevSessionId={prevSessionId}
+          liveWeight={liveAnthro.weight}
+        />
+      </div>
+
+      {/* Step 6: Nutrition Requirements */}
+      <div className={currentStep === 6 ? "" : "hidden"}>
+        <NutritionRequirements
+          athleteId={athleteId}
+          sessionId={isNewConsultation ? "" : currentSessionId}
+          isNewConsultation={isNewConsultation}
+          ensureSession={ensureSession}
+          liveWeight={liveAnthro.weight}
+          liveHeight={liveAnthro.height}
+          liveTargetWeight={liveAnthro.targetWeight}
+          prevSessionId={prevSessionId}
+        />
+      </div>
+
+      {/* Step 7: Nutrition Diagnosis Summary */}
+      <div className={currentStep === 7 ? "" : "hidden"}>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-semibold text-gray-900">Nutrition Diagnosis Summary</h2>
+            {!isNewConsultation && (
+              <div className="flex items-center gap-2">
+                {isDiagnosisEditMode ? (
+                  <>
+                    <button onClick={() => previousConsultRef.current?.clearAll()} className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100">Clear All</button>
+                    <button onClick={() => setIsDiagnosisEditMode(false)} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200">Cancel</button>
+                    <button onClick={handleSaveDiagnosis} disabled={isSavingDiagnosis} className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50">
+                      {isSavingDiagnosis ? "Saving..." : "Save Changes"}
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => setIsDiagnosisEditMode(true)} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200 flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                    Edit
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          {diagnosisSaveError && <p className="text-red-600 text-sm mb-3">{diagnosisSaveError}</p>}
+          <PreviousConsultation
+            ref={previousConsultRef}
             athleteId={athleteId}
-            sessionId={isNewConsultation ? "" : currentSessionId}
+            sessionId={currentSessionId}
             isNewConsultation={isNewConsultation}
             ensureSession={ensureSession}
+            embedded={true}
+            isEditMode={isDiagnosisEditMode}
             prevSessionId={prevSessionId}
           />
-        );
+        </div>
+      </div>
 
-      // ── Step 9: Supplement Dispensing ──────────────────────────────────────
-      case 9:
-        return isNewConsultation ? (
+      {/* Step 8: Actionables */}
+      <div className={currentStep === 8 ? "" : "hidden"}>
+        <Actionables
+          athleteId={athleteId}
+          sessionId={isNewConsultation ? "" : currentSessionId}
+          isNewConsultation={isNewConsultation}
+          ensureSession={ensureSession}
+          prevSessionId={prevSessionId}
+        />
+      </div>
+
+      {/* Step 9: Supplement Dispensing */}
+      <div className={currentStep === 9 ? "" : "hidden"}>
+        {isNewConsultation ? (
           <NewSupplementDispensingForm ensureSession={ensureSession} prevSessionId={prevSessionId} />
         ) : (
           <SupplementDispensing athleteId={athleteId} sessionId={currentSessionId} prevSessionId={prevSessionId} />
-        );
-
-      default:
-        return null;
-    }
-  };
+        )}
+      </div>
+    </>
+  );
 
   const progressPct = Math.round((currentStep / TOTAL_STEPS) * 100);
 
@@ -1021,7 +1015,7 @@ export default function ConsultationView({
 
             {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto p-6">
-              {renderStepContent()}
+              {renderStepContent(prevSessionId)}
             </div>
 
             {/* Bottom navigation */}

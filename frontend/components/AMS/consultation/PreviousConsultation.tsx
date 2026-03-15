@@ -180,7 +180,7 @@ const PreviousConsultation = forwardRef<
           }
         }
         await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis`,
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis-summary`,
           {
             method: "POST",
             headers,
@@ -235,8 +235,8 @@ const PreviousConsultation = forwardRef<
         }
 
         const [detailsResponse, prescriptionsResponse] = await Promise.allSettled([
-          apiCall(`/api/Consultation/nutrition-diagnosis/${targetId}`),
-          consultationApi.getPrescriptions(targetId),
+          apiCall(`/api/Consultation/nutrition-diagnosis-summary/${targetId}`),
+          consultationApi.getSupplementDispensing(targetId),
         ]);
 
         const data: ConsultationData = {
@@ -246,7 +246,7 @@ const PreviousConsultation = forwardRef<
           nutritionist_name: nutritionistName,
           intervention_status: "Supplement Intake",
           details:
-            detailsResponse.status === "fulfilled"
+            detailsResponse.status === "fulfilled" && detailsResponse.value
               ? (detailsResponse.value as { data: ConsultationData["details"] }).data
               : null,
           prescriptions:
@@ -276,8 +276,8 @@ const PreviousConsultation = forwardRef<
       try {
         const [sessionRes, detailsRes, prescRes] = await Promise.allSettled([
           apiCall(`/api/Consultation/consultation-session/${prevSessionId}`),
-          apiCall(`/api/Consultation/nutrition-diagnosis/${prevSessionId}`),
-          consultationApi.getPrescriptions(prevSessionId),
+          apiCall(`/api/Consultation/nutrition-diagnosis-summary/${prevSessionId}`),
+          consultationApi.getSupplementDispensing(prevSessionId),
         ]);
         const sessionData = sessionRes.status === "fulfilled"
           ? (sessionRes.value as { data: { id: string; athlete_id: string; date_of_consult: string; nutritionist_name: string } }).data
@@ -288,7 +288,7 @@ const PreviousConsultation = forwardRef<
           athlete_id: sessionData.athlete_id,
           date_of_consult: sessionData.date_of_consult,
           nutritionist_name: sessionData.nutritionist_name,
-          details: detailsRes.status === "fulfilled"
+          details: detailsRes.status === "fulfilled" && detailsRes.value
             ? (detailsRes.value as { data: ConsultationData["details"] }).data
             : null,
           prescriptions: prescRes.status === "fulfilled"
@@ -343,7 +343,7 @@ const PreviousConsultation = forwardRef<
       }
 
       const detailsRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis-summary`,
         {
           method: "POST",
           headers,
@@ -381,7 +381,7 @@ const PreviousConsultation = forwardRef<
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis/${sessionId}`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis-summary/${sessionId}`,
         {
           method: "PATCH",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -401,21 +401,49 @@ const PreviousConsultation = forwardRef<
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData?.message || errData?.error || `Save failed (${res.status})`);
       }
+      // Update details in place so read-only view reflects saved values immediately
+      const saved = formRef.current;
+      setConsultationData((prev) =>
+        prev
+          ? {
+              ...prev,
+              details: {
+                main_nutrition_diagnosis: saved.main_nutrition_diagnosis || null,
+                carbohydrates_review: saved.carbohydrates_review || null,
+                protein_review: saved.protein_review || null,
+                fat_review: saved.fat_review || null,
+                other_review: saved.other_review || null,
+                intervention_note: saved.intervention_note || null,
+                follow_up_note: saved.follow_up_note || null,
+                other_remarks: saved.other_remarks || null,
+              },
+            }
+          : prev,
+      );
       setIsSaved(true);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save");
+      throw err; // re-throw so parent can catch
     } finally {
       setSaving(false);
     }
   };
 
+  // Refs so useImperativeHandle dep array stays constant (never changes size)
+  const isNewConsultationRef = useRef(isNewConsultation);
+  useEffect(() => { isNewConsultationRef.current = isNewConsultation; }, [isNewConsultation]);
+  const handleSaveRef = useRef(handleSave);
+  useEffect(() => { handleSaveRef.current = handleSave; }, [handleSave]);
+  const handleSaveEditRef = useRef(handleSaveEdit);
+  useEffect(() => { handleSaveEditRef.current = handleSaveEdit; }, [handleSaveEdit]);
+
   // Expose save() and clearAll() to parent via ref
   useImperativeHandle(ref, () => ({
     save: async () => {
-      if (isNewConsultation) {
-        await handleSave();
-      } else if (isEditMode) {
-        await handleSaveEdit();
+      if (isNewConsultationRef.current) {
+        await handleSaveRef.current();
+      } else {
+        await handleSaveEditRef.current();
       }
     },
     clearAll: () => {
@@ -423,8 +451,7 @@ const PreviousConsultation = forwardRef<
       setConsultationData(null);
       setSaveError("");
     },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [isNewConsultation, isEditMode, sessionId]);
+  }), []);
 
   // ─── Shared display data + tab bar (used in both form and read-only paths) ──
   const displayData = activeTab === "previous" && prevConsultData ? prevConsultData : consultationData;
@@ -585,6 +612,26 @@ const PreviousConsultation = forwardRef<
               </div>
             </div>
           </div>
+
+          {/* Bottom action buttons */}
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            {saveError && <p className="text-red-600 text-sm mb-3">{saveError}</p>}
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => { setForm(emptyForm); setSaveError(""); setIsSaved(false); }}
+                className="px-4 py-2 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+              >
+                Clear All
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className={`px-4 py-2 text-white text-sm rounded disabled:opacity-50 ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
+              >
+                {saving ? "Saving..." : isSaved ? "Saved" : "Save"}
+              </button>
+            </div>
+          </div>
         </div>
       </>
     );
@@ -605,15 +652,6 @@ const PreviousConsultation = forwardRef<
             <h2 className="text-xl font-semibold text-gray-900">Current Consultation</h2>
             <span className="text-sm text-gray-500">{today}</span>
           </div>
-          {activeTab !== "previous" && (
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className={`px-3 py-1 text-white text-sm rounded disabled:opacity-50 ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
-            >
-              {saving ? "Saving..." : isSaved ? "Saved" : "Save"}
-            </button>
-          )}
         </div>
         {tabBar}
         {activeTab === "previous" ? prevReadOnlyContent : content}

@@ -359,7 +359,10 @@ export default function MedicalHistory({
           }),
         },
       );
-      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(`HTTP error: ${response.status} — ${errBody.message || errBody.error || "Unknown server error"}`);
+      }
       setIsEditing(false);
       setIsSaved(true);
     } catch (err) {
@@ -448,41 +451,13 @@ export default function MedicalHistory({
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-gray-900 underline">Medical History</h2>
-        {!readOnly && (
-          <div className="flex items-center gap-2">
-            {effectiveEditing && !isNewConsultation && (
-              <button
-                onClick={handleCancel}
-                className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-            )}
-            {effectiveEditing && (
-              <button
-                onClick={() => {
-                  const s = emptyState();
-                  setGeneralInfo(s.general);
-                  setPubertyInfo(s.puberty);
-                  setBowelMovement(s.bowelMovement);
-                  setHydrationInfo(s.hydrationInfo);
-                  setPeriodInfo(s.periodInfo);
-                  setSavedState(emptyState());
-                  setIsSaved(false);
-                  setSaveError("");
-                }}
-                className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
-              >
-                Clear All
-              </button>
-            )}
-            <button
-              onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
-              className={`px-3 py-1 text-white text-sm rounded ${effectiveEditing && isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
-            >
-              {effectiveEditing ? (isSaved ? "Saved" : "Save") : "Edit"}
-            </button>
-          </div>
+        {!readOnly && !effectiveEditing && (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="px-3 py-1 text-white text-sm rounded bg-gray-800 hover:bg-gray-700"
+          >
+            Edit
+          </button>
         )}
       </div>
 
@@ -504,8 +479,6 @@ export default function MedicalHistory({
           ))}
         </div>
       )}
-
-      {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
       <div className="space-y-8">
         {/* General Section */}
@@ -825,6 +798,7 @@ export default function MedicalHistory({
                   <input
                     type="number"
                     step="0.1"
+                    min="0"
                     placeholder="e.g. 2.5"
                     className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
                       hydrationInfo.waterIntakePerDay !== savedState.hydrationInfo.waterIntakePerDay
@@ -1073,6 +1047,45 @@ export default function MedicalHistory({
           </div>
         )}
       </div>
+
+      {/* Bottom action bar — Save / Clear All / Cancel */}
+      {!readOnly && effectiveEditing && (
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          {saveError && <p className="text-red-600 text-sm mb-3">{saveError}</p>}
+          <div className="flex items-center justify-end gap-2">
+            {!isNewConsultation && (
+              <button
+                onClick={handleCancel}
+                className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              onClick={() => {
+                const s = emptyState();
+                setGeneralInfo(s.general);
+                setPubertyInfo(s.puberty);
+                setBowelMovement(s.bowelMovement);
+                setHydrationInfo(s.hydrationInfo);
+                setPeriodInfo(s.periodInfo);
+                setSavedState(emptyState());
+                setIsSaved(false);
+                setSaveError("");
+              }}
+              className="px-4 py-2 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+            >
+              Clear All
+            </button>
+            <button
+              onClick={handleSave}
+              className={`px-4 py-2 text-white text-sm rounded ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
+            >
+              {isSaved ? "Saved" : "Save"}
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

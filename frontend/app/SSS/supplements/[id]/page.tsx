@@ -47,6 +47,7 @@ interface Batch {
   batch_price: number;
   date_added: string;
   inv_batch_testing_org: string | null;
+  inv_batch_testing_org_id?: string | null;
   batch_unit?: string | null;
 }
 

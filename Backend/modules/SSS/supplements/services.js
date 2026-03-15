@@ -241,6 +241,9 @@ export async function getBatchesBySupplementId(
       ib.batch_initial_quantity,
       ib.batch_expiration_date,
       ib.batch_price,
+      ib.batch_unit,
+      ib.inv_batch_testing_org_id,
+      COALESCE(btol.batch_testing_org, ib.inv_batch_testing_org) AS inv_batch_testing_org,
       COALESCE(SUM(it.quantity), 0) AS booked,
       ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available,
       bssl.batch_stock_status AS batch_status,
@@ -248,11 +251,13 @@ export async function getBatchesBySupplementId(
     FROM SSS.Inventory_Batch ib
     LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.inventory_batch_id
     LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl ON ib.batch_stock_status_id = bssl.id
+    LEFT JOIN SSS.batch_testing_org_lookup btol ON ib.inv_batch_testing_org_id = btol.id
     WHERE ib.supplement_id = $1
       AND bssl.is_active = true
     GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity,
-             ib.batch_expiration_date, ib.batch_price, bssl.batch_stock_status,
-             ib.date_added
+             ib.batch_expiration_date, ib.batch_price, ib.batch_unit,
+             ib.inv_batch_testing_org_id, ib.inv_batch_testing_org,
+             bssl.batch_stock_status, ib.date_added, btol.batch_testing_org
     ORDER BY ib.id DESC
     LIMIT $2 OFFSET $3
   `;

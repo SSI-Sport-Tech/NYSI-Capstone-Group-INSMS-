@@ -860,7 +860,10 @@ export default function TrainingSchedule({
         }
       );
 
-      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(`HTTP error: ${response.status} — ${JSON.stringify(errBody)}`);
+      }
 
       const updated = (await response.json()) as { data: TrainingScheduleData };
       setTrainingData(updated.data);
@@ -869,7 +872,7 @@ export default function TrainingSchedule({
       setIsSaved(true);
     } catch (err) {
       console.error("Error saving training schedule:", err);
-      setSaveError("Failed to save. Please try again.");
+      setSaveError(err instanceof Error ? err.message : "Failed to save. Please try again.");
     }
   };
 
@@ -916,44 +919,15 @@ export default function TrainingSchedule({
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-gray-900">Training Schedule</h2>
-        {!readOnly && (
-          <div className="flex items-center gap-2">
-            {effectiveEditing && !isNewConsultation && (
-              <button
-                onClick={handleCancel}
-                className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-            )}
-            {effectiveEditing && (
-              <button
-                onClick={() => {
-                  setTrainingData(null);
-                  setEditForm(makeEmptyForm());
-                  setIsSaved(false);
-                  setSaveError("");
-                }}
-                className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
-              >
-                Clear All
-              </button>
-            )}
-            <button
-              onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
-              className={`px-3 py-1 text-white text-sm rounded ${
-                effectiveEditing && isSaved
-                  ? "bg-green-600 hover:bg-green-700"
-                  : "bg-gray-800 hover:bg-gray-700"
-              }`}
-            >
-              {effectiveEditing ? (isSaved ? "Saved" : "Save") : "Edit"}
-            </button>
-          </div>
+        {!readOnly && !effectiveEditing && (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="px-3 py-1 text-white text-sm rounded bg-gray-800 hover:bg-gray-700"
+          >
+            Edit
+          </button>
         )}
       </div>
-
-      {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200 mb-6">
@@ -988,6 +962,39 @@ export default function TrainingSchedule({
         </div>
       ) : (
         <PreviousSessionView data={prevData} />
+      )}
+
+      {!readOnly && effectiveEditing && (
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          {saveError && <p className="text-red-600 text-sm mb-3">{saveError}</p>}
+          <div className="flex items-center justify-end gap-2">
+            {!isNewConsultation && (
+              <button
+                onClick={handleCancel}
+                className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setTrainingData(null);
+                setEditForm(makeEmptyForm());
+                setIsSaved(false);
+                setSaveError("");
+              }}
+              className="px-4 py-2 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+            >
+              Clear All
+            </button>
+            <button
+              onClick={handleSave}
+              className={`px-4 py-2 text-white text-sm rounded ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
+            >
+              {isSaved ? "Saved" : "Save"}
+            </button>
+          </div>
+        </div>
       )}
     </section>
   );

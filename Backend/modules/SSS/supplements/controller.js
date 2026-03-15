@@ -138,7 +138,10 @@ export async function getSupplementDetails(req, res) {
                     available: parseInt(batch.available),
                     batch_expiration_date: batch.batch_expiration_date,
                     batch_price: parseFloat(batch.batch_price) || null,
-                    date_added: batch.date_added
+                    date_added: batch.date_added,
+                    batch_unit: batch.batch_unit || null,
+                    inv_batch_testing_org: batch.inv_batch_testing_org || null,
+                    inv_batch_testing_org_id: batch.inv_batch_testing_org_id || null,
                 })),
                 currentPage: batchPage,
                 totalPages: totalBatchPages,

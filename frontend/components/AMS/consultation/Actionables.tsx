@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface ActionablesProps {
   athleteId: string;
@@ -42,6 +42,7 @@ export default function Actionables({
   prevSessionId,
 }: ActionablesProps) {
 
+  const resolvedSessionIdRef = useRef<string>("");
   const [openItems, setOpenItems] = useState<OpenItem[]>([]);
   const [prevItems, setPrevItems] = useState<OpenItem[]>([]);
   const [activeTab, setActiveTab] = useState<"current" | "previous">("current");
@@ -78,7 +79,7 @@ export default function Actionables({
   };
 
   const fetchOpenItems = async (overrideId?: string) => {
-    const effectiveId = overrideId ?? sessionId;
+    const effectiveId = overrideId ?? (sessionId || resolvedSessionIdRef.current);
     if (!effectiveId) {
       setOpenItems([]);
       setLoading(false);
@@ -216,6 +217,7 @@ export default function Actionables({
       setSaveError("");
       const id = isNewConsultation && ensureSession ? await ensureSession() : sessionId;
       if (!id) { setSaveError("No session available."); setSaving(false); return; }
+      if (id) resolvedSessionIdRef.current = id;
       const token = localStorage.getItem("token");
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/actionables`,

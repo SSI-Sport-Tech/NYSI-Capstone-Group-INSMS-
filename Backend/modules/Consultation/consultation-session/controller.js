@@ -229,7 +229,7 @@ export async function createConsultationSession(req, res) {
             time_of_consult: validated.time_of_consult,
             date_of_next_follow_up: validated.date_of_next_follow_up,
             time_of_next_follow_up: validated.time_of_next_follow_up,
-            consultation_objective: validated.consultation_objective,
+            consultation_objective_id: validated.consultation_objective_id,
             is_scheduled_booking: validated.is_scheduled_booking ?? false,
         }, req.user.userId);
 

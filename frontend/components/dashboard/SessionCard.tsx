@@ -115,7 +115,10 @@ export default function SessionCard({
   const isCompleted = currentStatus === "completed";
 
   return (
-    <div className={`border rounded-lg p-4 hover:shadow-md transition-shadow bg-white ${isCompleted ? "border-gray-100 opacity-60" : "border-gray-200"}`}>
+    <div
+      onClick={handleViewClick}
+      className={`border rounded-lg p-4 hover:shadow-md transition-shadow bg-white cursor-pointer ${isCompleted ? "border-gray-100 opacity-60" : "border-gray-200"}`}
+    >
       {/* Header with athlete name, date, and checkmark */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">

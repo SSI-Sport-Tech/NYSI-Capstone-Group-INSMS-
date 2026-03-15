@@ -23,6 +23,7 @@ export default function BookingModal({
   const [loading, setLoading] = useState(false);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [consultationTypes, setConsultationTypes] = useState<ConsultationType[]>([]);
+  const [consultationObjectives, setConsultationObjectives] = useState<{ id: string; consultation_objective: string }[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
   // Form state
@@ -32,7 +33,7 @@ export default function BookingModal({
     date_of_consult: "",
     time_of_consult: "",
     venue: "",
-    consultation_objective: "",
+    consultation_objective_id: "",
     duration: 60,
   });
 
@@ -42,13 +43,6 @@ export default function BookingModal({
     "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
     "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
     "17:00", "17:30", "18:00", "18:30", "19:00"
-  ];
-
-  // Location options
-  const locations = [
-    "Nutrition Room 1", "Nutrition Room 2", "Nutrition Room 3",
-    "Conference Room A", "Conference Room B", "Online Meeting",
-    "Sports Science Lab", "Consultation Office"
   ];
 
   // Initialize form data when modal opens
@@ -62,7 +56,7 @@ export default function BookingModal({
           date_of_consult: existingSession.date_of_consult.split('T')[0],
           time_of_consult: existingSession.time_slot || "",
           venue: existingSession.location || "",
-          consultation_objective: existingSession.consultation_objective || "",
+          consultation_objective_id: "",
           duration: existingSession.duration || 60,
         });
       } else if (selectedDate) {
@@ -86,7 +80,7 @@ export default function BookingModal({
         date_of_consult: "",
         time_of_consult: "",
         venue: "",
-        consultation_objective: "",
+        consultation_objective_id: "",
         duration: 60,
       });
       setErrors({});
@@ -96,13 +90,15 @@ export default function BookingModal({
   const loadReferenceData = async () => {
     try {
       setLoading(true);
-      const [athletesResponse, typesResponse] = await Promise.all([
+      const [athletesResponse, typesResponse, objectivesResponse] = await Promise.all([
         dashboardApi.getAthletes(),
         consultationLookupApi.getConsultationTypes(),
+        consultationLookupApi.getConsultationObjectives(),
       ]);
-      
+
       setAthletes(athletesResponse.data || []);
       setConsultationTypes(typesResponse.data || []);
+      setConsultationObjectives(objectivesResponse.data || []);
     } catch (error) {
       console.error("Error loading reference data:", error);
       setErrors({ general: "Failed to load form data. Please try again." });
@@ -171,7 +167,7 @@ export default function BookingModal({
         ...(formData.date_of_consult && { date_of_consult: formData.date_of_consult }),
         ...(formData.time_of_consult && { time_of_consult: formData.time_of_consult }),
         ...(formData.venue?.trim() && { venue: formData.venue.trim() }),
-        ...(formData.consultation_objective?.trim() && { consultation_objective: formData.consultation_objective.trim() }),
+        ...(formData.consultation_objective_id && { consultation_objective_id: formData.consultation_objective_id }),
         // Mark sessions created from the dashboard so ConsultationView can detect them
         ...(!existingSession && { is_scheduled_booking: true }),
       };
@@ -361,19 +357,14 @@ export default function BookingModal({
               <MapPin className="w-4 h-4" />
               <span>Location</span>
             </label>
-            <select
+            <input
+              type="text"
               value={formData.venue}
               onChange={(e) => handleInputChange("venue", e.target.value)}
+              placeholder="Enter location"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               disabled={loading}
-            >
-              <option value="">Select location</option>
-              {locations.map((location) => (
-                <option key={location} value={location}>
-                  {location}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           {/* Consultation Objective */}
@@ -382,14 +373,17 @@ export default function BookingModal({
               <FileText className="w-4 h-4" />
               <span>Objective</span>
             </label>
-            <textarea
-              value={formData.consultation_objective}
-              onChange={(e) => handleInputChange("consultation_objective", e.target.value)}
-              placeholder="Brief description of consultation goals..."
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            <select
+              value={formData.consultation_objective_id}
+              onChange={(e) => handleInputChange("consultation_objective_id", e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               disabled={loading}
-            />
+            >
+              <option value="">Select objective...</option>
+              {consultationObjectives.map((o) => (
+                <option key={o.id} value={o.id}>{o.consultation_objective}</option>
+              ))}
+            </select>
           </div>
 
           {/* Action Buttons */}

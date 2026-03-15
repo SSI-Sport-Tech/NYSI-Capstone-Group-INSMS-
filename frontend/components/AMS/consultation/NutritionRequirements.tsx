@@ -340,13 +340,13 @@ export default function NutritionRequirements({
   const minFatG = effectiveEditing ? calcG(liveMinFatGkg, effectiveWeight) : (displayData?.minFatG ?? null);
   const maxFatG = effectiveEditing ? calcG(liveMaxFatGkg, effectiveWeight) : (displayData?.maxFatG ?? null);
 
-  // Derived g values — target weight (use independent target g/kg/bw inputs)
-  const liveTgtMinCarbGkg = effectiveEditing ? n(editForm.targetMinCarbGkg) : (displayData?.minCarbGkg ?? null);
-  const liveTgtMaxCarbGkg = effectiveEditing ? n(editForm.targetMaxCarbGkg) : (displayData?.maxCarbGkg ?? null);
-  const liveTgtMinProteinGkg = effectiveEditing ? n(editForm.targetMinProteinGkg) : (displayData?.minProteinGkg ?? null);
-  const liveTgtMaxProteinGkg = effectiveEditing ? n(editForm.targetMaxProteinGkg) : (displayData?.maxProteinGkg ?? null);
-  const liveTgtMinFatGkg = effectiveEditing ? n(editForm.targetMinFatGkg) : (displayData?.minFatGkg ?? null);
-  const liveTgtMaxFatGkg = effectiveEditing ? n(editForm.targetMaxFatGkg) : (displayData?.maxFatGkg ?? null);
+  // Derived g values — target weight (same g/kg/bw as current weight)
+  const liveTgtMinCarbGkg = liveMinCarbGkg;
+  const liveTgtMaxCarbGkg = liveMaxCarbGkg;
+  const liveTgtMinProteinGkg = liveMinProteinGkg;
+  const liveTgtMaxProteinGkg = liveMaxProteinGkg;
+  const liveTgtMinFatGkg = liveMinFatGkg;
+  const liveTgtMaxFatGkg = liveMaxFatGkg;
 
   const targetMinCarbG = effectiveEditing ? calcG(liveTgtMinCarbGkg, effectiveTargetWeight) : (displayData?.targetMinCarbG ?? null);
   const targetMaxCarbG = effectiveEditing ? calcG(liveTgtMaxCarbGkg, effectiveTargetWeight) : (displayData?.targetMaxCarbG ?? null);
@@ -485,37 +485,14 @@ export default function NutritionRequirements({
   return (
     <section id="nutrition-requirements" className="bg-white rounded-xl shadow-lg p-6 text-gray-900">
       <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Nutrition Requirements</h2>
-        {!readOnly && (
-          <div className="flex items-center gap-2">
-            {effectiveEditing && !isNewConsultation && (
-              <button
-                onClick={handleCancel}
-                className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-            )}
-            {effectiveEditing && (
-              <button
-                onClick={() => {
-                  setNutritionRequirementsData(null);
-                  setEditForm(emptyForm);
-                  setIsSaved(false);
-                  setSaveError("");
-                }}
-                className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
-              >
-                Clear All
-              </button>
-            )}
-            <button
-              onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
-              className={`px-3 py-1 text-white text-sm rounded ${effectiveEditing && isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
-            >
-              {effectiveEditing ? (isSaved ? "Saved" : "Save") : "Edit"}
-            </button>
-          </div>
+        <h2 className="text-xl font-semibold text-gray-900">Nutrition Requirements</h2>
+        {!readOnly && !effectiveEditing && (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="px-3 py-1 text-white text-sm rounded bg-gray-800 hover:bg-gray-700"
+          >
+            Edit
+          </button>
         )}
       </div>
 
@@ -538,8 +515,6 @@ export default function NutritionRequirements({
         </div>
       )}
 
-      {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
-
       <div className="space-y-6">
         {/* ── Target Intake ──────────────────────────────────────────────── */}
         <div>
@@ -556,9 +531,9 @@ export default function NutritionRequirements({
                 <input
                   type="number"
                   step="0.1"
-                  value={editForm.targetMinCarbGkg}
+                  value={editForm.minCarbGkg}
                   onChange={(e) =>
-                    setEditForm((p) => ({ ...p, targetMinCarbGkg: e.target.value }))
+                    setEditForm((p) => ({ ...p, minCarbGkg: e.target.value }))
                   }
                   style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
@@ -585,9 +560,9 @@ export default function NutritionRequirements({
                 <input
                   type="number"
                   step="0.1"
-                  value={editForm.targetMaxCarbGkg}
+                  value={editForm.maxCarbGkg}
                   onChange={(e) =>
-                    setEditForm((p) => ({ ...p, targetMaxCarbGkg: e.target.value }))
+                    setEditForm((p) => ({ ...p, maxCarbGkg: e.target.value }))
                   }
                   style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
@@ -615,9 +590,9 @@ export default function NutritionRequirements({
                 <input
                   type="number"
                   step="0.1"
-                  value={editForm.targetMinProteinGkg}
+                  value={editForm.minProteinGkg}
                   onChange={(e) =>
-                    setEditForm((p) => ({ ...p, targetMinProteinGkg: e.target.value }))
+                    setEditForm((p) => ({ ...p, minProteinGkg: e.target.value }))
                   }
                   style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
@@ -644,9 +619,9 @@ export default function NutritionRequirements({
                 <input
                   type="number"
                   step="0.1"
-                  value={editForm.targetMaxProteinGkg}
+                  value={editForm.maxProteinGkg}
                   onChange={(e) =>
-                    setEditForm((p) => ({ ...p, targetMaxProteinGkg: e.target.value }))
+                    setEditForm((p) => ({ ...p, maxProteinGkg: e.target.value }))
                   }
                   style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
@@ -674,9 +649,9 @@ export default function NutritionRequirements({
                 <input
                   type="number"
                   step="0.1"
-                  value={editForm.targetMinFatGkg}
+                  value={editForm.minFatGkg}
                   onChange={(e) =>
-                    setEditForm((p) => ({ ...p, targetMinFatGkg: e.target.value }))
+                    setEditForm((p) => ({ ...p, minFatGkg: e.target.value }))
                   }
                   style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
@@ -703,9 +678,9 @@ export default function NutritionRequirements({
                 <input
                   type="number"
                   step="0.1"
-                  value={editForm.targetMaxFatGkg}
+                  value={editForm.maxFatGkg}
                   onChange={(e) =>
-                    setEditForm((p) => ({ ...p, targetMaxFatGkg: e.target.value }))
+                    setEditForm((p) => ({ ...p, maxFatGkg: e.target.value }))
                   }
                   style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
@@ -1010,6 +985,39 @@ export default function NutritionRequirements({
           )}
         </div>
       </div>
+
+      {!readOnly && effectiveEditing && (
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          {saveError && <p className="text-red-600 text-sm mb-3">{saveError}</p>}
+          <div className="flex items-center justify-end gap-2">
+            {!isNewConsultation && (
+              <button
+                onClick={handleCancel}
+                className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setNutritionRequirementsData(null);
+                setEditForm(emptyForm);
+                setIsSaved(false);
+                setSaveError("");
+              }}
+              className="px-4 py-2 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+            >
+              Clear All
+            </button>
+            <button
+              onClick={handleSave}
+              className={`px-4 py-2 text-white text-sm rounded ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
+            >
+              {isSaved ? "Saved" : "Save"}
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

@@ -34,6 +34,8 @@ interface BatchOption {
   available: number;
   batch_expiration_date: string | null;
   batch_price: number | null;
+  batch_status: string;
+  supplement_packaging_form: string | null;
 }
 
 interface DispensingEntry {
@@ -46,6 +48,10 @@ interface DispensingEntry {
   dosage: string;
   dosage_unit: string;
   dosage_frequency: string;
+  start_date: string;
+  projected_end_date: string;
+  follow_up_required: boolean;
+  other_remarks: string;
 }
 
 const emptyEntry = (): DispensingEntry => ({
@@ -58,6 +64,10 @@ const emptyEntry = (): DispensingEntry => ({
   dosage: "",
   dosage_unit: "",
   dosage_frequency: "",
+  start_date: "",
+  projected_end_date: "",
+  follow_up_required: false,
+  other_remarks: "",
 });
 
 // ─── Per-entry card ───────────────────────────────────────────────────────────
@@ -84,6 +94,7 @@ function DispensingEntryCard({
   // Batches for selected supplement (auto-loaded)
   const [batches, setBatches] = useState<BatchOption[]>([]);
   const [batchesLoading, setBatchesLoading] = useState(false);
+  const [selectedBatch, setSelectedBatch] = useState<BatchOption | null>(null);
 
   const suppTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -121,6 +132,7 @@ function DispensingEntryCard({
     setSuppResults([]);
 
     // Reset batch selection
+    setSelectedBatch(null);
     onChange({
       ...entry,
       supplementId: supp.id,
@@ -149,12 +161,43 @@ function DispensingEntryCard({
   };
 
   const handleBatchSelect = (batch: BatchOption) => {
+    setSelectedBatch(batch);
     onChange({
       ...entry,
       batchId: batch.id,
       batchCurrentQty: batch.batch_initial_quantity,
       batchNumber: batch.batch_number,
     });
+  };
+
+  const stockStatusStyle = (status: string) => {
+    const s = status.toLowerCase();
+    if (s.includes("out")) return "bg-red-100 text-red-700";
+    if (s.includes("low")) return "bg-orange-100 text-orange-700";
+    return "bg-green-100 text-green-700";
+  };
+
+  const expiryStyle = (dateStr: string | null): string => {
+    if (!dateStr) return "text-gray-500";
+    const exp = new Date(dateStr);
+    const now = new Date();
+    if (exp <= now) return "text-black font-semibold";
+    const diffDays = (exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+    if (diffDays < 30) return "text-red-600 font-medium";
+    if (diffDays < 90) return "text-orange-500 font-medium";
+    return "text-green-600";
+  };
+
+  const expiryLabel = (dateStr: string | null): string => {
+    if (!dateStr) return "—";
+    const exp = new Date(dateStr);
+    const now = new Date();
+    const formatted = exp.toLocaleDateString();
+    if (exp <= now) return `${formatted} (Expired)`;
+    const diffDays = (exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+    if (diffDays < 30) return `${formatted} (< 1 month)`;
+    if (diffDays < 90) return `${formatted} (< 3 months)`;
+    return formatted;
   };
 
   const update = (field: keyof DispensingEntry, value: string) => {
@@ -303,12 +346,43 @@ function DispensingEntryCard({
         </div>
       )}
 
+      {/* Batch Info Panel (shown after batch is selected) */}
+      {selectedBatch && (
+        <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Batch Details</p>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 shrink-0">Packaging Form:</span>
+              <span className="font-medium text-gray-900">{selectedBatch.supplement_packaging_form || "—"}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 shrink-0">Stock Status:</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${stockStatusStyle(selectedBatch.batch_status)}`}>
+                {selectedBatch.batch_status}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 shrink-0">Available:</span>
+              <span className="font-medium text-gray-900">
+                {selectedBatch.available} / {selectedBatch.batch_initial_quantity}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 shrink-0">Expiry:</span>
+              <span className={expiryStyle(selectedBatch.batch_expiration_date)}>
+                {expiryLabel(selectedBatch.batch_expiration_date)}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Step 3: Dispensing Details */}
       <div>
         <label className="block text-xs font-medium text-gray-700 mb-2">
           Dispensing Details
         </label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
           {(
             [
               { label: "Qty to Prescribe", field: "quantity" as const, type: "number", placeholder: "e.g. 2" },
@@ -329,6 +403,49 @@ function DispensingEntryCard({
               />
             </div>
           ))}
+        </div>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Start Date</label>
+            <input
+              type="date"
+              value={entry.start_date}
+              onChange={(e) => update("start_date", e.target.value)}
+              style={{ color: "#111827" }}
+              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm bg-white"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Projected End Date</label>
+            <input
+              type="date"
+              value={entry.projected_end_date}
+              onChange={(e) => update("projected_end_date", e.target.value)}
+              style={{ color: "#111827" }}
+              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm bg-white"
+            />
+          </div>
+        </div>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">Other Remarks</label>
+          <textarea
+            value={entry.other_remarks}
+            onChange={(e) => update("other_remarks", e.target.value)}
+            placeholder="Any additional notes..."
+            rows={2}
+            style={{ color: "#111827" }}
+            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm placeholder-gray-400 bg-white resize-none"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id={`follow-up-${index}`}
+            checked={entry.follow_up_required}
+            onChange={(e) => onChange({ ...entry, follow_up_required: e.target.checked })}
+            className="w-4 h-4 rounded border-gray-300 text-blue-600"
+          />
+          <label htmlFor={`follow-up-${index}`} className="text-xs text-gray-700">Follow-up required</label>
         </div>
       </div>
     </div>
@@ -406,6 +523,10 @@ export default function NewSupplementDispensingForm({
               dosage: entry.dosage ? parseInt(entry.dosage, 10) : undefined,
               dosage_unit: entry.dosage_unit || undefined,
               dosage_frequency: entry.dosage_frequency || undefined,
+              start_date: entry.start_date || undefined,
+              projected_end_date: entry.projected_end_date || undefined,
+              follow_up_required: entry.follow_up_required,
+              other_remarks: entry.other_remarks || undefined,
             }),
           },
         );
@@ -453,13 +574,6 @@ export default function NewSupplementDispensingForm({
           <h2 className="text-xl font-semibold text-gray-900">Supplement Dispensing</h2>
           <span className="text-sm text-gray-500">{today}</span>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className={`px-3 py-1 text-white text-sm rounded disabled:opacity-50 ${saved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
-        >
-          {saving ? "Saving..." : saved ? "Saved" : "Save"}
-        </button>
       </div>
 
       {prevSessionId && (
@@ -505,13 +619,6 @@ export default function NewSupplementDispensingForm({
         </div>
       ) : (
         <>
-          {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
-          {saved && (
-            <p className="text-green-600 text-sm mb-4">
-              Dispensing saved successfully.
-            </p>
-          )}
-
           <div className="space-y-8">
             {entries.map((entry, index) => (
               <DispensingEntryCard
@@ -530,6 +637,19 @@ export default function NewSupplementDispensingForm({
             >
               + Add More Dispensing
             </button>
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            {saveError && <p className="text-red-600 text-sm mb-3">{saveError}</p>}
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className={`px-4 py-2 text-white text-sm rounded disabled:opacity-50 ${saved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
+              >
+                {saving ? "Saving..." : saved ? "Saved" : "Save"}
+              </button>
+            </div>
           </div>
         </>
       )}

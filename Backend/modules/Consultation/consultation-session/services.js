@@ -26,14 +26,15 @@ export async function getConsultationSession(sessionId) {
             s.time_of_consult,
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
-            sn.consultation_objective,
+            s.consultation_objective_id,
+            col.consultation_objective,
             s.is_scheduled_booking,
             s.status
         FROM consultation.sessions s
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
         LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
-        LEFT JOIN consultation.session_note sn ON sn.sessions_id = s.id
+        LEFT JOIN consultation.consultation_objective_lookup col ON col.id = s.consultation_objective_id
         WHERE s.id = $1
     `;
 
@@ -55,8 +56,9 @@ export async function createConsultationSession(data, userId) {
                 title_description, venue,
                 date_of_consult, time_of_consult,
                 date_of_next_follow_up, time_of_next_follow_up,
+                consultation_objective_id,
                 is_scheduled_booking
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             RETURNING *
         `, [
             data.nutritionist_id,
@@ -68,18 +70,10 @@ export async function createConsultationSession(data, userId) {
             data.time_of_consult || null,
             data.date_of_next_follow_up || null,
             data.time_of_next_follow_up || null,
+            data.consultation_objective_id || null,
             data.is_scheduled_booking ?? false,
         ]);
         const session = sessionResult.rows[0];
-
-        // 2. Insert session_note with consultation_objective (if provided)
-        if (data.consultation_objective !== undefined) {
-            await client.query(`
-                INSERT INTO consultation.session_note (sessions_id, consultation_objective)
-                VALUES ($1, $2)
-                RETURNING *
-            `, [session.id, data.consultation_objective || null]);
-        }
 
         return session.id;
     });
@@ -108,6 +102,7 @@ export async function updateConsultationSession(sessionId, updateData, userId) {
             time_of_consult: updateData.time_of_consult,
             date_of_next_follow_up: updateData.date_of_next_follow_up,
             time_of_next_follow_up: updateData.time_of_next_follow_up,
+            consultation_objective_id: updateData.consultation_objective_id,
             is_scheduled_booking: updateData.is_scheduled_booking,
         };
 
@@ -131,38 +126,9 @@ export async function updateConsultationSession(sessionId, updateData, userId) {
             session = sessionResult.rows[0];
         }
 
-        // 2. Upsert consultation_objective on session_note (if provided)
-        let note = null;
-        if (updateData.consultation_objective !== undefined) {
-            const noteCheck = await client.query(
-                'SELECT id FROM consultation.session_note WHERE sessions_id = $1',
-                [sessionId]
-            );
+        if (!session) return null;
 
-            if (noteCheck.rows.length > 0) {
-                const noteResult = await client.query(`
-                    UPDATE consultation.session_note
-                    SET consultation_objective = $1
-                    WHERE sessions_id = $2
-                    RETURNING *
-                `, [updateData.consultation_objective, sessionId]);
-                note = noteResult.rows[0];
-            } else {
-                const noteResult = await client.query(`
-                    INSERT INTO consultation.session_note (sessions_id, consultation_objective)
-                    VALUES ($1, $2)
-                    RETURNING *
-                `, [sessionId, updateData.consultation_objective]);
-                note = noteResult.rows[0];
-            }
-        }
-
-        if (!session && !note) return null;
-
-        return {
-            session: session || null,
-            note: note ? { consultation_objective: note.consultation_objective } : null,
-        };
+        return { session };
     });
 }
 
@@ -187,14 +153,12 @@ export async function getLatestConsultationSession(athleteId) {
             s.time_of_consult,
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
-            sn.consultation_objective,
             s.is_scheduled_booking,
             s.status
         FROM consultation.sessions s
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
         LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
-        LEFT JOIN consultation.session_note sn ON sn.sessions_id = s.id
         WHERE s.athlete_id = $1
         ORDER BY s.date_of_consult DESC NULLS LAST, s.id DESC
         LIMIT 1
@@ -249,7 +213,6 @@ export async function getAllConsultationSessions(athleteId) {
             s.time_of_consult,
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
-            sn.consultation_objective,
             s.is_scheduled_booking,
             s.status,
             sup.supplement_name,
@@ -261,7 +224,6 @@ export async function getAllConsultationSessions(athleteId) {
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
         LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
-        LEFT JOIN consultation.session_note sn ON sn.sessions_id = s.id
         LEFT JOIN LATERAL (
             SELECT sp2.dosage, sp2.dosage_unit, sp2.dosage_frequency, sp2.batch_id
             FROM consultation.session_prescription sp2
@@ -299,14 +261,12 @@ export async function getUpcomingConsultationSessions(limit = 20) {
             s.time_of_consult,
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
-            sn.consultation_objective,
             s.is_scheduled_booking,
             s.status
         FROM consultation.sessions s
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
         LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
-        LEFT JOIN consultation.session_note sn ON sn.sessions_id = s.id
         WHERE s.date_of_consult >= CURRENT_DATE
         ORDER BY s.date_of_consult ASC, s.time_of_consult ASC NULLS LAST
         LIMIT $1
@@ -334,14 +294,12 @@ export async function getSessionsByDateRange(from, to) {
             s.venue,
             s.date_of_consult,
             s.time_of_consult,
-            sn.consultation_objective,
             s.is_scheduled_booking,
             s.status
         FROM consultation.sessions s
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
         LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
-        LEFT JOIN consultation.session_note sn ON sn.sessions_id = s.id
         WHERE s.date_of_consult >= $1 AND s.date_of_consult <= $2
         ORDER BY s.date_of_consult, s.time_of_consult ASC NULLS LAST
     `;
@@ -383,14 +341,12 @@ export async function getTodaySessionsForNutritionist(nutritionistId, date) {
             s.time_of_consult,
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
-            sn.consultation_objective,
             s.is_scheduled_booking,
             s.status
         FROM consultation.sessions s
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
         LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
-        LEFT JOIN consultation.session_note sn ON sn.sessions_id = s.id
         WHERE s.nutritionist_id = $1
           AND s.date_of_consult = $2::date
         ORDER BY s.time_of_consult ASC NULLS LAST

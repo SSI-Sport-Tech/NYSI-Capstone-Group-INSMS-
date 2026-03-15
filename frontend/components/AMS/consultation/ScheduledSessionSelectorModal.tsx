@@ -16,6 +16,7 @@ export interface ScheduledSession {
   venue: string | null;
   date_of_next_follow_up: string | null;
   time_of_next_follow_up: string | null;
+  consultation_objective_id: string | null;
   consultation_objective: string | null;
   nutritionist_name: string | null;
   is_scheduled_booking: boolean;
