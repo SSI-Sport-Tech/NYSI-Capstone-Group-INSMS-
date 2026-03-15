@@ -95,6 +95,7 @@ const PreviousConsultation = forwardRef<
   const [consultationData, setConsultationData] =
     useState<ConsultationData | null>(null);
   const [prevConsultData, setPrevConsultData] = useState<ConsultationData | null>(null);
+  const [fetchKey, setFetchKey] = useState(0);
   const [activeTab, setActiveTab] = useState<"current" | "previous">("current");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -235,8 +236,8 @@ const PreviousConsultation = forwardRef<
         }
 
         const [detailsResponse, prescriptionsResponse] = await Promise.allSettled([
-          apiCall(`/api/Consultation/nutrition-diagnosis/${targetId}`),
-          consultationApi.getPrescriptions(targetId),
+          apiCall(`/api/Consultation/nutrition-diagnosis-summary/${targetId}`),
+          consultationApi.getSupplementDispensing(targetId),
         ]);
 
         const data: ConsultationData = {
@@ -246,11 +247,11 @@ const PreviousConsultation = forwardRef<
           nutritionist_name: nutritionistName,
           intervention_status: "Supplement Intake",
           details:
-            detailsResponse.status === "fulfilled"
+            detailsResponse.status === "fulfilled" && detailsResponse.value
               ? (detailsResponse.value as { data: ConsultationData["details"] }).data
               : null,
           prescriptions:
-            prescriptionsResponse.status === "fulfilled"
+            prescriptionsResponse.status === "fulfilled" && prescriptionsResponse.value
               ? ((prescriptionsResponse.value as { data: ConsultationData["prescriptions"] }).data || [])
               : [],
         };
@@ -267,7 +268,7 @@ const PreviousConsultation = forwardRef<
     if (readOnly ? sessionId : athleteId) {
       fetchPreviousConsultation();
     }
-  }, [athleteId, sessionId, readOnly]);
+  }, [athleteId, sessionId, readOnly, fetchKey]);
 
   // Fetch previous session's nutrition diagnosis data for the "Previous Session" tab
   useEffect(() => {
@@ -343,7 +344,7 @@ const PreviousConsultation = forwardRef<
       }
 
       const detailsRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis-summary`,
         {
           method: "POST",
           headers,
@@ -365,6 +366,7 @@ const PreviousConsultation = forwardRef<
         throw new Error(errData?.details?.[0]?.message || errData?.error || errData?.message || `Save failed (${detailsRes.status})`);
       }
       setIsSaved(true);
+      setFetchKey((k) => k + 1);
     } catch (err) {
       console.error("Error saving current consultation:", err);
       setSaveError("Failed to save. Please try again.");
@@ -381,7 +383,7 @@ const PreviousConsultation = forwardRef<
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis/${sessionId}`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis-summary/${sessionId}`,
         {
           method: "PATCH",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -402,6 +404,7 @@ const PreviousConsultation = forwardRef<
         throw new Error(errData?.message || errData?.error || `Save failed (${res.status})`);
       }
       setIsSaved(true);
+      setFetchKey((k) => k + 1);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save");
     } finally {
