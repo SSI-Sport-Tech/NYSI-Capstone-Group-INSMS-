@@ -365,6 +365,7 @@ export default function MedicalHistory({
       }
       setIsEditing(false);
       setIsSaved(true);
+      fetchMedicalHistory();
     } catch (err) {
       console.error("Error saving medical history:", err);
       setSaveError("Failed to save. Please try again.");

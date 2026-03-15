@@ -95,6 +95,7 @@ const PreviousConsultation = forwardRef<
   const [consultationData, setConsultationData] =
     useState<ConsultationData | null>(null);
   const [prevConsultData, setPrevConsultData] = useState<ConsultationData | null>(null);
+  const [fetchKey, setFetchKey] = useState(0);
   const [activeTab, setActiveTab] = useState<"current" | "previous">("current");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -250,7 +251,7 @@ const PreviousConsultation = forwardRef<
               ? (detailsResponse.value as { data: ConsultationData["details"] }).data
               : null,
           prescriptions:
-            prescriptionsResponse.status === "fulfilled"
+            prescriptionsResponse.status === "fulfilled" && prescriptionsResponse.value
               ? ((prescriptionsResponse.value as { data: ConsultationData["prescriptions"] }).data || [])
               : [],
         };
@@ -267,7 +268,7 @@ const PreviousConsultation = forwardRef<
     if (readOnly ? sessionId : athleteId) {
       fetchPreviousConsultation();
     }
-  }, [athleteId, sessionId, readOnly]);
+  }, [athleteId, sessionId, readOnly, fetchKey]);
 
   // Fetch previous session's nutrition diagnosis data for the "Previous Session" tab
   useEffect(() => {
@@ -365,6 +366,7 @@ const PreviousConsultation = forwardRef<
         throw new Error(errData?.details?.[0]?.message || errData?.error || errData?.message || `Save failed (${detailsRes.status})`);
       }
       setIsSaved(true);
+      setFetchKey((k) => k + 1);
     } catch (err) {
       console.error("Error saving current consultation:", err);
       setSaveError("Failed to save. Please try again.");
@@ -421,6 +423,7 @@ const PreviousConsultation = forwardRef<
           : prev,
       );
       setIsSaved(true);
+      setFetchKey((k) => k + 1);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save");
       throw err; // re-throw so parent can catch
