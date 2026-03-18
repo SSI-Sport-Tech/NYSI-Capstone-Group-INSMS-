@@ -25,20 +25,20 @@ export const createSupplementSchema = z.object({
     // ---- CONDITIONAL REQUIRED FIELD ----
     // batch_testing_org is validated in controller based on supplement_status_id
 
-    batch_testing_org: z.string()
-        .trim()
+    batch_testing_org_id: uuidSchema
+        .optional()
+        .nullable()
+        .describe('FK reference to batch_testing_org_lookup; required when status is BATCH TESTED'),
+
+    batch_testing_org_url: z.string()
+        .url('batch_testing_org_url must be a valid URL')
         .optional()
         .nullable()
         .transform(val => {
             if (val === undefined) return undefined;
             return val || null;
         })
-        .describe('Organization name if Batch Tested (e.g., "NSF", "USP"), "NIL" if Not Batch Tested'),
-
-    batch_testing_org_id: uuidSchema
-        .optional()
-        .nullable()
-        .describe('FK reference to batch_testing_org_lookup; controller resolves text value from this ID'),
+        .describe('Direct URL to the product certification page for user verification'),
 
     // ---- OPTIONAL TEXT FIELDS ----
 

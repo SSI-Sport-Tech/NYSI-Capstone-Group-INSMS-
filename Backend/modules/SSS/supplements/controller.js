@@ -9,7 +9,7 @@ import {
     paginationSchema,
     uuidParamSchema,
     getSupplementStatusById,
-    validateBatchTestingOrg,
+    validateBatchTestingOrgId,
 } from '../shared/validation.js';
 import {
     generateVector,
@@ -120,6 +120,7 @@ export async function getSupplementDetails(req, res) {
                 supplement_warning_label: supplement.supplement_warning_label || null,
                 supplement_certifications: supplement.supplement_certifications || null,
                 batch_testing_org: supplement.batch_testing_org || null,
+                batch_testing_org_url: supplement.batch_testing_org_url || null,
                 batch_testing_org_id: supplement.batch_testing_org_id || null,
                 product_source_url: supplement.product_source_url || null
             },
@@ -186,38 +187,24 @@ export async function createSupplement(req, res) {
         const status = await getSupplementStatusById(pool, validatedData.supplement_status_id);
         console.log(`Status: ${status.supplement_status}`);
 
-        // STEP 2b: Resolve batch_testing_org text from ID if ID was provided
-        if (validatedData.batch_testing_org_id) {
-            const orgResult = await pool.query(
-                'SELECT batch_testing_org FROM SSS.batch_testing_org_lookup WHERE id = $1 AND is_active = true',
-                [validatedData.batch_testing_org_id]
-            );
-            if (orgResult.rows.length === 0) {
-                return res.status(400).json({
-                    error: 'Validation failed',
-                    details: [{ field: 'batch_testing_org_id', message: 'Invalid batch testing organisation ID' }]
-                });
-            }
-            validatedData.batch_testing_org = orgResult.rows[0].batch_testing_org;
-        }
-
-        // STEP 3: Validate and set batch_testing_org based on status
-        console.log('Step 3: Validating batch_testing_org...');
+        // STEP 2b: Validate batch_testing_org_id based on status
+        console.log('Step 2b: Validating batch_testing_org_id...');
         try {
-            validatedData.batch_testing_org = validateBatchTestingOrg(
+            validatedData.batch_testing_org_id = validateBatchTestingOrgId(
                 status.supplement_status,
-                validatedData.batch_testing_org
+                validatedData.batch_testing_org_id
             );
-            console.log(`batch_testing_org: ${validatedData.batch_testing_org}`);
+            console.log(`batch_testing_org_id: ${validatedData.batch_testing_org_id}`);
         } catch (error) {
-            console.log('batch_testing_org validation failed:', error.message);
             return res.status(400).json({
                 error: 'Validation failed',
-                details: [{
-                    field: 'batch_testing_org',
-                    message: error.message
-                }]
+                details: [{ field: 'batch_testing_org_id', message: error.message }]
             });
+        }
+
+        // Clear URL if org is not set
+        if (!validatedData.batch_testing_org_id) {
+            validatedData.batch_testing_org_url = null;
         }
 
         // STEP 4: Set approved_by automatically
@@ -366,42 +353,28 @@ export async function updateSupplement(req, res) {
         // STEP 4: Handle supplement_status_id change (business logic)
         console.log('Step 4: Applying business logic...');
 
-        // Resolve batch_testing_org text from ID if ID was provided
-        if (validatedData.batch_testing_org_id) {
-            const orgResult = await pool.query(
-                'SELECT batch_testing_org FROM SSS.batch_testing_org_lookup WHERE id = $1 AND is_active = true',
-                [validatedData.batch_testing_org_id]
-            );
-            if (orgResult.rows.length === 0) {
-                return res.status(400).json({
-                    error: 'Validation failed',
-                    details: [{ field: 'batch_testing_org_id', message: 'Invalid batch testing organisation ID' }]
-                });
-            }
-            validatedData.batch_testing_org = orgResult.rows[0].batch_testing_org;
-        }
-
         if (validatedData.supplement_status_id) {
             // Get the new status
             const newStatus = await getSupplementStatusById(pool, validatedData.supplement_status_id);
             console.log(`New status: ${newStatus.supplement_status}`);
 
-            // Apply batch_testing_org logic based on new status
+            // Validate batch_testing_org_id against the new status
             try {
-                validatedData.batch_testing_org = validateBatchTestingOrg(
+                validatedData.batch_testing_org_id = validateBatchTestingOrgId(
                     newStatus.supplement_status,
-                    validatedData.batch_testing_org || existingSupplement.batch_testing_org
+                    validatedData.batch_testing_org_id ?? existingSupplement.batch_testing_org_id
                 );
-                console.log(`batch_testing_org: ${validatedData.batch_testing_org}`);
+                console.log(`batch_testing_org_id: ${validatedData.batch_testing_org_id}`);
             } catch (error) {
-                console.log('batch_testing_org validation failed:', error.message);
                 return res.status(400).json({
                     error: 'Validation failed',
-                    details: [{
-                        field: 'batch_testing_org',
-                        message: error.message
-                    }]
+                    details: [{ field: 'batch_testing_org_id', message: error.message }]
                 });
+            }
+
+            // Clear URL if org was cleared by status change
+            if (!validatedData.batch_testing_org_id) {
+                validatedData.batch_testing_org_url = null;
             }
         }
 

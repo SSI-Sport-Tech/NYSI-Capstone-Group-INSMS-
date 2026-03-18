@@ -11,7 +11,6 @@ import {
     getBatchStockStatusByName,
 } from '../shared/validation.js';
 import { z } from 'zod';
-import pool from '../../../config/db.js';
 
 // ============================================================================
 // BATCH/INVENTORY FUNCTIONS
@@ -75,21 +74,6 @@ export async function createBatch(req, res) {
         console.log('Step 1: Validating schema...');
         const validatedData = createBatchSchema.parse(req.body);
         console.log('Schema validation passed');
-
-        // STEP 1b: Resolve inv_batch_testing_org text from ID if ID was provided
-        if (validatedData.inv_batch_testing_org_id) {
-            const orgResult = await pool.query(
-                'SELECT batch_testing_org FROM SSS.batch_testing_org_lookup WHERE id = $1 AND is_active = true',
-                [validatedData.inv_batch_testing_org_id]
-            );
-            if (orgResult.rows.length === 0) {
-                return res.status(400).json({
-                    error: 'Validation failed',
-                    details: [{ field: 'inv_batch_testing_org_id', message: 'Invalid batch testing organisation ID' }]
-                });
-            }
-            validatedData.inv_batch_testing_org = orgResult.rows[0].batch_testing_org;
-        }
 
         // STEP 2: Auto-set batch_stock_status_id to "available"
         console.log('Step 2: Getting "available" status ID...');
@@ -207,21 +191,6 @@ export async function updateBatch(req, res) {
                 error: 'No fields to update',
                 message: 'Request body must contain at least one field to update'
             });
-        }
-
-        // STEP 3b: Resolve inv_batch_testing_org text from ID if ID was provided
-        if (validatedData.inv_batch_testing_org_id) {
-            const orgResult = await pool.query(
-                'SELECT batch_testing_org FROM SSS.batch_testing_org_lookup WHERE id = $1 AND is_active = true',
-                [validatedData.inv_batch_testing_org_id]
-            );
-            if (orgResult.rows.length === 0) {
-                return res.status(400).json({
-                    error: 'Validation failed',
-                    details: [{ field: 'inv_batch_testing_org_id', message: 'Invalid batch testing organisation ID' }]
-                });
-            }
-            validatedData.inv_batch_testing_org = orgResult.rows[0].batch_testing_org;
         }
 
         // STEP 4: If updating batch_number, check for duplicates

@@ -25,6 +25,7 @@ interface StagingSupplement {
   supplement_packaging_form: string;
   supplement_status: string;
   batch_testing_org: string | null;
+  batch_testing_org_url: string | null;
   product_source_url: string | string[] | null;
 }
 

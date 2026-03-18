@@ -16,13 +16,15 @@ export async function getSupplementsByPage(pageNumber, pageSize = 10) {
       s.supplement_brand,
       spf.supplement_packaging_form,
       ssl.supplement_status,
-      s.batch_testing_org,
+      btol.batch_testing_org,
       s.product_source_url
     FROM SSS.Supplement s
     LEFT JOIN SSS.Supplement_Packaging_Form_Lookup spf
       ON s.supplement_packaging_form_id = spf.id
     LEFT JOIN SSS.Supplement_Status_Lookup ssl
       ON s.supplement_status_id = ssl.id
+    LEFT JOIN SSS.Batch_Testing_Org_Lookup btol
+      ON s.batch_testing_org_id = btol.id
     WHERE spf.is_active = true
       AND ssl.is_active = true
     ORDER BY s.id DESC
@@ -71,7 +73,7 @@ export async function searchSupplements(
       s.supplement_brand,
       spf.supplement_packaging_form,
       ssl.supplement_status,
-      s.batch_testing_org,
+      btol.batch_testing_org,
       s.product_source_url,
       CASE
         WHEN ${searchWords
@@ -96,6 +98,8 @@ export async function searchSupplements(
       ON s.supplement_packaging_form_id = spf.id
     LEFT JOIN SSS.Supplement_Status_Lookup ssl
       ON s.supplement_status_id = ssl.id
+    LEFT JOIN SSS.Batch_Testing_Org_Lookup btol
+      ON s.batch_testing_org_id = btol.id
     WHERE ${whereConditions}
       AND spf.is_active = true
       AND ssl.is_active = true
@@ -182,8 +186,9 @@ export async function getSupplementById(supplementId) {
       s.product_source_url,
       s.supplement_warning_label,
       s.supplement_certifications,
-      s.batch_testing_org,
+      s.batch_testing_org_url,
       s.batch_testing_org_id,
+      btol.batch_testing_org,
       s.supplement_packaging_form_id,
       s.supplement_status_id
     FROM SSS.Supplement s
@@ -191,6 +196,8 @@ export async function getSupplementById(supplementId) {
       ON s.supplement_packaging_form_id = spf.id
     LEFT JOIN SSS.Supplement_Status_Lookup ssl
       ON s.supplement_status_id = ssl.id
+    LEFT JOIN SSS.Batch_Testing_Org_Lookup btol
+      ON s.batch_testing_org_id = btol.id
     WHERE s.id = $1
   `;
 
@@ -243,7 +250,7 @@ export async function getBatchesBySupplementId(
       ib.batch_price,
       ib.batch_unit,
       ib.inv_batch_testing_org_id,
-      COALESCE(btol.batch_testing_org, ib.inv_batch_testing_org) AS inv_batch_testing_org,
+      btol.batch_testing_org AS inv_batch_testing_org,
       COALESCE(SUM(it.quantity), 0) AS booked,
       ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available,
       bssl.batch_stock_status AS batch_status,
@@ -256,7 +263,7 @@ export async function getBatchesBySupplementId(
       AND bssl.is_active = true
     GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity,
              ib.batch_expiration_date, ib.batch_price, ib.batch_unit,
-             ib.inv_batch_testing_org_id, ib.inv_batch_testing_org,
+             ib.inv_batch_testing_org_id,
              bssl.batch_stock_status, ib.date_added, btol.batch_testing_org
     ORDER BY ib.id DESC
     LIMIT $2 OFFSET $3
@@ -406,7 +413,7 @@ export async function updateSupplement(supplementId, updateData, userId) {
     supplement_brand: updateData.supplement_brand,
     supplement_packaging_form_id: updateData.supplement_packaging_form_id,
     supplement_status_id: updateData.supplement_status_id,
-    batch_testing_org: updateData.batch_testing_org,
+    batch_testing_org_url: updateData.batch_testing_org_url,
     batch_testing_org_id: updateData.batch_testing_org_id,
     supplement_description: updateData.supplement_description,
     supplement_ingredient: updateData.supplement_ingredient
@@ -462,7 +469,7 @@ export async function updateSupplement(supplementId, updateData, userId) {
       supplement_brand,
       supplement_packaging_form_id,
       supplement_status_id,
-      batch_testing_org,
+      batch_testing_org_url,
       batch_testing_org_id,
       supplement_description,
       supplement_ingredient,

@@ -49,6 +49,7 @@ interface FormData {
   certifications: string;
   additionalNotes: string;
   testingOrganisationId: string;
+  batchTestingOrgUrl: string;
   productSourceUrl: string;
 
   // Nutritional Information
@@ -99,6 +100,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
     certifications: "",
     additionalNotes: "",
     testingOrganisationId: "",
+    batchTestingOrgUrl: "",
     productSourceUrl: "",
     servingDefinition: "",
     nutritionalPerServing: [{ nutrient: "", amount: "" }],
@@ -301,6 +303,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
           supplement_certifications: formData.certifications || null,
           supplement_additional_information: formData.additionalNotes || null,
           batch_testing_org_id: formData.testingOrganisationId || null,
+          batch_testing_org_url: formData.testingOrganisationId ? (formData.batchTestingOrgUrl || null) : null,
           product_source_url: formData.productSourceUrl || null,
           nutritional_info_per_serving_definition: formData.servingDefinition || null,
           nutritional_info_per_serving: rowsToObj(formData.nutritionalPerServing),
@@ -622,7 +625,11 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                           <select
                             value={formData.testingOrganisationId}
                             onChange={(e) =>
-                              setFormData((prev) => ({ ...prev, testingOrganisationId: e.target.value }))
+                              setFormData((prev) => ({
+                                ...prev,
+                                testingOrganisationId: e.target.value,
+                                batchTestingOrgUrl: e.target.value ? prev.batchTestingOrgUrl : "",
+                              }))
                             }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                           >
@@ -634,6 +641,22 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                             ))}
                           </select>
                         </div>
+                        {formData.testingOrganisationId && (
+                          <div>
+                            <label className="block text-sm text-gray-700 mb-1">
+                              Batch Test Verification URL
+                            </label>
+                            <input
+                              type="url"
+                              value={formData.batchTestingOrgUrl}
+                              onChange={(e) =>
+                                setFormData((prev) => ({ ...prev, batchTestingOrgUrl: e.target.value }))
+                              }
+                              placeholder="https://example.com/certificate"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
+                            />
+                          </div>
+                        )}
                         <div className="col-span-2">
                           <label className="block text-sm text-gray-700 mb-1">
                             Ingredients <span className="text-red-500">*</span>

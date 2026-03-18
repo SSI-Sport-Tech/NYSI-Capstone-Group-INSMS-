@@ -136,7 +136,8 @@ def map_product_to_staging(
         "supplement_certifications": product.get("Certifications"),
         "supplement_additional_information": product.get("Additional Information"),
         "batch_testing_org": product.get("batch_testing_org"),
-        
+        "batch_testing_org_url": (product.get("batch_testing_sources") or [None])[0],
+
         # Source info
         "webscraper_catalog_url_id": catalog_lookup.get(catalog_url.lower()),
         "product_source_url": sources,
@@ -167,6 +168,7 @@ INSERT INTO sss.supplement_staging (
     supplement_certifications,
     supplement_additional_information,
     batch_testing_org,
+    batch_testing_org_url,
     webscraper_catalog_url_id,
     product_source_url,
     scraper_version,
@@ -187,6 +189,7 @@ VALUES (
     %(supplement_certifications)s,
     %(supplement_additional_information)s,
     %(batch_testing_org)s,
+    %(batch_testing_org_url)s,
     %(webscraper_catalog_url_id)s,
     %(product_source_url)s,
     %(scraper_version)s,

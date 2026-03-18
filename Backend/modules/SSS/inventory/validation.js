@@ -39,16 +39,16 @@ export const createBatchSchema = z.object({
         .optional()
         .nullable(),
 
-    inv_batch_testing_org: z.string()
-        .max(255, 'Testing organisation must be less than 255 characters')
-        .trim()
-        .optional()
-        .nullable(),
-
     inv_batch_testing_org_id: uuidSchema
         .optional()
         .nullable()
         .describe('FK reference to batch_testing_org_lookup'),
+
+    inv_batch_testing_org_url: z.string()
+        .url('inv_batch_testing_org_url must be a valid URL')
+        .optional()
+        .nullable()
+        .transform(val => (val === undefined ? undefined : val || null)),
 
     batch_unit: z.string()
         .max(50, 'Unit must be less than 50 characters')

@@ -98,24 +98,22 @@ export async function getSupplementStatusById(pool, statusId) {
 }
 
 /**
- * Validates batch_testing_org based on supplement status
- * Returns validated/transformed data or throws error
+ * Validates batch_testing_org_id based on supplement status.
+ * Throws if status is BATCH TESTED but no org ID is provided.
+ * Clears the org ID if status is NOT BATCH TESTED.
+ * Returns the (possibly nulled) org ID.
  */
-export function validateBatchTestingOrg(statusName, batchTestingOrg) {
-    // Normalize to uppercase for comparison
+export function validateBatchTestingOrgId(statusName, batchTestingOrgId) {
     const normalizedStatus = statusName?.toUpperCase().trim();
 
     if (normalizedStatus === 'BATCH TESTED') {
-        if (!batchTestingOrg || batchTestingOrg.trim() === '' || batchTestingOrg === 'NIL') {
-            throw new Error('batch_testing_org is required when status is BATCH TESTED');
+        if (!batchTestingOrgId) {
+            throw new Error('A batch testing organisation must be selected when status is BATCH TESTED');
         }
-        return batchTestingOrg;
+        return batchTestingOrgId;
     }
-    else if (normalizedStatus === 'NOT BATCH TESTED') {
-        return 'NIL'; // Auto-set to NIL
-    }
-    else if (normalizedStatus === 'DISCONTINUED') {
-        return batchTestingOrg || null;
+    else if (normalizedStatus === 'NOT BATCH TESTED' || normalizedStatus === 'DISCONTINUED') {
+        return null;
     }
     else {
         throw new Error(`Invalid supplement status: ${statusName}`);
