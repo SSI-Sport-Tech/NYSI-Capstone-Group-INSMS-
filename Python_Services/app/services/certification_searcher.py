@@ -35,6 +35,40 @@ logger = logging.getLogger(__name__)
 _executor = ThreadPoolExecutor(max_workers=6)
 
 from fake_headers import Headers
+import queue
+import threading
+
+class ChromeDriverPool:
+    def __init__(self, size=6):
+        self._pool = queue.Queue()
+        self._lock = threading.Lock()
+        for _ in range(size):
+            self._pool.put(self._create_driver())
+
+    def _create_driver(self):
+        options = Options()
+        options.add_argument("--headless=new")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
+        # Skip fake_headers overhead — set a static UA
+        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+        return webdriver.Chrome(options=options)
+
+    def acquire(self):
+        return self._pool.get(timeout=30)
+
+    def release(self, driver):
+        try:
+            driver.delete_all_cookies()  # Clean state between uses
+            self._pool.put(driver)
+        except Exception:
+            # Driver died — replace it
+            self._pool.put(self._create_driver())
+
+# Module-level singleton
+_driver_pool = ChromeDriverPool(size=6)
 
 
 # ============================================================================
@@ -258,68 +292,25 @@ CERTIFICATION_DATABASES = {
 
 
 
-def selenium_fetch_search_results(
-    url: str,
-    search_term: str,
-    wait_fn,
-    wait_time: int = 5,
-) -> str:
-    """
-    Use Selenium to search and fetch page content.
-    
-    Args:
-        url: Base URL to navigate to
-        search_term: Term to search for
-        wait_fn: Organization-specific wait function
-        wait_time: Initial page load wait time (seconds)
-        
-    Returns:
-        str: Page HTML source after search
-    """
-
-    header = Headers(
-    browser="chrome",  # Generate only Chrome UA
-    os=os.getenv("OS_TYPE"),  # Generate only Windows platform
-    headers=False # generate misc headers
-)
-    customUserAgent = header.generate()['User-Agent']
-
-    options = Options()
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--start-maximized")
-    options.add_argument(f"user-agent={customUserAgent}")
-
-    
-    driver = webdriver.Chrome(options=options)
-    wait = WebDriverWait(driver, 10)
-
+def selenium_fetch_search_results(url, search_term, wait_fn, wait_time=5):
+    driver = _driver_pool.acquire()
     try:
-        # Navigate to page
         driver.get(url)
-        time.sleep(wait_time)
-
-        # Use organization-specific wait function to find search input
+        wait = WebDriverWait(driver, 10)
+        wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
+        wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+        time.sleep(0.3)  # Minimal buffer for JS frameworks to mount
         search_input = wait_fn(driver, wait)
-        
-        # Clear and enter search term
         search_input.clear()
         search_input.send_keys(search_term)
         search_input.send_keys(Keys.ENTER)
-        
-        # Wait for search term to appear in page (results loaded)
         wait.until(lambda d: search_term.lower() in d.page_source.lower())
-
         return driver.page_source
-
     except Exception as e:
         logger.error(f"Selenium search failed: {str(e)}")
         raise
     finally:
-        driver.quit()
+        _driver_pool.release(driver)
 
 
 async def selenium_search_async(
