@@ -31,7 +31,7 @@ const PRESCRIPTION_SELECT = `
         s.id AS supplement_id,
         s.supplement_name,
         s.supplement_brand,
-        s.batch_testing_org,
+        s.batch_testing_org_id,
         it.quantity AS prescribed_quantity,
         sp.dosage,
         sp.dosage_unit,
