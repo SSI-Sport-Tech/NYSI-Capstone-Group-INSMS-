@@ -24,6 +24,7 @@ interface StagingDetail {
   supplement_certifications: string | null;
   supplement_additional_information: string | null;
   batch_testing_org: string | null;
+  batch_testing_org_url: string | null;
   product_source_url: string | string[] | null;
   scraper_version: string | null;
   is_reviewed: boolean;
@@ -818,6 +819,21 @@ const StagingDetailModal: React.FC<StagingDetailModalProps> = ({
                         />
                       ) : (
                         <ReadonlyText value={detail.batch_testing_org} />
+                      )}
+                    </FieldRow>
+
+                    <FieldRow label="Batch Testing URL">
+                      {detail.batch_testing_org_url ? (
+                        <a
+                          href={detail.batch_testing_org_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:underline break-all"
+                        >
+                          {detail.batch_testing_org_url}
+                        </a>
+                      ) : (
+                        <ReadonlyText value={null} />
                       )}
                     </FieldRow>
 

@@ -276,8 +276,28 @@ export default function WebScraperPage() {
       setShowSummaryModal(true);
     } catch (error) {
       console.error("Error saving to inventory:", error);
-      if (axios.isAxiosError(error) && error.response?.data?.message) {
-        alert(`Failed to save supplements: ${error.response.data.message}`);
+      if (axios.isAxiosError(error) && error.response?.data) {
+        const data = error.response.data;
+        // Show per-item failure reasons if available
+        const rawResults: Array<{
+          staging_id: string;
+          staging_name: string;
+          status: string;
+          reason?: string;
+        }> = data.results ?? [];
+        if (rawResults.length > 0) {
+          const summaryItems: ApprovalResultItem[] = rawResults.map((r) => ({
+            stagingId: r.staging_id,
+            stagingName: r.staging_name ?? r.staging_id,
+            stagingBrand: brandLookup.get(r.staging_id) ?? "-",
+            status: r.status as "success" | "duplicate" | "failed",
+            reason: r.reason,
+          }));
+          setApprovalResults(summaryItems);
+          setShowSummaryModal(true);
+        } else {
+          alert(`Failed to save supplements: ${data.message ?? "Unknown error"}`);
+        }
       } else {
         alert("Failed to save supplements to inventory. Please try again.");
       }

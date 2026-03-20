@@ -101,6 +101,7 @@ export async function getStagingSupplementDetails(req, res) {
             supplement_certifications: stagingSupplement.supplement_certifications || null,
             supplement_additional_information: stagingSupplement.supplement_additional_information || null,
             batch_testing_org: stagingSupplement.batch_testing_org || null,
+            batch_testing_org_url: stagingSupplement.batch_testing_org_url || null,
             product_source_url: stagingSupplement.product_source_url || null,
             scraper_version: stagingSupplement.scraper_version || null,
             is_reviewed: stagingSupplement.is_reviewed

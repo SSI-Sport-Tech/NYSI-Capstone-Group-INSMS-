@@ -421,21 +421,9 @@ export async function approveStagingSupplements(stagingIds, userId) {
       const statusName = staging.supplement_status;
       const normalizedStatus = statusName?.toUpperCase().trim();
 
-      if (normalizedStatus === 'BATCH TESTED') {
-        if (!staging.batch_testing_org_id) {
-          results.push({
-            staging_id: stagingId,
-            staging_name: staging.supplement_name,
-            status: 'failed',
-            reason: 'batch_testing_org_id is required when status is BATCH TESTED',
-            supplement_id: null
-          });
-          continue;
-        }
-      }
-
+      // Use the org ID if available; allow null (can be linked later via edit)
       const resolvedBatchTestingOrgId = normalizedStatus === 'BATCH TESTED'
-        ? staging.batch_testing_org_id
+        ? (staging.batch_testing_org_id ?? null)
         : null;
 
       // 4. Generate vectors FIRST (before creating supplement)
@@ -504,8 +492,8 @@ export async function approveStagingSupplements(stagingIds, userId) {
                     vector_100g_ingredient,
                     vector_perserving_ingredient
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-                    $18::vector, $19::vector
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
+                    $19::vector, $20::vector
                 )
                 RETURNING *
             `;

@@ -89,7 +89,7 @@ const SupplementInfo: React.FC<SupplementInfoProps> = ({ supplement }) => {
 
           <div>
             <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
-              Batch Test Verification
+              Batch Testing Organisation URL
             </dt>
             <dd className="text-sm break-words">
               {supplement.batch_testing_org_url ? (
@@ -97,9 +97,9 @@ const SupplementInfo: React.FC<SupplementInfoProps> = ({ supplement }) => {
                   href={supplement.batch_testing_org_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 underline"
+                  className="text-blue-600 hover:text-blue-800 underline break-all"
                 >
-                  View Certificate
+                  {supplement.batch_testing_org_url}
                 </a>
               ) : (
                 <span className="text-gray-900">N/A</span>

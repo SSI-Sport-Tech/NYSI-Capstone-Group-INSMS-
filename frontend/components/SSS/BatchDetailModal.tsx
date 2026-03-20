@@ -20,6 +20,8 @@ interface Batch {
   date_added: string;
   inv_batch_testing_org: string | null;
   inv_batch_testing_org_id?: string | null;
+  inv_batch_testing_org_url?: string | null;
+  batch_manufacture_date?: string | null;
   batch_unit?: string | null;
 }
 
@@ -34,6 +36,11 @@ interface BatchDetailModalProps {
   onClose: () => void;
   onSaved: () => void;
 }
+
+const ensureHttps = (url: string | null | undefined) => {
+  if (!url || !url.trim()) return null;
+  return /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
+};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -119,6 +126,10 @@ export default function BatchDetailModal({ isOpen, batch, onClose, onSaved }: Ba
       ? new Date(batch.batch_expiration_date).toISOString().split("T")[0]
       : "",
     inv_batch_testing_org_id: batch.inv_batch_testing_org_id ?? "",
+    inv_batch_testing_org_url: batch.inv_batch_testing_org_url ?? "",
+    batch_manufacture_date: batch.batch_manufacture_date
+      ? new Date(batch.batch_manufacture_date).toISOString().split("T")[0]
+      : "",
   });
 
   if (!isOpen) return null;
@@ -136,6 +147,10 @@ export default function BatchDetailModal({ isOpen, batch, onClose, onSaved }: Ba
         ? new Date(batch.batch_expiration_date).toISOString().split("T")[0]
         : "",
       inv_batch_testing_org_id: batch.inv_batch_testing_org_id ?? "",
+      inv_batch_testing_org_url: batch.inv_batch_testing_org_url ?? "",
+      batch_manufacture_date: batch.batch_manufacture_date
+        ? new Date(batch.batch_manufacture_date).toISOString().split("T")[0]
+        : "",
     });
     setError("");
     setIsEditing(false);
@@ -157,7 +172,9 @@ export default function BatchDetailModal({ isOpen, batch, onClose, onSaved }: Ba
           batch_unit: form.batch_unit.trim() || null,
           batch_price: form.batch_price !== "" ? Number(form.batch_price) : null,
           batch_expiration_date: form.batch_expiration_date || null,
+          batch_manufacture_date: form.batch_manufacture_date || null,
           inv_batch_testing_org_id: form.inv_batch_testing_org_id || null,
+          inv_batch_testing_org_url: ensureHttps(form.inv_batch_testing_org_url),
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -307,6 +324,22 @@ export default function BatchDetailModal({ isOpen, batch, onClose, onSaved }: Ba
                   )}
                 </FieldRow>
 
+                <FieldRow label="Manufacture Date">
+                  {isEditing ? (
+                    <TextInput
+                      type="date"
+                      value={form.batch_manufacture_date}
+                      onChange={(v) => setField("batch_manufacture_date", v)}
+                    />
+                  ) : (
+                    <ReadonlyText
+                      value={batch.batch_manufacture_date
+                        ? new Date(batch.batch_manufacture_date).toLocaleDateString("en-US")
+                        : null}
+                    />
+                  )}
+                </FieldRow>
+
                 <div className="col-span-2">
                   <FieldRow label="Batch Testing Organisation">
                     {isEditing ? (
@@ -324,6 +357,30 @@ export default function BatchDetailModal({ isOpen, batch, onClose, onSaved }: Ba
                       </select>
                     ) : (
                       <ReadonlyText value={batch.inv_batch_testing_org} />
+                    )}
+                  </FieldRow>
+                </div>
+
+                <div className="col-span-2">
+                  <FieldRow label="Batch Certificate">
+                    {isEditing ? (
+                      <TextInput
+                        type="url"
+                        value={form.inv_batch_testing_org_url}
+                        onChange={(v) => setField("inv_batch_testing_org_url", v)}
+                        placeholder="https://example.com/certificate"
+                      />
+                    ) : batch.inv_batch_testing_org_url ? (
+                      <a
+                        href={batch.inv_batch_testing_org_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:underline break-all"
+                      >
+                        {batch.inv_batch_testing_org_url}
+                      </a>
+                    ) : (
+                      <ReadonlyText value={null} />
                     )}
                   </FieldRow>
                 </div>

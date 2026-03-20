@@ -1,5 +1,6 @@
 import * as services from './services.js';
 import { getSupplementById } from '../supplements/services.js';
+import pool from '../../../config/db.js';
 import {
     createBatchSchema,
     updateBatchSchema,

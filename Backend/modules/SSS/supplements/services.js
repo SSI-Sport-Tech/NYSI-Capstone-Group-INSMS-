@@ -296,7 +296,7 @@ export async function createSupplement(supplementData, userId) {
       supplement_packaging_form_id,
       supplement_status_id,
       approved_by,
-      batch_testing_org,
+      batch_testing_org_url,
       batch_testing_org_id,
       supplement_description,
       supplement_ingredient,
@@ -311,7 +311,7 @@ export async function createSupplement(supplementData, userId) {
       vector_100g_ingredient,
       vector_perserving_ingredient
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::vector, $19::vector
     )
     RETURNING
       id,
@@ -320,7 +320,7 @@ export async function createSupplement(supplementData, userId) {
       supplement_packaging_form_id,
       supplement_status_id,
       approved_by,
-      batch_testing_org,
+      batch_testing_org_url,
       batch_testing_org_id,
       supplement_input_type
   `;
@@ -338,7 +338,7 @@ export async function createSupplement(supplementData, userId) {
     supplementData.supplement_packaging_form_id, // $3
     supplementData.supplement_status_id, // $4
     supplementData.approved_by, // $5
-    supplementData.batch_testing_org || null, // $6
+    supplementData.batch_testing_org_url || null, // $6
     supplementData.batch_testing_org_id || null, // $7
     supplementData.supplement_description || null, // $8
     supplementData.supplement_ingredient && supplementData.supplement_ingredient.length > 0
