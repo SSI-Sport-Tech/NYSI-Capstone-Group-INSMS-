@@ -3,9 +3,9 @@
 ## Document Purpose
 This document provides a comprehensive overview of the project architecture, technology stack, design patterns, and structural organization.
 
-**Last Updated:** February 7, 2026
-**Version:** 5.0
-**Status:** Active Development - Phase 2.5 Complete, AMS Phase 1 Implemented, 2FA Auth & OCR Implemented
+**Last Updated:** March 21, 2026
+**Version:** 6.0
+**Status:** Active Development - Consultation Module Complete, Admin Module Complete, AMS Phase 1 Complete
 
 ---
 
@@ -15,11 +15,18 @@ This document provides a comprehensive overview of the project architecture, tec
 3. [Architecture Patterns](#architecture-patterns)
 4. [Project Structure](#project-structure)
 5. [Module Architecture](#module-architecture)
-6. [Database Architecture](#database-architecture)
-7. [API Design](#api-design)
-8. [Data Flow](#data-flow)
-9. [Security Architecture](#security-architecture)
-10. [Future Architecture Plans](#future-architecture-plans)
+   - [SSS Module](#sss-module-supplement-support-system)
+   - [Auth Module](#auth-module-authentication)
+   - [OCR Module](#ocr-module)
+   - [Consultation Module](#consultation-module)
+   - [Admin Module](#admin-module)
+   - [AMS Module](#ams-module-athlete-management-system)
+6. [Python Services Architecture](#python-services-architecture)
+7. [Database Architecture](#database-architecture)
+8. [API Design](#api-design)
+9. [Data Flow](#data-flow)
+10. [Security Architecture](#security-architecture)
+11. [Future Architecture Plans](#future-architecture-plans)
 
 ---
 
@@ -30,31 +37,44 @@ Develop a comprehensive supplement management system for the New York Sports Ins
 
 ### Core Modules
 1. **SSS (Supplement Support System)** - Primary module for supplement management, inventory, staging, and web scraping
-2. **AMS (Athlete Management System)** - Athlete profile CRUD with registry and medical records (Phase 1 Implemented)
-3. **OCR Services** - Optical Character Recognition for supplement label scanning (In Progress)
+2. **AMS (Athlete Management System)** - Athlete profile CRUD with registry, medical records, and consultation session management
+3. **Consultation** - Card-based nutrition consultation workflow with 8 clinical data cards per session
+4. **Admin** - User management, sports and coach records, audit logging
+5. **Auth** - Email-based two-factor authentication with JWT
+6. **OCR Services** - Supplement label scanning, brand/batch verification against certification databases
 
 ### Current Phase
-**Phase 2.5: Vectorization & Webscraper Integration** - ✅ Complete
-- Full supplement lifecycle management
-- Inventory batch tracking
-- Search and filtering capabilities
-- Swagger API documentation
-- **Vectorization integration** - Auto-generate vectors on create/update
-- **Alternative supplements** - Vector similarity search
-- **Webscraper integration** - Catalog URLs, scraping, staging workflow
-- **Admin endpoints** - Catalog URL CRUD, staging management
+**Phase 3: Consultation & Admin Complete** - ✅ Complete
+- Full supplement lifecycle management (SSS)
+- Inventory batch tracking and stock calculations
+- Vectorization and semantic search for alternatives
+- Webscraper integration with staging workflow
+- Athlete management with consultation session support (AMS)
+- **Consultation module** - 8-card clinical workflow per session, previous session comparison
+- **Admin module** - User CRUD with role management, sports/coach management, audit log
+- 2FA authentication and JWT authorization
+- OCR label analysis and batch certification verification
 
 ---
 
 ## Technology Stack
 
+### Frontend
+```
+Framework:    Next.js 15 (App Router)
+Language:     TypeScript
+UI:           React 19, Tailwind CSS
+Auth:         JWT (stored client-side), AuthContext
+```
+
 ### Backend
 ```
 Runtime:      Node.js v18+
-Framework:    Express.js 4.x
+Framework:    Express.js 5.x
 Language:     JavaScript (ES6+ with ES Modules)
 Validation:   Zod v3.x
 Documentation: Swagger/OpenAPI 3.0
+Auth:         bcrypt, JWT, Nodemailer (2FA)
 ```
 
 ### Database
@@ -62,23 +82,25 @@ Documentation: Swagger/OpenAPI 3.0
 DBMS:         PostgreSQL 14+
 Client:       pg (node-postgres)
 UUID:         gen_random_uuid() (built-in)
-Extensions:   pgcrypto (public schema)
-              pgvector (planned)
+Extensions:   pgcrypto, pgvector (384-dim vectors)
+```
+
+### Python Services
+```
+Runtime:      Python 3.10+
+Framework:    FastAPI 0.109.0
+OCR:          PaddleOCR 2.8.1 + PaddlePaddle 2.6.2
+LLM:          OpenAI GPT-4o-mini
+Embeddings:   BAAI/bge-small-en-v1.5 (384-dim, sentence-transformers)
+ML:           PyTorch 2.0.1 (CPU)
+Scraping:     Playwright (browser automation)
 ```
 
 ### Development Tools
 ```
-Package Manager: npm
+Package Manager: npm (Node), pip (Python)
 Environment:     dotenv
-API Testing:     Swagger UI
-Linting:         ESLint (planned)
-```
-
-### External Services
-```
-OCR Engine:   PaddleOCR (Python)
-OCR API:      FastAPI server
-AI Agent:     Planned for text parsing
+API Testing:     Swagger UI (both Express and FastAPI)
 ```
 
 ---
@@ -152,6 +174,39 @@ if (status === "BATCH TESTED" && !batch_testing_org) {
 
 ```
 NYSI-Capstone-Group-INSMS-/
+├── frontend/                     # Next.js 15 frontend
+│   ├── app/
+│   │   ├── page.tsx              # Home / dashboard
+│   │   ├── login/                # Login + 2FA verify
+│   │   ├── unauthorized/         # Access denied page
+│   │   ├── SSS/                  # Supplement Support System
+│   │   │   ├── library/          # Supplement library
+│   │   │   ├── inventory/        # Batch inventory management
+│   │   │   ├── batch-testing/    # Batch certification testing
+│   │   │   ├── search/           # Supplement search with OCR
+│   │   │   ├── web-scraper/      # Web scraper management
+│   │   │   └── supplements/[id]/ # Supplement detail + alternatives
+│   │   ├── AMS/
+│   │   │   └── athlete-management/
+│   │   │       ├── page.tsx      # Athlete list
+│   │   │       └── [id]/
+│   │   │           ├── page.tsx  # Athlete detail profile
+│   │   │           └── consultation/[sessionId]/page.tsx  # Consultation session view
+│   │   ├── admin/
+│   │   │   ├── users/            # User management
+│   │   │   └── sports-coaches/   # Sports & coaches management
+│   │   └── api/ocr/              # Frontend Next.js API routes for OCR
+│   ├── components/               # Shared React components by module
+│   │   ├── SSS/                  # Supplement, inventory, OCR components
+│   │   ├── AMS/                  # Athlete, consultation card components
+│   │   ├── Admin/                # User, sport, coach management components
+│   │   └── Dashboard/            # Dashboard, calendar, session components
+│   ├── contexts/
+│   │   └── AuthContext.tsx       # Global authentication state
+│   └── utils/
+│       ├── consultationApi.ts    # Consultation API client
+│       └── dashboardApi.ts       # Dashboard API client
+│
 ├── Backend/
 │   ├── config/
 │   │   ├── db.js                 # PostgreSQL connection pool
@@ -159,69 +214,77 @@ NYSI-Capstone-Group-INSMS-/
 │   │
 │   ├── modules/
 │   │   ├── SSS/                  # Supplement Support System
-│   │   │   ├── index.js          # Route aggregator (supplements + inventory + staging)
+│   │   │   ├── index.js          # Route aggregator
 │   │   │   ├── supplements/      # Supplement CRUD, alternatives, lookups
-│   │   │   │   ├── routes.js
-│   │   │   │   ├── controller.js
-│   │   │   │   ├── services.js
-│   │   │   │   └── validation.js
 │   │   │   ├── inventory/        # Batch CRUD
-│   │   │   │   ├── routes.js
-│   │   │   │   ├── controller.js
-│   │   │   │   ├── services.js
-│   │   │   │   └── validation.js
 │   │   │   ├── staging/          # Staging review, approval, catalog URLs, scraping
-│   │   │   │   ├── routes.js
-│   │   │   │   ├── controller.js
-│   │   │   │   ├── services.js
-│   │   │   │   └── validation.js
-│   │   │   └── shared/           # Reusable validators and helpers
-│   │   │       ├── validation.js # uuidSchema, paginationSchema, bulkDeleteSchema, business logic helpers
-│   │   │       └── vectorization.js # Python service integration helpers
+│   │   │   └── shared/           # Reusable validators, vectorization helpers
 │   │   │
 │   │   ├── AMS/                  # Athlete Management System
 │   │   │   ├── index.js          # Route aggregator
-│   │   │   └── athlete/          # Athlete CRUD, registry, medical, lookups
-│   │   │       ├── routes.js
-│   │   │       ├── controller.js
-│   │   │       ├── services.js
-│   │   │       └── validation.js
+│   │   │   ├── athlete/          # Athlete CRUD, registry, medical
+│   │   │   ├── coach/            # Coach management
+│   │   │   ├── nutritionist/     # Nutritionist management
+│   │   │   └── sport/            # Sport lookup
 │   │   │
-│   │   ├── Auth/                 # Authentication (2FA)
-│   │   │   ├── routes.js         # Auth endpoints
-│   │   │   ├── controller.js     # Auth logic
-│   │   │   ├── services.js       # User CRUD, code management
-│   │   │   ├── validation.js     # Zod schemas
-│   │   │   ├── authMiddleware.js # JWT verification
+│   │   ├── Consultation/         # Nutrition Consultation
+│   │   │   ├── index.js          # Route aggregator
+│   │   │   ├── consultation-session/    # Session CRUD, athlete history
+│   │   │   ├── consultation-lookups/    # Reference data (consultation types, etc.)
+│   │   │   ├── anthropometry/           # Physical measurements card
+│   │   │   ├── medical-history/         # Medical history card
+│   │   │   ├── nutrition-requirements/  # Nutritional needs card
+│   │   │   ├── mealLog/                 # Meal log card
+│   │   │   ├── trainingSchedule/        # Training schedule card (session_training + schedule)
+│   │   │   ├── supplement-dispensing/   # Supplement allocation card
+│   │   │   ├── nutrition-diagnosis-summary/  # Diagnosis & summary card
+│   │   │   └── actionables/             # Follow-up actionables card
+│   │   │
+│   │   ├── Admin/                # Administration
+│   │   │   ├── adminRoutes.js    # User, sport, coach endpoints
+│   │   │   ├── adminController.js
+│   │   │   ├── adminServices.js
+│   │   │   └── adminValidation.js
+│   │   │
+│   │   ├── Auth/                 # Authentication (2FA + JWT)
+│   │   │   ├── routes.js
+│   │   │   ├── controller.js
+│   │   │   ├── services.js
+│   │   │   ├── validation.js
+│   │   │   ├── authMiddleware.js # JWT verification middleware
 │   │   │   └── emailService.js   # Nodemailer for 2FA codes
 │   │   │
 │   │   └── OCR/                  # OCR Services
-│   │       ├── routes.js         # /analyze, /extract, /verify endpoints
-│   │       ├── controller.js     # OCR request handling
-│   │       ├── services.js       # Python service calls, similarity search
-│   │       └── validation.js     # File/query validation
+│   │       ├── routes.js
+│   │       ├── controller.js
+│   │       ├── services.js
+│   │       └── validation.js
 │   │
 │   ├── server.js                 # Express app entry point
-│   ├── package.json              # Dependencies
-│   ├── .env                      # Environment variables
-│   └── .gitignore
-│
-├── Python_Services/              # Python FastAPI microservice
-│   ├── app/
-│   │   ├── main.py               # FastAPI entry point
-│   │   ├── config/settings.py    # Pydantic settings
-│   │   ├── routers/
-│   │   │   ├── ocr.py            # OCR endpoints
-│   │   │   ├── vectorization.py  # Vectorization endpoints
-│   │   │   └── webscraper.py     # Web scraper endpoints
-│   │   └── services/
-│   │       ├── vectorizer.py     # Embedding generation (BAAI/bge-small-en-v1.5)
-│   │       └── nutrition_workflow.py  # OCR workflow
-│   ├── requirements.txt
+│   ├── package.json
 │   └── .env
 │
-├── frontend/                     # Next.js 15 frontend
-│   └── app/                      # App Router pages
+├── Python_Services/              # FastAPI microservice
+│   ├── app/
+│   │   ├── main.py               # FastAPI entry point + CORS
+│   │   ├── config/settings.py    # Pydantic settings
+│   │   ├── routers/
+│   │   │   ├── ocr.py                  # OCR analysis endpoints
+│   │   │   ├── vectorization.py        # Embedding generation endpoints
+│   │   │   ├── webscraper.py           # Web scraper endpoints
+│   │   │   ├── batch_verification.py   # Certification database search
+│   │   │   └── scheduler.py            # Background job scheduler
+│   │   ├── services/
+│   │   │   ├── ocr_engine.py           # PaddleOCR wrapper (lazy-loaded)
+│   │   │   ├── llm_structurer.py       # GPT-4o-mini text structuring
+│   │   │   ├── vectorizer.py           # Embedding generation
+│   │   │   ├── batch_tester.py         # Certification search with consensus
+│   │   │   ├── certification_searcher.py  # Per-database Playwright search
+│   │   │   ├── product_scraper.py      # Product page scraping
+│   │   │   └── staging_service.py      # Push scraped results to staging
+│   │   └── schemas/                    # Pydantic request/response models
+│   ├── requirements.txt
+│   └── .env
 │
 └── docs/
     ├── PROJECT_ARCHITECTURE.md
@@ -371,6 +434,144 @@ POST /api/ocr/verify
 - **Allowed Types**: image/jpeg, image/png, image/webp
 - **Similarity Threshold**: 60%
 - **Python Service Timeout**: 60 seconds
+
+---
+
+### Consultation Module
+
+#### Responsibility
+Card-based nutrition consultation workflow. Each session has 8 independent clinical cards that can be filled in any order. Organized by sub-module, each corresponding to one card in the frontend UI.
+
+#### Structure
+```
+Consultation/
+├── index.js                      # Route aggregator
+├── consultation-session/         # Session CRUD and athlete session history
+├── consultation-lookups/         # Reference data (consultation types, etc.)
+├── anthropometry/                # Physical measurements (height, weight, BMI, body comp)
+├── medical-history/              # Medical conditions, dietary restrictions, medical remarks
+├── nutrition-requirements/       # Macros, energy needs, dietary targets
+├── mealLog/                      # Dietary intake records
+├── trainingSchedule/             # Training schedule (session_training + session_training_schedule)
+├── supplement-dispensing/        # Supplement allocation from inventory
+├── nutrition-diagnosis-summary/  # Clinical diagnosis and recommendations
+└── actionables/                  # Follow-up tasks and action items
+```
+
+#### Key Design Decisions
+
+**Card-based organization**: Each sub-module maps to one UI card. Routes, controllers, services, and validation are colocated per card, making it easy to extend or modify individual cards without affecting others.
+
+**Session lifecycle**: A session is created first (`consultation-session`), then each card's data is written independently via GET/POST/PATCH on `sessions/:sessionId/<card>`.
+
+**Nutritionist auto-assignment**: `POST /api/Consultation/sessions` automatically assigns the logged-in nutritionist from the JWT — no manual input required.
+
+**Training schedule schema**: `session_training` (parent, one per session) holds `physical_activity_level_pal` and session metadata. `session_training_schedule` (children) holds individual activities with `day_of_week` (title case: 'Monday'...'Sunday', enforced by DB constraint).
+
+**session_note upsert pattern**: The consultation-update card (objective) creates a `session_note` row. All subsequent cards that update `session_note` fields must check for an existing row and UPDATE, never INSERT a duplicate.
+
+**Previous session tab**: Each card in the frontend supports a "Previous Session" tab (gated on `prevSessionId`) for comparing with the prior consultation. History views do not include this tab.
+
+#### Endpoints
+```
+# Session management
+GET    /api/Consultation/sessions                        - List sessions for an athlete
+POST   /api/Consultation/sessions                        - Create session (auto-assigns nutritionist)
+
+# Card endpoints (all scoped to :sessionId)
+GET/POST/PATCH  /api/Consultation/sessions/:id/anthropometry
+GET/POST/PATCH  /api/Consultation/sessions/:id/medical-history
+GET/POST/PATCH  /api/Consultation/sessions/:id/nutrition-requirements
+GET/POST/PATCH  /api/Consultation/sessions/:id/meal-log
+GET/PUT         /api/Consultation/sessions/:id/training-schedule
+GET/POST/PATCH  /api/Consultation/sessions/:id/supplement-dispensing
+GET/POST/PATCH  /api/Consultation/sessions/:id/nutrition-diagnosis-summary
+GET/POST/PATCH  /api/Consultation/sessions/:id/actionables
+
+# Lookups
+GET    /api/Consultation/lookups/*                       - Reference data for dropdowns
+```
+
+---
+
+### Admin Module
+
+#### Responsibility
+Platform administration: user account management, sports catalog, and coach records.
+
+#### Structure
+```
+Admin/
+├── adminRoutes.js      # All admin endpoints
+├── adminController.js  # Request handling and business logic
+├── adminServices.js    # Database queries
+└── adminValidation.js  # Zod schemas
+```
+
+#### Key Features
+- **User management**: Create, edit, deactivate users with role assignment (Nutritionist, Admin, etc.)
+- **Audit log**: Track changes to user accounts (`audit.audit_log` table)
+- **Email and password management**: Admins can update credentials for any user
+- **Sports management**: CRUD for the `Sport_Lookup` table
+- **Coach management**: CRUD for coach records
+
+#### Endpoints
+```
+# User management
+GET    /api/admin/users            - List users (paginated + search)
+POST   /api/admin/users            - Create user
+PATCH  /api/admin/users/:id        - Update user
+DELETE /api/admin/users            - Bulk delete users
+GET    /api/admin/users/:id/audit  - User audit log
+
+# Sports management
+GET    /api/admin/sports           - List sports
+POST   /api/admin/sports           - Create sport
+PATCH  /api/admin/sports/:id       - Update sport
+DELETE /api/admin/sports           - Delete sport
+
+# Coach management
+GET    /api/admin/coaches          - List coaches
+POST   /api/admin/coaches          - Create coach
+PATCH  /api/admin/coaches/:id      - Update coach
+DELETE /api/admin/coaches          - Delete coach
+```
+
+---
+
+### AMS Module (Athlete Management System)
+
+#### Responsibility
+Athlete profile management with registry, medical records, and links to consultation sessions.
+
+#### Structure
+```
+AMS/
+├── index.js          # Route aggregator
+├── athlete/          # Athlete CRUD, registry, medical, lookups
+├── coach/            # Coach management (Phase 2)
+├── nutritionist/     # Nutritionist management (Phase 2)
+└── sport/            # Sport lookup reference data
+```
+
+#### Key Features
+- **Atomic creation**: POST `/api/AMS/athletes` creates athlete + registry + medical in a single DB transaction (`pool.connect()` + `BEGIN/COMMIT/ROLLBACK`)
+- **Detail view**: Returns athlete profile + registry data (no medical on the detail page)
+- **target_event**: Stored as a real DB column on the `athlete` table
+- **Additional columns**: `ethnicity`, `start_of_sporting_date` on `athlete`; `medical_remarks` and `dietary_restriction` on `athlete_medical`
+
+#### Endpoints
+```
+GET    /api/AMS/athletes           - List/search athletes (paginated)
+GET    /api/AMS/athletes/:id       - Athlete detail (athlete + registry)
+POST   /api/AMS/athletes           - Create athlete + registry + medical (transaction)
+PATCH  /api/AMS/athletes/:id       - Update athlete base fields
+DELETE /api/AMS/athletes           - Bulk delete athletes
+PATCH  /api/AMS/athletes/:id/registry  - Update registry record
+PATCH  /api/AMS/athletes/:id/medical   - Update medical record
+
+GET    /api/AMS/lookups/sports     - Sports dropdown
+```
 
 ---
 
@@ -776,17 +977,19 @@ try {
 
 ### Future Enhancements
 
-**Phase 3:**
-- [ ] GPU support for faster inference
+**Performance:**
+- [ ] GPU support for faster OCR and vectorization inference
 - [ ] Caching for frequently-accessed vectors
-- [ ] Batch processing queue
-- [ ] Redis for job management
+- [ ] Batch processing queue with Redis for job management
 
-**Phase 4:**
-- [ ] Model versioning
-- [ ] A/B testing different embedding models
+**Reliability:**
+- [ ] Circuit breaker pattern for Python service calls
+- [ ] Background job to regenerate vectors for supplements created when Python service was unavailable
+
+**Observability:**
+- [ ] Monitoring and alerting for Python service health
+- [ ] Model versioning for embeddings
 - [ ] Vector similarity search optimization
-- [ ] Monitoring and observability
 
 ---
 
@@ -808,18 +1011,33 @@ PostgreSQL Database
 │   └── Ticket_Status_Lookup
 │
 ├── AMS (Athlete Management System)
-│   ├── Athlete                       # Main athlete profile
+│   ├── Athlete                       # Main athlete profile (target_event, ethnicity, start_of_sporting_date)
 │   ├── Athlete_Registry              # Carding status (1:1 with Athlete)
-│   ├── Athlete_Medical               # Medical info (1:1 with Athlete)
+│   ├── Athlete_Medical               # Medical info (medical_remarks, dietary_restriction)
 │   ├── Coach_Athlete_Mapping         # M:M athlete-coach
 │   ├── Nutritionist_Athlete_Mapping  # M:M athlete-nutritionist
 │   ├── Coach                         # Coach catalog
 │   ├── Nutritionist                  # Nutritionist catalog
 │   └── Sport_Lookup                  # Sports reference
 │
-└── audit (Admin Schema)
-    └── audit_log                     # Centralized audit trail
+├── Consultation
+│   ├── sessions                      # Consultation session (links athlete + nutritionist)
+│   ├── session_note                  # Clinical notes: objective, diagnosis, recommendations
+│   ├── anthropometry                 # Physical measurements per session
+│   ├── session_training              # Training info per session (incl. PAL)
+│   ├── session_training_schedule     # Individual training activities (child of session_training)
+│   ├── meal_log                      # Dietary intake records per session
+│   ├── supplement_dispensing         # Supplement allocations per session
+│   └── actionables                   # Follow-up tasks per session
+│
+├── auth (Authentication)
+│   └── users                         # User accounts (nutritionists, admins)
+│
+└── audit (Audit Schema)
+    └── audit_log                     # Centralized audit trail for all write operations
 ```
+
+> **Note on schema drift**: The live database may differ from the SQL scripts in `docs/Database_stuff/`. Key known drifts are tracked in `memory/db_drift.md`. Notable drifts: `users.name` column was dropped; `consultation.sessions` has additional `venue`, `time`, `description`, `title` columns; `consultation_type` values are now `'initial'`/`'review'` (not `'Initial'`/`'Review'`); `session_note.medical_remarks` was moved to `athlete_medical`.
 
 ### Key Design Decisions
 
