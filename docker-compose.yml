@@ -1,0 +1,105 @@
+services:
+
+  # ── Node.js Backend (Express 5, port 8000) ─────────────────────────────────
+  backend:
+    build:
+      context: ./Backend
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: "8000"
+      # Database — reads from root .env
+      PGHOST: ${PGHOST}
+      PGPORT: ${PGPORT:-5432}
+      PGDATABASE: ${PGDATABASE}
+      PGUSER: ${PGUSER}
+      PGPASSWORD: ${PGPASSWORD}
+      PGSSLMODE: ${PGSSLMODE:-require}
+      # Internal service URLs (Docker service names)
+      FRONTEND_URL: "http://localhost:3000"
+      PYTHON_SERVICE_URL: "http://python:8001"
+      # Auth
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRY: ${JWT_EXPIRY:-24h}
+      # Email (2FA)
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      SKIP_2FA: ${SKIP_2FA:-false}
+      CODE_EXPIRY_MINUTES: ${CODE_EXPIRY_MINUTES:-10}
+      MAX_VERIFICATION_ATTEMPTS: ${MAX_VERIFICATION_ATTEMPTS:-3}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8000/api/test', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── Python Services (FastAPI, port 8001) ───────────────────────────────────
+  python:
+    build:
+      context: ./Python_Services
+    ports:
+      - "8001:8001"
+    environment:
+      SERVICE_HOST: "0.0.0.0"
+      SERVICE_PORT: "8001"
+      BACKEND_URL: "http://backend:8000"
+      # OpenAI
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # Database — Pydantic reads POSTGRES_* naming; mapped from PGHOST etc.
+      POSTGRES_HOST: ${PGHOST}
+      POSTGRES_PORT: ${PGPORT:-5432}
+      POSTGRES_DB: ${PGDATABASE}
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      # ML config
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+      VECTOR_DIMENSION: ${VECTOR_DIMENSION:-384}
+      SCRAPER_HEADLESS: "true"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Next.js Frontend (port 3000) ───────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Passed at build time so next.config.ts can use it during `next build`
+        BACKEND_URL: "http://backend:8000"
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: "production"
+      # Also passed at runtime — next.config.ts rewrites() reads this on startup
+      BACKEND_URL: "http://backend:8000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Optional: Local PostgreSQL with pgvector ────────────────────────────────
+  # Uncomment this block ONLY if you are NOT using an external database (e.g. AWS RDS).
+  # If using AWS RDS, leave this commented out and set PGHOST in your .env.
+  #
+  # db:
+  #   image: pgvector/pgvector:pg16
+  #   ports:
+  #     - "5432:5432"
+  #   environment:
+  #     POSTGRES_DB: ${PGDATABASE}
+  #     POSTGRES_USER: ${PGUSER}
+  #     POSTGRES_PASSWORD: ${PGPASSWORD}
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ${PGUSER} -d ${PGDATABASE}"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #
+  # volumes:
+  #   postgres_data:
