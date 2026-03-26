@@ -13,6 +13,7 @@ interface MealLogsProps {
   readOnly?: boolean;
   prevSessionId?: string;
   liveWeight?: number | null;
+  onStepStatusChange?: (status: "default" | "dirty" | "saved") => void;
 }
 
 type MacroType = "carb" | "fat" | "protein";
@@ -334,6 +335,7 @@ export default function MealLogs({
   readOnly,
   prevSessionId,
   liveWeight,
+  onStepStatusChange,
 }: MealLogsProps) {
   const [activeTab, setActiveTab] = useState<"current" | "previous">("current");
 
@@ -354,6 +356,9 @@ export default function MealLogs({
   const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
 
   useEffect(() => { setIsSaved(false); }, [state]);
+  useEffect(() => {
+    onStepStatusChange?.(isSaved ? "saved" : effectiveEditing ? "dirty" : "default");
+  }, [effectiveEditing, isSaved, onStepStatusChange]);
 
   // ── Fetch current session ──────────────────────────────────────────────────
   const fetchData = async () => {
@@ -824,7 +829,7 @@ export default function MealLogs({
               onClick={handleSave}
               className={`px-4 py-2 text-white text-sm rounded ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
             >
-              {isSaved ? "Saved" : "Save"}
+              {isSaved ? "Draft Saved" : "Save"}
             </button>
           </div>
         </div>

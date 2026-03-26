@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 interface NewSupplementDispensingFormProps {
   ensureSession: () => Promise<string>;
   prevSessionId?: string;
+  onStepStatusChange?: (status: "default" | "dirty" | "saved") => void;
 }
 
 interface PrevPrescription {
@@ -457,6 +458,7 @@ function DispensingEntryCard({
 export default function NewSupplementDispensingForm({
   ensureSession,
   prevSessionId,
+  onStepStatusChange,
 }: NewSupplementDispensingFormProps) {
   const [entries, setEntries] = useState<DispensingEntry[]>([emptyEntry()]);
   const [saving, setSaving] = useState(false);
@@ -468,6 +470,10 @@ export default function NewSupplementDispensingForm({
   useEffect(() => {
     setSaved(false);
   }, [entries]);
+
+  useEffect(() => {
+    onStepStatusChange?.(saved ? "saved" : "dirty");
+  }, [onStepStatusChange, saved]);
 
   useEffect(() => {
     if (!prevSessionId) return;
@@ -647,7 +653,7 @@ export default function NewSupplementDispensingForm({
                 disabled={saving}
                 className={`px-4 py-2 text-white text-sm rounded disabled:opacity-50 ${saved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
               >
-                {saving ? "Saving..." : saved ? "Saved" : "Save"}
+                {saving ? "Saving..." : saved ? "Draft Saved" : "Save"}
               </button>
             </div>
           </div>

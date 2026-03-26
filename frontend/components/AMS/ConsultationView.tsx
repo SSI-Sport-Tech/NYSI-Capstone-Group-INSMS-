@@ -62,6 +62,23 @@ const EMPTY_UPDATE_FORM = {
 };
 type UpdateForm = typeof EMPTY_UPDATE_FORM;
 
+function normalizeUpdateForm(form: UpdateForm): UpdateForm {
+  return {
+    type_of_consult_id: form.type_of_consult_id || "",
+    title_description: form.title_description || "",
+    venue: form.venue || "",
+    date_of_consult: form.date_of_consult || "",
+    time_of_consult: form.time_of_consult || "",
+    date_of_next_follow_up: form.date_of_next_follow_up || "",
+    time_of_next_follow_up: form.time_of_next_follow_up || "",
+    consultation_objective_id: form.consultation_objective_id || "",
+  };
+}
+
+function hasUpdateFormData(form: UpdateForm): boolean {
+  return Object.values(normalizeUpdateForm(form)).some((value) => value !== "");
+}
+
 const STEPS = [
   { id: 1, label: "Consultation Details" },
   { id: 2, label: "Anthropometry" },
@@ -148,12 +165,21 @@ export default function ConsultationView({
   const [stepSaved, setStepSaved] = useState<Set<number>>(new Set());
   const markSaved = (stepId: number) =>
     setStepSaved((prev) => new Set(prev).add(stepId));
+  const [childStepStatus, setChildStepStatus] = useState<Partial<Record<number, Exclude<StepStatus, "viewing">>>>({});
+  const setStepStatus = useCallback((stepId: number, status: Exclude<StepStatus, "viewing">) => {
+    setChildStepStatus((prev) => {
+      if (prev[stepId] === status) return prev;
+      return { ...prev, [stepId]: status };
+    });
+  }, []);
 
   // Edit mode state — Step 1 (Consultation Details)
   const [isEditMode, setIsEditMode] = useState(false);
   const [consultTypes, setConsultTypes] = useState<ConsultType[]>([]);
   const [consultObjectives, setConsultObjectives] = useState<{ id: string; consultation_objective: string }[]>([]);
   const [updateForm, setUpdateForm] = useState<UpdateForm>(EMPTY_UPDATE_FORM);
+  const [lastSavedUpdateForm, setLastSavedUpdateForm] = useState<UpdateForm>(EMPTY_UPDATE_FORM);
+  const [isUpdateCardSaved, setIsUpdateCardSaved] = useState(false);
   const [isSavingUpdate, setIsSavingUpdate] = useState(false);
   const [isSavingAll, setIsSavingAll] = useState(false);
   const [updateSaveError, setUpdateSaveError] = useState("");
@@ -162,6 +188,10 @@ export default function ConsultationView({
   const [isDiagnosisEditMode, setIsDiagnosisEditMode] = useState(false);
   const [isSavingDiagnosis, setIsSavingDiagnosis] = useState(false);
   const [diagnosisSaveError, setDiagnosisSaveError] = useState("");
+  const shouldShowSavedIndicators =
+    isNewConsultation ||
+    isEditMode ||
+    isDiagnosisEditMode;
   const updateFormRef = useRef<UpdateForm>(EMPTY_UPDATE_FORM);
   const ensureSessionForUpdateRef = useRef<() => Promise<string>>(async () => "");
   const previousConsultRef = useRef<PreviousConsultationHandle>(null);
@@ -241,6 +271,18 @@ export default function ConsultationView({
     updateFormRef.current = updateForm;
   }, [updateForm]);
 
+  const isUpdateFormDirty =
+    (isEditMode || isNewConsultation) &&
+    JSON.stringify(normalizeUpdateForm(updateForm)) !==
+      JSON.stringify(normalizeUpdateForm(lastSavedUpdateForm));
+  const updateCardStatus: StepStatus = isUpdateFormDirty
+    ? "dirty"
+    : isUpdateCardSaved
+      ? "saved"
+      : currentStep === 1
+        ? "viewing"
+        : "default";
+
   useEffect(() => {
     if (!isEditMode && !isNewConsultation) return;
     consultationLookupApi.getConsultationTypes().then((res) => setConsultTypes(res.data ?? [])).catch(() => {});
@@ -258,6 +300,22 @@ export default function ConsultationView({
       if (!data) throw new Error("Session not found");
       setLatestConsultation(data);
       setCurrentSessionId(data.id);
+      const mappedForm = normalizeUpdateForm({
+        type_of_consult_id: data.type_of_consult_id || "",
+        title_description: data.title_description || "",
+        venue: data.venue || "",
+        date_of_consult: data.date_of_consult ? data.date_of_consult.split("T")[0] : "",
+        time_of_consult: data.time_of_consult ? data.time_of_consult.substring(0, 5) : "",
+        date_of_next_follow_up: data.date_of_next_follow_up
+          ? data.date_of_next_follow_up.split("T")[0]
+          : "",
+        time_of_next_follow_up: data.time_of_next_follow_up
+          ? data.time_of_next_follow_up.substring(0, 5)
+          : "",
+        consultation_objective_id: data.consultation_objective_id || "",
+      });
+      setLastSavedUpdateForm(mappedForm);
+      setIsUpdateCardSaved(hasUpdateFormData(mappedForm));
     } catch {
       await fetchLatestConsultation();
     } finally {
@@ -276,15 +334,35 @@ export default function ConsultationView({
       if (!response) {
         setLatestConsultation(null);
         setCurrentSessionId("");
+        setLastSavedUpdateForm(EMPTY_UPDATE_FORM);
+        setIsUpdateCardSaved(false);
         return;
       }
       const data = response.data as LatestConsultation;
       setLatestConsultation(data);
       setCurrentSessionId(data.id);
+      const mappedForm = normalizeUpdateForm({
+        type_of_consult_id: data.type_of_consult_id || "",
+        title_description: data.title_description || "",
+        venue: data.venue || "",
+        date_of_consult: data.date_of_consult ? data.date_of_consult.split("T")[0] : "",
+        time_of_consult: data.time_of_consult ? data.time_of_consult.substring(0, 5) : "",
+        date_of_next_follow_up: data.date_of_next_follow_up
+          ? data.date_of_next_follow_up.split("T")[0]
+          : "",
+        time_of_next_follow_up: data.time_of_next_follow_up
+          ? data.time_of_next_follow_up.substring(0, 5)
+          : "",
+        consultation_objective_id: data.consultation_objective_id || "",
+      });
+      setLastSavedUpdateForm(mappedForm);
+      setIsUpdateCardSaved(hasUpdateFormData(mappedForm));
     } catch (error) {
       if (error instanceof ConsultationApiError && error.status === 404) {
         setLatestConsultation(null);
         setCurrentSessionId("");
+        setLastSavedUpdateForm(EMPTY_UPDATE_FORM);
+        setIsUpdateCardSaved(false);
       } else {
         console.error("Error fetching latest consultation:", error);
         setError("Failed to load consultation data");
@@ -308,6 +386,8 @@ export default function ConsultationView({
     const today = new Date();
     const d = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     setUpdateForm({ ...EMPTY_UPDATE_FORM, date_of_consult: d });
+    setLastSavedUpdateForm(EMPTY_UPDATE_FORM);
+    setIsUpdateCardSaved(false);
     if (latestConsultation?.is_scheduled_booking) {
       setShowSessionSelector(true);
       return;
@@ -331,6 +411,8 @@ export default function ConsultationView({
       time_of_next_follow_up: session.time_of_next_follow_up ?? "",
       consultation_objective_id: session.consultation_objective_id ?? "",
     });
+    setLastSavedUpdateForm(EMPTY_UPDATE_FORM);
+    setIsUpdateCardSaved(false);
     setShowSessionSelector(false);
     setIsNewConsultation(true);
     setCurrentStep(1);
@@ -351,6 +433,8 @@ export default function ConsultationView({
     setNewSessionId("");
     setNewConsultation(null);
     setUpdateForm(EMPTY_UPDATE_FORM);
+    setLastSavedUpdateForm(EMPTY_UPDATE_FORM);
+    setIsUpdateCardSaved(false);
     setUpdateSaveError("");
     sessionIdRef.current = "";
     sessionCreationRef.current = null;
@@ -407,6 +491,8 @@ export default function ConsultationView({
             body: JSON.stringify(body),
           },
         );
+        setLastSavedUpdateForm(normalizeUpdateForm(form));
+        setIsUpdateCardSaved(true);
       } catch (e) {
         console.error("[ConsultationView] Auto-save update form failed:", e);
       }
@@ -438,6 +524,7 @@ export default function ConsultationView({
 
   const handleClearConsultationDetails = () => {
     setUpdateForm(EMPTY_UPDATE_FORM);
+    setIsUpdateCardSaved(false);
     setUpdateSaveError("");
   };
 
@@ -489,6 +576,8 @@ export default function ConsultationView({
         );
       }
       setIsEditMode(false);
+      setLastSavedUpdateForm(normalizeUpdateForm(updateForm));
+      setIsUpdateCardSaved(true);
       markSaved(1);
       await fetchLatestConsultation();
     } catch (e) {
@@ -534,6 +623,9 @@ export default function ConsultationView({
           errData?.message || errData?.error || `Save failed (${res.status})`,
         );
       }
+      setLastSavedUpdateForm(normalizeUpdateForm(updateForm));
+      setIsUpdateCardSaved(true);
+      markSaved(1);
     } catch (e) {
       setUpdateSaveError(e instanceof Error ? e.message : "Failed to save");
     } finally {
@@ -662,8 +754,16 @@ export default function ConsultationView({
       </div>
       {isNewConsultation && (
         <div className="mt-4 flex justify-end">
-          <button onClick={handleSaveUpdateCard} disabled={isSavingUpdate} className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700 disabled:opacity-50">
-            {isSavingUpdate ? "Saving..." : "Save"}
+          <button
+            onClick={handleSaveUpdateCard}
+            disabled={isSavingUpdate}
+            className={`px-3 py-1 text-white text-sm rounded disabled:opacity-50 ${
+              isUpdateCardSaved && !isUpdateFormDirty
+                ? "bg-green-600 hover:bg-green-700"
+                : "bg-gray-800 hover:bg-gray-700"
+            }`}
+          >
+            {isSavingUpdate ? "Saving..." : isUpdateCardSaved && !isUpdateFormDirty ? "Draft Saved" : "Save"}
           </button>
         </div>
       )}
@@ -781,6 +881,7 @@ export default function ConsultationView({
           ensureSession={ensureSession}
           onAnthroChange={handleAnthroChange}
           prevSessionId={prevSessionId}
+          onStepStatusChange={(status) => setStepStatus(2, status)}
         />
       </div>
 
@@ -794,6 +895,7 @@ export default function ConsultationView({
           prevSessionId={prevSessionId}
           liveWeight={liveAnthro.weight}
           liveTargetWeight={liveAnthro.targetWeight}
+          onStepStatusChange={(status) => setStepStatus(3, status)}
         />
       </div>
 
@@ -805,6 +907,7 @@ export default function ConsultationView({
           isNewConsultation={isNewConsultation}
           ensureSession={ensureSession}
           prevSessionId={prevSessionId}
+          onStepStatusChange={(status) => setStepStatus(4, status)}
         />
       </div>
 
@@ -817,6 +920,7 @@ export default function ConsultationView({
           ensureSession={ensureSession}
           prevSessionId={prevSessionId}
           liveWeight={liveAnthro.weight}
+          onStepStatusChange={(status) => setStepStatus(5, status)}
         />
       </div>
 
@@ -831,6 +935,7 @@ export default function ConsultationView({
           liveHeight={liveAnthro.height}
           liveTargetWeight={liveAnthro.targetWeight}
           prevSessionId={prevSessionId}
+          onStepStatusChange={(status) => setStepStatus(6, status)}
         />
       </div>
 
@@ -868,6 +973,7 @@ export default function ConsultationView({
             embedded={true}
             isEditMode={isDiagnosisEditMode}
             prevSessionId={prevSessionId}
+            onStepStatusChange={(status) => setStepStatus(7, status)}
           />
         </div>
       </div>
@@ -886,7 +992,7 @@ export default function ConsultationView({
       {/* Step 9: Supplement Dispensing */}
       <div className={currentStep === 9 ? "" : "hidden"}>
         {isNewConsultation ? (
-          <NewSupplementDispensingForm ensureSession={ensureSession} prevSessionId={prevSessionId} />
+          <NewSupplementDispensingForm ensureSession={ensureSession} prevSessionId={prevSessionId} onStepStatusChange={(status) => setStepStatus(9, status)} />
         ) : (
           <SupplementDispensing athleteId={athleteId} sessionId={currentSessionId} prevSessionId={prevSessionId} />
         )}
@@ -974,13 +1080,23 @@ export default function ConsultationView({
               {STEPS.map((step) => {
                 const isActive = step.id === currentStep;
                 const isDirtyStep =
-                  (step.id === 1 && (isEditMode || isNewConsultation)) ||
-                  (step.id === 7 && isDiagnosisEditMode);
+                  (step.id === 1 && updateCardStatus === "dirty") ||
+                  (step.id === 7 && isDiagnosisEditMode) ||
+                  childStepStatus[step.id] === "dirty";
+                const isSavedStep =
+                  shouldShowSavedIndicators &&
+                  (
+                    (step.id === 1 && updateCardStatus === "saved") ||
+                    childStepStatus[step.id] === "saved" ||
+                    stepSaved.has(step.id)
+                  );
                 const status: StepStatus = isActive
                   ? isDirtyStep
                     ? "dirty"
-                    : "viewing"
-                  : stepSaved.has(step.id)
+                    : isSavedStep
+                      ? "saved"
+                      : "viewing"
+                  : isSavedStep
                     ? "saved"
                     : "default";
                 return (

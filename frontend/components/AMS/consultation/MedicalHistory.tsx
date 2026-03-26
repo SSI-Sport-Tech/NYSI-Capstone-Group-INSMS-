@@ -11,6 +11,7 @@ interface MedicalHistoryProps {
   prevSessionId?: string;
   liveWeight?: number | null;
   liveTargetWeight?: number | null;
+  onStepStatusChange?: (status: "default" | "dirty" | "saved") => void;
 }
 
 // ---- API response shape ----
@@ -192,6 +193,7 @@ export default function MedicalHistory({
   prevSessionId,
   liveWeight,
   liveTargetWeight,
+  onStepStatusChange,
 }: MedicalHistoryProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<"current" | "previous">("current");
@@ -225,6 +227,10 @@ export default function MedicalHistory({
   const isFemale = gender === null || gender.toLowerCase().startsWith("f");
 
   const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly && activeTab !== "previous";
+
+  useEffect(() => {
+    onStepStatusChange?.(isSaved ? "saved" : effectiveEditing ? "dirty" : "default");
+  }, [effectiveEditing, isSaved, onStepStatusChange]);
 
   const fetchMedicalHistory = async () => {
     if (!sessionId) {
@@ -376,16 +382,6 @@ export default function MedicalHistory({
     setIsEditing(false);
     setSaveError("");
     fetchMedicalHistory();
-  };
-
-  const PrevVal = ({ val }: { val: string | number | null | undefined }) => {
-    if (!isNewConsultation || !prevData || val == null || val === "") return null;
-    return (
-      <p className="text-xs text-gray-400 italic mt-0.5 flex items-center gap-1">
-        <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2" /><polyline points="12 6 12 12 16 14" strokeWidth="2" /></svg>
-        Prev: {val}
-      </p>
-    );
   };
 
   if (loading) {
@@ -1082,7 +1078,7 @@ export default function MedicalHistory({
               onClick={handleSave}
               className={`px-4 py-2 text-white text-sm rounded ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
             >
-              {isSaved ? "Saved" : "Save"}
+              {isSaved ? "Draft Saved" : "Save"}
             </button>
           </div>
         </div>

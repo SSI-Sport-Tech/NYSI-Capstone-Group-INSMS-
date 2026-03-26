@@ -12,6 +12,7 @@ interface NutritionRequirementsProps {
   liveWeight?: number | null;
   liveHeight?: number | null;
   liveTargetWeight?: number | null;
+  onStepStatusChange?: (status: "default" | "dirty" | "saved") => void;
 }
 
 interface NutritionRequirementsData {
@@ -157,6 +158,7 @@ export default function NutritionRequirements({
   liveWeight,
   liveHeight,
   liveTargetWeight,
+  onStepStatusChange,
 }: NutritionRequirementsProps) {
   const [nutritionRequirementsData, setNutritionRequirementsData] = useState<NutritionRequirementsData | null>(
     null,
@@ -166,6 +168,9 @@ export default function NutritionRequirements({
   const [weight, setWeight] = useState<number | null>(null);
   const [height, setHeight] = useState<number | null>(null);
   const [targetWeight, setTargetWeight] = useState<number | null>(null);
+  const [prevWeight, setPrevWeight] = useState<number | null>(null);
+  const [prevHeight, setPrevHeight] = useState<number | null>(null);
+  const [prevTargetWeight, setPrevTargetWeight] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
@@ -179,6 +184,10 @@ export default function NutritionRequirements({
   useEffect(() => {
     setIsSaved(false);
   }, [editForm]);
+
+  useEffect(() => {
+    onStepStatusChange?.(isSaved ? "saved" : effectiveEditing ? "dirty" : "default");
+  }, [effectiveEditing, isSaved, onStepStatusChange]);
 
   const fetchData = async () => {
     if (!sessionId) {
@@ -199,33 +208,46 @@ export default function NutritionRequirements({
       setNutritionRequirementsData(data);
       setEditForm(toEditForm(data));
 
-      // Derive weight, targetWeight, height from DB-computed values so live
-      // calculations work without a separate anthropometry API call.
-      // weight      = minCarbG  / minCarbGkg
-      // targetWeight = targetMinCarbG / minCarbGkg
-      // height       = (rmrMale - 11.1 × weight + 340) / 8.4
-      const gkg = Number(data.minCarbGkg);
-      const gVal = Number(data.minCarbG);
-      const tgVal = Number(data.targetMinCarbG);
-      const rmr = Number(data.rmrMale);
+      const anthropometryRes = await (
+        consultationApi.getAnthropometry(sessionId) as Promise<{
+          data?: {
+            weightKg?: number | null;
+            heightCm?: number | null;
+            targetWeightKg?: number | null;
+          };
+        } | null>
+      ).catch(() => null);
+      const anthropometry = anthropometryRes?.data;
 
-      let w: number | null = null;
-      let tw: number | null = null;
-      let h: number | null = null;
+      if (anthropometry) {
+        setWeight(anthropometry.weightKg ?? null);
+        setHeight(anthropometry.heightCm ?? null);
+        setTargetWeight(anthropometry.targetWeightKg ?? null);
+      } else {
+        // Fallback for older records where only nutrition data exists.
+        const gkg = Number(data.minCarbGkg);
+        const gVal = Number(data.minCarbG);
+        const tgVal = Number(data.targetMinCarbG);
+        const rmr = Number(data.rmrMale);
 
-      if (gkg > 0 && data.minCarbG !== null && !isNaN(gVal)) {
-        w = +(gVal / gkg).toFixed(2);
-      }
-      if (gkg > 0 && data.targetMinCarbG !== null && !isNaN(tgVal)) {
-        tw = +(tgVal / gkg).toFixed(2);
-      }
-      if (w !== null && data.rmrMale !== null && !isNaN(rmr)) {
-        h = +((rmr - 11.1 * w + 340) / 8.4).toFixed(2);
-      }
+        let w: number | null = null;
+        let tw: number | null = null;
+        let h: number | null = null;
 
-      setWeight(w);
-      setTargetWeight(tw);
-      setHeight(h);
+        if (gkg > 0 && data.minCarbG !== null && !isNaN(gVal)) {
+          w = +(gVal / gkg).toFixed(2);
+        }
+        if (gkg > 0 && data.targetMinCarbG !== null && !isNaN(tgVal)) {
+          tw = +(tgVal / gkg).toFixed(2);
+        }
+        if (w !== null && data.rmrMale !== null && !isNaN(rmr)) {
+          h = +((rmr - 11.1 * w + 340) / 8.4).toFixed(2);
+        }
+
+        setWeight(w);
+        setTargetWeight(tw);
+        setHeight(h);
+      }
     } catch (err) {
       console.error("Error fetching nutrition requirements:", err);
       setError("Failed to load nutrition requirements data");
@@ -246,6 +268,19 @@ export default function NutritionRequirements({
           consultationApi.getNutritionRequirements(prevSessionId) as Promise<{ data: NutritionRequirementsData }>
         );
         setPrevNutritionRequirementsData(nutritionRequirementsRes.data);
+        const anthropometryRes = await (
+          consultationApi.getAnthropometry(prevSessionId) as Promise<{
+            data?: {
+              weightKg?: number | null;
+              heightCm?: number | null;
+              targetWeightKg?: number | null;
+            };
+          } | null>
+        ).catch(() => null);
+        const anthropometry = anthropometryRes?.data;
+        setPrevWeight(anthropometry?.weightKg ?? null);
+        setPrevHeight(anthropometry?.heightCm ?? null);
+        setPrevTargetWeight(anthropometry?.targetWeightKg ?? null);
       } catch {
         // non-critical
       }
@@ -306,17 +341,20 @@ export default function NutritionRequirements({
   }, [isNewConsultation, athleteId, weight]);
 
   // ── Live-calculated values ──────────────────────────────────────────────
-  // In edit mode: compute from form inputs + anthropometry data
-  // In view mode: use DB-computed values returned by the API
-
   // Prefer live values streamed from the Anthropometry card (updated as user
   // types). Fall back to internally derived values when props are null.
-  const effectiveWeight = liveWeight ?? weight;
-  const effectiveHeight = liveHeight ?? height;
-  const effectiveTargetWeight = liveTargetWeight ?? targetWeight;
+  const currentWeight = liveWeight ?? weight;
+  const currentHeight = liveHeight ?? height;
+  const currentTargetWeight = liveTargetWeight ?? targetWeight;
 
   // When viewing the "Previous Session" tab, display data from the previous session
   const displayData = activeTab === "previous" ? prevNutritionRequirementsData : nutritionRequirementsData;
+  const displayWeight = activeTab === "previous" ? prevWeight : currentWeight;
+  const displayHeight = activeTab === "previous" ? prevHeight : currentHeight;
+  const displayTargetWeight =
+    activeTab === "previous"
+      ? (prevTargetWeight ?? prevWeight)
+      : (currentTargetWeight ?? currentWeight);
 
   const livePal = effectiveEditing ? n(editForm.pal) : (displayData?.pal ?? null);
   const liveMinCarbGkg = effectiveEditing ? n(editForm.minCarbGkg) : (displayData?.minCarbGkg ?? null);
@@ -333,12 +371,12 @@ export default function NutritionRequirements({
   const calcG = (gkg: number | null, w: number | null) =>
     gkg !== null && w !== null ? +(gkg * w).toFixed(1) : null;
 
-  const minCarbG = effectiveEditing ? calcG(liveMinCarbGkg, effectiveWeight) : (displayData?.minCarbG ?? null);
-  const maxCarbG = effectiveEditing ? calcG(liveMaxCarbGkg, effectiveWeight) : (displayData?.maxCarbG ?? null);
-  const minProteinG = effectiveEditing ? calcG(liveMinProteinGkg, effectiveWeight) : (displayData?.minProteinG ?? null);
-  const maxProteinG = effectiveEditing ? calcG(liveMaxProteinGkg, effectiveWeight) : (displayData?.maxProteinG ?? null);
-  const minFatG = effectiveEditing ? calcG(liveMinFatGkg, effectiveWeight) : (displayData?.minFatG ?? null);
-  const maxFatG = effectiveEditing ? calcG(liveMaxFatGkg, effectiveWeight) : (displayData?.maxFatG ?? null);
+  const minCarbG = calcG(liveMinCarbGkg, displayWeight);
+  const maxCarbG = calcG(liveMaxCarbGkg, displayWeight);
+  const minProteinG = calcG(liveMinProteinGkg, displayWeight);
+  const maxProteinG = calcG(liveMaxProteinGkg, displayWeight);
+  const minFatG = calcG(liveMinFatGkg, displayWeight);
+  const maxFatG = calcG(liveMaxFatGkg, displayWeight);
 
   // Derived g values — target weight (same g/kg/bw as current weight)
   const liveTgtMinCarbGkg = liveMinCarbGkg;
@@ -348,12 +386,12 @@ export default function NutritionRequirements({
   const liveTgtMinFatGkg = liveMinFatGkg;
   const liveTgtMaxFatGkg = liveMaxFatGkg;
 
-  const targetMinCarbG = effectiveEditing ? calcG(liveTgtMinCarbGkg, effectiveTargetWeight) : (displayData?.targetMinCarbG ?? null);
-  const targetMaxCarbG = effectiveEditing ? calcG(liveTgtMaxCarbGkg, effectiveTargetWeight) : (displayData?.targetMaxCarbG ?? null);
-  const targetMinProteinG = effectiveEditing ? calcG(liveTgtMinProteinGkg, effectiveTargetWeight) : (displayData?.targetMinProteinG ?? null);
-  const targetMaxProteinG = effectiveEditing ? calcG(liveTgtMaxProteinGkg, effectiveTargetWeight) : (displayData?.targetMaxProteinG ?? null);
-  const targetMinFatG = effectiveEditing ? calcG(liveTgtMinFatGkg, effectiveTargetWeight) : (displayData?.targetMinFatG ?? null);
-  const targetMaxFatG = effectiveEditing ? calcG(liveTgtMaxFatGkg, effectiveTargetWeight) : (displayData?.targetMaxFatG ?? null);
+  const targetMinCarbG = calcG(liveTgtMinCarbGkg, displayTargetWeight);
+  const targetMaxCarbG = calcG(liveTgtMaxCarbGkg, displayTargetWeight);
+  const targetMinProteinG = calcG(liveTgtMinProteinGkg, displayTargetWeight);
+  const targetMaxProteinG = calcG(liveTgtMaxProteinGkg, displayTargetWeight);
+  const targetMinFatG = calcG(liveTgtMinFatGkg, displayTargetWeight);
+  const targetMaxFatG = calcG(liveTgtMaxFatGkg, displayTargetWeight);
 
   // % of minimum required
   const calcPct = (estimated: number | null, minG: number | null) =>
@@ -361,9 +399,9 @@ export default function NutritionRequirements({
       ? +((estimated / minG) * 100).toFixed(1)
       : null;
 
-  const pctMinCarb = effectiveEditing ? calcPct(liveEstCarbG, minCarbG) : (displayData?.pctMinCarb ?? null);
-  const pctMinProtein = effectiveEditing ? calcPct(liveEstProteinG, minProteinG) : (displayData?.pctMinProtein ?? null);
-  const pctMinFat = effectiveEditing ? calcPct(liveEstFatG, minFatG) : (displayData?.pctMinFat ?? null);
+  const pctMinCarb = calcPct(liveEstCarbG, minCarbG);
+  const pctMinProtein = calcPct(liveEstProteinG, minProteinG);
+  const pctMinFat = calcPct(liveEstFatG, minFatG);
 
   // RMR/TEE — Male (formula: 11.1 × weight + 8.4 × height − 340)
   const calcRMR = (w: number | null, h: number | null, offset: number) =>
@@ -371,16 +409,16 @@ export default function NutritionRequirements({
   const calcTEE = (rmr: number | null, pal: number | null) =>
     rmr !== null && pal !== null ? +(rmr * pal).toFixed(0) : null;
 
-  const rmrMale = effectiveEditing ? calcRMR(effectiveWeight, effectiveHeight, 340) : (displayData?.rmrMale ?? null);
-  const teeMale = effectiveEditing ? calcTEE(rmrMale, livePal) : (displayData?.teeMale ?? null);
-  const targetRmrMale = effectiveEditing ? calcRMR(effectiveTargetWeight, effectiveHeight, 340) : (displayData?.targetRmrMale ?? null);
-  const targetTeeMale = effectiveEditing ? calcTEE(targetRmrMale, livePal) : (displayData?.targetTeeMale ?? null);
+  const rmrMale = calcRMR(displayWeight, displayHeight, 340);
+  const teeMale = calcTEE(rmrMale, livePal);
+  const targetRmrMale = calcRMR(displayTargetWeight, displayHeight, 340);
+  const targetTeeMale = calcTEE(targetRmrMale, livePal);
 
   // RMR/TEE — Female (formula: 11.1 × weight + 8.4 × height − 540)
-  const rmrFemale = effectiveEditing ? calcRMR(effectiveWeight, effectiveHeight, 540) : (displayData?.rmrFemale ?? null);
-  const teeFemale = effectiveEditing ? calcTEE(rmrFemale, livePal) : (displayData?.teeFemale ?? null);
-  const targetRmrFemale = effectiveEditing ? calcRMR(effectiveTargetWeight, effectiveHeight, 540) : (displayData?.targetRmrFemale ?? null);
-  const targetTeeFemale = effectiveEditing ? calcTEE(targetRmrFemale, livePal) : (displayData?.targetTeeFemale ?? null);
+  const rmrFemale = calcRMR(displayWeight, displayHeight, 540);
+  const teeFemale = calcTEE(rmrFemale, livePal);
+  const targetRmrFemale = calcRMR(displayTargetWeight, displayHeight, 540);
+  const targetTeeFemale = calcTEE(targetRmrFemale, livePal);
 
   const handleSave = async () => {
     try {
@@ -429,16 +467,6 @@ export default function NutritionRequirements({
     setIsEditing(false);
     setSaveError("");
     if (nutritionRequirementsData) setEditForm(toEditForm(nutritionRequirementsData));
-  };
-
-  const PrevVal = ({ val }: { val: string | number | null | undefined }) => {
-    if (!isNewConsultation || !prevNutritionRequirementsData || val == null || val === "") return null;
-    return (
-      <p className="text-xs text-gray-400 italic mt-0.5 flex items-center gap-1">
-        <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>
-        Prev: {val}
-      </p>
-    );
   };
 
   if (loading) {
@@ -538,10 +566,9 @@ export default function NutritionRequirements({
                   style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
-              ) : (
+                ) : (
                 <div className="text-right">
                   <span className="font-medium">{fmt(displayData?.minCarbGkg ?? null)}</span>
-                  <PrevVal val={prevNutritionRequirementsData?.minCarbGkg != null ? fmt(prevNutritionRequirementsData.minCarbGkg) : null} />
                 </div>
               )}
             </div>
@@ -567,10 +594,9 @@ export default function NutritionRequirements({
                   style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
-              ) : (
+                ) : (
                 <div className="text-right">
                   <span className="font-medium">{fmt(displayData?.maxCarbGkg ?? null)}</span>
-                  <PrevVal val={prevNutritionRequirementsData?.maxCarbGkg != null ? fmt(prevNutritionRequirementsData.maxCarbGkg) : null} />
                 </div>
               )}
             </div>
@@ -597,10 +623,9 @@ export default function NutritionRequirements({
                   style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
-              ) : (
+                ) : (
                 <div className="text-right">
                   <span className="font-medium">{fmt(displayData?.minProteinGkg ?? null)}</span>
-                  <PrevVal val={prevNutritionRequirementsData?.minProteinGkg != null ? fmt(prevNutritionRequirementsData.minProteinGkg) : null} />
                 </div>
               )}
             </div>
@@ -626,10 +651,9 @@ export default function NutritionRequirements({
                   style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
-              ) : (
+                ) : (
                 <div className="text-right">
                   <span className="font-medium">{fmt(displayData?.maxProteinGkg ?? null)}</span>
-                  <PrevVal val={prevNutritionRequirementsData?.maxProteinGkg != null ? fmt(prevNutritionRequirementsData.maxProteinGkg) : null} />
                 </div>
               )}
             </div>
@@ -656,10 +680,9 @@ export default function NutritionRequirements({
                   style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
-              ) : (
+                ) : (
                 <div className="text-right">
                   <span className="font-medium">{fmt(displayData?.minFatGkg ?? null)}</span>
-                  <PrevVal val={prevNutritionRequirementsData?.minFatGkg != null ? fmt(prevNutritionRequirementsData.minFatGkg) : null} />
                 </div>
               )}
             </div>
@@ -685,10 +708,9 @@ export default function NutritionRequirements({
                   style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
                 />
-              ) : (
+                ) : (
                 <div className="text-right">
                   <span className="font-medium">{fmt(displayData?.maxFatGkg ?? null)}</span>
-                  <PrevVal val={prevNutritionRequirementsData?.maxFatGkg != null ? fmt(prevNutritionRequirementsData.maxFatGkg) : null} />
                 </div>
               )}
             </div>
@@ -724,7 +746,6 @@ export default function NutritionRequirements({
                 ) : (
                   <div className="text-right">
                     <span className="font-medium">{fmt(displayData?.estimatedCarbG ?? null)}</span>
-                    <PrevVal val={prevNutritionRequirementsData?.estimatedCarbG != null ? fmt(prevNutritionRequirementsData.estimatedCarbG) : null} />
                   </div>
                 )}
               </div>
@@ -756,7 +777,6 @@ export default function NutritionRequirements({
                 ) : (
                   <div className="text-right">
                     <span className="font-medium">{fmt(displayData?.estimatedProteinG ?? null)}</span>
-                    <PrevVal val={prevNutritionRequirementsData?.estimatedProteinG != null ? fmt(prevNutritionRequirementsData.estimatedProteinG) : null} />
                   </div>
                 )}
               </div>
@@ -788,7 +808,6 @@ export default function NutritionRequirements({
                 ) : (
                   <div className="text-right">
                     <span className="font-medium">{fmt(displayData?.estimatedFatG ?? null)}</span>
-                    <PrevVal val={prevNutritionRequirementsData?.estimatedFatG != null ? fmt(prevNutritionRequirementsData.estimatedFatG) : null} />
                   </div>
                 )}
               </div>
@@ -819,7 +838,6 @@ export default function NutritionRequirements({
                 ) : (
                   <div>
                     <p className="text-sm text-gray-900">{displayData?.commentsWeekday || "—"}</p>
-                    <PrevVal val={prevNutritionRequirementsData?.commentsWeekday} />
                   </div>
                 )}
               </div>
@@ -843,7 +861,6 @@ export default function NutritionRequirements({
                 ) : (
                   <div>
                     <p className="text-sm text-gray-900">{displayData?.commentsWeekend || "—"}</p>
-                    <PrevVal val={prevNutritionRequirementsData?.commentsWeekend} />
                   </div>
                 )}
               </div>
@@ -869,7 +886,6 @@ export default function NutritionRequirements({
           ) : (
             <div className="text-right">
               <span className="font-medium">{fmt(displayData?.pal ?? null, 2)}</span>
-              <PrevVal val={prevNutritionRequirementsData?.pal != null ? fmt(prevNutritionRequirementsData.pal, 2) : null} />
             </div>
           )}
         </div>
@@ -980,7 +996,6 @@ export default function NutritionRequirements({
           ) : (
             <div>
               <p className="text-sm text-gray-900">{displayData?.otherRemarks || "—"}</p>
-              <PrevVal val={prevNutritionRequirementsData?.otherRemarks} />
             </div>
           )}
         </div>
@@ -1013,7 +1028,7 @@ export default function NutritionRequirements({
               onClick={handleSave}
               className={`px-4 py-2 text-white text-sm rounded ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
             >
-              {isSaved ? "Saved" : "Save"}
+              {isSaved ? "Draft Saved" : "Save"}
             </button>
           </div>
         </div>

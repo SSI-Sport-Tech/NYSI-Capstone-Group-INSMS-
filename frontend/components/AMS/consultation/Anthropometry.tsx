@@ -17,6 +17,7 @@ interface AnthropometryProps {
     height: number | null,
     targetWeight: number | null,
   ) => void;
+  onStepStatusChange?: (status: "default" | "dirty" | "saved") => void;
 }
 
 interface AnthropometryData {
@@ -90,6 +91,7 @@ export default function Anthropometry({
   readOnly,
   prevSessionId,
   onAnthroChange,
+  onStepStatusChange,
 }: AnthropometryProps) {
   const [bmiLightbox, setBmiLightbox] = useState<string | null>(null);
   const [anthropometryData, setAnthropometryData] =
@@ -124,6 +126,10 @@ export default function Anthropometry({
   useEffect(() => {
     setIsSaved(false);
   }, [editForm]);
+
+  useEffect(() => {
+    onStepStatusChange?.(isSaved ? "saved" : effectiveEditing ? "dirty" : "default");
+  }, [effectiveEditing, isSaved, onStepStatusChange]);
 
   // Notify parent of live weight/height/targetWeight as user types
   useEffect(() => {
@@ -672,7 +678,7 @@ export default function Anthropometry({
             onClick={handleSave}
             className={`px-3 py-1 text-white text-sm rounded ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
           >
-            {isSaved ? "Saved" : "Save"}
+            {isSaved ? "Draft Saved" : "Save"}
           </button>
         </div>
 
@@ -706,25 +712,6 @@ export default function Anthropometry({
   const displayData = activeTab === "previous" ? prevData : anthropometryData;
 
   const AnthroField = ({ label, value, suffix, span2 }: { label: string; value: string | number | null | undefined; suffix?: string; span2?: boolean }) => {
-    // Inline prev hint only for new-consultation mode (not tab mode)
-    const prevVal = isNewConsultation && prevData ? (prevData as Record<string, string | number | null>)[
-      label === "Height" ? "height" :
-      label === "Weight" ? "weight" :
-      label === "BMI" ? "bmi" :
-      label === "BMI Category" ? "bmi_category" :
-      label === "Fat Mass" ? "fat_mass" :
-      label === "Fat Mass (%)" ? "fat_mass_percentage" :
-      label === "Skeletal Muscle Mass" ? "skeletal_muscle_mass" :
-      label === "Skeletal Muscle Mass (%)" ? "skeletal_muscle_mass_percentage" :
-      label === "Sum of 8 Skinfold" ? "sum_of_skinfold" :
-      label === "Target Weight" ? "target_weight" :
-      label === "Target BMI" ? "target_bmi" :
-      label === "Mother's Height" ? "mothers_height" :
-      label === "Father's Height" ? "fathers_height" :
-      label === "Athlete's Potential Adult Height" ? "athlete_potential_adult_height" :
-      label === "Date Recorded" ? "date_recorded" :
-      label === "Measured By" ? "measured_by" : ""
-    ] : null;
     return (
       <div className={`flex justify-between items-start${span2 ? " col-span-2" : ""}`}>
         <span className="text-gray-600 text-sm">{label}:</span>
@@ -732,12 +719,6 @@ export default function Anthropometry({
           <span className="font-medium text-gray-900 text-sm">
             {value != null ? `${value}${suffix ? ` ${suffix}` : ""}` : "N/A"}
           </span>
-          {prevVal != null && (
-            <p className="text-xs text-gray-400 italic mt-0.5 flex items-center gap-1">
-              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>
-              Prev: {prevVal}{suffix ? ` ${suffix}` : ""}
-            </p>
-          )}
         </div>
       </div>
     );

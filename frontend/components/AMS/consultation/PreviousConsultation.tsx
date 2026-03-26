@@ -18,6 +18,7 @@ interface PreviousConsultationProps {
   isEditMode?: boolean;
   /** Previous session ID for the Previous Session tab */
   prevSessionId?: string;
+  onStepStatusChange?: (status: "default" | "dirty" | "saved") => void;
 }
 
 interface ConsultationData {
@@ -89,7 +90,7 @@ const PreviousConsultation = forwardRef<
   PreviousConsultationHandle,
   PreviousConsultationProps
 >(function PreviousConsultation(
-  { athleteId, sessionId, isNewConsultation, ensureSession, readOnly, embedded, isEditMode, prevSessionId },
+  { athleteId, sessionId, isNewConsultation, ensureSession, readOnly, embedded, isEditMode, prevSessionId, onStepStatusChange },
   ref,
 ) {
   const [consultationData, setConsultationData] =
@@ -107,6 +108,10 @@ const PreviousConsultation = forwardRef<
   useEffect(() => {
     setIsSaved(false);
   }, [form]);
+
+  useEffect(() => {
+    onStepStatusChange?.(isSaved ? "saved" : (isNewConsultation || isEditMode) ? "dirty" : "default");
+  }, [isEditMode, isNewConsultation, isSaved, onStepStatusChange]);
 
   // Refs so closures always see current values
   const formRef = useRef(form);
@@ -631,7 +636,7 @@ const PreviousConsultation = forwardRef<
                 disabled={saving}
                 className={`px-4 py-2 text-white text-sm rounded disabled:opacity-50 ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
               >
-                {saving ? "Saving..." : isSaved ? "Saved" : "Save"}
+                {saving ? "Saving..." : isSaved ? "Draft Saved" : "Save"}
               </button>
             </div>
           </div>

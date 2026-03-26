@@ -77,6 +77,7 @@ interface TrainingScheduleProps {
   ensureSession?: () => Promise<string>;
   readOnly?: boolean;
   prevSessionId?: string;
+  onStepStatusChange?: (status: "default" | "dirty" | "saved") => void;
 }
 
 // ============================================================
@@ -757,6 +758,7 @@ export default function TrainingSchedule({
   ensureSession,
   readOnly,
   prevSessionId,
+  onStepStatusChange,
 }: TrainingScheduleProps) {
   const [isEditing, setIsEditing] = useState(false);
   const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
@@ -775,6 +777,10 @@ export default function TrainingSchedule({
   useEffect(() => {
     setIsSaved(false);
   }, [editForm]);
+
+  useEffect(() => {
+    onStepStatusChange?.(isSaved ? "saved" : effectiveEditing ? "dirty" : "default");
+  }, [effectiveEditing, isSaved, onStepStatusChange]);
 
   // Load current session data
   useEffect(() => {
@@ -991,7 +997,7 @@ export default function TrainingSchedule({
               onClick={handleSave}
               className={`px-4 py-2 text-white text-sm rounded ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
             >
-              {isSaved ? "Saved" : "Save"}
+              {isSaved ? "Draft Saved" : "Save"}
             </button>
           </div>
         </div>
