@@ -60,11 +60,11 @@ export async function getAthleteById(athleteId) {
     `;
 
   // 2. Fetch Target Event from Latest Consultation
-  // Joins Sessions -> Training Schedule to get 'upcoming_major_competitions'
+  // Joins Sessions -> Session Training to get 'upcoming_major_competitions'
   const targetEventQuery = `
-        SELECT ts.upcoming_major_competitions AS target_event, s.date_of_consult
+        SELECT st.upcoming_major_competitions AS target_event, s.date_of_consult
         FROM consultation.sessions s
-        JOIN consultation.session_training_schedule ts ON s.id = ts.sessions_id
+        JOIN consultation.session_training st ON st.sessions_id = s.id
         WHERE s.athlete_id = $1
         ORDER BY s.date_of_consult DESC
         LIMIT 1

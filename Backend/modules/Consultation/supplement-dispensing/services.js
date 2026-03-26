@@ -23,7 +23,7 @@ export class InsufficientStockError extends Error {
 const PRESCRIPTION_SELECT = `
     SELECT
         sp.id,
-        sp.sessions_id,
+        spn.sessions_id,
         sp.batch_id,
         ib.batch_number,
         ib.batch_price,
@@ -32,6 +32,7 @@ const PRESCRIPTION_SELECT = `
         s.supplement_name,
         s.supplement_brand,
         s.batch_testing_org_id,
+        btol.batch_testing_org,
         it.quantity AS prescribed_quantity,
         sp.dosage,
         sp.dosage_unit,
@@ -39,12 +40,14 @@ const PRESCRIPTION_SELECT = `
         sp.start_date,
         sp.projected_end_date,
         sp.follow_up_required,
-        sp.other_remarks,
+        spn.other_remarks,
         sp.prescriber,
         sp.prescription_date
     FROM consultation.session_prescription sp
+    LEFT JOIN consultation.session_prescription_note spn ON sp.session_prescription_note_id = spn.id
     LEFT JOIN sss.inventory_batch ib ON sp.batch_id = ib.id
     LEFT JOIN sss.supplement s ON ib.supplement_id = s.id
+    LEFT JOIN sss.batch_testing_org_lookup btol ON s.batch_testing_org_id = btol.id
     LEFT JOIN sss.inventory_ticket it ON it.prescription_id = sp.id
 `;
 
@@ -111,7 +114,7 @@ async function recalculateBatchStatus(client, batchId) {
  */
 export async function getSupplementDispensingBySessionId(sessionId) {
     const result = await pool.query(
-        `${PRESCRIPTION_SELECT} WHERE sp.sessions_id = $1 ORDER BY sp.id`,
+        `${PRESCRIPTION_SELECT} WHERE spn.sessions_id = $1 ORDER BY sp.id`,
         [sessionId]
     );
     return result.rows;
@@ -148,6 +151,34 @@ export async function getSupplementDispensingById(id) {
  */
 export async function createSupplementDispensing(data, userId) {
     return withUserContext(userId, async (client) => {
+        let prescriptionNoteId;
+
+        const noteResult = await client.query(`
+            SELECT id
+            FROM consultation.session_prescription_note
+            WHERE sessions_id = $1
+            LIMIT 1
+        `, [data.sessions_id]);
+
+        if (noteResult.rows.length > 0) {
+            prescriptionNoteId = noteResult.rows[0].id;
+
+            if (data.other_remarks !== undefined) {
+                await client.query(`
+                    UPDATE consultation.session_prescription_note
+                    SET other_remarks = $1
+                    WHERE id = $2
+                `, [data.other_remarks ?? null, prescriptionNoteId]);
+            }
+        } else {
+            const createdNote = await client.query(`
+                INSERT INTO consultation.session_prescription_note (sessions_id, other_remarks)
+                VALUES ($1, $2)
+                RETURNING id
+            `, [data.sessions_id, data.other_remarks ?? null]);
+            prescriptionNoteId = createdNote.rows[0].id;
+        }
+
         // 1. Lock the batch row and read initial quantity
         const batchResult = await client.query(`
             SELECT batch_initial_quantity
@@ -176,14 +207,14 @@ export async function createSupplementDispensing(data, userId) {
         // 4. Create prescription row
         const prescriptionResult = await client.query(`
             INSERT INTO consultation.session_prescription (
-                sessions_id, batch_id,
+                session_prescription_note_id, batch_id,
                 dosage, dosage_unit, dosage_frequency,
-                start_date, projected_end_date, follow_up_required, other_remarks,
+                start_date, projected_end_date, follow_up_required,
                 prescriber, prescription_date
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_DATE)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_DATE)
             RETURNING id
         `, [
-            data.sessions_id,
+            prescriptionNoteId,
             data.batch_id,
             data.dosage ?? null,
             data.dosage_unit ?? null,
@@ -191,7 +222,6 @@ export async function createSupplementDispensing(data, userId) {
             data.start_date ?? null,
             data.projected_end_date ?? null,
             data.follow_up_required ?? false,
-            data.other_remarks ?? null,
             data.prescriber ?? null,
         ]);
         const prescriptionId = prescriptionResult.rows[0].id;
@@ -256,7 +286,6 @@ export async function updateSupplementDispensing(id, updateData, userId) {
             start_date: updateData.start_date,
             projected_end_date: updateData.projected_end_date,
             follow_up_required: updateData.follow_up_required,
-            other_remarks: updateData.other_remarks,
         };
 
         const fields = [];
@@ -278,6 +307,17 @@ export async function updateSupplementDispensing(id, updateData, userId) {
                 SET ${fields.join(', ')}
                 WHERE id = $${paramCounter}
             `, values);
+            didUpdate = true;
+        }
+
+        if (updateData.other_remarks !== undefined) {
+            await client.query(`
+                UPDATE consultation.session_prescription_note spn
+                SET other_remarks = $1
+                FROM consultation.session_prescription sp
+                WHERE sp.id = $2
+                  AND sp.session_prescription_note_id = spn.id
+            `, [updateData.other_remarks ?? null, id]);
             didUpdate = true;
         }
 

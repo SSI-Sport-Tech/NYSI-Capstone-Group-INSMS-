@@ -15,7 +15,7 @@ const router = express.Router();
  *     summary: Get Nutrition Diagnosis
  *     description: |
  *       Get the consultation details card data for a specific session.
- *       Returns session_note fields with joined nutrition diagnosis names.
+ *       Returns the current text-based fields stored on `consultation.session_note`.
  *       If the session exists but no note row exists yet, returns null fields.
  *     tags: [Consultation - Nutrition Diagnosis Summary]
  *     parameters:
@@ -47,53 +47,13 @@ const router = express.Router();
  *                     main_nutrition_diagnosis:
  *                       type: string
  *                       nullable: true
- *                     carbohydrates_review_id:
- *                       type: string
- *                       format: uuid
- *                       nullable: true
- *                     carbohydrates_review_diagnosis:
+ *                     carbohydrates_review:
  *                       type: string
  *                       nullable: true
- *                     protein_review_id:
- *                       type: string
- *                       format: uuid
- *                       nullable: true
- *                     protein_review_diagnosis:
+ *                     protein_review:
  *                       type: string
  *                       nullable: true
- *                     fat_review_id:
- *                       type: string
- *                       format: uuid
- *                       nullable: true
- *                     fat_review_diagnosis:
- *                       type: string
- *                       nullable: true
- *                     fibre_review_id:
- *                       type: string
- *                       format: uuid
- *                       nullable: true
- *                     fibre_review_diagnosis:
- *                       type: string
- *                       nullable: true
- *                     iron_review_id:
- *                       type: string
- *                       format: uuid
- *                       nullable: true
- *                     iron_review_diagnosis:
- *                       type: string
- *                       nullable: true
- *                     calcium_review_id:
- *                       type: string
- *                       format: uuid
- *                       nullable: true
- *                     calcium_review_diagnosis:
- *                       type: string
- *                       nullable: true
- *                     micronutrients_review_id:
- *                       type: string
- *                       format: uuid
- *                       nullable: true
- *                     micronutrients_review_diagnosis:
+ *                     fat_review:
  *                       type: string
  *                       nullable: true
  *                     other_review:
@@ -113,20 +73,9 @@ const router = express.Router();
  *                 id: "b3f1e2d4-a5c6-7890-bcde-f01234567890"
  *                 sessions_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
  *                 main_nutrition_diagnosis: "Excessive carbohydrate intake related to frequent consumption of sugary snacks and large portions of white rice as evidenced by a 24-hour diet recall showing 400g of carbs and a fasting blood glucose of 7.2 mmol/L."
- *                 carbohydrates_review_id: "019c4c05-c20e-76bf-84b9-38a6491d6f99"
- *                 carbohydrates_review_diagnosis: "Adequate"
- *                 protein_review_id: "019c4c05-c213-7e21-99d8-e92502c15119"
- *                 protein_review_diagnosis: "Adequate"
- *                 fat_review_id: "019c4c05-c215-76a5-8731-e7f9dd22804d"
- *                 fat_review_diagnosis: "Adequate"
- *                 fibre_review_id: "019c4c05-c215-735a-bc36-5f04b4ade82b"
- *                 fibre_review_diagnosis: "Adequate"
- *                 iron_review_id: "019c4c05-c216-7e84-ae47-5f4acf0de8ab"
- *                 iron_review_diagnosis: "Adequate"
- *                 calcium_review_id: "019c4c05-c216-72ce-98de-6ad756a4f29c"
- *                 calcium_review_diagnosis: "Adequate"
- *                 micronutrients_review_id: "019c4c05-c216-7143-8f34-75efa82f1e04"
- *                 micronutrients_review_diagnosis: "Adequate"
+ *                 carbohydrates_review: "Adequate intake for current training load."
+ *                 protein_review: "Slightly below target on rest days."
+ *                 fat_review: "Adequate overall."
  *                 other_review: "Supplement Intake"
  *                 follow_up_note: "Adding a digestive enzyme prior to largest meal of the day to assist with protein absorption."
  *                 intervention_note: "The initial dosage of Magnesium caused minor GI distress. Patient transitioned to a glycinate form with much better tolerance."
@@ -147,9 +96,9 @@ router.get('/nutrition-diagnosis-summary/:sessionId', controller.getConsultation
  *     summary: Create Nutrition Diagnosis
  *     description: |
  *       Create or update consultation details for a session (upsert pattern).
- *       If a session_note row already exists (e.g. created by consultation-session with objective),
- *       the existing row is updated. Otherwise a new row is inserted.
- *       Validates that all review_id FKs exist and are active in nutrition_diagnosis_lookup.
+ *       If a session_note row already exists, the existing row is updated.
+ *       Otherwise a new row is inserted.
+ *       Review fields are plain text columns on `consultation.session_note`.
  *     tags: [Consultation - Nutrition Diagnosis Summary]
  *     security:
  *       - bearerAuth: []
@@ -169,34 +118,18 @@ router.get('/nutrition-diagnosis-summary/:sessionId', controller.getConsultation
  *               main_nutrition_diagnosis:
  *                 type: string
  *                 description: Free text main nutrition diagnosis
- *               carbohydrates_review_id:
+ *               carbohydrates_review:
  *                 type: string
- *                 format: uuid
- *                 description: FK to nutrition_diagnosis_lookup (CARB category)
- *               protein_review_id:
+ *                 nullable: true
+ *                 description: Free-text carbohydrate review
+ *               protein_review:
  *                 type: string
- *                 format: uuid
- *                 description: FK to nutrition_diagnosis_lookup (PROTEIN category)
- *               fat_review_id:
+ *                 nullable: true
+ *                 description: Free-text protein review
+ *               fat_review:
  *                 type: string
- *                 format: uuid
- *                 description: FK to nutrition_diagnosis_lookup (FAT category)
- *               fibre_review_id:
- *                 type: string
- *                 format: uuid
- *                 description: FK to nutrition_diagnosis_lookup (FIBRE category)
- *               iron_review_id:
- *                 type: string
- *                 format: uuid
- *                 description: FK to nutrition_diagnosis_lookup (IRON category)
- *               calcium_review_id:
- *                 type: string
- *                 format: uuid
- *                 description: FK to nutrition_diagnosis_lookup (CALCIUM category)
- *               micronutrients_review_id:
- *                 type: string
- *                 format: uuid
- *                 description: FK to nutrition_diagnosis_lookup (MICRO category)
+ *                 nullable: true
+ *                 description: Free-text fat review
  *               other_review:
  *                 type: string
  *                 description: Free text "Other" field
@@ -209,13 +142,9 @@ router.get('/nutrition-diagnosis-summary/:sessionId', controller.getConsultation
  *           example:
  *             sessions_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
  *             main_nutrition_diagnosis: "Inadequate carbohydrate intake for training load"
- *             carbohydrates_review_id: "019c4c05-c20e-76bf-84b9-38a6491d6f99"
- *             protein_review_id: "019c4c05-c213-7e21-99d8-e92502c15119"
- *             fat_review_id: "019c4c05-c215-76a5-8731-e7f9dd22804d"
- *             fibre_review_id: "019c4c05-c215-735a-bc36-5f04b4ade82b"
- *             iron_review_id: "019c4c05-c216-7e84-ae47-5f4acf0de8ab"
- *             calcium_review_id: "019c4c05-c216-72ce-98de-6ad756a4f29c"
- *             micronutrients_review_id: "019c4c05-c216-7143-8f34-75efa82f1e04"
+ *             carbohydrates_review: "Below target on high-volume days"
+ *             protein_review: "Adequate"
+ *             fat_review: "Adequate"
  *             other_review: "No other concerns"
  *             follow_up_note: "Review in 2 weeks"
  *             intervention_note: "Increase carb intake by 50g/day"
@@ -237,15 +166,10 @@ router.get('/nutrition-diagnosis-summary/:sessionId', controller.getConsultation
  *               data:
  *                 id: "b3f1e2d4-a5c6-7890-bcde-f01234567890"
  *                 sessions_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
- *                 consultation_objective: null
  *                 main_nutrition_diagnosis: "Excessive carbohydrate intake related to frequent consumption of sugary snacks and large portions of white rice as evidenced by a 24-hour diet recall showing 400g of carbs and a fasting blood glucose of 7.2 mmol/L."
- *                 carbohydrates_review_id: "019c4c05-c20e-76bf-84b9-38a6491d6f99"
- *                 protein_review_id: "019c4c05-c213-7e21-99d8-e92502c15119"
- *                 fat_review_id: "019c4c05-c215-76a5-8731-e7f9dd22804d"
- *                 fibre_review_id: "019c4c05-c215-735a-bc36-5f04b4ade82b"
- *                 iron_review_id: "019c4c05-c216-7e84-ae47-5f4acf0de8ab"
- *                 calcium_review_id: "019c4c05-c216-72ce-98de-6ad756a4f29c"
- *                 micronutrients_review_id: "019c4c05-c216-7143-8f34-75efa82f1e04"
+ *                 carbohydrates_review: "Adequate intake for current training load."
+ *                 protein_review: "Slightly below target on rest days."
+ *                 fat_review: "Adequate overall."
  *                 other_review: "Supplement Intake"
  *                 follow_up_note: "Adding a digestive enzyme prior to largest meal of the day to assist with protein absorption."
  *                 intervention_note: "The initial dosage of Magnesium caused minor GI distress. Patient transitioned to a glycinate form with much better tolerance."
@@ -266,9 +190,8 @@ router.post('/nutrition-diagnosis-summary', authenticateToken, controller.create
  *     summary: Update Nutrition Diagnosis
  *     description: |
  *       Update consultation details for a session. All fields are optional — only provided fields are modified.
- *       Uses upsert pattern: if session_note doesn't exist yet, inserts; if exists, updates.
- *       sessions_id and consultation_objective cannot be changed through this endpoint.
- *       Validates review_id FKs if provided.
+ *       Uses upsert pattern: if session_note doesn't exist yet, inserts; if it exists, updates.
+ *       `sessions_id` cannot be changed through this endpoint.
  *     tags: [Consultation - Nutrition Diagnosis Summary]
  *     security:
  *       - bearerAuth: []
@@ -289,33 +212,14 @@ router.post('/nutrition-diagnosis-summary', authenticateToken, controller.create
  *             properties:
  *               main_nutrition_diagnosis:
  *                 type: string
- *               carbohydrates_review_id:
+ *               carbohydrates_review:
  *                 type: string
- *                 format: uuid
  *                 nullable: true
- *               protein_review_id:
+ *               protein_review:
  *                 type: string
- *                 format: uuid
  *                 nullable: true
- *               fat_review_id:
+ *               fat_review:
  *                 type: string
- *                 format: uuid
- *                 nullable: true
- *               fibre_review_id:
- *                 type: string
- *                 format: uuid
- *                 nullable: true
- *               iron_review_id:
- *                 type: string
- *                 format: uuid
- *                 nullable: true
- *               calcium_review_id:
- *                 type: string
- *                 format: uuid
- *                 nullable: true
- *               micronutrients_review_id:
- *                 type: string
- *                 format: uuid
  *                 nullable: true
  *               other_review:
  *                 type: string
@@ -327,13 +231,9 @@ router.post('/nutrition-diagnosis-summary', authenticateToken, controller.create
  *                 type: string
  *           example:
  *             main_nutrition_diagnosis: "Excessive carbohydrate intake related to frequent consumption of sugary snacks and large portions of white rice as evidenced by a 24-hour diet recall showing 400g of carbs and a fasting blood glucose of 7.2 mmol/L."
- *             carbohydrates_review_id: "019c4c05-c20e-76bf-84b9-38a6491d6f99"
- *             protein_review_id: "019c4c05-c213-7e21-99d8-e92502c15119"
- *             fat_review_id: "019c4c05-c215-76a5-8731-e7f9dd22804d"
- *             fibre_review_id: "019c4c05-c215-735a-bc36-5f04b4ade82b"
- *             iron_review_id: "019c4c05-c216-7e84-ae47-5f4acf0de8ab"
- *             calcium_review_id: "019c4c05-c216-72ce-98de-6ad756a4f29c"
- *             micronutrients_review_id: "019c4c05-c216-7143-8f34-75efa82f1e04"
+ *             carbohydrates_review: "Adequate intake for current training load."
+ *             protein_review: "Slightly below target on rest days."
+ *             fat_review: "Adequate overall."
  *             other_review: "Supplement Intake"
  *             follow_up_note: "Adding a digestive enzyme prior to largest meal of the day to assist with protein absorption."
  *             intervention_note: "The initial dosage of Magnesium caused minor GI distress. Patient transitioned to a glycinate form with much better tolerance."
@@ -355,15 +255,10 @@ router.post('/nutrition-diagnosis-summary', authenticateToken, controller.create
  *               data:
  *                 id: "b3f1e2d4-a5c6-7890-bcde-f01234567890"
  *                 sessions_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
- *                 consultation_objective: null
  *                 main_nutrition_diagnosis: "Excessive carbohydrate intake related to frequent consumption of sugary snacks and large portions of white rice as evidenced by a 24-hour diet recall showing 400g of carbs and a fasting blood glucose of 7.2 mmol/L."
- *                 carbohydrates_review_id: "019c4c05-c20e-76bf-84b9-38a6491d6f99"
- *                 protein_review_id: "019c4c05-c213-7e21-99d8-e92502c15119"
- *                 fat_review_id: "019c4c05-c215-76a5-8731-e7f9dd22804d"
- *                 fibre_review_id: "019c4c05-c215-735a-bc36-5f04b4ade82b"
- *                 iron_review_id: "019c4c05-c216-7e84-ae47-5f4acf0de8ab"
- *                 calcium_review_id: "019c4c05-c216-72ce-98de-6ad756a4f29c"
- *                 micronutrients_review_id: "019c4c05-c216-7143-8f34-75efa82f1e04"
+ *                 carbohydrates_review: "Adequate intake for current training load."
+ *                 protein_review: "Slightly below target on rest days."
+ *                 fat_review: "Adequate overall."
  *                 other_review: "Supplement Intake"
  *                 follow_up_note: "Adding a digestive enzyme prior to largest meal of the day to assist with protein absorption."
  *                 intervention_note: "The initial dosage of Magnesium caused minor GI distress. Patient transitioned to a glycinate form with much better tolerance."
