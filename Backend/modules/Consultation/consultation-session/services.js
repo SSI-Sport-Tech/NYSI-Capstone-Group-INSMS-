@@ -227,7 +227,9 @@ export async function getAllConsultationSessions(athleteId) {
         LEFT JOIN LATERAL (
             SELECT sp2.dosage, sp2.dosage_unit, sp2.dosage_frequency, sp2.batch_id
             FROM consultation.session_prescription sp2
-            WHERE sp2.sessions_id = s.id
+            JOIN consultation.session_prescription_note spn
+              ON sp2.session_prescription_note_id = spn.id
+            WHERE spn.sessions_id = s.id
             LIMIT 1
         ) sp ON true
         LEFT JOIN sss.inventory_batch ib ON sp.batch_id = ib.id
@@ -241,7 +243,7 @@ export async function getAllConsultationSessions(athleteId) {
 }
 
 /**
- * Get upcoming consultation sessions (date_of_consult >= today), ordered by date ASC
+ * Get upcoming consultation sessions that have not started yet and are not finished/cancelled.
  * @param {number} limit - Max rows to return (default 20)
  * @returns {Promise<Array>}
  */
@@ -267,7 +269,17 @@ export async function getUpcomingConsultationSessions(limit = 20) {
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
         LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
-        WHERE s.date_of_consult >= CURRENT_DATE
+        WHERE s.status NOT IN ('completed', 'cancelled')
+          AND (
+              s.date_of_consult > CURRENT_DATE
+              OR (
+                  s.date_of_consult = CURRENT_DATE
+                  AND (
+                      s.time_of_consult IS NULL
+                      OR s.time_of_consult >= CURRENT_TIME
+                  )
+              )
+          )
         ORDER BY s.date_of_consult ASC, s.time_of_consult ASC NULLS LAST
         LIMIT $1
     `;
