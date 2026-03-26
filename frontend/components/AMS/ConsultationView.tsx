@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Check, Eye, Pencil, Menu, X } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   consultationApi,
   consultationLookupApi,
@@ -19,24 +19,19 @@ import NewSupplementDispensingForm from "./consultation/NewSupplementDispensingF
 import ScheduledSessionSelectorModal, {
   type ScheduledSession,
 } from "./consultation/ScheduledSessionSelectorModal";
-
-interface LatestConsultation {
-  id: string;
-  athlete_id: string;
-  athlete_name_abbr: string;
-  date_of_consult: string;
-  date_of_next_follow_up: string;
-  time_of_next_follow_up: string;
-  nutritionist_name: string;
-  consultation_objective_id: string | null;
-  consultation_objective: string | null;
-  type_of_consult: string;
-  type_of_consult_id: string;
-  venue: string;
-  time_of_consult: string;
-  title_description: string;
-  is_scheduled_booking?: boolean;
-}
+import ConsultationStepSidebar from "./consultation/ConsultationStepSidebar";
+import ConsultationDetailsStep from "./consultation/ConsultationDetailsStep";
+import {
+  EMPTY_UPDATE_FORM,
+  hasUpdateFormData,
+  normalizeUpdateForm,
+  STEPS,
+  TOTAL_STEPS,
+  type ConsultType,
+  type LatestConsultation,
+  type StepStatus,
+  type UpdateForm,
+} from "./consultation/consultationViewTypes";
 
 interface ConsultationViewProps {
   athleteId: string;
@@ -45,84 +40,6 @@ interface ConsultationViewProps {
   initialSessionId?: string;
 }
 
-interface ConsultType {
-  id: string;
-  type_of_consult: string;
-}
-
-const EMPTY_UPDATE_FORM = {
-  type_of_consult_id: "",
-  title_description: "",
-  venue: "",
-  date_of_consult: "",
-  time_of_consult: "",
-  date_of_next_follow_up: "",
-  time_of_next_follow_up: "",
-  consultation_objective_id: "",
-};
-type UpdateForm = typeof EMPTY_UPDATE_FORM;
-
-function normalizeUpdateForm(form: UpdateForm): UpdateForm {
-  return {
-    type_of_consult_id: form.type_of_consult_id || "",
-    title_description: form.title_description || "",
-    venue: form.venue || "",
-    date_of_consult: form.date_of_consult || "",
-    time_of_consult: form.time_of_consult || "",
-    date_of_next_follow_up: form.date_of_next_follow_up || "",
-    time_of_next_follow_up: form.time_of_next_follow_up || "",
-    consultation_objective_id: form.consultation_objective_id || "",
-  };
-}
-
-function hasUpdateFormData(form: UpdateForm): boolean {
-  return Object.values(normalizeUpdateForm(form)).some((value) => value !== "");
-}
-
-const STEPS = [
-  { id: 1, label: "Consultation Details" },
-  { id: 2, label: "Anthropometry" },
-  { id: 3, label: "Medical History" },
-  { id: 4, label: "Training Schedule" },
-  { id: 5, label: "Meal Logs" },
-  { id: 6, label: "Nutrition Requirements" },
-  { id: 7, label: "Nutrition Diagnosis Summary" },
-  { id: 8, label: "Actionables" },
-  { id: 9, label: "Supplement Dispensing" },
-];
-
-const TOTAL_STEPS = STEPS.length;
-
-type StepStatus = "default" | "viewing" | "dirty" | "saved";
-
-function StepIcon({ stepId, status }: { stepId: number; status: StepStatus }) {
-  if (status === "saved") {
-    return (
-      <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center shrink-0">
-        <Check className="w-3.5 h-3.5 text-white" />
-      </div>
-    );
-  }
-  if (status === "dirty") {
-    return (
-      <div className="w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
-        <Pencil className="w-3.5 h-3.5 text-white" />
-      </div>
-    );
-  }
-  if (status === "viewing") {
-    return (
-      <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
-        <Eye className="w-3.5 h-3.5 text-white" />
-      </div>
-    );
-  }
-  return (
-    <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
-      <span className="text-gray-500 text-xs font-medium">{stepId}</span>
-    </div>
-  );
-}
 
 export default function ConsultationView({
   athleteId,
@@ -683,193 +600,32 @@ export default function ConsultationView({
     );
   }
 
-  // ─── Time picker helper ────────────────────────────────────────────────────
-
-  const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
-  const MINUTE_OPTIONS = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
-
-  const renderTimePicker = (value: string, onChange: (val: string) => void) => {
-    const [curH = "", curM = ""] = value ? value.split(":") : [];
-    const setH = (h: string) => { if (!h) { onChange(""); return; } onChange(`${h}:${curM || "00"}`); };
-    const setM = (m: string) => { if (!m) { onChange(""); return; } onChange(`${curH || "00"}:${m}`); };
-    return (
-      <div className="flex items-center gap-1">
-        <select value={curH} onChange={(e) => setH(e.target.value)} className="flex-1 px-2 py-2 border border-gray-300 rounded text-sm text-gray-900">
-          <option value="">HH</option>
-          {HOUR_OPTIONS.map((h) => <option key={h} value={h}>{h}</option>)}
-        </select>
-        <span className="text-gray-500 font-medium">:</span>
-        <select value={curM} onChange={(e) => setM(e.target.value)} className="flex-1 px-2 py-2 border border-gray-300 rounded text-sm text-gray-900">
-          <option value="">MM</option>
-          {MINUTE_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
-        </select>
-      </div>
-    );
-  };
-
-  // ─── Step content renderers ────────────────────────────────────────────────
-
-  const renderUpdateForm = () => (
-    <div>
-      {updateSaveError && <p className="text-red-600 text-sm mb-3">{updateSaveError}</p>}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-        <div>
-          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Type of Consultation</label>
-          <select value={updateForm.type_of_consult_id} onChange={(e) => setUpdateForm((f) => ({ ...f, type_of_consult_id: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900">
-            <option value="">Select type...</option>
-            {consultTypes.map((t) => (<option key={t.id} value={t.id}>{t.type_of_consult}</option>))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Title / Description</label>
-          <input type="text" value={updateForm.title_description} onChange={(e) => setUpdateForm((f) => ({ ...f, title_description: e.target.value }))} placeholder="Session title..." className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Venue</label>
-          <input type="text" value={updateForm.venue} onChange={(e) => setUpdateForm((f) => ({ ...f, venue: e.target.value }))} placeholder="Venue..." className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Date of Consultation</label>
-          <input type="date" value={updateForm.date_of_consult} onChange={(e) => setUpdateForm((f) => ({ ...f, date_of_consult: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Time of Consultation</label>
-          {renderTimePicker(updateForm.time_of_consult, (val) => setUpdateForm((f) => ({ ...f, time_of_consult: val })))}
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Date of Next Follow-Up</label>
-          <input type="date" value={updateForm.date_of_next_follow_up} onChange={(e) => setUpdateForm((f) => ({ ...f, date_of_next_follow_up: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Time of Next Follow-Up</label>
-          {renderTimePicker(updateForm.time_of_next_follow_up, (val) => setUpdateForm((f) => ({ ...f, time_of_next_follow_up: val })))}
-        </div>
-        <div className="md:col-span-2">
-          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Consultation Objective</label>
-          <select value={updateForm.consultation_objective_id} onChange={(e) => setUpdateForm((f) => ({ ...f, consultation_objective_id: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900">
-            <option value="">Select objective...</option>
-            {consultObjectives.map((o) => (<option key={o.id} value={o.id}>{o.consultation_objective}</option>))}
-          </select>
-        </div>
-      </div>
-      {isNewConsultation && (
-        <div className="mt-4 flex justify-end">
-          <button
-            onClick={handleSaveUpdateCard}
-            disabled={isSavingUpdate}
-            className={`px-3 py-1 text-white text-sm rounded disabled:opacity-50 ${
-              isUpdateCardSaved && !isUpdateFormDirty
-                ? "bg-green-600 hover:bg-green-700"
-                : "bg-gray-800 hover:bg-gray-700"
-            }`}
-          >
-            {isSavingUpdate ? "Saving..." : isUpdateCardSaved && !isUpdateFormDirty ? "Draft Saved" : "Save"}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderReadOnly = () => {
-    const d = latestConsultation;
-    if (!d) return null;
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-900">
-        <div>
-          <span className="text-gray-500">Date of Consult:</span>
-          <span className="ml-2 font-medium">
-            {(d.date_of_consult ? new Date(d.date_of_consult) : new Date()).toLocaleDateString()}
-            {d.time_of_consult && <span className="ml-1 text-gray-600">{d.time_of_consult.substring(0, 5)}</span>}
-          </span>
-        </div>
-        <div>
-          <span className="text-gray-500">Follow Up Date:</span>
-          <span className="ml-2 font-medium">
-            {d.date_of_next_follow_up ? new Date(d.date_of_next_follow_up).toLocaleDateString() : "Not set"}
-            {d.date_of_next_follow_up && d.time_of_next_follow_up && <span className="ml-1 text-gray-600">{d.time_of_next_follow_up.substring(0, 5)}</span>}
-          </span>
-        </div>
-        <div>
-          <span className="text-gray-500">Consulted By:</span>
-          <span className="ml-2 font-medium">{d.nutritionist_name || "—"}</span>
-        </div>
-        <div>
-          <span className="text-gray-500">Consult Type:</span>
-          <span className="ml-2 font-medium">{d.type_of_consult || "—"}</span>
-        </div>
-        {d.venue && (
-          <div>
-            <span className="text-gray-500">Venue:</span>
-            <span className="ml-2 font-medium">{d.venue}</span>
-          </div>
-        )}
-        {d.title_description && (
-          <div>
-            <span className="text-gray-500">Title:</span>
-            <span className="ml-2 font-medium">{d.title_description}</span>
-          </div>
-        )}
-        <div className="md:col-span-2">
-          <span className="text-gray-500">Objective:</span>
-          <span className="ml-2 font-medium">{d.consultation_objective || "No objective specified"}</span>
-        </div>
-      </div>
-    );
-  };
-
   // Renders all step content cards — all steps stay mounted, inactive ones are hidden.
   // This preserves each card's fetched data and form state when navigating between steps.
   const renderStepContent = (prevSessionId: string | undefined) => (
     <>
       {/* Step 1: Consultation Details */}
       <div className={currentStep === 1 ? "" : "hidden"}>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-semibold text-gray-900">Consultation Details</h2>
-            {!isNewConsultation && (
-              <div className="flex items-center gap-2">
-                {isEditMode ? (
-                  <>
-                    <button onClick={handleCancelEdit} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200">Cancel</button>
-                    <button onClick={handleClearConsultationDetails} className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100">Clear All</button>
-                    <button onClick={handleSaveUpdate} disabled={isSavingUpdate} className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50">
-                      {isSavingUpdate ? "Saving..." : "Save Changes"}
-                    </button>
-                  </>
-                ) : (
-                  <button onClick={handleEditClick} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200 flex items-center gap-1">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
-                    Edit
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-          {isNewConsultation && latestConsultation && (
-            <div className="flex border-b border-gray-200 mb-6">
-              {(["current", "previous"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setConsultDetailsTab(tab)}
-                  className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                    consultDetailsTab === tab
-                      ? "border-gray-800 text-gray-900"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  {tab === "current" ? "Current Session" : "Previous Session"}
-                </button>
-              ))}
-            </div>
-          )}
-          {isNewConsultation
-            ? consultDetailsTab === "previous"
-              ? renderReadOnly()
-              : renderUpdateForm()
-            : isEditMode
-            ? renderUpdateForm()
-            : renderReadOnly()}
-        </div>
+        <ConsultationDetailsStep
+          isNewConsultation={isNewConsultation}
+          latestConsultation={latestConsultation}
+          consultDetailsTab={consultDetailsTab}
+          setConsultDetailsTab={setConsultDetailsTab}
+          isEditMode={isEditMode}
+          isSavingUpdate={isSavingUpdate}
+          updateSaveError={updateSaveError}
+          updateForm={updateForm}
+          consultTypes={consultTypes}
+          consultObjectives={consultObjectives}
+          isUpdateCardSaved={isUpdateCardSaved}
+          isUpdateFormDirty={isUpdateFormDirty}
+          onEditClick={handleEditClick}
+          onCancelEdit={handleCancelEdit}
+          onClearConsultationDetails={handleClearConsultationDetails}
+          onSaveUpdate={handleSaveUpdate}
+          onSaveUpdateCard={handleSaveUpdateCard}
+          onUpdateFormChange={(patch) => setUpdateForm((form) => ({ ...form, ...patch }))}
+        />
       </div>
 
       {/* Step 2: Anthropometry */}
@@ -1000,11 +756,33 @@ export default function ConsultationView({
     </>
   );
 
-  const progressPct = Math.round((currentStep / TOTAL_STEPS) * 100);
-
-  // ─── Main render ───────────────────────────────────────────────────────────
-
   const prevSessionId = isNewConsultation ? (latestConsultation?.id ?? undefined) : fetchedPrevSessionId;
+  const stepStatuses = Object.fromEntries(
+    STEPS.map((step) => {
+      const isActive = step.id === currentStep;
+      const isDirtyStep =
+        (step.id === 1 && updateCardStatus === "dirty") ||
+        (step.id === 7 && isDiagnosisEditMode) ||
+        childStepStatus[step.id] === "dirty";
+      const isSavedStep =
+        shouldShowSavedIndicators &&
+        (
+          (step.id === 1 && updateCardStatus === "saved") ||
+          childStepStatus[step.id] === "saved" ||
+          stepSaved.has(step.id)
+        );
+      const status: StepStatus = isActive
+        ? isDirtyStep
+          ? "dirty"
+          : isSavedStep
+            ? "saved"
+            : "viewing"
+        : isSavedStep
+          ? "saved"
+          : "default";
+      return [step.id, status];
+    }),
+  ) as Record<number, StepStatus>;
 
   return (
     <>
@@ -1062,64 +840,13 @@ export default function ConsultationView({
         </div>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* ── Left Sidebar ─────────────────────────────────────────────────── */}
-          <div className={`shrink-0 bg-white border-r border-gray-200 flex flex-col transition-all duration-200 ${sidebarCollapsed ? "w-14" : "w-60"}`}>
-            {/* Sidebar header */}
-            <div className="flex items-center justify-end px-3 py-4 border-b border-gray-100">
-              <button
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 shrink-0"
-                aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              >
-                {sidebarCollapsed ? <Menu className="w-4 h-4" /> : <X className="w-4 h-4" />}
-              </button>
-            </div>
-
-            {/* Step list */}
-            <nav className="flex-1 overflow-y-auto py-2">
-              {STEPS.map((step) => {
-                const isActive = step.id === currentStep;
-                const isDirtyStep =
-                  (step.id === 1 && updateCardStatus === "dirty") ||
-                  (step.id === 7 && isDiagnosisEditMode) ||
-                  childStepStatus[step.id] === "dirty";
-                const isSavedStep =
-                  shouldShowSavedIndicators &&
-                  (
-                    (step.id === 1 && updateCardStatus === "saved") ||
-                    childStepStatus[step.id] === "saved" ||
-                    stepSaved.has(step.id)
-                  );
-                const status: StepStatus = isActive
-                  ? isDirtyStep
-                    ? "dirty"
-                    : isSavedStep
-                      ? "saved"
-                      : "viewing"
-                  : isSavedStep
-                    ? "saved"
-                    : "default";
-                return (
-                  <button
-                    key={step.id}
-                    onClick={() => setCurrentStep(step.id)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${isActive
-                        ? "bg-blue-50 text-blue-700"
-                        : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                    title={sidebarCollapsed ? step.label : undefined}
-                  >
-                    <StepIcon stepId={step.id} status={status} />
-                    {!sidebarCollapsed && (
-                      <span className={`text-sm ${isActive ? "font-semibold" : "font-medium"}`}>
-                        {step.label}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
+          <ConsultationStepSidebar
+            currentStep={currentStep}
+            sidebarCollapsed={sidebarCollapsed}
+            onStepChange={setCurrentStep}
+            onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
+            statuses={stepStatuses}
+          />
 
           {/* ── Right Content Area ────────────────────────────────────────────── */}
           <div className="flex-1 flex flex-col overflow-hidden">
