@@ -53,7 +53,7 @@ export default function SupplementTabBar({ activeId }: SupplementTabBarProps) {
   const sectionIsActive = SSS_SECTIONS.some((s) => s.id === activeId);
 
   return (
-    <div className="relative z-[60] bg-white border-b border-gray-200 px-6 flex items-center overflow-x-auto shrink-0">
+    <div className="relative z-[90] bg-white border-b border-gray-200 px-6 flex items-center overflow-x-auto shrink-0">
       {/* Always-visible SSS section tabs */}
       {SSS_SECTIONS.map((section) => (
         <div

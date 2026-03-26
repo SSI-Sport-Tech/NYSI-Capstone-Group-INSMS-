@@ -45,8 +45,7 @@ export const createBasicAthleteSchema = z
     date_of_birth: dateSchema,
     ethnicity: z.string().trim().optional(),
     target_event: z.string().trim().optional(),
-    sport_start_date: z.number().int().positive().optional(),
-    dietary_restriction: z.string().trim().optional(),
+    sport_start_date: z.number().int().min(0).max(99).optional(),
 
     // --- Reject system-managed fields ---
     id: z.never().optional(),
@@ -73,7 +72,7 @@ export const createCompleteAthleteSchema = z
     date_of_birth: dateSchema,
     ethnicity: z.string().trim().optional(),
     target_event: z.string().trim().optional(),
-    sport_start_date: z.number().int().positive().optional(),
+    sport_start_date: z.number().int().min(0).max(99).optional(),
 
     // --- Registry fields ---
     carding_status: z.string().trim().min(1, "Carding status is required"),
@@ -126,7 +125,7 @@ export const adminCreateCompleteAthleteSchema = z
     date_of_birth: dateSchema,
     ethnicity: z.string().trim().optional(),
     target_event: z.string().trim().optional(),
-    sport_start_date: z.number().int().positive().optional(),
+    sport_start_date: z.number().int().min(0).max(99).optional(),
 
     // --- Registry fields ---
     carding_status: z.string().trim().min(1, "Carding status is required"),
@@ -184,8 +183,7 @@ export const updateAthleteSchema = z
     date_of_birth: optionalDateSchema,
     ethnicity: z.string().trim().optional(),
     target_event: z.string().trim().optional(),
-    sport_start_date: z.number().int().positive().optional(),
-    dietary_restriction: z.string().trim().optional(),
+    sport_start_date: z.number().int().min(0).max(99).optional(),
   })
   .strict();
 
@@ -228,6 +226,7 @@ export const updateMedicalSchema = z
       .min(1, "Past injury cannot be empty")
       .optional(),
     medical_remarks: z.string().trim().optional(),
+    dietary_restriction: z.string().trim().optional(),
   })
   .strict();
 
@@ -257,7 +256,7 @@ export const updateProfileSchema = z
     date_of_birth: optionalDateSchema,
     ethnicity: z.string().trim().optional(),
     target_event: z.string().trim().optional(),
-    sport_start_date: z.number().int().positive().optional(),
+    sport_start_date: z.number().int().min(0).max(99).optional(),
 
     // --- Registry fields (all optional) ---
     carding_status: z
@@ -318,7 +317,7 @@ export const adminUpdateProfileSchema = z
     date_of_birth: optionalDateSchema,
     ethnicity: z.string().trim().optional(),
     target_event: z.string().trim().optional(),
-    sport_start_date: z.number().int().positive().optional(),
+    sport_start_date: z.number().int().min(0).max(99).optional(),
 
     // --- Registry fields (all optional) ---
     carding_status: z

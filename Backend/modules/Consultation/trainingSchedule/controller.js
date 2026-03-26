@@ -19,35 +19,21 @@ import {
   
       const data = await getTrainingScheduleBySessionId(sessionId);
   
-      // Return defaults if empty (frontend-friendly)
+      // Return defaults if no training record exists yet (frontend-friendly)
       res.json({
-        data:
-          data ??
-          {
-            id: null,
-            sessionId,
-            days: {
-              monday: { am: null, pm: null, trainingHours: 0, rpe: 0 },
-              tuesday: { am: null, pm: null, trainingHours: 0, rpe: 0 },
-              wednesday: { am: null, pm: null, trainingHours: 0, rpe: 0 },
-              thursday: { am: null, pm: null, trainingHours: 0, rpe: 0 },
-              friday: { am: null, pm: null, trainingHours: 0, rpe: 0 },
-              saturday: { am: null, pm: null, trainingHours: 0, rpe: 0 },
-              sunday: { am: null, pm: null, trainingHours: 0, rpe: 0 },
-            },
-            totalTrainingHours: 0,
+        data: data ?? {
+          trainingInfo: {
+            upcomingMajorCompetitions: null,
+            upcomingLocalCompetitions: null,
+            currentPerformance: null,
+            coachPerformanceGoals: null,
+            athletePerformanceGoals: null,
+            otherRemarks: null,
             pal: null,
-            trainingDetails: {
-              upcomingMajorCompetitions: null,
-              upcomingLocalCompetitions: null,
-            },
-            performanceDetails: {
-              currentPerformance: null,
-              coachPerformanceGoals: null,
-              athletePerformanceGoals: null,
-              otherRemarks: null,
-            },
+            rpeWeek: 0,
           },
+          schedule: [],
+        },
       });
     } catch (err) {
       next(err);

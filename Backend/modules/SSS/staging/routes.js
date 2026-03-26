@@ -764,5 +764,7 @@ router.delete('/catalog-urls', authenticateToken, controller.deleteCatalogUrls);
  *         description: Failed to start scraping
  */
 router.post('/scraping/start', controller.startScrapingJob);
+router.get('/scraping/schedule', controller.getSchedulerConfig);
+router.patch('/scraping/schedule', authenticateToken, controller.updateSchedulerConfig);
 
 export default router;

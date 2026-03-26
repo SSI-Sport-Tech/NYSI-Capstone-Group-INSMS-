@@ -7,6 +7,7 @@ interface SupplementInfoProps {
     supplement_packaging_form: string;
     supplement_status: string;
     batch_testing_org: string | null;
+    batch_testing_org_url: string | null;
     product_source_url: string[] | string | null;
     description?: string;
     serving_size?: string;
@@ -83,6 +84,26 @@ const SupplementInfo: React.FC<SupplementInfoProps> = ({ supplement }) => {
             </dt>
             <dd className="text-sm text-gray-900 break-words">
               {supplement.batch_testing_org || "N/A"}
+            </dd>
+          </div>
+
+          <div>
+            <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+              Batch Testing Organisation URL
+            </dt>
+            <dd className="text-sm break-words">
+              {supplement.batch_testing_org_url ? (
+                <a
+                  href={supplement.batch_testing_org_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 underline break-all"
+                >
+                  {supplement.batch_testing_org_url}
+                </a>
+              ) : (
+                <span className="text-gray-900">N/A</span>
+              )}
             </dd>
           </div>
         </div>

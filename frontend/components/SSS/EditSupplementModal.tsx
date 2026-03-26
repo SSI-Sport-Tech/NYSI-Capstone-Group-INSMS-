@@ -22,6 +22,7 @@ interface SupplementToEdit {
   supplement_packaging_form_id?: string;
   supplement_status_id?: string;
   batch_testing_org: string | null;
+  batch_testing_org_id?: string | null;
   product_source_url: string | null;
   description?: string;
   serving_size?: string;
@@ -50,7 +51,7 @@ interface FormData {
   warningLabel: string;
   certifications: string;
   additionalNotes: string;
-  testingOrganisation: string;
+  testingOrganisationId: string;
   productSourceUrl: string;
   servingDefinition: string;
   nutritionalPerServing: NutritionalRow[];
@@ -83,6 +84,7 @@ const EditSupplementModal: React.FC<EditSupplementModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [packagingOptions, setPackagingOptions] = useState<LookupOption[]>([]);
   const [statusOptions, setStatusOptions] = useState<LookupOption[]>([]);
+  const [batchTestingOrgOptions, setBatchTestingOrgOptions] = useState<LookupOption[]>([]);
   const [formData, setFormData] = useState<FormData>({
     name: "",
     brand: "",
@@ -93,7 +95,7 @@ const EditSupplementModal: React.FC<EditSupplementModalProps> = ({
     warningLabel: "",
     certifications: "",
     additionalNotes: "",
-    testingOrganisation: "",
+    testingOrganisationId: "",
     productSourceUrl: "",
     servingDefinition: "",
     nutritionalPerServing: [{ nutrient: "", amount: "" }],
@@ -120,6 +122,14 @@ const EditSupplementModal: React.FC<EditSupplementModalProps> = ({
         ),
       );
     });
+    axios.get("/api/SSS/lookups/batch-testing-orgs").then((res) => {
+      setBatchTestingOrgOptions(
+        (res.data.data ?? []).map((r: { id: string; label: string }) => ({
+          id: r.id,
+          label: r.label,
+        })),
+      );
+    });
   }, []);
 
   // Pre-fill form when modal opens with supplement data
@@ -139,7 +149,7 @@ const EditSupplementModal: React.FC<EditSupplementModalProps> = ({
         warningLabel: supplement.warning_label ?? "",
         certifications: supplement.certifications ?? "",
         additionalNotes: supplement.notes ?? "",
-        testingOrganisation: supplement.batch_testing_org ?? "",
+        testingOrganisationId: supplement.batch_testing_org_id ?? "",
         productSourceUrl: supplement.product_source_url ?? "",
         servingDefinition: supplement.serving_size ?? "",
         nutritionalPerServing: objToRows(supplement.nutritional_info_per_serving),
@@ -163,7 +173,7 @@ const EditSupplementModal: React.FC<EditSupplementModalProps> = ({
         supplement_warning_label: formData.warningLabel || null,
         supplement_certifications: formData.certifications || null,
         supplement_additional_information: formData.additionalNotes || null,
-        batch_testing_org: formData.testingOrganisation || null,
+        batch_testing_org_id: formData.testingOrganisationId || null,
         product_source_url: formData.productSourceUrl || null,
         nutritional_info_per_serving_definition:
           formData.servingDefinition || null,
@@ -190,7 +200,7 @@ const EditSupplementModal: React.FC<EditSupplementModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-[70] overflow-y-auto">
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
 
@@ -317,18 +327,28 @@ const EditSupplementModal: React.FC<EditSupplementModalProps> = ({
                     <label className="block text-sm text-gray-700 mb-1">
                       Batch Testing Org
                     </label>
-                    <input
-                      type="text"
-                      value={formData.testingOrganisation}
+                    <select
+                      value={formData.testingOrganisationId}
                       onChange={(e) =>
                         setFormData((prev) => ({
                           ...prev,
-                          testingOrganisation: e.target.value,
+                          testingOrganisationId: e.target.value,
                         }))
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
-                      placeholder="e.g. Informed-Sport"
-                    />
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                    >
+                      <option value="">— Select testing organisation —</option>
+                      {batchTestingOrgOptions.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                    {!formData.testingOrganisationId && supplement.batch_testing_org && supplement.batch_testing_org !== "NIL" && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        Current value (unlinked): &quot;{supplement.batch_testing_org}&quot;. Select an option above to link it.
+                      </p>
+                    )}
                   </div>
 
                   {/* Product Source URL */}

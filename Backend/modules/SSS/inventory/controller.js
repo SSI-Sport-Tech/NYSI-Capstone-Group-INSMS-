@@ -1,5 +1,6 @@
 import * as services from './services.js';
 import { getSupplementById } from '../supplements/services.js';
+import pool from '../../../config/db.js';
 import {
     createBatchSchema,
     updateBatchSchema,
@@ -11,7 +12,6 @@ import {
     getBatchStockStatusByName,
 } from '../shared/validation.js';
 import { z } from 'zod';
-import pool from '../../../config/db.js';
 
 // ============================================================================
 // BATCH/INVENTORY FUNCTIONS

@@ -11,6 +11,7 @@ interface MedicalHistoryProps {
   prevSessionId?: string;
   liveWeight?: number | null;
   liveTargetWeight?: number | null;
+  onStepStatusChange?: (status: "default" | "dirty" | "saved") => void;
 }
 
 // ---- API response shape ----
@@ -192,8 +193,10 @@ export default function MedicalHistory({
   prevSessionId,
   liveWeight,
   liveTargetWeight,
+  onStepStatusChange,
 }: MedicalHistoryProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState<"current" | "previous">("current");
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -223,7 +226,11 @@ export default function MedicalHistory({
   // Show Period section only for female athletes; show as fallback when gender unknown
   const isFemale = gender === null || gender.toLowerCase().startsWith("f");
 
-  const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly;
+  const effectiveEditing = (isEditing || !!isNewConsultation) && !readOnly && activeTab !== "previous";
+
+  useEffect(() => {
+    onStepStatusChange?.(isSaved ? "saved" : effectiveEditing ? "dirty" : "default");
+  }, [effectiveEditing, isSaved, onStepStatusChange]);
 
   const fetchMedicalHistory = async () => {
     if (!sessionId) {
@@ -358,9 +365,13 @@ export default function MedicalHistory({
           }),
         },
       );
-      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(`HTTP error: ${response.status} — ${errBody.message || errBody.error || "Unknown server error"}`);
+      }
       setIsEditing(false);
       setIsSaved(true);
+      fetchMedicalHistory();
     } catch (err) {
       console.error("Error saving medical history:", err);
       setSaveError("Failed to save. Please try again.");
@@ -371,16 +382,6 @@ export default function MedicalHistory({
     setIsEditing(false);
     setSaveError("");
     fetchMedicalHistory();
-  };
-
-  const PrevVal = ({ val }: { val: string | number | null | undefined }) => {
-    if (!isNewConsultation || !prevData || val == null || val === "") return null;
-    return (
-      <p className="text-xs text-gray-400 italic mt-0.5 flex items-center gap-1">
-        <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2" /><polyline points="12 6 12 12 16 14" strokeWidth="2" /></svg>
-        Prev: {val}
-      </p>
-    );
   };
 
   if (loading) {
@@ -419,6 +420,14 @@ export default function MedicalHistory({
     );
   }
 
+  // Compute display state for tabs (previous tab shows prevData in read-only, current shows live state)
+  const showPrev = activeTab === "previous";
+  const displayGeneral = showPrev && prevData ? prevData.general : generalInfo;
+  const displayPuberty = showPrev && prevData ? prevData.puberty : pubertyInfo;
+  const displayBowel = showPrev && prevData ? prevData.bowelMovement : bowelMovement;
+  const displayHydration = showPrev && prevData ? prevData.hydrationInfo : hydrationInfo;
+  const displayPeriod = showPrev && prevData ? prevData.periodInfo : periodInfo;
+
   return (
     <section id="medical-history" className="bg-white rounded-xl shadow-lg p-6">
       {/* Lightbox */}
@@ -437,53 +446,42 @@ export default function MedicalHistory({
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Medical History</h2>
-        {!readOnly && (
-          <div className="flex items-center gap-2">
-            {effectiveEditing && !isNewConsultation && (
-              <button
-                onClick={handleCancel}
-                className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-            )}
-            {effectiveEditing && (
-              <button
-                onClick={() => {
-                  const s = emptyState();
-                  setGeneralInfo(s.general);
-                  setPubertyInfo(s.puberty);
-                  setBowelMovement(s.bowelMovement);
-                  setHydrationInfo(s.hydrationInfo);
-                  setPeriodInfo(s.periodInfo);
-                  setSavedState(emptyState());
-                  setIsSaved(false);
-                  setSaveError("");
-                }}
-                className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
-              >
-                Clear All
-              </button>
-            )}
-            <button
-              onClick={effectiveEditing ? handleSave : () => setIsEditing(true)}
-              className={`px-3 py-1 text-white text-sm rounded ${effectiveEditing && isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
-            >
-              {effectiveEditing ? (isSaved ? "Saved" : "Save") : "Edit"}
-            </button>
-          </div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold text-gray-900 underline">Medical History</h2>
+        {!readOnly && !effectiveEditing && (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="px-3 py-1 text-white text-sm rounded bg-gray-800 hover:bg-gray-700"
+          >
+            Edit
+          </button>
         )}
       </div>
 
-      {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
+      {/* Tab bar */}
+      {prevSessionId && (
+        <div className="flex border-b border-gray-200 mb-6">
+          {(["current", "previous"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                activeTab === tab
+                  ? "border-gray-800 text-gray-900"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab === "current" ? "Current Session" : "Previous Session"}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="space-y-8">
         {/* General Section */}
         <div>
           <div className="flex items-center text-sm text-gray-600 mb-4">
-            <span className="font-medium">General</span>
+            <span className="font-medium underline">General</span>
           </div>
           <div className="space-y-4 text-sm">
             {(
@@ -522,8 +520,7 @@ export default function MedicalHistory({
                   />
                 ) : (
                   <div className="flex-1">
-                    <span className="text-gray-900">{generalInfo[field] || "—"}</span>
-                    <PrevVal val={prevData?.general[field]} />
+                    <span className="text-gray-900">{displayGeneral[field] || "—"}</span>
                   </div>
                 )}
               </div>
@@ -551,8 +548,7 @@ export default function MedicalHistory({
                 />
               ) : (
                 <div className="flex-1">
-                  <span className="text-gray-900">{generalInfo.medicalRemarks || "—"}</span>
-                  <PrevVal val={prevData?.general.medicalRemarks} />
+                  <span className="text-gray-900">{displayGeneral.medicalRemarks || "—"}</span>
                 </div>
               )}
             </div>
@@ -561,7 +557,7 @@ export default function MedicalHistory({
 
         {/* Puberty Section */}
         <div>
-          <h3 className="text-base font-medium text-gray-900 mb-4">Puberty</h3>
+          <h3 className="text-base font-medium text-gray-900 mb-4 underline">Puberty</h3>
           <div className="space-y-4 text-sm">
             <div className="flex items-center gap-4">
               <span className="text-gray-600 w-48 flex-shrink-0">
@@ -585,8 +581,7 @@ export default function MedicalHistory({
                 />
               ) : (
                 <div className="flex-1">
-                  <span className="text-gray-900">{pubertyInfo.periodOfGrowthSpurt || "—"}</span>
-                  <PrevVal val={prevData?.puberty.periodOfGrowthSpurt} />
+                  <span className="text-gray-900">{displayPuberty.periodOfGrowthSpurt || "—"}</span>
                 </div>
               )}
             </div>
@@ -612,8 +607,7 @@ export default function MedicalHistory({
                 />
               ) : (
                 <div className="flex-1">
-                  <span className="text-gray-900">{pubertyInfo.otherRemarks || "—"}</span>
-                  <PrevVal val={prevData?.puberty.otherRemarks} />
+                  <span className="text-gray-900">{displayPuberty.otherRemarks || "—"}</span>
                 </div>
               )}
             </div>
@@ -622,7 +616,7 @@ export default function MedicalHistory({
 
         {/* Bowel Movement Section */}
         <div>
-          <h3 className="text-base font-medium text-gray-900 mb-4">
+          <h3 className="text-base font-medium text-gray-900 mb-4 underline">
             Bowel Movement
           </h3>
           <div className="flex gap-6 items-start">
@@ -651,8 +645,7 @@ export default function MedicalHistory({
                   </select>
                 ) : (
                   <div className="flex-1">
-                    <span className="text-gray-900">{bowelMovement.regularBowelMovement || "—"}</span>
-                    <PrevVal val={prevData?.bowelMovement.regularBowelMovement} />
+                    <span className="text-gray-900">{displayBowel.regularBowelMovement || "—"}</span>
                   </div>
                 )}
               </div>
@@ -679,8 +672,7 @@ export default function MedicalHistory({
                   />
                 ) : (
                   <div className="flex-1">
-                    <span className="text-gray-900">{bowelMovement.frequencyOfBowelMovements || "—"}</span>
-                    <PrevVal val={prevData?.bowelMovement.frequencyOfBowelMovements} />
+                    <span className="text-gray-900">{displayBowel.frequencyOfBowelMovements || "—"}</span>
                   </div>
                 )}
               </div>
@@ -707,8 +699,7 @@ export default function MedicalHistory({
                   />
                 ) : (
                   <div className="flex-1">
-                    <span className="text-gray-900">{bowelMovement.stoolAppearance || "—"}</span>
-                    <PrevVal val={prevData?.bowelMovement.stoolAppearance} />
+                    <span className="text-gray-900">{displayBowel.stoolAppearance || "—"}</span>
                   </div>
                 )}
               </div>
@@ -735,8 +726,7 @@ export default function MedicalHistory({
                   />
                 ) : (
                   <div className="flex-1">
-                    <span className="text-gray-900">{bowelMovement.otherRemarks || "—"}</span>
-                    <PrevVal val={prevData?.bowelMovement.otherRemarks} />
+                    <span className="text-gray-900">{displayBowel.otherRemarks || "—"}</span>
                   </div>
                 )}
               </div>
@@ -758,7 +748,7 @@ export default function MedicalHistory({
 
         {/* Hydration Section */}
         <div>
-          <h3 className="text-base font-medium text-gray-900 mb-4">
+          <h3 className="text-base font-medium text-gray-900 mb-4 underline">
             Hydration / Fluid Intake
           </h3>
           <div className="flex gap-6 items-start">
@@ -769,13 +759,14 @@ export default function MedicalHistory({
                 </span>
                 <div className="flex-1">
                   <span className="text-gray-900">
-                    {liveTargetWeight != null
-                      ? `${(45 * liveTargetWeight).toFixed(0)} ml`
-                      : hydrationInfo.waterIntakeForTargetWeight
-                        ? `${hydrationInfo.waterIntakeForTargetWeight} ml`
-                        : "—"}
+                    {showPrev
+                      ? (displayHydration.waterIntakeForTargetWeight ? `${displayHydration.waterIntakeForTargetWeight} ml` : "—")
+                      : liveTargetWeight != null
+                        ? `${(45 * liveTargetWeight).toFixed(0)} ml`
+                        : hydrationInfo.waterIntakeForTargetWeight
+                          ? `${hydrationInfo.waterIntakeForTargetWeight} ml`
+                          : "—"}
                   </span>
-                  <PrevVal val={prevData?.hydrationInfo.waterIntakeForTargetWeight ? `${prevData.hydrationInfo.waterIntakeForTargetWeight} ml` : null} />
                 </div>
               </div>
 
@@ -785,13 +776,14 @@ export default function MedicalHistory({
                 </span>
                 <div className="flex-1">
                   <span className="text-gray-900">
-                    {liveWeight != null
-                      ? `${(45 * liveWeight).toFixed(0)} ml`
-                      : hydrationInfo.requirementForWaterIntake
-                        ? `${hydrationInfo.requirementForWaterIntake} ml`
-                        : "—"}
+                    {showPrev
+                      ? (displayHydration.requirementForWaterIntake ? `${displayHydration.requirementForWaterIntake} ml` : "—")
+                      : liveWeight != null
+                        ? `${(45 * liveWeight).toFixed(0)} ml`
+                        : hydrationInfo.requirementForWaterIntake
+                          ? `${hydrationInfo.requirementForWaterIntake} ml`
+                          : "—"}
                   </span>
-                  <PrevVal val={prevData?.hydrationInfo.requirementForWaterIntake ? `${prevData.hydrationInfo.requirementForWaterIntake} ml` : null} />
                 </div>
               </div>
 
@@ -803,6 +795,7 @@ export default function MedicalHistory({
                   <input
                     type="number"
                     step="0.1"
+                    min="0"
                     placeholder="e.g. 2.5"
                     className={`flex-1 px-3 py-1 border border-gray-300 rounded text-sm transition-colors ${
                       hydrationInfo.waterIntakePerDay !== savedState.hydrationInfo.waterIntakePerDay
@@ -820,11 +813,8 @@ export default function MedicalHistory({
                 ) : (
                   <div className="flex-1">
                     <span className="text-gray-900">
-                      {hydrationInfo.waterIntakePerDay
-                        ? `${hydrationInfo.waterIntakePerDay} L`
-                        : "—"}
+                      {displayHydration.waterIntakePerDay ? `${displayHydration.waterIntakePerDay} L` : "—"}
                     </span>
-                    <PrevVal val={prevData?.hydrationInfo.waterIntakePerDay ? `${prevData.hydrationInfo.waterIntakePerDay} L` : null} />
                   </div>
                 )}
               </div>
@@ -852,8 +842,7 @@ export default function MedicalHistory({
                   />
                 ) : (
                   <div className="flex-1">
-                    <span className="text-gray-900">{hydrationInfo.urineColour || "—"}</span>
-                    <PrevVal val={prevData?.hydrationInfo.urineColour} />
+                    <span className="text-gray-900">{displayHydration.urineColour || "—"}</span>
                   </div>
                 )}
               </div>
@@ -881,8 +870,7 @@ export default function MedicalHistory({
                   />
                 ) : (
                   <div className="flex-1">
-                    <span className="text-gray-900">{hydrationInfo.hydrationStatus || "—"}</span>
-                    <PrevVal val={prevData?.hydrationInfo.hydrationStatus} />
+                    <span className="text-gray-900">{displayHydration.hydrationStatus || "—"}</span>
                   </div>
                 )}
               </div>
@@ -910,8 +898,7 @@ export default function MedicalHistory({
                   />
                 ) : (
                   <div className="flex-1">
-                    <span className="text-gray-900">{hydrationInfo.otherRemarks || "—"}</span>
-                    <PrevVal val={prevData?.hydrationInfo.otherRemarks} />
+                    <span className="text-gray-900">{displayHydration.otherRemarks || "—"}</span>
                   </div>
                 )}
               </div>
@@ -934,7 +921,7 @@ export default function MedicalHistory({
         {/* Period Section — female athletes only */}
         {isFemale && (
           <div>
-            <h3 className="text-base font-medium text-gray-900 mb-4">Period</h3>
+            <h3 className="text-base font-medium text-gray-900 mb-4 underline">Period</h3>
             <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
               {(
                 [
@@ -993,8 +980,7 @@ export default function MedicalHistory({
                     />
                   ) : (
                     <div className="text-right">
-                      <span className="font-medium">{periodInfo[field] || "—"}</span>
-                      <PrevVal val={prevData?.periodInfo[field]} />
+                      <span className="font-medium">{displayPeriod[field] || "—"}</span>
                     </div>
                   )}
                 </div>
@@ -1024,8 +1010,7 @@ export default function MedicalHistory({
                   />
                 ) : (
                   <div className="flex-1">
-                    <span className="text-gray-900">{periodInfo.signsAndSymptoms || "—"}</span>
-                    <PrevVal val={prevData?.periodInfo.signsAndSymptoms} />
+                    <span className="text-gray-900">{displayPeriod.signsAndSymptoms || "—"}</span>
                   </div>
                 )}
               </div>
@@ -1051,8 +1036,7 @@ export default function MedicalHistory({
                   />
                 ) : (
                   <div className="flex-1">
-                    <span className="text-gray-900">{periodInfo.otherRemarks || "—"}</span>
-                    <PrevVal val={prevData?.periodInfo.otherRemarks} />
+                    <span className="text-gray-900">{displayPeriod.otherRemarks || "—"}</span>
                   </div>
                 )}
               </div>
@@ -1060,6 +1044,45 @@ export default function MedicalHistory({
           </div>
         )}
       </div>
+
+      {/* Bottom action bar — Save / Clear All / Cancel */}
+      {!readOnly && effectiveEditing && (
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          {saveError && <p className="text-red-600 text-sm mb-3">{saveError}</p>}
+          <div className="flex items-center justify-end gap-2">
+            {!isNewConsultation && (
+              <button
+                onClick={handleCancel}
+                className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              onClick={() => {
+                const s = emptyState();
+                setGeneralInfo(s.general);
+                setPubertyInfo(s.puberty);
+                setBowelMovement(s.bowelMovement);
+                setHydrationInfo(s.hydrationInfo);
+                setPeriodInfo(s.periodInfo);
+                setSavedState(emptyState());
+                setIsSaved(false);
+                setSaveError("");
+              }}
+              className="px-4 py-2 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+            >
+              Clear All
+            </button>
+            <button
+              onClick={handleSave}
+              className={`px-4 py-2 text-white text-sm rounded ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
+            >
+              {isSaved ? "Draft Saved" : "Save"}
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

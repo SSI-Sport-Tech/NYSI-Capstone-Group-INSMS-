@@ -35,16 +35,14 @@ router.get('/lookups/consult-types', controller.getConsultTypes);
 
 /**
  * @swagger
- * /api/Consultation/lookups/nutrition-diagnoses:
+ * /api/Consultation/lookups/consultation-objectives:
  *   get:
- *     summary: Get all active nutrition diagnoses
- *     description: |
- *       Returns all active nutrition diagnosis options for dropdown population.
- *       Categories: CARB, PROTEIN, FAT, FIBRE, IRON, CALCIUM, MICRO
+ *     summary: Get all active consultation objectives
+ *     description: Returns all active consultation objectives for dropdown population.
  *     tags: [Consultation - Lookups]
  *     responses:
  *       200:
- *         description: List of active nutrition diagnoses
+ *         description: List of active consultation objectives
  *         content:
  *           application/json:
  *             schema:
@@ -58,14 +56,11 @@ router.get('/lookups/consult-types', controller.getConsultTypes);
  *                       id:
  *                         type: string
  *                         format: uuid
- *                       category:
- *                         type: string
- *                         enum: [CARB, PROTEIN, FAT, FIBRE, IRON, CALCIUM, MICRO]
- *                       diagnosis:
+ *                       consultation_objective:
  *                         type: string
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/lookups/nutrition-diagnoses', controller.getNutritionDiagnoses);
+router.get('/lookups/consultation-objectives', controller.getConsultationObjectives);
 
 export default router;

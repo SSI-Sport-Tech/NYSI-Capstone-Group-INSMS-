@@ -16,9 +16,28 @@ export interface ScheduledSession {
   venue: string | null;
   date_of_next_follow_up: string | null;
   time_of_next_follow_up: string | null;
+  consultation_objective_id: string | null;
   consultation_objective: string | null;
   nutritionist_name: string | null;
   is_scheduled_booking: boolean;
+  status?: "scheduled" | "completed" | "cancelled" | "in-progress";
+}
+
+function isSelectableScheduledSession(session: ScheduledSession): boolean {
+  if (session.is_scheduled_booking !== true) return false;
+  if (session.status === "completed" || session.status === "cancelled") {
+    return false;
+  }
+  if (!session.date_of_consult) return false;
+
+  const dateTimeStr = session.time_of_consult
+    ? `${session.date_of_consult}T${session.time_of_consult}`
+    : `${session.date_of_consult}T23:59:59`;
+
+  const sessionDate = new Date(dateTimeStr);
+  if (Number.isNaN(sessionDate.getTime())) return false;
+
+  return sessionDate >= new Date();
 }
 
 interface ScheduledSessionSelectorModalProps {
@@ -72,10 +91,17 @@ export default function ScheduledSessionSelectorModal({
         const response = (await consultationApi.getAllConsultations(athleteId)) as {
           data: ScheduledSession[];
         };
-        // Show only sessions that were scheduled from the dashboard
-        const scheduled = (response?.data ?? []).filter(
-          (s) => s.is_scheduled_booking === true,
-        );
+        const scheduled = (response?.data ?? [])
+          .filter(isSelectableScheduledSession)
+          .sort((a, b) => {
+            const aTime = new Date(
+              `${a.date_of_consult}T${a.time_of_consult ?? "23:59:59"}`,
+            ).getTime();
+            const bTime = new Date(
+              `${b.date_of_consult}T${b.time_of_consult ?? "23:59:59"}`,
+            ).getTime();
+            return aTime - bTime;
+          });
         setSessions(scheduled);
       } catch {
         setError("Failed to load scheduled sessions.");

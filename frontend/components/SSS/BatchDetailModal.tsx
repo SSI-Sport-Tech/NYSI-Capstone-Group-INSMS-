@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Edit2, Save, XCircle } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,7 +19,15 @@ interface Batch {
   batch_price: number;
   date_added: string;
   inv_batch_testing_org: string | null;
+  inv_batch_testing_org_id?: string | null;
+  inv_batch_testing_org_url?: string | null;
+  batch_manufacture_date?: string | null;
   batch_unit?: string | null;
+}
+
+interface LookupOption {
+  id: string;
+  label: string;
 }
 
 interface BatchDetailModalProps {
@@ -28,6 +36,11 @@ interface BatchDetailModalProps {
   onClose: () => void;
   onSaved: () => void;
 }
+
+const ensureHttps = (url: string | null | undefined) => {
+  if (!url || !url.trim()) return null;
+  return /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
+};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -91,6 +104,18 @@ export default function BatchDetailModal({ isOpen, batch, onClose, onSaved }: Ba
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [batchTestingOrgOptions, setBatchTestingOrgOptions] = useState<LookupOption[]>([]);
+
+  useEffect(() => {
+    axios.get("/api/SSS/lookups/batch-testing-orgs").then((res) => {
+      setBatchTestingOrgOptions(
+        (res.data.data ?? []).map((r: { id: string; label: string }) => ({
+          id: r.id,
+          label: r.label,
+        })),
+      );
+    });
+  }, []);
 
   const [form, setForm] = useState({
     batch_number: batch.batch_number ?? "",
@@ -100,7 +125,11 @@ export default function BatchDetailModal({ isOpen, batch, onClose, onSaved }: Ba
     batch_expiration_date: batch.batch_expiration_date
       ? new Date(batch.batch_expiration_date).toISOString().split("T")[0]
       : "",
-    inv_batch_testing_org: batch.inv_batch_testing_org ?? "",
+    inv_batch_testing_org_id: batch.inv_batch_testing_org_id ?? "",
+    inv_batch_testing_org_url: batch.inv_batch_testing_org_url ?? "",
+    batch_manufacture_date: batch.batch_manufacture_date
+      ? new Date(batch.batch_manufacture_date).toISOString().split("T")[0]
+      : "",
   });
 
   if (!isOpen) return null;
@@ -117,7 +146,11 @@ export default function BatchDetailModal({ isOpen, batch, onClose, onSaved }: Ba
       batch_expiration_date: batch.batch_expiration_date
         ? new Date(batch.batch_expiration_date).toISOString().split("T")[0]
         : "",
-      inv_batch_testing_org: batch.inv_batch_testing_org ?? "",
+      inv_batch_testing_org_id: batch.inv_batch_testing_org_id ?? "",
+      inv_batch_testing_org_url: batch.inv_batch_testing_org_url ?? "",
+      batch_manufacture_date: batch.batch_manufacture_date
+        ? new Date(batch.batch_manufacture_date).toISOString().split("T")[0]
+        : "",
     });
     setError("");
     setIsEditing(false);
@@ -139,7 +172,9 @@ export default function BatchDetailModal({ isOpen, batch, onClose, onSaved }: Ba
           batch_unit: form.batch_unit.trim() || null,
           batch_price: form.batch_price !== "" ? Number(form.batch_price) : null,
           batch_expiration_date: form.batch_expiration_date || null,
-          inv_batch_testing_org: form.inv_batch_testing_org.trim() || null,
+          batch_manufacture_date: form.batch_manufacture_date || null,
+          inv_batch_testing_org_id: form.inv_batch_testing_org_id || null,
+          inv_batch_testing_org_url: ensureHttps(form.inv_batch_testing_org_url),
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -156,7 +191,7 @@ export default function BatchDetailModal({ isOpen, batch, onClose, onSaved }: Ba
   const expiryBadge = getExpiryInfo(batch.batch_expiration_date);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-[70] overflow-y-auto">
       <div
         className="fixed inset-0 bg-black bg-opacity-50"
         onClick={isEditing ? undefined : onClose}
@@ -289,16 +324,63 @@ export default function BatchDetailModal({ isOpen, batch, onClose, onSaved }: Ba
                   )}
                 </FieldRow>
 
+                <FieldRow label="Manufacture Date">
+                  {isEditing ? (
+                    <TextInput
+                      type="date"
+                      value={form.batch_manufacture_date}
+                      onChange={(v) => setField("batch_manufacture_date", v)}
+                    />
+                  ) : (
+                    <ReadonlyText
+                      value={batch.batch_manufacture_date
+                        ? new Date(batch.batch_manufacture_date).toLocaleDateString("en-US")
+                        : null}
+                    />
+                  )}
+                </FieldRow>
+
                 <div className="col-span-2">
                   <FieldRow label="Batch Testing Organisation">
                     {isEditing ? (
-                      <TextInput
-                        value={form.inv_batch_testing_org}
-                        onChange={(v) => setField("inv_batch_testing_org", v)}
-                        placeholder="e.g. Informed Sport"
-                      />
+                      <select
+                        value={form.inv_batch_testing_org_id}
+                        onChange={(e) => setField("inv_batch_testing_org_id", e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                      >
+                        <option value="">— Select testing organisation —</option>
+                        {batchTestingOrgOptions.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
                     ) : (
                       <ReadonlyText value={batch.inv_batch_testing_org} />
+                    )}
+                  </FieldRow>
+                </div>
+
+                <div className="col-span-2">
+                  <FieldRow label="Batch Certificate">
+                    {isEditing ? (
+                      <TextInput
+                        type="url"
+                        value={form.inv_batch_testing_org_url}
+                        onChange={(v) => setField("inv_batch_testing_org_url", v)}
+                        placeholder="https://example.com/certificate"
+                      />
+                    ) : batch.inv_batch_testing_org_url ? (
+                      <a
+                        href={batch.inv_batch_testing_org_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:underline break-all"
+                      >
+                        {batch.inv_batch_testing_org_url}
+                      </a>
+                    ) : (
+                      <ReadonlyText value={null} />
                     )}
                   </FieldRow>
                 </div>

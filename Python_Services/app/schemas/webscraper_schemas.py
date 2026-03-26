@@ -180,6 +180,22 @@ class WebscraperHealthResponse(BaseModel):
     ocr_available: bool
 
 
+class SchedulerConfigResponse(BaseModel):
+    """Current scheduler configuration and status."""
+    is_enabled: bool
+    interval_days: int
+    is_running: bool
+    last_run_at: Optional[Any] = None
+    next_run_at: Optional[Any] = None
+    updated_at: Optional[Any] = None
+
+
+class SchedulerConfigUpdateRequest(BaseModel):
+    """Request to update scheduler configuration."""
+    is_enabled: Optional[bool] = None
+    interval_days: Optional[int] = Field(None, gt=0, description="Interval in days (e.g. 7, 14, 30)")
+
+
 # ============================================================================
 # DATABASE MAPPING SCHEMA
 # ============================================================================

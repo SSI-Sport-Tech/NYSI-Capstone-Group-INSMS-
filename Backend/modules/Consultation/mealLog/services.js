@@ -1,171 +1,214 @@
 import pool, { withUserContext } from "../../../config/db.js";
 
 async function assertSessionExists(sessionId) {
-  const r = await pool.query(
-    `SELECT 1 FROM consultation.sessions WHERE id = $1`,
+  const { rowCount } = await pool.query(
+    "SELECT 1 FROM consultation.sessions WHERE id = $1",
     [sessionId]
   );
-
-  if (r.rowCount === 0) {
+  if (rowCount === 0) {
     const err = new Error("Consultation session not found");
     err.status = 404;
     throw err;
   }
 }
 
-function dbRowToApi(row) {
-  if (!row) return null;
-
+function mapMealEntry(r) {
   return {
-    id: row.id,
-    sessionId: row.sessions_id,
-
-    amBreakfast: { food: row.am_breakfast_food, macro: row.am_breakfast_macro },
-    amTraining: { food: row.am_training_food, macro: row.am_training_macro },
-    pmLunch: { food: row.pm_lunch_food, macro: row.pm_lunch_macro },
-    pmTraining: { food: row.pm_training_food, macro: row.pm_training_macro },
-    pmDinner: { food: row.pm_dinner_food, macro: row.pm_dinner_macro },
-    supper: { food: row.supper_food, macro: row.supper_macro },
-
-    totalCarbohydrateIntake: row.total_carbohydrate_intake,
-    totalProteinIntake: row.total_protein_intake,
-    totalFatIntake: row.total_fat_intake,
-    otherRemarks: row.other_remarks,
+    foodTime: r.food_time ? String(r.food_time).substring(0, 5) : null,
+    mealDescription: r.meal_description,
+    lowerCarbG: r.lower_carbohydrate_g ?? null,
+    upperCarbG: r.upper_carbohydrate_g ?? null,
+    lowerProteinG: r.lower_protein_g ?? null,
+    upperProteinG: r.upper_protein_g ?? null,
+    lowerFatG: r.lower_fat_g ?? null,
+    upperFatG: r.upper_fat_g ?? null,
   };
 }
 
-export async function getMealLogBySessionId(sessionId) {
-  await assertSessionExists(sessionId);
+function mapSleep(r) {
+  if (!r) return null;
+  return {
+    sleepDurationH:
+      r.sleep_duration_h !== null && r.sleep_duration_h !== undefined
+        ? Number(r.sleep_duration_h)
+        : null,
+    sleepQuality: r.sleep_quality ?? null,
+    otherRemarks: r.other_remarks ?? null,
+  };
+}
 
-  const r = await pool.query(
-    `SELECT *
-     FROM consultation.session_meal_log
-     WHERE sessions_id = $1
-     LIMIT 1`,
+async function getOrCreateMealParent(sessionId, client) {
+  const q = client ?? pool;
+  const existing = await q.query(
+    "SELECT id, other_remarks FROM consultation.session_meal WHERE sessions_id = $1 LIMIT 1",
     [sessionId]
   );
-
-  // Return a consistent shape even if empty (frontend can still render)
-  if (r.rowCount === 0) {
-    return {
-      id: null,
-      sessionId,
-      amBreakfast: { food: null, macro: null },
-      amTraining: { food: null, macro: null },
-      pmLunch: { food: null, macro: null },
-      pmTraining: { food: null, macro: null },
-      pmDinner: { food: null, macro: null },
-      supper: { food: null, macro: null },
-      totalCarbohydrateIntake: null,
-      totalProteinIntake: null,
-      totalFatIntake: null,
-      otherRemarks: null,
-    };
-  }
-
-  return dbRowToApi(r.rows[0]);
+  if (existing.rows.length) return existing.rows[0];
+  const created = await q.query(
+    "INSERT INTO consultation.session_meal (sessions_id) VALUES ($1) RETURNING id, other_remarks",
+    [sessionId]
+  );
+  return created.rows[0];
 }
 
-export async function upsertMealLogBySessionId(sessionId, payload, userId) {
+export async function getMealLogAndSleepBySessionId(sessionId) {
   await assertSessionExists(sessionId);
 
-  const values = {
-    am_breakfast_food: payload?.amBreakfast?.food ?? null,
-    am_breakfast_macro: payload?.amBreakfast?.macro ?? null,
-    am_training_food: payload?.amTraining?.food ?? null,
-    am_training_macro: payload?.amTraining?.macro ?? null,
-    pm_lunch_food: payload?.pmLunch?.food ?? null,
-    pm_lunch_macro: payload?.pmLunch?.macro ?? null,
-    pm_training_food: payload?.pmTraining?.food ?? null,
-    pm_training_macro: payload?.pmTraining?.macro ?? null,
-    pm_dinner_food: payload?.pmDinner?.food ?? null,
-    pm_dinner_macro: payload?.pmDinner?.macro ?? null,
-    supper_food: payload?.supper?.food ?? null,
-    supper_macro: payload?.supper?.macro ?? null,
-    total_carbohydrate_intake: payload?.totalCarbohydrateIntake ?? null,
-    total_protein_intake: payload?.totalProteinIntake ?? null,
-    total_fat_intake: payload?.totalFatIntake ?? null,
-    other_remarks: payload?.otherRemarks ?? null,
-  };
+  const mealRow = await getOrCreateMealParent(sessionId);
 
-  const row = await withUserContext(userId, async (client) => {
+  const [entriesResult, sleepResult] = await Promise.all([
+    pool.query(
+      `SELECT food_time, meal_description,
+              lower_carbohydrate_g, upper_carbohydrate_g,
+              lower_protein_g, upper_protein_g,
+              lower_fat_g, upper_fat_g
+       FROM consultation.session_meal_log
+       WHERE session_meal_id = $1
+       ORDER BY food_time ASC NULLS LAST`,
+      [mealRow.id]
+    ),
+    pool.query(
+      `SELECT sleep_duration_h, sleep_quality, other_remarks
+       FROM consultation.session_sleep
+       WHERE sessions_id = $1
+       LIMIT 1`,
+      [sessionId]
+    ),
+  ]);
+
+  return {
+    entries: entriesResult.rows.map(mapMealEntry),
+    mealOtherRemarks: mealRow.other_remarks ?? null,
+    sleep: mapSleep(sleepResult.rows[0] ?? null),
+  };
+}
+
+export async function upsertMealLogAndSleepBySessionId(
+  sessionId,
+  payload,
+  userId
+) {
+  await assertSessionExists(sessionId);
+
+  const { entries, mealOtherRemarks, sleep } = payload;
+
+  return await withUserContext(userId, async (client) => {
+    // 1. Upsert session_meal parent
     const existing = await client.query(
-      `SELECT id FROM consultation.session_meal_log WHERE sessions_id = $1 LIMIT 1`,
+      "SELECT id FROM consultation.session_meal WHERE sessions_id = $1 LIMIT 1",
       [sessionId]
     );
 
-    if (existing.rowCount === 0) {
-      const r = await client.query(
-        `INSERT INTO consultation.session_meal_log (
-          sessions_id,
-          am_breakfast_food, am_breakfast_macro,
-          am_training_food, am_training_macro,
-          pm_lunch_food, pm_lunch_macro,
-          pm_training_food, pm_training_macro,
-          pm_dinner_food, pm_dinner_macro,
-          supper_food, supper_macro,
-          total_carbohydrate_intake, total_protein_intake, total_fat_intake,
-          other_remarks
-        ) VALUES (
-          $1,
-          $2, $3,
-          $4, $5,
-          $6, $7,
-          $8, $9,
-          $10, $11,
-          $12, $13,
-          $14, $15, $16,
-          $17
-        )
-        RETURNING *`,
-        [
-          sessionId,
-          values.am_breakfast_food, values.am_breakfast_macro,
-          values.am_training_food, values.am_training_macro,
-          values.pm_lunch_food, values.pm_lunch_macro,
-          values.pm_training_food, values.pm_training_macro,
-          values.pm_dinner_food, values.pm_dinner_macro,
-          values.supper_food, values.supper_macro,
-          values.total_carbohydrate_intake,
-          values.total_protein_intake,
-          values.total_fat_intake,
-          values.other_remarks,
-        ]
+    let mealId;
+    if (existing.rows.length === 0) {
+      const { rows } = await client.query(
+        "INSERT INTO consultation.session_meal (sessions_id, other_remarks) VALUES ($1, $2) RETURNING id",
+        [sessionId, mealOtherRemarks ?? null]
       );
-      return r.rows[0];
+      mealId = rows[0].id;
     } else {
-      const r = await client.query(
-        `UPDATE consultation.session_meal_log
-         SET
-           am_breakfast_food = $2, am_breakfast_macro = $3,
-           am_training_food  = $4, am_training_macro  = $5,
-           pm_lunch_food     = $6, pm_lunch_macro     = $7,
-           pm_training_food  = $8, pm_training_macro  = $9,
-           pm_dinner_food    = $10, pm_dinner_macro   = $11,
-           supper_food       = $12, supper_macro      = $13,
-           total_carbohydrate_intake = $14,
-           total_protein_intake      = $15,
-           total_fat_intake          = $16,
-           other_remarks             = $17
-         WHERE sessions_id = $1
-         RETURNING *`,
-        [
-          sessionId,
-          values.am_breakfast_food, values.am_breakfast_macro,
-          values.am_training_food, values.am_training_macro,
-          values.pm_lunch_food, values.pm_lunch_macro,
-          values.pm_training_food, values.pm_training_macro,
-          values.pm_dinner_food, values.pm_dinner_macro,
-          values.supper_food, values.supper_macro,
-          values.total_carbohydrate_intake,
-          values.total_protein_intake,
-          values.total_fat_intake,
-          values.other_remarks,
-        ]
+      mealId = existing.rows[0].id;
+      await client.query(
+        "UPDATE consultation.session_meal SET other_remarks = $1 WHERE id = $2",
+        [mealOtherRemarks ?? null, mealId]
       );
-      return r.rows[0];
     }
-  });
 
-  return dbRowToApi(row);
+    // 2. Full replace: delete all existing meal entries
+    await client.query(
+      "DELETE FROM consultation.session_meal_log WHERE session_meal_id = $1",
+      [mealId]
+    );
+
+    // 3. Bulk insert new entries (skip if empty)
+    if (entries.length > 0) {
+      const vals = [];
+      const placeholders = entries.map((e, i) => {
+        const base = i * 9;
+        vals.push(
+          mealId,
+          e.foodTime ?? null,
+          e.mealDescription,
+          e.lowerCarbG ?? null,
+          e.upperCarbG ?? null,
+          e.lowerProteinG ?? null,
+          e.upperProteinG ?? null,
+          e.lowerFatG ?? null,
+          e.upperFatG ?? null
+        );
+        return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9})`;
+      });
+
+      await client.query(
+        `INSERT INTO consultation.session_meal_log
+           (session_meal_id, food_time, meal_description,
+            lower_carbohydrate_g, upper_carbohydrate_g,
+            lower_protein_g, upper_protein_g,
+            lower_fat_g, upper_fat_g)
+         VALUES ${placeholders.join(", ")}`,
+        vals
+      );
+    }
+
+    // 4. Upsert session_sleep (only if sleep payload provided)
+    if (sleep !== undefined && sleep !== null) {
+      const existingSleep = await client.query(
+        "SELECT id FROM consultation.session_sleep WHERE sessions_id = $1 LIMIT 1",
+        [sessionId]
+      );
+
+      if (existingSleep.rows.length === 0) {
+        await client.query(
+          `INSERT INTO consultation.session_sleep
+             (sessions_id, sleep_duration_h, sleep_quality, other_remarks)
+           VALUES ($1, $2, $3, $4)`,
+          [
+            sessionId,
+            sleep.sleepDurationH ?? null,
+            sleep.sleepQuality ?? null,
+            sleep.otherRemarks ?? null,
+          ]
+        );
+      } else {
+        await client.query(
+          `UPDATE consultation.session_sleep
+           SET sleep_duration_h = $1, sleep_quality = $2, other_remarks = $3
+           WHERE sessions_id = $4`,
+          [
+            sleep.sleepDurationH ?? null,
+            sleep.sleepQuality ?? null,
+            sleep.otherRemarks ?? null,
+            sessionId,
+          ]
+        );
+      }
+    }
+
+    // 5. Fetch and return saved state
+    const [savedEntries, savedSleep] = await Promise.all([
+      client.query(
+        `SELECT food_time, meal_description,
+                lower_carbohydrate_g, upper_carbohydrate_g,
+                lower_protein_g, upper_protein_g,
+                lower_fat_g, upper_fat_g
+         FROM consultation.session_meal_log
+         WHERE session_meal_id = $1
+         ORDER BY food_time ASC NULLS LAST`,
+        [mealId]
+      ),
+      client.query(
+        `SELECT sleep_duration_h, sleep_quality, other_remarks
+         FROM consultation.session_sleep
+         WHERE sessions_id = $1
+         LIMIT 1`,
+        [sessionId]
+      ),
+    ]);
+
+    return {
+      entries: savedEntries.rows.map(mapMealEntry),
+      mealOtherRemarks: mealOtherRemarks ?? null,
+      sleep: mapSleep(savedSleep.rows[0] ?? null),
+    };
+  });
 }

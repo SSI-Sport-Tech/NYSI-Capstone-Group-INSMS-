@@ -25,6 +25,7 @@ interface StagingSupplement {
   supplement_packaging_form: string;
   supplement_status: string;
   batch_testing_org: string | null;
+  batch_testing_org_url: string | null;
   product_source_url: string | string[] | null;
 }
 
@@ -71,11 +72,30 @@ export default function WebScraperPage() {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [summarySelectedIds, setSummarySelectedIds] = useState<Set<string>>(new Set());
   const [summaryDeleteLoading, setSummaryDeleteLoading] = useState(false);
-  const [scrapingStatus, setScrapingStatus] = useState({
-    lastRun: "Today at 9:14 PM",
-    scheduled: "Weekly on Mondays",
-    nextRun: "Nov 18, 2025",
-  });
+  interface ScheduleConfig {
+    is_enabled: boolean;
+    interval_days: number;
+    is_running: boolean;
+    last_run_at: string | null;
+    next_run_at: string | null;
+  }
+  const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(null);
+  const loadScheduleConfig = async () => {
+    try {
+      const res = await axios.get("/api/SSS/scraping/schedule");
+      setScheduleConfig(res.data);
+    } catch {
+      // Python service may not be running — fail silently
+    }
+  };
+
+  const fmtDate = (iso: string | null) => {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleString("en-SG", {
+      day: "numeric", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+  };
 
   // Initial / refresh load — resets accumulated list back to page 1
   const loadStagingSupplements = async () => {
@@ -130,6 +150,7 @@ export default function WebScraperPage() {
 
   useEffect(() => {
     loadStagingSupplements();
+    loadScheduleConfig();
   }, []);
 
   // Handle checkbox selection
@@ -255,8 +276,28 @@ export default function WebScraperPage() {
       setShowSummaryModal(true);
     } catch (error) {
       console.error("Error saving to inventory:", error);
-      if (axios.isAxiosError(error) && error.response?.data?.message) {
-        alert(`Failed to save supplements: ${error.response.data.message}`);
+      if (axios.isAxiosError(error) && error.response?.data) {
+        const data = error.response.data;
+        // Show per-item failure reasons if available
+        const rawResults: Array<{
+          staging_id: string;
+          staging_name: string;
+          status: string;
+          reason?: string;
+        }> = data.results ?? [];
+        if (rawResults.length > 0) {
+          const summaryItems: ApprovalResultItem[] = rawResults.map((r) => ({
+            stagingId: r.staging_id,
+            stagingName: r.staging_name ?? r.staging_id,
+            stagingBrand: brandLookup.get(r.staging_id) ?? "-",
+            status: r.status as "success" | "duplicate" | "failed",
+            reason: r.reason,
+          }));
+          setApprovalResults(summaryItems);
+          setShowSummaryModal(true);
+        } else {
+          alert(`Failed to save supplements: ${data.message ?? "Unknown error"}`);
+        }
       } else {
         alert("Failed to save supplements to inventory. Please try again.");
       }
@@ -321,12 +362,34 @@ export default function WebScraperPage() {
         </div>
         {/* Scraper Status Section */}
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Scraper Status
-          </h2>
-          <div className="text-sm text-gray-600 mb-4">
-            Last run: {scrapingStatus.lastRun} | Scheduled:{" "}
-            {scrapingStatus.scheduled}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Scraper Status</h2>
+            {scheduleConfig && (
+              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                scheduleConfig.is_running
+                  ? "bg-blue-100 text-blue-800"
+                  : scheduleConfig.is_enabled
+                  ? "bg-green-100 text-green-800"
+                  : "bg-gray-100 text-gray-600"
+              }`}>
+                {scheduleConfig.is_running ? "Running" : scheduleConfig.is_enabled ? "Scheduled" : "Paused"}
+              </span>
+            )}
+          </div>
+
+          {/* Run stats */}
+          <div className="grid grid-cols-2 gap-4 mb-5 text-sm text-gray-600">
+            <div>
+              <p className="text-xs font-medium text-gray-400 mb-0.5">Last run</p>
+              <p className="text-gray-900">{fmtDate(scheduleConfig?.last_run_at ?? null)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-400 mb-0.5">Next scheduled run</p>
+              <p className="text-gray-900 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" />
+                {scheduleConfig?.is_enabled ? fmtDate(scheduleConfig?.next_run_at ?? null) : "—"}
+              </p>
+            </div>
           </div>
 
           {/* Manual Run Button */}
@@ -340,18 +403,13 @@ export default function WebScraperPage() {
               ? <span className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
               : <Play className="w-4 h-4 mr-2" />
             }
-            {scraperLoading ? "Starting Scraper..." : "Manually Run Scraper Now"}
+            {scraperLoading ? "Starting Scraper..." : "Run / Edit Scraper"}
           </button>
           {!isAdmin && (
             <p className="text-xs text-gray-400 mt-2 text-center">
               Admin access required to run the scraper.
             </p>
           )}
-
-          <div className="flex items-center text-sm text-gray-500 mt-3">
-            <Clock className="w-4 h-4 mr-2" />
-            Next scheduled run: {scrapingStatus.nextRun}
-          </div>
         </div>
 
         {/* Supplement Findings Section */}
@@ -549,6 +607,7 @@ export default function WebScraperPage() {
           onClose={() => setShowUrlModal(false)}
           onStartScraping={handleStartScraping}
           loading={scraperLoading}
+          onScheduleSaved={loadScheduleConfig}
         />
 
         {/* Approval Summary Modal */}
@@ -561,7 +620,7 @@ export default function WebScraperPage() {
             deletable.length > 0 && deletable.every((r) => summarySelectedIds.has(r.stagingId));
 
           return (
-            <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="fixed inset-0 z-[70] overflow-y-auto">
               <div className="fixed inset-0 bg-black bg-opacity-50" />
               <div className="relative min-h-screen flex items-center justify-center p-4">
                 <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl flex flex-col max-h-[85vh]">

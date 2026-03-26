@@ -21,6 +21,7 @@ interface Supplement {
   supplement_status: string;
   supplement_status_id?: string;
   batch_testing_org: string | null;
+  batch_testing_org_url: string | null;
   product_source_url: string | null;
   description?: string;
   serving_size?: string;
@@ -47,6 +48,7 @@ interface Batch {
   batch_price: number;
   date_added: string;
   inv_batch_testing_org: string | null;
+  inv_batch_testing_org_id?: string | null;
   batch_unit?: string | null;
 }
 
@@ -91,6 +93,7 @@ export default function SupplementDetailPage() {
         supplement_status: supplementData.supplement_status || "",
         supplement_status_id: supplementData.supplement_status_id || undefined,
         batch_testing_org: supplementData.batch_testing_org || null,
+        batch_testing_org_url: supplementData.batch_testing_org_url || null,
         product_source_url: supplementData.product_source_url || null,
         description: supplementData.supplement_description || undefined,
         serving_size: supplementData.nutritional_info_per_serving_definition || undefined,

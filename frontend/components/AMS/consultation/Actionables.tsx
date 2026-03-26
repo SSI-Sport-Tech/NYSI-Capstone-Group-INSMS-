@@ -1,0 +1,539 @@
+import { useState, useEffect, useRef } from "react";
+
+interface ActionablesProps {
+  athleteId: string;
+  sessionId: string;
+  isNewConsultation?: boolean;
+  ensureSession?: () => Promise<string>;
+  readOnly?: boolean;
+  prevSessionId?: string;
+}
+
+interface OpenItem {
+  id: string;
+  due_date: string | null;
+  owner: string | null;
+  open_item_status: string;
+  open_item_status_id: string;
+  description: string | null;
+  open_item: string | null;
+  other_remarks: string | null;
+}
+
+interface StatusLookup {
+  id: string;
+  open_item_status: string;
+  is_active: boolean;
+}
+
+const emptyNewItem = {
+  description: "",
+  openItem: "",
+  dueDate: "",
+  statusId: "",
+};
+
+export default function Actionables({
+  athleteId: _athleteId,
+  sessionId,
+  isNewConsultation,
+  ensureSession,
+  readOnly,
+  prevSessionId,
+}: ActionablesProps) {
+
+  const resolvedSessionIdRef = useRef<string>("");
+  const [openItems, setOpenItems] = useState<OpenItem[]>([]);
+  const [prevItems, setPrevItems] = useState<OpenItem[]>([]);
+  const [activeTab, setActiveTab] = useState<"current" | "previous">("current");
+  const [statuses, setStatuses] = useState<StatusLookup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newItem, setNewItem] = useState(emptyNewItem);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  const fetchStatuses = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/actionables/statuses`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      const list: StatusLookup[] = data.data || [];
+      setStatuses(list);
+      // Default new item status to "In Progress"
+      const inProgress = list.find((s) =>
+        s.open_item_status.toLowerCase().includes("in progress"),
+      );
+      if (inProgress) {
+        setNewItem((prev) => ({ ...prev, statusId: inProgress.id }));
+      }
+    } catch {
+      // Non-critical: statuses still render empty dropdown
+    }
+  };
+
+  const fetchOpenItems = async (overrideId?: string) => {
+    const effectiveId = overrideId ?? (sessionId || resolvedSessionIdRef.current);
+    if (!effectiveId) {
+      setOpenItems([]);
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setError("");
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/actionables/session/${effectiveId}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+      const data = await response.json();
+      setOpenItems(data.data || []);
+    } catch {
+      setError("Failed to load open items");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStatuses();
+  }, []);
+
+  useEffect(() => {
+    fetchOpenItems();
+    setSelectedIds(new Set());
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!prevSessionId) return;
+    (async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/actionables/session/${prevSessionId}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        setPrevItems(data.data || []);
+      } catch {
+        // non-critical
+      }
+    })();
+  }, [prevSessionId]);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === openItems.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(openItems.map((i) => i.id)));
+    }
+  };
+
+  const handleMarkCompleted = async () => {
+    if (selectedIds.size === 0) return;
+    const completedStatus = statuses.find((s) =>
+      s.open_item_status.toLowerCase().includes("completed"),
+    );
+    if (!completedStatus) return;
+    try {
+      setSaving(true);
+      const token = localStorage.getItem("token");
+      await Promise.all(
+        [...selectedIds].map((id) =>
+          fetch(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/actionables/${id}`,
+            {
+              method: "PATCH",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                open_item_status_id: completedStatus.id,
+              }),
+            },
+          ),
+        ),
+      );
+      setSelectedIds(new Set());
+      await fetchOpenItems();
+    } catch {
+      setSaveError("Failed to update status.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteItems = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.size} item(s)? This cannot be undone.`)) return;
+    try {
+      setSaving(true);
+      setSaveError("");
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/Consultation/actionables`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ ids: [...selectedIds] }),
+        },
+      );
+      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+      setSelectedIds(new Set());
+      await fetchOpenItems();
+    } catch {
+      setSaveError("Failed to delete item(s).");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddItem = async () => {
+    if (!newItem.statusId) return;
+    try {
+      setSaving(true);
+      setSaveError("");
+      const id = isNewConsultation && ensureSession ? await ensureSession() : sessionId;
+      if (!id) { setSaveError("No session available."); setSaving(false); return; }
+      if (id) resolvedSessionIdRef.current = id;
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/actionables`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            sessions_id: id,
+            open_item_status_id: newItem.statusId,
+            description: newItem.description || null,
+            open_item: newItem.openItem || null,
+            due_date: newItem.dueDate || null,
+          }),
+        },
+      );
+      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+      setShowAddForm(false);
+      setNewItem({
+        ...emptyNewItem,
+        statusId:
+          statuses.find((s) =>
+            s.open_item_status.toLowerCase().includes("in progress"),
+          )?.id ?? "",
+      });
+      await fetchOpenItems(id);
+    } catch {
+      setSaveError("Failed to add item. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <section
+        id="actionables"
+        className="bg-white rounded-xl shadow-lg p-6 text-gray-900"
+      >
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
+          <div className="space-y-3">
+            <div className="h-4 bg-gray-200 rounded"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section
+        id="actionables"
+        className="bg-white rounded-xl shadow-lg p-6 text-gray-900"
+      >
+        <div className="text-center py-4">
+          <p className="text-red-600">{error}</p>
+          <button
+            onClick={() => fetchOpenItems()}
+            className="mt-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  const displayItems = activeTab === "previous" ? prevItems : openItems;
+
+  return (
+    <section
+      id="actionables"
+      className="bg-white rounded-xl shadow-lg p-6 text-gray-900"
+    >
+      <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">Actionables</h2>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">
+            All Actions ({displayItems.length})
+          </span>
+          {!readOnly && activeTab === "current" && (
+            <>
+              <button
+                onClick={handleMarkCompleted}
+                disabled={selectedIds.size === 0 || saving}
+                className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Mark as Completed
+              </button>
+              <button
+                onClick={handleDeleteItems}
+                disabled={selectedIds.size === 0 || saving}
+                className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddForm((v) => !v);
+                  setSaveError("");
+                }}
+                className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+              >
+                {showAddForm ? "Cancel" : "Add New Action"}
+              </button>
+              {isNewConsultation && (
+                <button
+                  onClick={() => { setOpenItems([]); setSelectedIds(new Set()); }}
+                  className="px-3 py-1 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+                >
+                  Clear All
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Tab bar */}
+      {prevSessionId && (
+        <div className="flex border-b border-gray-200 mb-6">
+          {(["current", "previous"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                activeTab === tab
+                  ? "border-gray-800 text-gray-900"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab === "current" ? "Current Session" : "Previous Session"}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {saveError && <p className="text-red-600 text-sm mb-3">{saveError}</p>}
+
+      {/* Add New Item Form */}
+      {!readOnly && activeTab === "current" && showAddForm && (
+        <div className="mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50 space-y-3">
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <label className="block text-gray-700 mb-1">Description</label>
+              <input
+                type="text"
+                value={newItem.description}
+                onChange={(e) =>
+                  setNewItem((p) => ({ ...p, description: e.target.value }))
+                }
+                placeholder="e.g. Athlete reports fatigue"
+                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-1">Action Item</label>
+              <input
+                type="text"
+                value={newItem.openItem}
+                onChange={(e) =>
+                  setNewItem((p) => ({ ...p, openItem: e.target.value }))
+                }
+                placeholder="e.g. Get full blood count"
+                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-1">Due Date</label>
+              <input
+                type="date"
+                value={newItem.dueDate}
+                onChange={(e) =>
+                  setNewItem((p) => ({ ...p, dueDate: e.target.value }))
+                }
+                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-1">Status</label>
+              <select
+                value={newItem.statusId}
+                onChange={(e) =>
+                  setNewItem((p) => ({ ...p, statusId: e.target.value }))
+                }
+                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+              >
+                {statuses.filter((s) => s.is_active).map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.open_item_status}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => {
+                setShowAddForm(false);
+                setSaveError("");
+              }}
+              className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleAddItem}
+              disabled={saving}
+              className="px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700 disabled:opacity-40"
+            >
+              {saving ? "Saving..." : "Save Item"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="border-b border-gray-200">
+              {!readOnly && activeTab === "current" && (
+                <th className="py-3 px-2">
+                  <input
+                    type="checkbox"
+                    checked={
+                      openItems.length > 0 &&
+                      selectedIds.size === openItems.length
+                    }
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+                  />
+                </th>
+              )}
+              <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
+                Due Date
+              </th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
+                Owner
+              </th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
+                Status
+              </th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
+                Description
+              </th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
+                Action Item
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {displayItems.map((item) => (
+              <tr
+                key={item.id}
+                className="border-b border-gray-100 hover:bg-gray-50"
+              >
+                {!readOnly && activeTab === "current" && (
+                  <td className="py-3 px-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(item.id)}
+                      onChange={() => toggleSelect(item.id)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                  </td>
+                )}
+                <td className="py-3 px-4 text-sm text-gray-900">
+                  {item.due_date
+                    ? new Date(item.due_date).toLocaleDateString()
+                    : "—"}
+                </td>
+                <td className="py-3 px-4 text-sm text-gray-900">
+                  {item.owner || "—"}
+                </td>
+                <td className="py-3 px-4">
+                  <span
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      item.open_item_status?.toLowerCase().includes("completed")
+                        ? "bg-green-100 text-green-800"
+                        : "bg-yellow-100 text-yellow-800"
+                    }`}
+                  >
+                    • {item.open_item_status}
+                  </span>
+                </td>
+                <td className="py-3 px-4 text-sm text-gray-700 max-w-xs">
+                  {item.description || "—"}
+                </td>
+                <td className="py-3 px-4 text-sm text-gray-700 max-w-xs">
+                  {item.open_item || "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {displayItems.length === 0 && (
+        <div className="text-center py-8">
+          {isNewConsultation && prevItems.length > 0 && (
+            <p className="text-sm text-gray-400 italic mb-3">
+              Previous consultation had {prevItems.length} action item{prevItems.length !== 1 ? "s" : ""}
+            </p>
+          )}
+          <h3 className="mt-2 text-sm font-medium text-gray-900">
+            {activeTab === "previous" ? "No actionables from previous session" : "No actionables"}
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {activeTab === "previous" ? "The previous session had no action items." : "Get started by creating a new action item."}
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}

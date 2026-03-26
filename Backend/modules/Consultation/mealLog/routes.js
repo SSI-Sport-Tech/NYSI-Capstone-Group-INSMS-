@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { getMealLog, upsertMealLog } from "./controller.js";
-import { validateSessionIdParam, validateMealLogBody } from "./validation.js";
 import { authenticateToken } from "../../Auth/authMiddleware.js";
 
 const router = Router();
@@ -9,7 +8,7 @@ const router = Router();
  * @swagger
  * /api/Consultation/sessions/{sessionId}/meal-log:
  *   get:
- *     summary: Retrieve the meal log for a specific session
+ *     summary: Retrieve the meal log and sleep data for a specific session
  *     tags: [Consultation - Meal Log]
  *     security:
  *       - bearerAuth: []
@@ -23,14 +22,7 @@ const router = Router();
  *           format: uuid
  *     responses:
  *       200:
- *         description: Successfully retrieved the meal log
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   $ref: "#/components/schemas/MealLogResponse"
+ *         description: Successfully retrieved the meal log and sleep data
  *       400:
  *         $ref: "#/components/responses/BadRequest"
  *       404:
@@ -39,7 +31,7 @@ const router = Router();
  *         $ref: "#/components/responses/InternalServerError"
  *
  *   put:
- *     summary: Upsert the meal log for a specific session
+ *     summary: Upsert the meal log and sleep data for a specific session
  *     tags: [Consultation - Meal Log]
  *     security:
  *       - bearerAuth: []
@@ -56,17 +48,19 @@ const router = Router();
  *       content:
  *         application/json:
  *           schema:
- *             $ref: "#/components/schemas/MealLogPayload"
+ *             type: object
+ *             properties:
+ *               entries:
+ *                 type: array
+ *               mealOtherRemarks:
+ *                 type: string
+ *                 nullable: true
+ *               sleep:
+ *                 type: object
+ *                 nullable: true
  *     responses:
  *       200:
- *         description: Successfully upserted the meal log
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   $ref: "#/components/schemas/MealLogResponse"
+ *         description: Successfully upserted the meal log and sleep data
  *       400:
  *         $ref: "#/components/responses/BadRequest"
  *       404:
@@ -75,17 +69,11 @@ const router = Router();
  *         $ref: "#/components/responses/InternalServerError"
  */
 
-router.get(
-  "/sessions/:sessionId/meal-log",
-  validateSessionIdParam,
-  getMealLog
-);
+router.get("/sessions/:sessionId/meal-log", getMealLog);
 
 router.put(
   "/sessions/:sessionId/meal-log",
   authenticateToken,
-  validateSessionIdParam,
-  validateMealLogBody,
   upsertMealLog
 );
 

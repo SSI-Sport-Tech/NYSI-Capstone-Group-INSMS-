@@ -15,15 +15,15 @@ export async function getConsultTypes() {
 }
 
 /**
- * Get all active nutrition diagnoses
- * @returns {Promise<Array>} List of { id, category, diagnosis }
+ * Get all active consultation objectives
+ * @returns {Promise<Array>} List of { id, consultation_objective }
  */
-export async function getNutritionDiagnoses() {
+export async function getConsultationObjectives() {
     const result = await pool.query(`
-        SELECT id, category, diagnosis
-        FROM consultation.nutrition_diagnosis_lookup
+        SELECT id, consultation_objective
+        FROM consultation.consultation_objective_lookup
         WHERE is_active = true
-        ORDER BY category, diagnosis ASC
+        ORDER BY consultation_objective ASC
     `);
     return result.rows;
 }

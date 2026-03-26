@@ -16,23 +16,28 @@ export async function getBatchesByPage(pageNumber, pageSize = 10) {
       ib.batch_expiration_date,
       ib.batch_price,
       ib.supplement_id,
-      ib.inv_batch_testing_org,
+      btol.batch_testing_org AS inv_batch_testing_org,
+      ib.inv_batch_testing_org_id,
+      ib.inv_batch_testing_org_url,
       ib.batch_unit,
       s.supplement_name,
       s.supplement_brand,
+      spf.supplement_packaging_form,
       COALESCE(SUM(it.quantity), 0) AS booked,
       ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available,
       bssl.batch_stock_status AS batch_status,
       ib.date_added
     FROM SSS.Inventory_Batch ib
     INNER JOIN SSS.Supplement s ON ib.supplement_id = s.id
+    LEFT JOIN SSS.Supplement_Packaging_Form_Lookup spf ON s.supplement_packaging_form_id = spf.id
     LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.inventory_batch_id
     LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl ON ib.batch_stock_status_id = bssl.id
+    LEFT JOIN SSS.batch_testing_org_lookup btol ON ib.inv_batch_testing_org_id = btol.id
     WHERE bssl.is_active = true
     GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity,
              ib.batch_expiration_date, ib.batch_price, ib.supplement_id,
-             ib.inv_batch_testing_org, ib.batch_unit, s.supplement_name, s.supplement_brand,
-             bssl.batch_stock_status, ib.date_added
+             ib.inv_batch_testing_org_id, ib.inv_batch_testing_org_url, ib.batch_unit, s.supplement_name, s.supplement_brand,
+             spf.supplement_packaging_form, bssl.batch_stock_status, ib.date_added, btol.batch_testing_org
     ORDER BY ib.id DESC
     LIMIT $1 OFFSET $2
   `;
@@ -88,23 +93,28 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
       ib.batch_expiration_date,
       ib.batch_price,
       ib.supplement_id,
-      ib.inv_batch_testing_org,
+      btol.batch_testing_org AS inv_batch_testing_org,
+      ib.inv_batch_testing_org_id,
+      ib.inv_batch_testing_org_url,
       ib.batch_unit,
       s.supplement_name,
       s.supplement_brand,
+      spf.supplement_packaging_form,
       COALESCE(SUM(it.quantity), 0) AS booked,
       ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available,
       bssl.batch_stock_status AS batch_status,
       ib.date_added
     FROM SSS.Inventory_Batch ib
     INNER JOIN SSS.Supplement s ON ib.supplement_id = s.id
+    LEFT JOIN SSS.Supplement_Packaging_Form_Lookup spf ON s.supplement_packaging_form_id = spf.id
     LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.inventory_batch_id
     LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl ON ib.batch_stock_status_id = bssl.id
+    LEFT JOIN SSS.batch_testing_org_lookup btol ON ib.inv_batch_testing_org_id = btol.id
     WHERE bssl.is_active = true AND (${whereConditions})
     GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity,
              ib.batch_expiration_date, ib.batch_price, ib.supplement_id,
-             ib.inv_batch_testing_org, ib.batch_unit, s.supplement_name, s.supplement_brand,
-             bssl.batch_stock_status, ib.date_added
+             ib.inv_batch_testing_org_id, ib.inv_batch_testing_org_url, ib.batch_unit, s.supplement_name, s.supplement_brand,
+             spf.supplement_packaging_form, bssl.batch_stock_status, ib.date_added, btol.batch_testing_org
     ORDER BY ib.id DESC
     LIMIT $${searchWords.length + 1} OFFSET $${searchWords.length + 2}
   `;
@@ -164,7 +174,9 @@ export async function getBatchById(batchId) {
             ib.batch_price,
             ib.batch_expiration_date,
             ib.batch_manufacture_date,
-            ib.inv_batch_testing_org,
+            ib.inv_batch_testing_org_id,
+            ib.inv_batch_testing_org_url,
+            btol.batch_testing_org AS inv_batch_testing_org,
             ib.batch_unit,
             ib.batch_stock_status_id,
             ib.date_added,
@@ -176,6 +188,8 @@ export async function getBatchById(batchId) {
             ON ib.batch_stock_status_id = bssl.id
         LEFT JOIN SSS.Supplement s
             ON ib.supplement_id = s.id
+        LEFT JOIN SSS.batch_testing_org_lookup btol
+            ON ib.inv_batch_testing_org_id = btol.id
         WHERE ib.id = $1
     `;
 
@@ -238,10 +252,11 @@ export async function createBatch(batchData, userId) {
             batch_price,
             batch_expiration_date,
             batch_manufacture_date,
-            inv_batch_testing_org,
+            inv_batch_testing_org_id,
+            inv_batch_testing_org_url,
             batch_unit
         ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
         )
         RETURNING
             id,
@@ -252,7 +267,8 @@ export async function createBatch(batchData, userId) {
             batch_price,
             batch_expiration_date,
             batch_manufacture_date,
-            inv_batch_testing_org,
+            inv_batch_testing_org_id,
+            inv_batch_testing_org_url,
             batch_unit,
             date_added
     `;
@@ -265,7 +281,8 @@ export async function createBatch(batchData, userId) {
     batchData.batch_price || null,
     batchData.batch_expiration_date || null,
     batchData.batch_manufacture_date || null,
-    batchData.inv_batch_testing_org || null,
+    batchData.inv_batch_testing_org_id || null,
+    batchData.inv_batch_testing_org_url || null,
     batchData.batch_unit || null,
   ];
 
@@ -290,7 +307,8 @@ export async function updateBatch(batchId, updateData, userId) {
     batch_price: updateData.batch_price,
     batch_expiration_date: updateData.batch_expiration_date,
     batch_manufacture_date: updateData.batch_manufacture_date,
-    inv_batch_testing_org: updateData.inv_batch_testing_org,
+    inv_batch_testing_org_id: updateData.inv_batch_testing_org_id,
+    inv_batch_testing_org_url: updateData.inv_batch_testing_org_url,
     batch_unit: updateData.batch_unit,
   };
 
@@ -321,7 +339,8 @@ export async function updateBatch(batchId, updateData, userId) {
             batch_price,
             batch_expiration_date,
             batch_manufacture_date,
-            inv_batch_testing_org,
+            inv_batch_testing_org_id,
+            inv_batch_testing_org_url,
             batch_unit
     `;
 

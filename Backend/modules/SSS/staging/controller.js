@@ -101,6 +101,7 @@ export async function getStagingSupplementDetails(req, res) {
             supplement_certifications: stagingSupplement.supplement_certifications || null,
             supplement_additional_information: stagingSupplement.supplement_additional_information || null,
             batch_testing_org: stagingSupplement.batch_testing_org || null,
+            batch_testing_org_url: stagingSupplement.batch_testing_org_url || null,
             product_source_url: stagingSupplement.product_source_url || null,
             scraper_version: stagingSupplement.scraper_version || null,
             is_reviewed: stagingSupplement.is_reviewed
@@ -715,5 +716,51 @@ export async function startScrapingJob(req, res) {
             error: 'Failed to start scraping job',
             message: error.message
         });
+    }
+}
+
+// ============================================================================
+// SCHEDULER CONFIG FUNCTIONS
+// ============================================================================
+
+/**
+ * GET /api/SSS/scraping/schedule
+ * Proxy to Python GET /api/webscraper/scheduler/config
+ */
+export async function getSchedulerConfig(req, res) {
+    const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
+    try {
+        const response = await fetch(`${PYTHON_SERVICE_URL}/api/webscraper/scheduler/config`);
+        const data = await response.json();
+        if (!response.ok) {
+            return res.status(response.status).json(data);
+        }
+        res.json(data);
+    } catch (error) {
+        console.error('Error fetching scheduler config:', error);
+        res.status(503).json({ error: 'Python service unavailable', message: error.message });
+    }
+}
+
+/**
+ * PATCH /api/SSS/scraping/schedule
+ * Proxy to Python PATCH /api/webscraper/scheduler/config
+ */
+export async function updateSchedulerConfig(req, res) {
+    const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
+    try {
+        const response = await fetch(`${PYTHON_SERVICE_URL}/api/webscraper/scheduler/config`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req.body),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            return res.status(response.status).json(data);
+        }
+        res.json(data);
+    } catch (error) {
+        console.error('Error updating scheduler config:', error);
+        res.status(503).json({ error: 'Python service unavailable', message: error.message });
     }
 }

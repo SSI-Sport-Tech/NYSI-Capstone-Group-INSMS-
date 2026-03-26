@@ -137,8 +137,6 @@ export async function getMedicalHistory(sessionId) {
             h.urine_colour,
             h.hydration_status,
             h.other_remarks                 AS hydration_other_remarks,
-            nr.hydration_water_intake_for_target_weight,
-            nr.hydration_requirement_for_water_intake,
 
             per.id                          AS period_id,
             per.date_of_first_period,
@@ -154,7 +152,6 @@ export async function getMedicalHistory(sessionId) {
         LEFT JOIN consultation.session_puberty p         ON p.sessions_id  = s.sid
         LEFT JOIN consultation.session_bowel_movement bm ON bm.sessions_id = s.sid
         LEFT JOIN consultation.session_hydration h       ON h.sessions_id  = s.sid
-        LEFT JOIN consultation.session_nutrition_review nr ON nr.sessions_id = s.sid
         LEFT JOIN consultation.session_period per        ON per.sessions_id = s.sid
     `;
 
@@ -191,8 +188,8 @@ export async function getMedicalHistory(sessionId) {
             urine_colour: row.urine_colour ?? null,
             hydration_status: row.hydration_status ?? null,
             other_remarks: row.hydration_other_remarks ?? null,
-            hydration_water_intake_for_target_weight: row.hydration_water_intake_for_target_weight ?? null,
-            hydration_requirement_for_water_intake: row.hydration_requirement_for_water_intake ?? null,
+            hydration_water_intake_for_target_weight: null,
+            hydration_requirement_for_water_intake: null,
         },
         period: {
             id: row.period_id ?? null,

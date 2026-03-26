@@ -16,6 +16,9 @@ interface PreviousConsultationProps {
   embedded?: boolean;
   /** When true (parent edit mode): shows editable form pre-populated with current data */
   isEditMode?: boolean;
+  /** Previous session ID for the Previous Session tab */
+  prevSessionId?: string;
+  onStepStatusChange?: (status: "default" | "dirty" | "saved") => void;
 }
 
 interface ConsultationData {
@@ -27,20 +30,9 @@ interface ConsultationData {
   consult_type?: string;
   details: {
     main_nutrition_diagnosis: string | null;
-    carbohydrates_review_id: string | null;
-    carbohydrates_review_diagnosis: string | null;
-    protein_review_id: string | null;
-    protein_review_diagnosis: string | null;
-    fat_review_id: string | null;
-    fat_review_diagnosis: string | null;
-    fibre_review_id: string | null;
-    fibre_review_diagnosis: string | null;
-    iron_review_id: string | null;
-    iron_review_diagnosis: string | null;
-    calcium_review_id: string | null;
-    calcium_review_diagnosis: string | null;
-    micronutrients_review_id: string | null;
-    micronutrients_review_diagnosis: string | null;
+    carbohydrates_review: string | null;
+    protein_review: string | null;
+    fat_review: string | null;
     other_review: string | null;
     intervention_note: string | null;
     follow_up_note: string | null;
@@ -68,12 +60,6 @@ interface ConsultType {
   type_of_consult: string;
 }
 
-interface NutritionDiagnosis {
-  id: string;
-  category: string;
-  diagnosis: string;
-}
-
 interface CurrentConsultForm {
   consult_type: string;
   intervention_status: string;
@@ -81,10 +67,6 @@ interface CurrentConsultForm {
   carbohydrates_review: string;
   protein_review: string;
   fat_review: string;
-  fibre_review: string;
-  iron_review: string;
-  calcium_review: string;
-  micronutrients_review: string;
   other_review: string;
   intervention_note: string;
   follow_up_note: string;
@@ -98,10 +80,6 @@ const emptyForm: CurrentConsultForm = {
   carbohydrates_review: "",
   protein_review: "",
   fat_review: "",
-  fibre_review: "",
-  iron_review: "",
-  calcium_review: "",
-  micronutrients_review: "",
   other_review: "",
   intervention_note: "",
   follow_up_note: "",
@@ -112,11 +90,14 @@ const PreviousConsultation = forwardRef<
   PreviousConsultationHandle,
   PreviousConsultationProps
 >(function PreviousConsultation(
-  { athleteId, sessionId, isNewConsultation, ensureSession, readOnly, embedded, isEditMode },
+  { athleteId, sessionId, isNewConsultation, ensureSession, readOnly, embedded, isEditMode, prevSessionId, onStepStatusChange },
   ref,
 ) {
   const [consultationData, setConsultationData] =
     useState<ConsultationData | null>(null);
+  const [prevConsultData, setPrevConsultData] = useState<ConsultationData | null>(null);
+  const [fetchKey, setFetchKey] = useState(0);
+  const [activeTab, setActiveTab] = useState<"current" | "previous">("current");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<CurrentConsultForm>(emptyForm);
@@ -127,6 +108,10 @@ const PreviousConsultation = forwardRef<
   useEffect(() => {
     setIsSaved(false);
   }, [form]);
+
+  useEffect(() => {
+    onStepStatusChange?.(isSaved ? "saved" : (isNewConsultation || isEditMode) ? "dirty" : "default");
+  }, [isEditMode, isNewConsultation, isSaved, onStepStatusChange]);
 
   // Refs so closures always see current values
   const formRef = useRef(form);
@@ -141,7 +126,6 @@ const PreviousConsultation = forwardRef<
   const consultTypesRef = useRef<ConsultType[]>([]);
 
   const [consultTypes, setConsultTypes] = useState<ConsultType[]>([]);
-  const [nutritionDiagnoses, setNutritionDiagnoses] = useState<NutritionDiagnosis[]>([]);
 
   // Pre-populate / reset form when isEditMode changes
   const prevIsEditModeRef = useRef(false);
@@ -154,13 +138,9 @@ const PreviousConsultation = forwardRef<
         consult_type: "",
         intervention_status: consultationData.intervention_status || "",
         main_nutrition_diagnosis: d.main_nutrition_diagnosis || "",
-        carbohydrates_review: d.carbohydrates_review_id || "",
-        protein_review: d.protein_review_id || "",
-        fat_review: d.fat_review_id || "",
-        fibre_review: d.fibre_review_id || "",
-        iron_review: d.iron_review_id || "",
-        calcium_review: d.calcium_review_id || "",
-        micronutrients_review: d.micronutrients_review_id || "",
+        carbohydrates_review: d.carbohydrates_review || "",
+        protein_review: d.protein_review || "",
+        fat_review: d.fat_review || "",
         other_review: d.other_review || "",
         intervention_note: d.intervention_note || "",
         follow_up_note: d.follow_up_note || "",
@@ -200,26 +180,22 @@ const PreviousConsultation = forwardRef<
           );
           if (typeMatch) {
             await fetch(
-              `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/${id}`,
+              `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${id}`,
               { method: "PATCH", headers, body: JSON.stringify({ type_of_consult_id: typeMatch.id }) },
             );
           }
         }
         await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-details`,
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis-summary`,
           {
             method: "POST",
             headers,
             body: JSON.stringify({
               sessions_id: id,
               main_nutrition_diagnosis: currentForm.main_nutrition_diagnosis || undefined,
-              carbohydrates_review_id: currentForm.carbohydrates_review || null,
-              protein_review_id: currentForm.protein_review || null,
-              fat_review_id: currentForm.fat_review || null,
-              fibre_review_id: currentForm.fibre_review || null,
-              iron_review_id: currentForm.iron_review || null,
-              calcium_review_id: currentForm.calcium_review || null,
-              micronutrients_review_id: currentForm.micronutrients_review || null,
+              carbohydrates_review: currentForm.carbohydrates_review || undefined,
+              protein_review: currentForm.protein_review || undefined,
+              fat_review: currentForm.fat_review || undefined,
               other_review: currentForm.other_review || undefined,
               intervention_note: currentForm.intervention_note || undefined,
               follow_up_note: currentForm.follow_up_note || undefined,
@@ -247,7 +223,7 @@ const PreviousConsultation = forwardRef<
 
         if (readOnly && sessionId) {
           const sessionRes = (await apiCall(
-            `/api/Consultation/consultation-update/${sessionId}`,
+            `/api/Consultation/consultation-session/${sessionId}`,
           )) as { data: { id: string; athlete_id: string; date_of_consult: string; nutritionist_name: string } };
           targetId = sessionRes.data.id;
           dateOfConsult = sessionRes.data.date_of_consult;
@@ -265,8 +241,8 @@ const PreviousConsultation = forwardRef<
         }
 
         const [detailsResponse, prescriptionsResponse] = await Promise.allSettled([
-          apiCall(`/api/Consultation/consultation-details/${targetId}`),
-          consultationApi.getPrescriptions(targetId),
+          apiCall(`/api/Consultation/nutrition-diagnosis-summary/${targetId}`),
+          consultationApi.getSupplementDispensing(targetId),
         ]);
 
         const data: ConsultationData = {
@@ -276,11 +252,11 @@ const PreviousConsultation = forwardRef<
           nutritionist_name: nutritionistName,
           intervention_status: "Supplement Intake",
           details:
-            detailsResponse.status === "fulfilled"
+            detailsResponse.status === "fulfilled" && detailsResponse.value
               ? (detailsResponse.value as { data: ConsultationData["details"] }).data
               : null,
           prescriptions:
-            prescriptionsResponse.status === "fulfilled"
+            prescriptionsResponse.status === "fulfilled" && prescriptionsResponse.value
               ? ((prescriptionsResponse.value as { data: ConsultationData["prescriptions"] }).data || [])
               : [],
         };
@@ -297,7 +273,39 @@ const PreviousConsultation = forwardRef<
     if (readOnly ? sessionId : athleteId) {
       fetchPreviousConsultation();
     }
-  }, [athleteId, sessionId, readOnly]);
+  }, [athleteId, sessionId, readOnly, fetchKey]);
+
+  // Fetch previous session's nutrition diagnosis data for the "Previous Session" tab
+  useEffect(() => {
+    if (!prevSessionId) return;
+    (async () => {
+      try {
+        const [sessionRes, detailsRes, prescRes] = await Promise.allSettled([
+          apiCall(`/api/Consultation/consultation-session/${prevSessionId}`),
+          apiCall(`/api/Consultation/nutrition-diagnosis-summary/${prevSessionId}`),
+          consultationApi.getSupplementDispensing(prevSessionId),
+        ]);
+        const sessionData = sessionRes.status === "fulfilled"
+          ? (sessionRes.value as { data: { id: string; athlete_id: string; date_of_consult: string; nutritionist_name: string } }).data
+          : null;
+        if (!sessionData) return;
+        setPrevConsultData({
+          id: sessionData.id,
+          athlete_id: sessionData.athlete_id,
+          date_of_consult: sessionData.date_of_consult,
+          nutritionist_name: sessionData.nutritionist_name,
+          details: detailsRes.status === "fulfilled" && detailsRes.value
+            ? (detailsRes.value as { data: ConsultationData["details"] }).data
+            : null,
+          prescriptions: prescRes.status === "fulfilled"
+            ? ((prescRes.value as { data: ConsultationData["prescriptions"] }).data || [])
+            : [],
+        });
+      } catch {
+        // non-critical
+      }
+    })();
+  }, [prevSessionId]);
 
   // Fetch lookup tables for new-consultation or edit-mode forms
   useEffect(() => {
@@ -306,13 +314,9 @@ const PreviousConsultation = forwardRef<
     const fetchLookups = async () => {
       try {
         const { consultationLookupApi } = await import("../../../utils/consultationApi");
-        const [typesResponse, diagResponse] = await Promise.all([
-          consultationLookupApi.getConsultationTypes(),
-          consultationLookupApi.getNutritionDiagnoses(),
-        ]);
+        const typesResponse = await consultationLookupApi.getConsultationTypes();
         setConsultTypes(typesResponse.data ?? []);
         consultTypesRef.current = typesResponse.data ?? [];
-        setNutritionDiagnoses(diagResponse.data ?? []);
       } catch (err) {
         console.error("Failed to fetch consultation lookups:", err);
       }
@@ -338,27 +342,23 @@ const PreviousConsultation = forwardRef<
         const typeMatch = consultTypes.find((t) => t.type_of_consult === form.consult_type);
         if (typeMatch) {
           await fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-update/${id}`,
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${id}`,
             { method: "PATCH", headers, body: JSON.stringify({ type_of_consult_id: typeMatch.id }) },
           );
         }
       }
 
       const detailsRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-details`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis-summary`,
         {
           method: "POST",
           headers,
           body: JSON.stringify({
             sessions_id: id,
             main_nutrition_diagnosis: form.main_nutrition_diagnosis || undefined,
-            carbohydrates_review_id: form.carbohydrates_review || null,
-            protein_review_id: form.protein_review || null,
-            fat_review_id: form.fat_review || null,
-            fibre_review_id: form.fibre_review || null,
-            iron_review_id: form.iron_review || null,
-            calcium_review_id: form.calcium_review || null,
-            micronutrients_review_id: form.micronutrients_review || null,
+            carbohydrates_review: form.carbohydrates_review || undefined,
+            protein_review: form.protein_review || undefined,
+            fat_review: form.fat_review || undefined,
             other_review: form.other_review || undefined,
             intervention_note: form.intervention_note || undefined,
             follow_up_note: form.follow_up_note || undefined,
@@ -371,6 +371,7 @@ const PreviousConsultation = forwardRef<
         throw new Error(errData?.details?.[0]?.message || errData?.error || errData?.message || `Save failed (${detailsRes.status})`);
       }
       setIsSaved(true);
+      setFetchKey((k) => k + 1);
     } catch (err) {
       console.error("Error saving current consultation:", err);
       setSaveError("Failed to save. Please try again.");
@@ -387,19 +388,15 @@ const PreviousConsultation = forwardRef<
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-details/${sessionId}`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis-summary/${sessionId}`,
         {
           method: "PATCH",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             main_nutrition_diagnosis: formRef.current.main_nutrition_diagnosis || undefined,
-            carbohydrates_review_id: formRef.current.carbohydrates_review || null,
-            protein_review_id: formRef.current.protein_review || null,
-            fat_review_id: formRef.current.fat_review || null,
-            fibre_review_id: formRef.current.fibre_review || null,
-            iron_review_id: formRef.current.iron_review || null,
-            calcium_review_id: formRef.current.calcium_review || null,
-            micronutrients_review_id: formRef.current.micronutrients_review || null,
+            carbohydrates_review: formRef.current.carbohydrates_review || undefined,
+            protein_review: formRef.current.protein_review || undefined,
+            fat_review: formRef.current.fat_review || undefined,
             other_review: formRef.current.other_review || undefined,
             intervention_note: formRef.current.intervention_note || undefined,
             follow_up_note: formRef.current.follow_up_note || undefined,
@@ -411,21 +408,50 @@ const PreviousConsultation = forwardRef<
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData?.message || errData?.error || `Save failed (${res.status})`);
       }
+      // Update details in place so read-only view reflects saved values immediately
+      const saved = formRef.current;
+      setConsultationData((prev) =>
+        prev
+          ? {
+              ...prev,
+              details: {
+                main_nutrition_diagnosis: saved.main_nutrition_diagnosis || null,
+                carbohydrates_review: saved.carbohydrates_review || null,
+                protein_review: saved.protein_review || null,
+                fat_review: saved.fat_review || null,
+                other_review: saved.other_review || null,
+                intervention_note: saved.intervention_note || null,
+                follow_up_note: saved.follow_up_note || null,
+                other_remarks: saved.other_remarks || null,
+              },
+            }
+          : prev,
+      );
       setIsSaved(true);
+      setFetchKey((k) => k + 1);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save");
+      throw err; // re-throw so parent can catch
     } finally {
       setSaving(false);
     }
   };
 
+  // Refs so useImperativeHandle dep array stays constant (never changes size)
+  const isNewConsultationRef = useRef(isNewConsultation);
+  useEffect(() => { isNewConsultationRef.current = isNewConsultation; }, [isNewConsultation]);
+  const handleSaveRef = useRef(handleSave);
+  useEffect(() => { handleSaveRef.current = handleSave; }, [handleSave]);
+  const handleSaveEditRef = useRef(handleSaveEdit);
+  useEffect(() => { handleSaveEditRef.current = handleSaveEdit; }, [handleSaveEdit]);
+
   // Expose save() and clearAll() to parent via ref
   useImperativeHandle(ref, () => ({
     save: async () => {
-      if (isNewConsultation) {
-        await handleSave();
-      } else if (isEditMode) {
-        await handleSaveEdit();
+      if (isNewConsultationRef.current) {
+        await handleSaveRef.current();
+      } else {
+        await handleSaveEditRef.current();
       }
     },
     clearAll: () => {
@@ -433,8 +459,71 @@ const PreviousConsultation = forwardRef<
       setConsultationData(null);
       setSaveError("");
     },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [isNewConsultation, isEditMode, sessionId]);
+  }), []);
+
+  // ─── Shared display data + tab bar (used in both form and read-only paths) ──
+  const displayData = activeTab === "previous" && prevConsultData ? prevConsultData : consultationData;
+
+  const tabBar = prevSessionId ? (
+    <div className="flex border-b border-gray-200 mb-6">
+      {(["current", "previous"] as const).map((tab) => (
+        <button
+          key={tab}
+          onClick={() => setActiveTab(tab)}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            activeTab === tab
+              ? "border-gray-800 text-gray-900"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          {tab === "current" ? "Current Session" : "Previous Session"}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
+  const prevReadOnlyContent = (
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <h3 className="text-base font-medium text-gray-900">Main Nutrition Diagnosis</h3>
+        <p className="text-base font-bold text-gray-900 leading-relaxed">
+          {prevConsultData?.details?.main_nutrition_diagnosis || "No diagnosis available"}
+        </p>
+      </div>
+      <div className="space-y-4">
+        <div className="grid grid-cols-4 gap-4">
+          {[
+            { label: "Carbohydrate", value: prevConsultData?.details?.carbohydrates_review },
+            { label: "Protein", value: prevConsultData?.details?.protein_review },
+            { label: "Fat", value: prevConsultData?.details?.fat_review },
+            { label: "Other", value: prevConsultData?.details?.other_review },
+          ].map(({ label, value }) => (
+            <div key={label} className="text-center">
+              <p className="text-xs text-gray-500 mb-1">{label}</p>
+              <p className="text-sm font-medium text-gray-900">{value || "N/A"}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-4">
+        <h3 className="text-base font-medium text-gray-900">Notes</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <h4 className="text-xs text-gray-500 mb-2">Intervention Plan</h4>
+            <p className="text-sm text-gray-900">{prevConsultData?.details?.intervention_note || "No intervention notes available"}</p>
+          </div>
+          <div>
+            <h4 className="text-xs text-gray-500 mb-2">Follow-Up Notes</h4>
+            <p className="text-sm text-gray-900">{prevConsultData?.details?.follow_up_note || "No follow-up notes available"}</p>
+          </div>
+          <div>
+            <h4 className="text-xs text-gray-500 mb-2">Other Remarks</h4>
+            <p className="text-sm text-gray-900">{prevConsultData?.details?.other_remarks || "No remarks"}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   // ─── Editable form (new consultation or parent edit mode) ───────────────────
   const showForm = (isNewConsultation && !readOnly) || (isEditMode && !readOnly);
@@ -479,41 +568,23 @@ const PreviousConsultation = forwardRef<
             <div className="grid grid-cols-4 gap-3 text-sm">
               {(
                 [
-                  { label: "Carbohydrate", field: "carbohydrates_review" as const, category: "CARB" },
-                  { label: "Protein", field: "protein_review" as const, category: "PROTEIN" },
-                  { label: "Fat", field: "fat_review" as const, category: "FAT" },
-                  { label: "Fibre", field: "fibre_review" as const, category: "FIBRE" },
-                  { label: "Iron", field: "iron_review" as const, category: "IRON" },
-                  { label: "Calcium", field: "calcium_review" as const, category: "CALCIUM" },
-                  { label: "Micronutrients", field: "micronutrients_review" as const, category: "MICRO" },
-                ] as { label: string; field: keyof CurrentConsultForm; category: string }[]
-              ).map(({ label, field, category }) => (
+                  { label: "Carbohydrate", field: "carbohydrates_review" as const },
+                  { label: "Protein", field: "protein_review" as const },
+                  { label: "Fat", field: "fat_review" as const },
+                  { label: "Other", field: "other_review" as const },
+                ] as { label: string; field: keyof CurrentConsultForm }[]
+              ).map(({ label, field }) => (
                 <div key={field}>
                   <label className="block text-xs text-gray-500 mb-1">{label}</label>
-                  <select
+                  <input
+                    type="text"
                     value={form[field]}
                     onChange={(e) => updateForm(field, e.target.value)}
+                    placeholder={`${label}...`}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-900"
-                  >
-                    <option value="">—</option>
-                    {nutritionDiagnoses
-                      .filter((d) => d.category === category)
-                      .map((d) => (
-                        <option key={d.id} value={d.id}>{d.diagnosis}</option>
-                      ))}
-                  </select>
+                  />
                 </div>
               ))}
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Other</label>
-                <input
-                  type="text"
-                  value={form.other_review}
-                  onChange={(e) => updateForm("other_review", e.target.value)}
-                  placeholder="Other..."
-                  className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-900"
-                />
-              </div>
             </div>
           </div>
 
@@ -549,12 +620,37 @@ const PreviousConsultation = forwardRef<
               </div>
             </div>
           </div>
+
+          {/* Bottom action buttons */}
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            {saveError && <p className="text-red-600 text-sm mb-3">{saveError}</p>}
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => { setForm(emptyForm); setSaveError(""); setIsSaved(false); }}
+                className="px-4 py-2 bg-red-50 text-red-600 text-sm rounded border border-red-200 hover:bg-red-100"
+              >
+                Clear All
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className={`px-4 py-2 text-white text-sm rounded disabled:opacity-50 ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
+              >
+                {saving ? "Saving..." : isSaved ? "Draft Saved" : "Save"}
+              </button>
+            </div>
+          </div>
         </div>
       </>
     );
 
     if (embedded) {
-      return <div className="pt-2">{content}</div>;
+      return (
+        <div className="pt-2">
+          {tabBar}
+          {activeTab === "previous" ? prevReadOnlyContent : content}
+        </div>
+      );
     }
 
     return (
@@ -564,15 +660,9 @@ const PreviousConsultation = forwardRef<
             <h2 className="text-xl font-semibold text-gray-900">Current Consultation</h2>
             <span className="text-sm text-gray-500">{today}</span>
           </div>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className={`px-3 py-1 text-white text-sm rounded disabled:opacity-50 ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
-          >
-            {saving ? "Saving..." : isSaved ? "Saved" : "Save"}
-          </button>
         </div>
-        {content}
+        {tabBar}
+        {activeTab === "previous" ? prevReadOnlyContent : content}
       </section>
     );
   }
@@ -623,30 +713,17 @@ const PreviousConsultation = forwardRef<
       <div className="space-y-4">
         <h3 className="text-base font-medium text-gray-900">Main Nutrition Diagnosis</h3>
         <p className="text-base font-bold text-gray-900 leading-relaxed">
-          {consultationData.details?.main_nutrition_diagnosis || "No diagnosis available"}
+          {displayData?.details?.main_nutrition_diagnosis || "No diagnosis available"}
         </p>
       </div>
 
       <div className="space-y-4">
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: "Carbohydrate", value: consultationData.details?.carbohydrates_review_diagnosis },
-            { label: "Protein", value: consultationData.details?.protein_review_diagnosis },
-            { label: "Fat", value: consultationData.details?.fat_review_diagnosis },
-            { label: "Fibre", value: consultationData.details?.fibre_review_diagnosis },
-          ].map(({ label, value }) => (
-            <div key={label} className="text-center">
-              <p className="text-xs text-gray-500 mb-1">{label}</p>
-              <p className="text-sm font-medium text-gray-900">{value || "N/A"}</p>
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-4 gap-4">
-          {[
-            { label: "Iron", value: consultationData.details?.iron_review_diagnosis },
-            { label: "Calcium", value: consultationData.details?.calcium_review_diagnosis },
-            { label: "Micronutrients", value: consultationData.details?.micronutrients_review_diagnosis },
-            { label: "Other", value: consultationData.details?.other_review },
+            { label: "Carbohydrate", value: displayData?.details?.carbohydrates_review },
+            { label: "Protein", value: displayData?.details?.protein_review },
+            { label: "Fat", value: displayData?.details?.fat_review },
+            { label: "Other", value: displayData?.details?.other_review },
           ].map(({ label, value }) => (
             <div key={label} className="text-center">
               <p className="text-xs text-gray-500 mb-1">{label}</p>
@@ -662,34 +739,34 @@ const PreviousConsultation = forwardRef<
           <div>
             <h4 className="text-xs text-gray-500 mb-2">Intervention Plan</h4>
             <p className="text-sm text-gray-900">
-              {consultationData.details?.intervention_note || "No intervention notes available"}
+              {displayData?.details?.intervention_note || "No intervention notes available"}
             </p>
           </div>
           <div>
             <h4 className="text-xs text-gray-500 mb-2">Follow-Up Notes</h4>
             <p className="text-sm text-gray-900">
-              {consultationData.details?.follow_up_note || "No follow-up notes available"}
+              {displayData?.details?.follow_up_note || "No follow-up notes available"}
             </p>
           </div>
           <div>
             <h4 className="text-xs text-gray-500 mb-2">Other Remarks</h4>
             <p className="text-sm text-gray-900">
-              {consultationData.details?.other_remarks || "No remarks"}
+              {displayData?.details?.other_remarks || "No remarks"}
             </p>
           </div>
         </div>
       </div>
 
-      {!embedded && (
+      {!embedded && displayData && (
         <div className="space-y-4">
           <h3 className="text-base font-medium text-gray-900">Prescription</h3>
-          {consultationData.prescriptions.length === 0 ? (
+          {displayData.prescriptions.length === 0 ? (
             <div className="bg-gray-50 rounded-lg p-4 text-center text-gray-500">
               No prescriptions available
             </div>
           ) : (
             <div className="space-y-4">
-              {consultationData.prescriptions.map((prescription, index) => (
+              {displayData.prescriptions.map((prescription, index) => (
                 <div key={index} className="bg-gray-50 rounded-lg p-4">
                   <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
                     <div>
@@ -727,19 +804,20 @@ const PreviousConsultation = forwardRef<
   );
 
   if (embedded) {
-    return <div className="pt-2">{readOnlyContent}</div>;
+    return <div className="pt-2">{tabBar}{readOnlyContent}</div>;
   }
 
   return (
     <section id="previous-consultation" className="bg-white rounded-xl shadow-lg p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-gray-900">
           {readOnly ? "Consultation Notes" : "Previous Consultation"}
         </h2>
         <span className="text-sm text-gray-500">
-          {new Date(consultationData.date_of_consult).toLocaleDateString()}
+          {displayData ? new Date(displayData.date_of_consult).toLocaleDateString() : ""}
         </span>
       </div>
+      {tabBar}
       {readOnlyContent}
     </section>
   );

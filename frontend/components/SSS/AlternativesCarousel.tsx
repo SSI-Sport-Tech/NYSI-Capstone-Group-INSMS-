@@ -13,6 +13,7 @@ interface Alternative {
   similarity_score_100g: string;
   similarity_score_perserving?: string | null;
   batch_testing_org?: string | null;
+  batch_testing_org_url?: string | null;
 }
 
 interface AlternativesCarouselProps {
