@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, Edit, Trash2, RefreshCw, Filter, X } from "lucide-react";
+import { Plus, Edit, Trash2, RefreshCw, X } from "lucide-react";
 import axios from "axios";
 import CreateCoachModal from "./CreateCoachModal";
 import EditCoachModal from "./EditCoachModal";

@@ -6,7 +6,7 @@ import { upsertTab } from "@/utils/supplementTabs";
 import axios from "axios";
 import DashboardLayout from "@/components/DashboardLayout";
 import SupplementComparisonGrid from "@/components/SSS/SupplementComparisonGrid";
-import { ArrowLeft, Filter, Download } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 
 interface Supplement {
   id: string;
@@ -197,10 +197,6 @@ export default function SupplementAlternativesPage() {
           {/* Controls */}
           <div className="mb-8 flex items-center justify-end flex-wrap gap-4">
             <div className="flex items-center gap-3">
-              <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
-                <Filter className="w-4 h-4" />
-                Filter
-              </button>
 
               <button className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors">
                 <Download className="w-4 h-4" />

@@ -4,7 +4,6 @@ import {
     Clock,
     ChevronDown,
     ChevronUp,
-    Filter,
     X,
     RefreshCw,
     Calendar,
