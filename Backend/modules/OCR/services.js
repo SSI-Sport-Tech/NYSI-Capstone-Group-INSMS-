@@ -342,12 +342,12 @@ export async function verifyBatchTesting(brand, name, batchId = null) {
   let endpoint, params;
 
   if (batchId && (!brand || !name)) {
-    // Batch-ID-only search
-    endpoint = "/api/batch-verification/verify-combined";
+    // Batch-ID-only search — use the dedicated endpoint, omit empty brand/name
+    endpoint = "/api/batch-verification/verify-batch-id";
     params = {
-      supplement_brand: brand || "",
-      supplement_name: name || "",
       batch_id: batchId,
+      ...(brand ? { supplement_brand: brand } : {}),
+      ...(name ? { supplement_name: name } : {}),
     };
   } else if (batchId) {
     // Full combined verification
