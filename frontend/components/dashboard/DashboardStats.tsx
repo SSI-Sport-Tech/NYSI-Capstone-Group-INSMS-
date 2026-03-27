@@ -74,16 +74,12 @@ export default function DashboardStats({ onQuickAction }: DashboardStatsProps) {
         <div className="text-4xl font-bold text-gray-900 mb-1">
           {stats.todayTotal}
         </div>
-        <div className="text-xs text-gray-500">
-          {stats.todayCompleted} finished sessions
-        </div>
       </div>
 
       {/* Active Athletes */}
       <div className="bg-blue-600 rounded-lg shadow-sm p-6 text-white">
         <div className="text-sm mb-2 opacity-90">Active Athletes</div>
         <div className="text-4xl font-bold mb-1">{stats.activeAthletes}</div>
-        <div className="text-xs opacity-75">+{stats.newAthletes} New Athletes</div>
       </div>
 
       {/* Quick Actions */}
