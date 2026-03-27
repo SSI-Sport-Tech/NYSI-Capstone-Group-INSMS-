@@ -245,13 +245,6 @@ const BatchTable: React.FC<BatchTableProps> = ({
             )}
           </button>
           <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-lg px-3.5 py-2 transition-colors hover:bg-gray-50"
-          >
-            <Settings className="w-4 h-4" />
-            <span>Filters</span>
-          </button>
-          <button
             onClick={handleExport}
             className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-lg px-3.5 py-2 transition-colors hover:bg-gray-50"
           >
