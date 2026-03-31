@@ -13,7 +13,13 @@ RUN apt-get update && apt-get install -y \
     libgl1 \
     wget \
     curl \
+    chromium \
+    chromium-driver \
     && rm -rf /var/lib/apt/lists/*
+
+# Paths for system-installed Chromium (works on ARM64/aarch64 and amd64)
+ENV CHROME_BIN=/usr/bin/chromium
+ENV CHROMEDRIVER_BIN=/usr/bin/chromedriver
 
 # Install Python dependencies
 # This layer is cached unless requirements.txt changes (build takes ~10-20 min first time)

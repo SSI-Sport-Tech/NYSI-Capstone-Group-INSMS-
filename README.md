@@ -70,13 +70,44 @@ Backend (Express 5, port 8000)
 
 ## Quick Start
 
-### Prerequisites
+### Option A — Docker (Recommended)
+
+The easiest way to run the full stack. Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+
+```bash
+# 1. Copy the environment template and fill in your values
+cp .env.example .env
+
+# 2. Build and start all three services
+docker compose up --build
+```
+
+> **First build takes 20–40 minutes** — PaddleOCR, PyTorch, and Playwright install inside the Python image. Subsequent builds use the layer cache and are much faster.
+
+Once all containers are healthy:
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| Backend API | http://localhost:8000 |
+| Swagger Docs | http://localhost:8000/docs |
+| Python Service | http://localhost:8001 |
+
+To stop: `docker compose down`
+
+See [DOCKER.md](DOCKER.md) for full setup details and troubleshooting.
+
+---
+
+### Option B — Manual Setup
+
+#### Prerequisites
 
 - Node.js 18+
 - Python 3.10+ (recommended: 3.10)
 - PostgreSQL 14+ with pgvector extension
 
-### 1. Backend (Express)
+#### 1. Backend (Express)
 
 ```bash
 cd Backend
@@ -91,7 +122,7 @@ node server.js           # production
 
 Runs on `http://localhost:8000` | Swagger docs at `http://localhost:8000/docs`
 
-### 2. Python Services (FastAPI)
+#### 2. Python Services (FastAPI)
 
 ```bash
 cd Python_Services
@@ -110,7 +141,7 @@ uvicorn app.main:app --port 8001 --reload
 
 Runs on `http://localhost:8001` | Docs at `http://localhost:8001/docs`
 
-### 3. Frontend (Next.js)
+#### 3. Frontend (Next.js)
 
 ```bash
 cd frontend
