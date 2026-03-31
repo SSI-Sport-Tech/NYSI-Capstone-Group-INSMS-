@@ -16,13 +16,15 @@ export async function getSupplementsByPage(pageNumber, pageSize = 10) {
       s.supplement_brand,
       spf.supplement_packaging_form,
       ssl.supplement_status,
-      s.batch_testing_org,
+      btol.batch_testing_org,
       s.product_source_url
     FROM SSS.Supplement s
     LEFT JOIN SSS.Supplement_Packaging_Form_Lookup spf
       ON s.supplement_packaging_form_id = spf.id
     LEFT JOIN SSS.Supplement_Status_Lookup ssl
       ON s.supplement_status_id = ssl.id
+    LEFT JOIN SSS.Batch_Testing_Org_Lookup btol
+      ON s.batch_testing_org_id = btol.id
     WHERE spf.is_active = true
       AND ssl.is_active = true
     ORDER BY s.id DESC
@@ -71,7 +73,7 @@ export async function searchSupplements(
       s.supplement_brand,
       spf.supplement_packaging_form,
       ssl.supplement_status,
-      s.batch_testing_org,
+      btol.batch_testing_org,
       s.product_source_url,
       CASE
         WHEN ${searchWords
@@ -96,6 +98,8 @@ export async function searchSupplements(
       ON s.supplement_packaging_form_id = spf.id
     LEFT JOIN SSS.Supplement_Status_Lookup ssl
       ON s.supplement_status_id = ssl.id
+    LEFT JOIN SSS.Batch_Testing_Org_Lookup btol
+      ON s.batch_testing_org_id = btol.id
     WHERE ${whereConditions}
       AND spf.is_active = true
       AND ssl.is_active = true
@@ -182,7 +186,9 @@ export async function getSupplementById(supplementId) {
       s.product_source_url,
       s.supplement_warning_label,
       s.supplement_certifications,
-      s.batch_testing_org,
+      s.batch_testing_org_url,
+      s.batch_testing_org_id,
+      btol.batch_testing_org,
       s.supplement_packaging_form_id,
       s.supplement_status_id
     FROM SSS.Supplement s
@@ -190,6 +196,8 @@ export async function getSupplementById(supplementId) {
       ON s.supplement_packaging_form_id = spf.id
     LEFT JOIN SSS.Supplement_Status_Lookup ssl
       ON s.supplement_status_id = ssl.id
+    LEFT JOIN SSS.Batch_Testing_Org_Lookup btol
+      ON s.batch_testing_org_id = btol.id
     WHERE s.id = $1
   `;
 
@@ -240,6 +248,9 @@ export async function getBatchesBySupplementId(
       ib.batch_initial_quantity,
       ib.batch_expiration_date,
       ib.batch_price,
+      ib.batch_unit,
+      ib.inv_batch_testing_org_id,
+      btol.batch_testing_org AS inv_batch_testing_org,
       COALESCE(SUM(it.quantity), 0) AS booked,
       ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available,
       bssl.batch_stock_status AS batch_status,
@@ -247,11 +258,13 @@ export async function getBatchesBySupplementId(
     FROM SSS.Inventory_Batch ib
     LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.inventory_batch_id
     LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl ON ib.batch_stock_status_id = bssl.id
+    LEFT JOIN SSS.batch_testing_org_lookup btol ON ib.inv_batch_testing_org_id = btol.id
     WHERE ib.supplement_id = $1
       AND bssl.is_active = true
     GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity,
-             ib.batch_expiration_date, ib.batch_price, bssl.batch_stock_status,
-             ib.date_added
+             ib.batch_expiration_date, ib.batch_price, ib.batch_unit,
+             ib.inv_batch_testing_org_id,
+             bssl.batch_stock_status, ib.date_added, btol.batch_testing_org
     ORDER BY ib.id DESC
     LIMIT $2 OFFSET $3
   `;
@@ -283,7 +296,8 @@ export async function createSupplement(supplementData, userId) {
       supplement_packaging_form_id,
       supplement_status_id,
       approved_by,
-      batch_testing_org,
+      batch_testing_org_url,
+      batch_testing_org_id,
       supplement_description,
       supplement_ingredient,
       nutritional_info_per_100g,
@@ -297,7 +311,7 @@ export async function createSupplement(supplementData, userId) {
       vector_100g_ingredient,
       vector_perserving_ingredient
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::vector, $19::vector
     )
     RETURNING
       id,
@@ -306,7 +320,8 @@ export async function createSupplement(supplementData, userId) {
       supplement_packaging_form_id,
       supplement_status_id,
       approved_by,
-      batch_testing_org,
+      batch_testing_org_url,
+      batch_testing_org_id,
       supplement_input_type
   `;
 
@@ -323,29 +338,30 @@ export async function createSupplement(supplementData, userId) {
     supplementData.supplement_packaging_form_id, // $3
     supplementData.supplement_status_id, // $4
     supplementData.approved_by, // $5
-    supplementData.batch_testing_org || null, // $6
-    supplementData.supplement_description || null, // $7
+    supplementData.batch_testing_org_url || null, // $6
+    supplementData.batch_testing_org_id || null, // $7
+    supplementData.supplement_description || null, // $8
     supplementData.supplement_ingredient && supplementData.supplement_ingredient.length > 0
       ? JSON.stringify(supplementData.supplement_ingredient)
-      : '[]', // $8 - JSONB: stringify array
+      : '[]', // $9 - JSONB: stringify array
     supplementData.nutritional_info_per_100g
       ? JSON.stringify(supplementData.nutritional_info_per_100g)
-      : null, // $9 - JSONB: stringify object
+      : null, // $10 - JSONB: stringify object
     supplementData.nutritional_info_per_serving
       ? JSON.stringify(supplementData.nutritional_info_per_serving)
-      : null, // $10 - JSONB: stringify object
-    supplementData.nutritional_info_per_serving_definition || null, // $11
-    supplementData.supplement_warning_label || null, // $12
-    supplementData.supplement_certifications || null, // $13
-    supplementData.supplement_additional_information || null, // $14
-    urlArray, // $15 - TEXT[]: pg handles array conversion
-    supplementData.supplement_input_type || "Manual", // $16
+      : null, // $11 - JSONB: stringify object
+    supplementData.nutritional_info_per_serving_definition || null, // $12
+    supplementData.supplement_warning_label || null, // $13
+    supplementData.supplement_certifications || null, // $14
+    supplementData.supplement_additional_information || null, // $15
+    urlArray, // $16 - TEXT[]: pg handles array conversion
+    supplementData.supplement_input_type || "Manual", // $17
     supplementData.vector_100g_ingredient
       ? JSON.stringify(supplementData.vector_100g_ingredient)
-      : null, // $17 - vector: stringify array for pgvector
+      : null, // $18 - vector: stringify array for pgvector
     supplementData.vector_perserving_ingredient
       ? JSON.stringify(supplementData.vector_perserving_ingredient)
-      : null, // $18 - vector: stringify array for pgvector
+      : null, // $19 - vector: stringify array for pgvector
   ];
 
   return withUserContext(userId, async (client) => {
@@ -397,7 +413,8 @@ export async function updateSupplement(supplementId, updateData, userId) {
     supplement_brand: updateData.supplement_brand,
     supplement_packaging_form_id: updateData.supplement_packaging_form_id,
     supplement_status_id: updateData.supplement_status_id,
-    batch_testing_org: updateData.batch_testing_org,
+    batch_testing_org_url: updateData.batch_testing_org_url,
+    batch_testing_org_id: updateData.batch_testing_org_id,
     supplement_description: updateData.supplement_description,
     supplement_ingredient: updateData.supplement_ingredient
       ? JSON.stringify(updateData.supplement_ingredient)
@@ -452,7 +469,8 @@ export async function updateSupplement(supplementId, updateData, userId) {
       supplement_brand,
       supplement_packaging_form_id,
       supplement_status_id,
-      batch_testing_org,
+      batch_testing_org_url,
+      batch_testing_org_id,
       supplement_description,
       supplement_ingredient,
       nutritional_info_per_100g,
@@ -723,6 +741,22 @@ export async function getSupplementStatuses(activeOnly = true) {
         FROM SSS.Supplement_Status_Lookup
         ${activeOnly ? 'WHERE is_active = true' : ''}
         ORDER BY supplement_status ASC
+    `;
+
+  return await pool.query(query);
+}
+
+/**
+ * Get all batch testing org options for dropdowns
+ */
+export async function getBatchTestingOrgs(activeOnly = true) {
+  const query = `
+        SELECT
+            id,
+            batch_testing_org as label
+        FROM SSS.batch_testing_org_lookup
+        ${activeOnly ? 'WHERE is_active = true' : ''}
+        ORDER BY batch_testing_org ASC
     `;
 
   return await pool.query(query);

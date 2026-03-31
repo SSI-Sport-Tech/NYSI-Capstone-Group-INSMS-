@@ -80,10 +80,9 @@ export const consultationLookupApi = {
   getConsultationTypes: async (): Promise<{ data: any[] }> => {
     return apiCall("/api/Consultation/lookups/consult-types");
   },
-
-  // Get nutrition diagnoses  
-  getNutritionDiagnoses: async (): Promise<{ data: any[] }> => {
-    return apiCall("/api/Consultation/lookups/nutrition-diagnoses");
+  // Get consultation objectives (lookup table)
+  getConsultationObjectives: async (): Promise<{ data: { id: string; consultation_objective: string }[] }> => {
+    return apiCall("/api/Consultation/lookups/consultation-objectives");
   },
 };
 
@@ -92,30 +91,30 @@ export const consultationApi = {
   // Get latest consultation for athlete
   getLatestConsultation: async (athleteId: string) => {
     return apiCall(
-      `/api/Consultation/consultation-update/athlete/${athleteId}/latest`,
+      `/api/Consultation/consultation-session/athlete/${athleteId}/latest`,
     );
   },
 
   // Get a specific consultation session by ID
   getConsultationById: async (sessionId: string) => {
-    return apiCall(`/api/Consultation/consultation-update/${sessionId}`);
+    return apiCall(`/api/Consultation/consultation-session/${sessionId}`);
   },
 
   // Get all consultation sessions for an athlete
   getAllConsultations: async (athleteId: string) => {
     return apiCall(
-      `/api/Consultation/consultation-update/athlete/${athleteId}/all`,
+      `/api/Consultation/consultation-session/athlete/${athleteId}/all`,
     );
   },
 
-  // Get open items for session
-  getOpenItems: async (sessionId: string) => {
-    return apiCall(`/api/Consultation/open-items/session/${sessionId}`);
+  // Get actionables for session
+  getActionables: async (sessionId: string) => {
+    return apiCall(`/api/Consultation/actionables/session/${sessionId}`);
   },
 
-  // Get prescriptions for session
-  getPrescriptions: async (sessionId: string) => {
-    return apiCall(`/api/Consultation/prescription/session/${sessionId}`);
+  // Get supplement dispensing for session
+  getSupplementDispensing: async (sessionId: string) => {
+    return apiCall(`/api/Consultation/supplement-dispensing/session/${sessionId}`);
   },
 
   // Get anthropometry for session
@@ -138,14 +137,14 @@ export const consultationApi = {
     return apiCall(`/api/Consultation/medical-history/${sessionId}`);
   },
 
-  // Get adherences for session
-  getAdherences: async (sessionId: string) => {
-    return apiCall(`/api/Consultation/sessions/${sessionId}/adherences`);
+  // Get nutrition requirements for session
+  getNutritionRequirements: async (sessionId: string) => {
+    return apiCall(`/api/Consultation/sessions/${sessionId}/nutrition-requirements`);
   },
 
   // Clear the scheduled booking flag on a session
   clearScheduledBooking: async (sessionId: string) => {
-    return apiPatch(`/api/Consultation/consultation-update/${sessionId}`, {
+    return apiPatch(`/api/Consultation/consultation-session/${sessionId}`, {
       is_scheduled_booking: false,
     });
   },

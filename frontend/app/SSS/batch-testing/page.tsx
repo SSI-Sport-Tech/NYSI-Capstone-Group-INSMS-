@@ -134,7 +134,7 @@ export default function BatchTesting() {
           supplement_name: searchForm.supplement_name.trim() || undefined,
           ...(searchForm.batch_id.trim() ? { batch_id: searchForm.batch_id.trim() } : {}),
         },
-        { headers: { "Content-Type": "application/json" }, timeout: 120000 }
+        { headers: { "Content-Type": "application/json" }, timeout: 360000 }
       );
 
       if (response.data?.success) {
@@ -198,7 +198,7 @@ export default function BatchTesting() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Supplement Name <span className="text-red-500">*</span>
+                    Supplement Name
                   </label>
                   <input
                     type="text"
@@ -211,7 +211,7 @@ export default function BatchTesting() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Supplement Brand <span className="text-red-500">*</span>
+                    Supplement Brand
                   </label>
                   <input
                     type="text"

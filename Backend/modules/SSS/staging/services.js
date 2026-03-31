@@ -24,7 +24,8 @@ export async function getStagingSupplementsByPage(pageNumber, pageSize = 10) {
             ss.supplement_brand,
             spf.supplement_packaging_form,
             ssl.supplement_status,
-            ss.batch_testing_org,
+            ss.batch_testing_org_url,
+            btol.batch_testing_org,
             ss.product_source_url,
             ss.is_reviewed
         FROM SSS.Supplement_Staging ss
@@ -32,6 +33,8 @@ export async function getStagingSupplementsByPage(pageNumber, pageSize = 10) {
             ON ss.supplement_packaging_form_id = spf.id
         LEFT JOIN SSS.Supplement_Status_Lookup ssl
             ON ss.supplement_status_id = ssl.id
+        LEFT JOIN SSS.Batch_Testing_Org_Lookup btol
+            ON ss.batch_testing_org_id = btol.id
         WHERE ss.is_reviewed = false
         ORDER BY ss.id DESC
         LIMIT $1 OFFSET $2
@@ -74,7 +77,9 @@ export async function getStagingSupplementById(stagingId) {
             ss.supplement_warning_label,
             ss.supplement_certifications,
             ss.supplement_additional_information,
-            ss.batch_testing_org,
+            ss.batch_testing_org_id,
+            ss.batch_testing_org_url,
+            btol.batch_testing_org,
             ss.product_source_url,
             ss.scraper_version,
             ss.webscraper_catalog_url_id,
@@ -88,6 +93,8 @@ export async function getStagingSupplementById(stagingId) {
             ON ss.supplement_packaging_form_id = spf.id
         LEFT JOIN SSS.Supplement_Status_Lookup ssl
             ON ss.supplement_status_id = ssl.id
+        LEFT JOIN SSS.Batch_Testing_Org_Lookup btol
+            ON ss.batch_testing_org_id = btol.id
         WHERE ss.id = $1
     `;
 
@@ -127,7 +134,8 @@ export async function updateStagingSupplement(stagingId, updateData, userId) {
     supplement_warning_label: updateData.supplement_warning_label,
     supplement_certifications: updateData.supplement_certifications,
     supplement_additional_information: updateData.supplement_additional_information,
-    batch_testing_org: updateData.batch_testing_org,
+    batch_testing_org_id: updateData.batch_testing_org_id,
+    batch_testing_org_url: updateData.batch_testing_org_url,
     product_source_url: updateData.product_source_url
       ? (Array.isArray(updateData.product_source_url)
         ? updateData.product_source_url
@@ -410,29 +418,13 @@ export async function approveStagingSupplements(stagingIds, userId) {
       }
 
       // 3. Apply batch_testing_org logic
-      const statusResult = await pool.query(
-        'SELECT supplement_status FROM SSS.Supplement_Status_Lookup WHERE id = $1',
-        [staging.supplement_status_id]
-      );
-      const statusName = statusResult.rows[0]?.supplement_status;
+      const statusName = staging.supplement_status;
       const normalizedStatus = statusName?.toUpperCase().trim();
 
-      let finalBatchTestingOrg = staging.batch_testing_org;
-
-      if (normalizedStatus === 'BATCH TESTED') {
-        if (!finalBatchTestingOrg || finalBatchTestingOrg.trim() === '' || finalBatchTestingOrg === 'NIL') {
-          results.push({
-            staging_id: stagingId,
-            staging_name: staging.supplement_name,
-            status: 'failed',
-            reason: 'batch_testing_org is required when status is BATCH TESTED',
-            supplement_id: null
-          });
-          continue;
-        }
-      } else if (normalizedStatus === 'NOT BATCH TESTED') {
-        finalBatchTestingOrg = 'NIL';
-      }
+      // Use the org ID if available; allow null (can be linked later via edit)
+      const resolvedBatchTestingOrgId = normalizedStatus === 'BATCH TESTED'
+        ? (staging.batch_testing_org_id ?? null)
+        : null;
 
       // 4. Generate vectors FIRST (before creating supplement)
       console.log(`Generating vectors for staging entry ${stagingId}...`);
@@ -491,7 +483,8 @@ export async function approveStagingSupplements(stagingIds, userId) {
                     supplement_warning_label,
                     supplement_certifications,
                     supplement_additional_information,
-                    batch_testing_org,
+                    batch_testing_org_url,
+                    batch_testing_org_id,
                     product_source_url,
                     scraper_version,
                     supplement_input_type,
@@ -499,8 +492,8 @@ export async function approveStagingSupplements(stagingIds, userId) {
                     vector_100g_ingredient,
                     vector_perserving_ingredient
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-                    $18::vector, $19::vector
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
+                    $19::vector, $20::vector
                 )
                 RETURNING *
             `;
@@ -524,7 +517,8 @@ export async function approveStagingSupplements(stagingIds, userId) {
         staging.supplement_warning_label || null,
         staging.supplement_certifications || null,
         staging.supplement_additional_information || null,
-        finalBatchTestingOrg,
+        staging.batch_testing_org_url || null,
+        resolvedBatchTestingOrgId,
         staging.product_source_url || null,
         staging.scraper_version || null,
         'Scraper', // supplement_input_type

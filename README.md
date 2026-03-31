@@ -1,6 +1,6 @@
 # NYSI Capstone - Integrated Nutrition Supplement Management System (INSMS)
 
-A three-tier web application for managing sports nutrition supplements, athlete profiles, and inventory tracking - with AI-powered OCR, web scraping, and semantic search capabilities.
+A three-tier web application for managing sports nutrition supplements, athlete profiles, nutrition consultations, and inventory tracking - with AI-powered OCR, web scraping, and semantic search capabilities.
 
 ## Architecture
 
@@ -13,7 +13,7 @@ Backend (Express 5, port 8000)
            |-> PaddleOCR (text extraction)
            |-> OpenAI GPT-4o-mini (parsing)
            |-> Sentence Transformers (embeddings)
-           '-> Playwright/Selenium (scraping)
+           '-> Playwright (scraping + batch verification)
 ```
 
 ## Tech Stack
@@ -39,11 +39,34 @@ Backend (Express 5, port 8000)
 ### AMS - Athlete Management System
 - Athlete CRUD with registry and medical records (single transaction)
 - Athlete detail view (profile + registry)
+- Consultation session management per athlete
 - Sport lookup for dropdowns
+
+### Consultation - Nutrition Consultation
+- Card-based consultation workflow organized by clinical domain
+- Session management: create, list, and view sessions per athlete
+- 8 specialized data cards per session:
+  - **Anthropometry** - Physical measurements (height, weight, body composition)
+  - **Medical History** - Past conditions, dietary restrictions, medical remarks
+  - **Nutrition Requirements** - Macros, energy needs, dietary targets
+  - **Meal Logs** - Dietary intake records
+  - **Training Schedule** - Exercise program with PAL (physical activity level)
+  - **Supplement Dispensing** - Supplement allocation from inventory
+  - **Nutrition Diagnosis & Summary** - Clinical assessment and recommendations
+  - **Actionables** - Follow-up tasks and next steps
+- Previous session tab on each card for comparison
+- Nutritionist auto-assigned from JWT on session creation
+
+### Admin - Administration
+- User management: create, edit, deactivate users with role assignment
+- Sports & coaches management: CRUD for sports and coach records
+- User audit log for tracking changes
+- Email and password management for accounts
 
 ### OCR Services
 - Supplement label image upload and text extraction
 - AI-powered structured data parsing
+- Batch ID and brand verification against 6 certification databases (Informed Sport, Informed Choice, HASTA, NSF Sport, Cologne List, BSCG)
 
 ## Quick Start
 
@@ -130,7 +153,28 @@ SCRAPER_HEADLESS=true
 ```
 NYSI-Capstone-Group-INSMS/
 ├── frontend/                     # Next.js 15 frontend
-│   └── app/                      # App Router pages
+│   ├── app/
+│   │   ├── SSS/                  # Supplement Support System pages
+│   │   │   ├── library/          # Supplement library
+│   │   │   ├── inventory/        # Batch inventory management
+│   │   │   ├── batch-testing/    # Batch certification testing
+│   │   │   ├── search/           # Supplement search with OCR
+│   │   │   ├── supplements/[id]/ # Supplement detail
+│   │   │   ├── supplements/[id]/alternatives/ # Similar supplements
+│   │   │   └── web-scraper/      # Web scraper management
+│   │   ├── AMS/
+│   │   │   └── athlete-management/
+│   │   │       ├── page.tsx      # Athlete list
+│   │   │       └── [id]/
+│   │   │           ├── page.tsx  # Athlete detail
+│   │   │           └── consultation/[sessionId]/page.tsx # Consultation view
+│   │   ├── admin/
+│   │   │   ├── users/            # User management
+│   │   │   └── sports-coaches/   # Sports & coaches management
+│   │   └── login/                # Authentication pages
+│   ├── components/               # Shared React components
+│   ├── contexts/                 # AuthContext
+│   └── utils/                    # API clients, helpers
 │
 ├── Backend/
 │   ├── config/
@@ -145,15 +189,36 @@ NYSI-Capstone-Group-INSMS/
 │   │   │   └── shared/           # Reusable validators, vectorization helpers
 │   │   ├── AMS/                  # Athlete Management System
 │   │   │   ├── index.js          # Route aggregator
-│   │   │   └── athlete/          # Athlete CRUD, registry, medical, lookups
+│   │   │   ├── athlete/          # Athlete CRUD, registry, medical
+│   │   │   ├── coach/            # Coach management
+│   │   │   ├── nutritionist/     # Nutritionist management
+│   │   │   └── sport/            # Sport lookup
+│   │   ├── Consultation/         # Nutrition Consultation
+│   │   │   ├── index.js          # Route aggregator
+│   │   │   ├── consultation-session/   # Session CRUD
+│   │   │   ├── consultation-lookups/   # Reference data
+│   │   │   ├── anthropometry/          # Physical measurements card
+│   │   │   ├── medical-history/        # Medical history card
+│   │   │   ├── nutrition-requirements/ # Nutritional needs card
+│   │   │   ├── mealLog/                # Meal log card
+│   │   │   ├── trainingSchedule/       # Training schedule card
+│   │   │   ├── supplement-dispensing/  # Supplement dispensing card
+│   │   │   ├── nutrition-diagnosis-summary/ # Diagnosis summary card
+│   │   │   └── actionables/            # Actionables card
+│   │   ├── Admin/                # Administration
+│   │   │   ├── adminRoutes.js    # User, sport, coach management
+│   │   │   ├── adminController.js
+│   │   │   ├── adminServices.js
+│   │   │   └── adminValidation.js
+│   │   ├── Auth/                 # Authentication (2FA + JWT)
 │   │   └── OCR/                  # OCR Services
 │   └── server.js                 # Express entry point
 │
 ├── Python_Services/              # FastAPI microservice
 │   ├── app/
 │   │   ├── main.py               # FastAPI entry point
-│   │   ├── routers/              # ocr, vectorization, webscraper
-│   │   └── services/             # vectorizer, OCR workflow
+│   │   ├── routers/              # ocr, vectorization, webscraper, batch_verification, scheduler
+│   │   └── services/             # vectorizer, ocr_engine, llm_structurer, batch_tester, etc.
 │   └── requirements.txt
 │
 └── docs/                         # Project documentation
@@ -181,6 +246,19 @@ All three servers must be running for full functionality.
 | SSS - Lookups | `/api/SSS/lookups/*` | Packaging forms, statuses |
 | AMS - Athletes | `/api/AMS/athletes` | Athlete CRUD, registry, medical |
 | AMS - Lookups | `/api/AMS/lookups/sports` | Sports dropdown |
+| Consultation - Sessions | `/api/Consultation/sessions` | Create and list consultation sessions |
+| Consultation - Anthropometry | `/api/Consultation/sessions/:id/anthropometry` | Physical measurements |
+| Consultation - Medical History | `/api/Consultation/sessions/:id/medical-history` | Medical history |
+| Consultation - Nutrition Req. | `/api/Consultation/sessions/:id/nutrition-requirements` | Nutritional needs |
+| Consultation - Meal Logs | `/api/Consultation/sessions/:id/meal-log` | Dietary intake |
+| Consultation - Training | `/api/Consultation/sessions/:id/training-schedule` | Training schedule |
+| Consultation - Dispensing | `/api/Consultation/sessions/:id/supplement-dispensing` | Supplement allocation |
+| Consultation - Diagnosis | `/api/Consultation/sessions/:id/nutrition-diagnosis-summary` | Clinical summary |
+| Consultation - Actionables | `/api/Consultation/sessions/:id/actionables` | Follow-up tasks |
+| Admin - Users | `/api/admin/users` | User CRUD and audit log |
+| Admin - Sports & Coaches | `/api/admin/sports`, `/api/admin/coaches` | Sports and coach management |
+| Auth | `/api/auth/*` | 2FA login, JWT, user profile |
+| OCR | `/api/ocr/*` | Label analysis, batch verification |
 
 ### Python Service Endpoints (port 8001)
 

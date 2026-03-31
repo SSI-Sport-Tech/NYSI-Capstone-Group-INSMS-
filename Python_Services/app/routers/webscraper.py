@@ -15,10 +15,13 @@ from app.schemas.webscraper_schemas import (
     ScrapeProductRequest, ScrapeProductResponse,
     ScrapeFullRequest, ScrapeFullResponse,
     PushStagingRequest, PushStagingResponse,
-    WebscraperHealthResponse
+    WebscraperHealthResponse,
+    SchedulerConfigResponse, SchedulerConfigUpdateRequest,
 )
 from app.services import list_scraper, product_scraper, batch_tester, ocr_enricher, staging_service, certification_searcher
 from app.utils.database import get_db_connection, test_db_connection
+from app.scheduler import scheduler, get_config_from_db
+from apscheduler.triggers.interval import IntervalTrigger
 
 load_dotenv()
 
@@ -374,3 +377,68 @@ async def push_to_staging(request: PushStagingRequest):
     except Exception as e:
         print(f"❌ Push to staging failed: {e}")
         raise HTTPException(500, f"Database insertion failed: {str(e)}")
+
+
+# ============================================================================
+# SCHEDULER CONFIG ENDPOINTS
+# ============================================================================
+
+@router.get("/scheduler/config", response_model=SchedulerConfigResponse)
+async def get_scheduler_config():
+    """Get current scheduler configuration and status."""
+    config = get_config_from_db()
+    # Override next_run_at with live APScheduler value if available
+    job = scheduler.get_job("full_scrape")
+    if job and job.next_run_time:
+        config["next_run_at"] = job.next_run_time
+    return config
+
+
+@router.patch("/scheduler/config", response_model=SchedulerConfigResponse)
+async def update_scheduler_config(request: SchedulerConfigUpdateRequest):
+    """Update scheduler on/off state or interval. Changes take effect immediately."""
+    if request.is_enabled is None and request.interval_days is None:
+        raise HTTPException(400, "Provide at least one of: is_enabled, interval_days")
+
+    # Build dynamic UPDATE
+    fields = []
+    values = []
+    if request.is_enabled is not None:
+        fields.append("is_enabled = %s")
+        values.append(request.is_enabled)
+    if request.interval_days is not None:
+        fields.append("interval_days = %s")
+        values.append(request.interval_days)
+    fields.append("updated_at = now()")
+
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"UPDATE sss.scraper_schedule_config SET {', '.join(fields)}",
+                    values
+                )
+            conn.commit()
+    except Exception as e:
+        raise HTTPException(500, f"Failed to update config in DB: {str(e)}")
+
+    # Apply changes to live scheduler
+    job = scheduler.get_job("full_scrape")
+    if job:
+        if request.interval_days is not None:
+            scheduler.reschedule_job(
+                "full_scrape",
+                trigger=IntervalTrigger(days=request.interval_days)
+            )
+        if request.is_enabled is not None:
+            if request.is_enabled:
+                scheduler.resume_job("full_scrape")
+            else:
+                scheduler.pause_job("full_scrape")
+
+    # Return fresh config after applying changes
+    updated = get_config_from_db()
+    job = scheduler.get_job("full_scrape")
+    if job and job.next_run_time:
+        updated["next_run_at"] = job.next_run_time
+    return updated

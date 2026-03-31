@@ -1049,4 +1049,19 @@ router.get('/lookups/batch-statuses', controller.getBatchStockStatusesController
  */
 router.get('/lookups/ticket-statuses', controller.getTicketStatusesController);
 
+/**
+ * @swagger
+ * /api/SSS/lookups/batch-testing-orgs:
+ *   get:
+ *     summary: Get Batch Testing Organisations
+ *     description: Returns all active batch testing organisation options from the lookup table.
+ *     tags: [SSS - Lookups]
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved batch testing organisations
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get('/lookups/batch-testing-orgs', controller.getBatchTestingOrgsController);
+
 export default router;

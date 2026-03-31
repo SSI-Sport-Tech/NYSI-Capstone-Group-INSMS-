@@ -60,11 +60,11 @@ export async function getAthleteById(athleteId) {
     `;
 
   // 2. Fetch Target Event from Latest Consultation
-  // Joins Sessions -> Training Schedule to get 'upcoming_major_competitions'
+  // Joins Sessions -> Session Training to get 'upcoming_major_competitions'
   const targetEventQuery = `
-        SELECT ts.upcoming_major_competitions AS target_event, s.date_of_consult
+        SELECT st.upcoming_major_competitions AS target_event, s.date_of_consult
         FROM consultation.sessions s
-        JOIN consultation.session_training_schedule ts ON s.id = ts.sessions_id
+        JOIN consultation.session_training st ON st.sessions_id = s.id
         WHERE s.athlete_id = $1
         ORDER BY s.date_of_consult DESC
         LIMIT 1
@@ -626,6 +626,13 @@ export async function getAthleteProfile(athleteId) {
         WHERE athlete_id = $1
     `;
 
+  const medicalQuery = `
+        SELECT id, athlete_id, medical_condition, food_allergy, drug_allergy,
+               past_injury, medical_remarks, dietary_restriction
+        FROM AMS.Athlete_Medical
+        WHERE athlete_id = $1
+    `;
+
   const coachQuery = `
         SELECT cam.coach_id, cam.is_active, c.name AS coach_name
         FROM AMS.Coach_Athlete_Mapping cam
@@ -642,10 +649,11 @@ export async function getAthleteProfile(athleteId) {
         ORDER BY n.name ASC
     `;
 
-  const [profileRes, registryRes, coachRes, nutritionistRes] =
+  const [profileRes, registryRes, medicalRes, coachRes, nutritionistRes] =
     await Promise.all([
       pool.query(profileQuery, [athleteId]),
       pool.query(registryQuery, [athleteId]),
+      pool.query(medicalQuery, [athleteId]),
       pool.query(coachQuery, [athleteId]),
       pool.query(nutritionistQuery, [athleteId]),
     ]);
@@ -655,6 +663,7 @@ export async function getAthleteProfile(athleteId) {
   return {
     athlete: profileRes.rows[0],
     registry: registryRes.rows.length > 0 ? registryRes.rows[0] : null,
+    medical: medicalRes.rows.length > 0 ? medicalRes.rows[0] : null,
     coaches: coachRes.rows,
     nutritionists: nutritionistRes.rows,
   };

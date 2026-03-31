@@ -17,6 +17,7 @@ interface AnthropometryProps {
     height: number | null,
     targetWeight: number | null,
   ) => void;
+  onStepStatusChange?: (status: "default" | "dirty" | "saved") => void;
 }
 
 interface AnthropometryData {
@@ -90,11 +91,13 @@ export default function Anthropometry({
   readOnly,
   prevSessionId,
   onAnthroChange,
+  onStepStatusChange,
 }: AnthropometryProps) {
   const [bmiLightbox, setBmiLightbox] = useState<string | null>(null);
   const [anthropometryData, setAnthropometryData] =
     useState<AnthropometryData | null>(null);
   const [prevData, setPrevData] = useState<AnthropometryData | null>(null);
+  const [activeTab, setActiveTab] = useState<"current" | "previous">("current");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
@@ -123,6 +126,10 @@ export default function Anthropometry({
   useEffect(() => {
     setIsSaved(false);
   }, [editForm]);
+
+  useEffect(() => {
+    onStepStatusChange?.(isSaved ? "saved" : effectiveEditing ? "dirty" : "default");
+  }, [effectiveEditing, isSaved, onStepStatusChange]);
 
   // Notify parent of live weight/height/targetWeight as user types
   useEffect(() => {
@@ -436,12 +443,30 @@ export default function Anthropometry({
   }
 
   // Edit mode layout
-  if (effectiveEditing) {
+  if (effectiveEditing && activeTab !== "previous") {
     return (
       <section id="anthropometry" className="bg-white rounded-xl shadow-lg p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-gray-900">Anthropometry</h2>
         </div>
+
+        {prevSessionId && (
+          <div className="flex border-b border-gray-200 mb-6">
+            {(["current", "previous"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  activeTab === tab
+                    ? "border-gray-800 text-gray-900"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {tab === "current" ? "Current Session" : "Previous Session"}
+              </button>
+            ))}
+          </div>
+        )}
 
         {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
@@ -653,7 +678,7 @@ export default function Anthropometry({
             onClick={handleSave}
             className={`px-3 py-1 text-white text-sm rounded ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
           >
-            {isSaved ? "Saved" : "Save"}
+            {isSaved ? "Draft Saved" : "Save"}
           </button>
         </div>
 
@@ -684,10 +709,25 @@ export default function Anthropometry({
   }
 
   // Read-only view
+  const displayData = activeTab === "previous" ? prevData : anthropometryData;
+
+  const AnthroField = ({ label, value, suffix, span2 }: { label: string; value: string | number | null | undefined; suffix?: string; span2?: boolean }) => {
+    return (
+      <div className={`flex justify-between items-start${span2 ? " col-span-2" : ""}`}>
+        <span className="text-gray-600 text-sm">{label}:</span>
+        <div className="text-right">
+          <span className="font-medium text-gray-900 text-sm">
+            {value != null ? `${value}${suffix ? ` ${suffix}` : ""}` : "N/A"}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <section id="anthropometry" className="bg-white rounded-xl shadow-lg p-6">
-      <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Anthropometry</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold text-gray-900">Anthropometry</h2>
         {!readOnly && (
           <button
             onClick={() => setIsEditing(true)}
@@ -698,64 +738,44 @@ export default function Anthropometry({
         )}
       </div>
 
-      {/* Helper: Prev value tag shown in new consultation mode */}
-      {(() => {
-        const PrevVal = ({ val, suffix }: { val: string | number | null | undefined; suffix?: string }) => {
-          if (!isNewConsultation || !val) return null;
-          return (
-            <p className="text-xs text-gray-400 italic mt-0.5 flex items-center gap-1">
-              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>
-              Prev: {val}{suffix ? ` ${suffix}` : ""}
-            </p>
-          );
-        };
+      {/* Tab bar */}
+      {prevSessionId && (
+        <div className="flex border-b border-gray-200 mb-6">
+          {(["current", "previous"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                activeTab === tab
+                  ? "border-gray-800 text-gray-900"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab === "current" ? "Current Session" : "Previous Session"}
+            </button>
+          ))}
+        </div>
+      )}
 
-        const Field = ({ label, value, suffix, span2 }: { label: string; value: string | number | null | undefined; suffix?: string; span2?: boolean }) => {
-          const prevVal = prevData ? (prevData as Record<string, string | number | null>)[
-            label === "Height" ? "height" :
-            label === "Weight" ? "weight" :
-            label === "BMI" ? "bmi" :
-            label === "BMI Category" ? "bmi_category" :
-            label === "Fat Mass" ? "fat_mass" :
-            label === "Fat Mass (%)" ? "fat_mass_percentage" :
-            label === "Skeletal Muscle Mass" ? "skeletal_muscle_mass" :
-            label === "Skeletal Muscle Mass (%)" ? "skeletal_muscle_mass_percentage" :
-            label === "Sum of 8 Skinfold" ? "sum_of_skinfold" :
-            label === "Target Weight" ? "target_weight" :
-            label === "Target BMI" ? "target_bmi" :
-            label === "Mother's Height" ? "mothers_height" :
-            label === "Father's Height" ? "fathers_height" :
-            label === "Athlete's Potential Adult Height" ? "athlete_potential_adult_height" :
-            label === "Date Recorded" ? "date_recorded" :
-            label === "Measured By" ? "measured_by" : ""
-          ] : null;
-          return (
-            <div className={`flex justify-between items-start${span2 ? " col-span-2" : ""}`}>
-              <span className="text-gray-600 text-sm">{label}:</span>
-              <div className="text-right">
-                <span className="font-medium text-gray-900 text-sm">
-                  {value != null ? `${value}${suffix ? ` ${suffix}` : ""}` : (isNewConsultation ? "—" : "N/A")}
-                </span>
-                <PrevVal val={prevVal} suffix={suffix} />
-              </div>
-            </div>
-          );
-        };
-
-        return (
       <div className="space-y-6">
-        {!anthropometryData && !isNewConsultation ? (
+        {!displayData && !isNewConsultation ? (
           <div className="text-center py-8">
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No anthropometry data</h3>
-            <p className="mt-1 text-sm text-gray-500">No measurements have been recorded for this consultation session.</p>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              {activeTab === "previous" ? "No previous session data" : "No anthropometry data"}
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {activeTab === "previous"
+                ? "No measurements were recorded for the previous session."
+                : "No measurements have been recorded for this consultation session."}
+            </p>
           </div>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
-              <Field label="Height" value={anthropometryData?.height} suffix="cm" />
-              <Field label="Weight" value={anthropometryData?.weight} suffix="kg" />
-              <Field label="BMI" value={anthropometryData?.bmi} />
-              <Field label="BMI Category" value={anthropometryData?.bmi_category} />
+              <AnthroField label="Height" value={displayData?.height} suffix="cm" />
+              <AnthroField label="Weight" value={displayData?.weight} suffix="kg" />
+              <AnthroField label="BMI" value={displayData?.bmi} />
+              <AnthroField label="BMI Category" value={displayData?.bmi_category} />
               <div className="col-span-2 flex gap-2">
                 <button
                   onClick={() => setBmiLightbox("/consultation/bmi-chart-male.png")}
@@ -770,36 +790,34 @@ export default function Anthropometry({
                   Female BMI Chart
                 </button>
               </div>
-              <Field label="Fat Mass" value={anthropometryData?.fat_mass} suffix="kg" />
-              <Field label="Fat Mass (%)" value={anthropometryData?.fat_mass_percentage} suffix="%" />
-              <Field label="Skeletal Muscle Mass" value={anthropometryData?.skeletal_muscle_mass} suffix="kg" />
-              <Field label="Skeletal Muscle Mass (%)" value={anthropometryData?.skeletal_muscle_mass_percentage} suffix="%" />
-              <Field label="Sum of 8 Skinfold" value={anthropometryData?.sum_of_skinfold} suffix="mm" />
-              <Field label="Target Weight" value={anthropometryData?.target_weight} suffix="kg" />
-              <Field label="Target BMI" value={anthropometryData?.target_bmi} />
-              <Field label="Mother's Height" value={anthropometryData?.mothers_height} suffix="cm" />
-              <Field label="Father's Height" value={anthropometryData?.fathers_height} suffix="cm" />
-              <Field label="Athlete's Potential Adult Height" value={anthropometryData?.athlete_potential_adult_height} suffix="cm" span2 />
+              <AnthroField label="Fat Mass" value={displayData?.fat_mass} suffix="kg" />
+              <AnthroField label="Fat Mass (%)" value={displayData?.fat_mass_percentage} suffix="%" />
+              <AnthroField label="Skeletal Muscle Mass" value={displayData?.skeletal_muscle_mass} suffix="kg" />
+              <AnthroField label="Skeletal Muscle Mass (%)" value={displayData?.skeletal_muscle_mass_percentage} suffix="%" />
+              <AnthroField label="Sum of 8 Skinfold" value={displayData?.sum_of_skinfold} suffix="mm" />
+              <AnthroField label="Target Weight" value={displayData?.target_weight} suffix="kg" />
+              <AnthroField label="Target BMI" value={displayData?.target_bmi} />
+              <AnthroField label="Mother's Height" value={displayData?.mothers_height} suffix="cm" />
+              <AnthroField label="Father's Height" value={displayData?.fathers_height} suffix="cm" />
+              <AnthroField label="Athlete's Potential Adult Height" value={displayData?.athlete_potential_adult_height} suffix="cm" span2 />
             </div>
 
             {/* Measurement Details */}
             <div className="border-t border-gray-200 pt-4">
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Date Recorded" value={anthropometryData?.date_recorded ? new Date(anthropometryData.date_recorded).toLocaleDateString() : null} />
-                <Field label="Measured By" value={anthropometryData?.measured_by} />
+                <AnthroField label="Date Recorded" value={displayData?.date_recorded ? new Date(displayData.date_recorded).toLocaleDateString() : null} />
+                <AnthroField label="Measured By" value={displayData?.measured_by} />
               </div>
-              {anthropometryData?.measurement_notes && (
+              {displayData?.measurement_notes && (
                 <div className="mt-3">
                   <span className="text-gray-600 text-sm">Notes:</span>
-                  <p className="text-gray-900 text-sm mt-1">{anthropometryData.measurement_notes}</p>
+                  <p className="text-gray-900 text-sm mt-1">{displayData.measurement_notes}</p>
                 </div>
               )}
             </div>
           </>
         )}
       </div>
-        );
-      })()}
 
       {bmiLightbox && (
         <div

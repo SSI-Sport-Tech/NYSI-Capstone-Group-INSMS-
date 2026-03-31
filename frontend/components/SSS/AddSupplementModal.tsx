@@ -48,7 +48,8 @@ interface FormData {
   warningLabel: string;
   certifications: string;
   additionalNotes: string;
-  testingOrganisation: string;
+  testingOrganisationId: string;
+  batchTestingOrgUrl: string;
   productSourceUrl: string;
 
   // Nutritional Information
@@ -62,7 +63,9 @@ interface FormData {
   batchUnit: string;
   price: number;
   expirationDate: string;
-  batchTestingOrg: string;
+  manufactureDate: string;
+  batchTestingOrgId: string;
+  batchCertificateUrl: string;
 }
 
 const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
@@ -85,6 +88,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [packagingOptions, setPackagingOptions] = useState<LookupOption[]>([]);
   const [statusOptions, setStatusOptions] = useState<LookupOption[]>([]);
+  const [batchTestingOrgOptions, setBatchTestingOrgOptions] = useState<LookupOption[]>([]);
 
   const emptyForm: FormData = {
     supplementId: null,
@@ -97,7 +101,8 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
     warningLabel: "",
     certifications: "",
     additionalNotes: "",
-    testingOrganisation: "",
+    testingOrganisationId: "",
+    batchTestingOrgUrl: "",
     productSourceUrl: "",
     servingDefinition: "",
     nutritionalPerServing: [{ nutrient: "", amount: "" }],
@@ -107,10 +112,15 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
     batchUnit: "",
     price: 0,
     expirationDate: "",
-    batchTestingOrg: "",
+    manufactureDate: "",
+    batchTestingOrgId: "",
+    batchCertificateUrl: "",
   };
 
   const [formData, setFormData] = useState<FormData>(emptyForm);
+
+  const isBatchTested =
+    statusOptions.find((o) => o.id === formData.statusId)?.label.toUpperCase() === "BATCH TESTED";
 
   // Load lookup options once
   useEffect(() => {
@@ -130,6 +140,14 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
             label: r.supplement_status,
           }),
         ),
+      );
+    });
+    axios.get("/api/SSS/lookups/batch-testing-orgs").then((res) => {
+      setBatchTestingOrgOptions(
+        (res.data.data ?? []).map((r: { id: string; label: string }) => ({
+          id: r.id,
+          label: r.label,
+        })),
       );
     });
   }, []);
@@ -279,6 +297,11 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
         return entries.length > 0 ? Object.fromEntries(entries) : null;
       };
 
+      const ensureHttps = (url: string | null | undefined) => {
+        if (!url || !url.trim()) return null;
+        return /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
+      };
+
       if (isNewSupplement) {
         // First create the supplement, then create the batch
         const supplementData = {
@@ -291,8 +314,9 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
           supplement_warning_label: formData.warningLabel || null,
           supplement_certifications: formData.certifications || null,
           supplement_additional_information: formData.additionalNotes || null,
-          batch_testing_org: formData.testingOrganisation || null,
-          product_source_url: formData.productSourceUrl || null,
+          batch_testing_org_id: formData.testingOrganisationId || null,
+          batch_testing_org_url: formData.testingOrganisationId ? ensureHttps(formData.batchTestingOrgUrl) : null,
+          product_source_url: ensureHttps(formData.productSourceUrl),
           nutritional_info_per_serving_definition: formData.servingDefinition || null,
           nutritional_info_per_serving: rowsToObj(formData.nutritionalPerServing),
           nutritional_info_per_100g: rowsToObj(formData.nutritionalPer100g),
@@ -312,7 +336,9 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
             batch_unit: formData.batchUnit || null,
             batch_price: formData.price || null,
             batch_expiration_date: formData.expirationDate || null,
-            inv_batch_testing_org: formData.batchTestingOrg || null,
+            batch_manufacture_date: formData.manufactureDate || null,
+            inv_batch_testing_org_id: formData.batchTestingOrgId || null,
+            inv_batch_testing_org_url: ensureHttps(formData.batchCertificateUrl),
           };
           await axios.post("/api/SSS/batches", batchData, {
             headers: { Authorization: `Bearer ${token}` },
@@ -328,7 +354,9 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
             batch_unit: formData.batchUnit || null,
             batch_price: formData.price || null,
             batch_expiration_date: formData.expirationDate || null,
-            inv_batch_testing_org: formData.batchTestingOrg || null,
+            batch_manufacture_date: formData.manufactureDate || null,
+            inv_batch_testing_org_id: formData.batchTestingOrgId || null,
+            inv_batch_testing_org_url: ensureHttps(formData.batchCertificateUrl),
           };
           await axios.post("/api/SSS/batches", batchData, {
             headers: { Authorization: `Bearer ${token}` },
@@ -350,7 +378,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
           batch_initial_quantity: "quantity",
           batch_expiration_date: "expirationDate",
           batch_price: "price",
-          inv_batch_testing_org: "batchTestingOrg",
+          inv_batch_testing_org_id: "batchTestingOrgId",
           batch_unit: "batchUnit",
         };
         data.details.forEach(({ field, message }) => {
@@ -370,13 +398,13 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-[70] overflow-y-auto">
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative min-h-screen flex items-center justify-center p-4">
-        <div className="relative bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[85vh] overflow-hidden">
+      <div className="relative min-h-screen flex items-start justify-center pt-36 px-4 pb-4">
+        <div className="relative bg-white rounded-lg shadow-xl w-full max-w-xl max-h-[75vh] overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white">
             <h2 className="text-lg font-semibold text-gray-900">
@@ -393,7 +421,7 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
           {/* Scrollable Content */}
           <div
             className="overflow-y-auto"
-            style={{ maxHeight: "calc(85vh - 140px)" }}
+            style={{ maxHeight: "calc(75vh - 140px)" }}
           >
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
               {/* Supplement Information Section */}
@@ -594,9 +622,16 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                           </label>
                           <select
                             value={formData.statusId}
-                            onChange={(e) =>
-                              setFormData((prev) => ({ ...prev, statusId: e.target.value }))
-                            }
+                            onChange={(e) => {
+                              const newStatusId = e.target.value;
+                              const isNowBatchTested =
+                                statusOptions.find((o) => o.id === newStatusId)?.label.toUpperCase() === "BATCH TESTED";
+                              setFormData((prev) => ({
+                                ...prev,
+                                statusId: newStatusId,
+                                ...(isNowBatchTested ? {} : { testingOrganisationId: "", batchTestingOrgUrl: "" }),
+                              }));
+                            }}
                             required
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                           >
@@ -606,20 +641,47 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                             ))}
                           </select>
                         </div>
-                        <div>
-                          <label className="block text-sm text-gray-700 mb-1">
-                            Batch Testing Org
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.testingOrganisation}
-                            onChange={(e) =>
-                              setFormData((prev) => ({ ...prev, testingOrganisation: e.target.value }))
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
-                            placeholder="e.g. Informed-Sport"
-                          />
-                        </div>
+                        {isBatchTested && (
+                          <>
+                            <div>
+                              <label className="block text-sm text-gray-700 mb-1">
+                                Batch Testing Org
+                              </label>
+                              <select
+                                value={formData.testingOrganisationId}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    testingOrganisationId: e.target.value,
+                                    batchTestingOrgUrl: e.target.value ? prev.batchTestingOrgUrl : "",
+                                  }))
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                              >
+                                <option value="">— Select testing organisation —</option>
+                                {batchTestingOrgOptions.map((o) => (
+                                  <option key={o.id} value={o.id}>
+                                    {o.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-sm text-gray-700 mb-1">
+                                Batch Test Verification URL
+                              </label>
+                              <input
+                                type="url"
+                                value={formData.batchTestingOrgUrl}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({ ...prev, batchTestingOrgUrl: e.target.value }))
+                                }
+                                placeholder="https://example.com/certificate"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
+                              />
+                            </div>
+                          </>
+                        )}
                         <div className="col-span-2">
                           <label className="block text-sm text-gray-700 mb-1">
                             Ingredients <span className="text-red-500">*</span>
@@ -1037,6 +1099,19 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                     </div>
                     <div>
                       <label className="block text-sm text-gray-700 mb-1">
+                        Manufacture Date
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.manufactureDate}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, manufactureDate: e.target.value }))
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-1">
                         Date Added
                       </label>
                       <input
@@ -1051,17 +1126,36 @@ const AddSupplementModal: React.FC<AddSupplementModalProps> = ({
                       <label className="block text-sm text-gray-700 mb-1">
                         Batch Testing Organisation
                       </label>
-                      <input
-                        type="text"
-                        value={formData.batchTestingOrg}
+                      <select
+                        value={formData.batchTestingOrgId}
                         onChange={(e) =>
                           setFormData((prev) => ({
                             ...prev,
-                            batchTestingOrg: e.target.value,
+                            batchTestingOrgId: e.target.value,
                           }))
                         }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
-                        placeholder="e.g. Informed Sport"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                      >
+                        <option value="">— Select testing organisation —</option>
+                        {batchTestingOrgOptions.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-sm text-gray-700 mb-1">
+                        Batch Certificate
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.batchCertificateUrl}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, batchCertificateUrl: e.target.value }))
+                        }
+                        placeholder="https://example.com/certificate"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
                       />
                     </div>
                   </div>}

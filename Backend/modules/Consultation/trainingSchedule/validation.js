@@ -5,58 +5,71 @@ export const sessionIdParamSchema = z.object({
   sessionId: z.string().uuid(),
 });
 
-const textField = z
+const DAY_OF_WEEK = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+// HH:MM format (time without seconds)
+const timeField = z
   .string()
   .trim()
-  .max(4000)
+  .regex(/^\d{2}:\d{2}$/, "Must be a valid time in HH:MM format")
   .optional()
   .nullable();
 
-const hoursField = z.number().min(0).max(24).optional().nullable();
-const rpeField = z.number().min(0).max(10).optional().nullable();
-
-const daySchema = z
+const scheduleEntrySchema = z
   .object({
-    am: textField,
-    pm: textField,
-    trainingHours: hoursField,
-    rpe: rpeField,
+    dayOfWeek: z.enum(DAY_OF_WEEK, {
+      required_error: "dayOfWeek is required",
+      invalid_type_error: `dayOfWeek must be one of: ${DAY_OF_WEEK.join(", ")}`,
+    }),
+    timeStart: timeField,
+    timeEnd: timeField,
+    activity: z.string().trim().min(1, "Activity is required").max(4000),
+    rpe: z.number().int().min(1).max(10).optional().nullable(),
   })
   .strict();
 
 export const upsertTrainingScheduleSchema = z
   .object({
-    days: z
+    trainingInfo: z
       .object({
-        monday: daySchema,
-        tuesday: daySchema,
-        wednesday: daySchema,
-        thursday: daySchema,
-        friday: daySchema,
-        saturday: daySchema,
-        sunday: daySchema,
+        upcomingMajorCompetitions: z
+          .string()
+          .trim()
+          .max(4000)
+          .optional()
+          .nullable(),
+        upcomingLocalCompetitions: z
+          .string()
+          .trim()
+          .max(4000)
+          .optional()
+          .nullable(),
+        currentPerformance: z.string().trim().max(4000).optional().nullable(),
+        coachPerformanceGoals: z
+          .string()
+          .trim()
+          .max(4000)
+          .optional()
+          .nullable(),
+        athletePerformanceGoals: z
+          .string()
+          .trim()
+          .max(4000)
+          .optional()
+          .nullable(),
+        otherRemarks: z.string().trim().max(4000).optional().nullable(),
+        pal: z.number().min(0).max(5).optional().nullable(),
+        rpeWeek: z.number().int().min(0).max(10).default(0),
       })
       .strict(),
-
-    trainingDetails: z
-      .object({
-        upcomingMajorCompetitions: textField,
-        upcomingLocalCompetitions: textField,
-      })
-      .strict()
-      .optional(),
-
-    performanceDetails: z
-      .object({
-        currentPerformance: textField,
-        coachPerformanceGoals: textField,
-        athletePerformanceGoals: textField,
-        otherRemarks: textField,
-      })
-      .strict()
-      .optional(),
-
-    // Optional: stored in consultation.session_nutrition_review (not in training_schedule table)
-    pal: z.number().min(0).max(5).optional().nullable(),
+    schedule: z.array(scheduleEntrySchema).default([]),
   })
   .strict();

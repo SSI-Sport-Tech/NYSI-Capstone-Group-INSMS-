@@ -275,9 +275,10 @@ app.use((err, req, res, next) => {
 
   // Zod validation errors → 400 Bad Request
   if (err instanceof ZodError) {
+    const issues = err.issues ?? err.errors ?? [];
     return res.status(400).json({
       error: "Validation failed",
-      details: err.errors.map((e) => ({
+      details: issues.map((e) => ({
         field: e.path.join("."),
         message: e.message,
       })),

@@ -342,12 +342,12 @@ export async function verifyBatchTesting(brand, name, batchId = null) {
   let endpoint, params;
 
   if (batchId && (!brand || !name)) {
-    // Batch-ID-only search
-    endpoint = "/api/batch-verification/verify-combined";
+    // Batch-ID-only search — use the dedicated endpoint, omit empty brand/name
+    endpoint = "/api/batch-verification/verify-batch-id";
     params = {
-      supplement_brand: brand || "",
-      supplement_name: name || "",
       batch_id: batchId,
+      ...(brand ? { supplement_brand: brand } : {}),
+      ...(name ? { supplement_name: name } : {}),
     };
   } else if (batchId) {
     // Full combined verification
@@ -513,7 +513,7 @@ export async function findSimilarSupplements(
                 s.supplement_brand,
                 ssl.supplement_status,
                 spf.supplement_packaging_form,
-                s.batch_testing_org,
+                btol.batch_testing_org,
                 ${similarity100gExpr} AS similarity_100g,
                 ${similarityServingExpr} AS similarity_perserving,
                 ${maxSimilarityExpr} AS max_similarity,
@@ -523,6 +523,8 @@ export async function findSimilarSupplements(
                 ON s.supplement_status_id = ssl.id
             LEFT JOIN SSS.Supplement_Packaging_Form_Lookup spf
                 ON s.supplement_packaging_form_id = spf.id
+            LEFT JOIN SSS.Batch_Testing_Org_Lookup btol
+                ON s.batch_testing_org_id = btol.id
             WHERE ssl.is_active = true
                 AND spf.is_active = true
                 ${discontinuedParam ? `AND s.supplement_status_id != $${discontinuedParam}` : ""}

@@ -53,11 +53,27 @@ def load_catalogue_lookup(conn) -> dict:
             LOWER(product_catalog_website) AS key
         FROM sss.webscraper_catalog_url;
     """
-    
+
     with conn.cursor() as cur:
         cur.execute(sql)
         rows = cur.fetchall()
-    
+
+    return {key: id for id, key in rows}
+
+
+def load_batch_testing_org_lookup(conn) -> dict:
+    """Load batch testing org ID mappings from database."""
+    sql = """
+        SELECT
+            id,
+            LOWER(batch_testing_org) AS key
+        FROM sss.batch_testing_org_lookup;
+    """
+
+    with conn.cursor() as cur:
+        cur.execute(sql)
+        rows = cur.fetchall()
+
     return {key: id for id, key in rows}
 
 
@@ -83,20 +99,29 @@ def map_product_to_staging(
     packaging_lookup = load_packaging_form_lookup(conn)
     status_lookup = load_status_lookup(conn)
     catalog_lookup = load_catalogue_lookup(conn)
-    
+    batch_testing_org_lookup = load_batch_testing_org_lookup(conn)
+
     # Map batch testing status
     batch_status_map = {
         True: status_lookup.get("batch tested"),
         False: status_lookup.get("not batch tested"),
         None: status_lookup.get("not batch tested"),  # or "unknown" if you have it
     }
-    
+
+    # Resolve batch_testing_org_id from the first matched org name
+    batch_testing_org_id = None
+    raw_org = product.get("batch_testing_org") or ""
+    for org_name in [o.strip() for o in raw_org.split(",") if o.strip()]:
+        batch_testing_org_id = batch_testing_org_lookup.get(org_name.lower())
+        if batch_testing_org_id:
+            break
+
     # Collect all source URLs
     sources = list(product.get("batch_testing_sources") or [])
     url = product.get("URL")
     if url and url not in sources:
         sources.insert(0, url)
-    
+
     return {
         # Lookup IDs
         "supplement_packaging_form_id": packaging_lookup.get(
@@ -135,8 +160,9 @@ def map_product_to_staging(
         "supplement_warning_label": product.get("Warnings"),
         "supplement_certifications": product.get("Certifications"),
         "supplement_additional_information": product.get("Additional Information"),
-        "batch_testing_org": product.get("batch_testing_org"),
-        
+        "batch_testing_org_id": batch_testing_org_id,
+        "batch_testing_org_url": (product.get("batch_testing_sources") or [None])[0],
+
         # Source info
         "webscraper_catalog_url_id": catalog_lookup.get(catalog_url.lower()),
         "product_source_url": sources,
@@ -166,7 +192,8 @@ INSERT INTO sss.supplement_staging (
     supplement_warning_label,
     supplement_certifications,
     supplement_additional_information,
-    batch_testing_org,
+    batch_testing_org_id,
+    batch_testing_org_url,
     webscraper_catalog_url_id,
     product_source_url,
     scraper_version,
@@ -186,7 +213,8 @@ VALUES (
     %(supplement_warning_label)s,
     %(supplement_certifications)s,
     %(supplement_additional_information)s,
-    %(batch_testing_org)s,
+    %(batch_testing_org_id)s,
+    %(batch_testing_org_url)s,
     %(webscraper_catalog_url_id)s,
     %(product_source_url)s,
     %(scraper_version)s,
