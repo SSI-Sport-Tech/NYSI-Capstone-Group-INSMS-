@@ -29,57 +29,88 @@ async function getOrCreateNutritionReview(sessionId, client) {
   return created.rows[0];
 }
 
-function mapResponse(row, pal) {
+async function getComputedNutritionReview(sessionId) {
+  const { rows } = await pool.query(
+    `SELECT *
+     FROM consultation.v_session_nutrition_review
+     WHERE sessions_id = $1
+     LIMIT 1`,
+    [sessionId]
+  );
+  return rows[0] ?? null;
+}
+
+async function getAthleteGender(sessionId) {
+  const { rows } = await pool.query(
+    `SELECT a.gender
+     FROM consultation.sessions s
+     JOIN ams.athlete a ON a.id = s.athlete_id
+     WHERE s.id = $1
+     LIMIT 1`,
+    [sessionId]
+  );
+  return rows[0]?.gender ?? null;
+}
+
+function mapResponse(baseRow, computedRow, pal, gender) {
+  const normalizedGender = gender?.toLowerCase?.() ?? null;
+  const computedRmr = computedRow?.resting_metabolic_rate ?? null;
+  const computedTee = computedRow?.total_energy_expenditure ?? null;
+  const isMale = normalizedGender === "male";
+  const isFemale = normalizedGender === "female";
+
   return {
-    id: row.id ?? null,
-    sessionId: row.sessions_id,
+    id: baseRow.id ?? computedRow?.nutrition_review_id ?? null,
+    sessionId: baseRow.sessions_id,
 
     // PAL is owned by training schedule (session_training), read-only here
     pal: pal ?? null,
 
-    minCarbGkg: row.minimum_carbohydrate_requirment_g_kg_bw ?? null,
-    maxCarbGkg: row.maximum_carbohydrate_requirment_g_kg_bw ?? null,
-    minProteinGkg: row.minimum_protein_requirment_g_kg_bw ?? null,
-    maxProteinGkg: row.maximum_protein_requirment_g_kg_bw ?? null,
-    minFatGkg: row.minimum_fat_requirment_g_kg_bw ?? null,
-    maxFatGkg: row.maximum_fat_requirment_g_kg_bw ?? null,
+    minCarbGkg: baseRow.minimum_carbohydrate_requirment_g_kg_bw ?? null,
+    maxCarbGkg: baseRow.maximum_carbohydrate_requirment_g_kg_bw ?? null,
+    minProteinGkg: baseRow.minimum_protein_requirment_g_kg_bw ?? null,
+    maxProteinGkg: baseRow.maximum_protein_requirment_g_kg_bw ?? null,
+    minFatGkg: baseRow.minimum_fat_requirment_g_kg_bw ?? null,
+    maxFatGkg: baseRow.maximum_fat_requirment_g_kg_bw ?? null,
 
-    estimatedCarbG: row.estimated_carbohydrate_intake_g ?? null,
-    estimatedProteinG: row.estimated_protein_intake_g ?? null,
-    estimatedFatG: row.estimated_fat_intake_g ?? null,
+    estimatedCarbG: baseRow.estimated_carbohydrate_intake_g ?? null,
+    estimatedProteinG: baseRow.estimated_protein_intake_g ?? null,
+    estimatedFatG: baseRow.estimated_fat_intake_g ?? null,
 
-    commentsWeekday: row.comments_on_weekday_intake ?? null,
-    commentsWeekend: row.comments_on_weekend_intake ?? null,
-    otherRemarks: row.other_remarks ?? null,
+    commentsWeekday: baseRow.comments_on_weekday_intake ?? null,
+    commentsWeekend: baseRow.comments_on_weekend_intake ?? null,
+    otherRemarks: baseRow.other_remarks ?? null,
 
     // computed (read-only on UI)
-    minCarbG: row.minimum_carbohydrate_requirment_g ?? null,
-    maxCarbG: row.maximum_carbohydrate_requirment_g ?? null,
-    minProteinG: row.minimum_protein_requirment_g ?? null,
-    maxProteinG: row.maximum_protein_requirment_g ?? null,
-    minFatG: row.minimum_fat_requirment_g ?? null,
-    maxFatG: row.maximum_fat_requirment_g ?? null,
+    minCarbG: computedRow?.minimum_carbohydrate_requirment_g ?? null,
+    maxCarbG: computedRow?.maximum_carbohydrate_requirment_g ?? null,
+    minProteinG: computedRow?.minimum_protein_requirment_g ?? null,
+    maxProteinG: computedRow?.maximum_protein_requirment_g ?? null,
+    minFatG: computedRow?.minimum_fat_requirment_g ?? null,
+    maxFatG: computedRow?.maximum_fat_requirment_g ?? null,
 
-    targetMinCarbG: row.target_minimum_carbohydrate_requirment_g ?? null,
-    targetMaxCarbG: row.target_maximum_carbohydrate_requirment_g ?? null,
-    targetMinProteinG: row.target_minimum_protein_requirment_g ?? null,
-    targetMaxProteinG: row.target_maximum_protein_requirment_g ?? null,
-    targetMinFatG: row.target_minimum_fat_requirment_g ?? null,
-    targetMaxFatG: row.target_maximum_fat_requirment_g ?? null,
+    // Preserve the existing frontend response shape while sourcing the
+    // actual value from the DB's target-weight-first calculation view.
+    targetMinCarbG: computedRow?.minimum_carbohydrate_requirment_g ?? null,
+    targetMaxCarbG: computedRow?.maximum_carbohydrate_requirment_g ?? null,
+    targetMinProteinG: computedRow?.minimum_protein_requirment_g ?? null,
+    targetMaxProteinG: computedRow?.maximum_protein_requirment_g ?? null,
+    targetMinFatG: computedRow?.minimum_fat_requirment_g ?? null,
+    targetMaxFatG: computedRow?.maximum_fat_requirment_g ?? null,
 
-    pctMinCarb: row.percentage_of_min_carbohydrate_required ?? null,
-    pctMinProtein: row.percentage_of_min_protein_required ?? null,
-    pctMinFat: row.percentage_of_min_fat_required ?? null,
+    pctMinCarb: computedRow?.percentage_of_min_carbohydrate_required ?? null,
+    pctMinProtein: computedRow?.percentage_of_min_protein_required ?? null,
+    pctMinFat: computedRow?.percentage_of_min_fat_required ?? null,
 
-    rmrMale: row.rmr_male_resting_metabolic_rate ?? null,
-    teeMale: row.tee_male_total_energy_expenditure ?? null,
-    targetRmrMale: row.rmr_male_target_weight ?? null,
-    targetTeeMale: row.tee_male_target_weight ?? null,
+    rmrMale: isMale ? computedRmr : null,
+    teeMale: isMale ? computedTee : null,
+    targetRmrMale: isMale ? computedRmr : null,
+    targetTeeMale: isMale ? computedTee : null,
 
-    rmrFemale: row.rmr_female_resting_metabolic_rate ?? null,
-    teeFemale: row.tee_female_total_energy_expenditure ?? null,
-    targetRmrFemale: row.rmr_female_target_weight ?? null,
-    targetTeeFemale: row.tee_female_target_weight ?? null,
+    rmrFemale: isFemale ? computedRmr : null,
+    teeFemale: isFemale ? computedTee : null,
+    targetRmrFemale: isFemale ? computedRmr : null,
+    targetTeeFemale: isFemale ? computedTee : null,
   };
 }
 
@@ -96,17 +127,15 @@ async function getPalFromTraining(sessionId) {
 
 export async function getNutritionRequirementsBySessionId(sessionId) {
   await assertSessionExists(sessionId);
-  await getOrCreateNutritionReview(sessionId);
+  const baseRow = await getOrCreateNutritionReview(sessionId);
 
-  const [{ rows }, pal] = await Promise.all([
-    pool.query(
-      `SELECT * FROM consultation.session_nutrition_review WHERE sessions_id = $1 LIMIT 1`,
-      [sessionId]
-    ),
+  const [computedRow, pal, gender] = await Promise.all([
+    getComputedNutritionReview(sessionId),
     getPalFromTraining(sessionId),
+    getAthleteGender(sessionId),
   ]);
 
-  return mapResponse(rows[0], pal);
+  return mapResponse(baseRow, computedRow, pal, gender);
 }
 
 export async function patchNutritionRequirementsBySessionId(sessionId, payload, userId) {

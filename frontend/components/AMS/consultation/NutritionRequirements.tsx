@@ -313,17 +313,22 @@ export default function NutritionRequirements({
       try {
         const token = localStorage.getItem("token");
         const headers = { Authorization: `Bearer ${token}` };
-        const latestRes = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/athlete/${athleteId}/latest`,
-          { headers },
-        );
-        if (!latestRes.ok) return;
-        const latestData = await latestRes.json();
-        const prevSessionId = latestData?.data?.id as string | undefined;
-        if (!prevSessionId) return;
+        let sourceSessionId = prevSessionId;
+
+        if (!sourceSessionId) {
+          const latestRes = await fetch(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/athlete/${athleteId}/latest`,
+            { headers },
+          );
+          if (!latestRes.ok) return;
+          const latestData = await latestRes.json();
+          sourceSessionId = latestData?.data?.id as string | undefined;
+        }
+
+        if (!sourceSessionId) return;
 
         const anthroRes = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${prevSessionId}/anthropometry`,
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${sourceSessionId}/anthropometry`,
           { headers },
         );
         if (!anthroRes.ok) return;
@@ -338,7 +343,7 @@ export default function NutritionRequirements({
         // non-critical — calculations will show "—" if unavailable
       }
     })();
-  }, [isNewConsultation, athleteId, weight]);
+  }, [isNewConsultation, athleteId, prevSessionId, weight]);
 
   // ── Live-calculated values ──────────────────────────────────────────────
   // Prefer live values streamed from the Anthropometry card (updated as user
@@ -355,6 +360,7 @@ export default function NutritionRequirements({
     activeTab === "previous"
       ? (prevTargetWeight ?? prevWeight)
       : (currentTargetWeight ?? currentWeight);
+  const priorityWeight = displayTargetWeight ?? displayWeight;
 
   const livePal = effectiveEditing ? n(editForm.pal) : (displayData?.pal ?? null);
   const liveMinCarbGkg = effectiveEditing ? n(editForm.minCarbGkg) : (displayData?.minCarbGkg ?? null);
@@ -371,12 +377,12 @@ export default function NutritionRequirements({
   const calcG = (gkg: number | null, w: number | null) =>
     gkg !== null && w !== null ? +(gkg * w).toFixed(1) : null;
 
-  const minCarbG = calcG(liveMinCarbGkg, displayWeight);
-  const maxCarbG = calcG(liveMaxCarbGkg, displayWeight);
-  const minProteinG = calcG(liveMinProteinGkg, displayWeight);
-  const maxProteinG = calcG(liveMaxProteinGkg, displayWeight);
-  const minFatG = calcG(liveMinFatGkg, displayWeight);
-  const maxFatG = calcG(liveMaxFatGkg, displayWeight);
+  const minCarbG = calcG(liveMinCarbGkg, priorityWeight);
+  const maxCarbG = calcG(liveMaxCarbGkg, priorityWeight);
+  const minProteinG = calcG(liveMinProteinGkg, priorityWeight);
+  const maxProteinG = calcG(liveMaxProteinGkg, priorityWeight);
+  const minFatG = calcG(liveMinFatGkg, priorityWeight);
+  const maxFatG = calcG(liveMaxFatGkg, priorityWeight);
 
   // Derived g values — target weight (same g/kg/bw as current weight)
   const liveTgtMinCarbGkg = liveMinCarbGkg;
@@ -386,12 +392,12 @@ export default function NutritionRequirements({
   const liveTgtMinFatGkg = liveMinFatGkg;
   const liveTgtMaxFatGkg = liveMaxFatGkg;
 
-  const targetMinCarbG = calcG(liveTgtMinCarbGkg, displayTargetWeight);
-  const targetMaxCarbG = calcG(liveTgtMaxCarbGkg, displayTargetWeight);
-  const targetMinProteinG = calcG(liveTgtMinProteinGkg, displayTargetWeight);
-  const targetMaxProteinG = calcG(liveTgtMaxProteinGkg, displayTargetWeight);
-  const targetMinFatG = calcG(liveTgtMinFatGkg, displayTargetWeight);
-  const targetMaxFatG = calcG(liveTgtMaxFatGkg, displayTargetWeight);
+  const targetMinCarbG = calcG(liveTgtMinCarbGkg, priorityWeight);
+  const targetMaxCarbG = calcG(liveTgtMaxCarbGkg, priorityWeight);
+  const targetMinProteinG = calcG(liveTgtMinProteinGkg, priorityWeight);
+  const targetMaxProteinG = calcG(liveTgtMaxProteinGkg, priorityWeight);
+  const targetMinFatG = calcG(liveTgtMinFatGkg, priorityWeight);
+  const targetMaxFatG = calcG(liveTgtMaxFatGkg, priorityWeight);
 
   // % of minimum required
   const calcPct = (estimated: number | null, minG: number | null) =>
@@ -409,15 +415,15 @@ export default function NutritionRequirements({
   const calcTEE = (rmr: number | null, pal: number | null) =>
     rmr !== null && pal !== null ? +(rmr * pal).toFixed(0) : null;
 
-  const rmrMale = calcRMR(displayWeight, displayHeight, 340);
+  const rmrMale = calcRMR(priorityWeight, displayHeight, 340);
   const teeMale = calcTEE(rmrMale, livePal);
-  const targetRmrMale = calcRMR(displayTargetWeight, displayHeight, 340);
+  const targetRmrMale = calcRMR(priorityWeight, displayHeight, 340);
   const targetTeeMale = calcTEE(targetRmrMale, livePal);
 
   // RMR/TEE — Female (formula: 11.1 × weight + 8.4 × height − 540)
-  const rmrFemale = calcRMR(displayWeight, displayHeight, 540);
+  const rmrFemale = calcRMR(priorityWeight, displayHeight, 540);
   const teeFemale = calcTEE(rmrFemale, livePal);
-  const targetRmrFemale = calcRMR(displayTargetWeight, displayHeight, 540);
+  const targetRmrFemale = calcRMR(priorityWeight, displayHeight, 540);
   const targetTeeFemale = calcTEE(targetRmrFemale, livePal);
 
   const handleSave = async () => {
