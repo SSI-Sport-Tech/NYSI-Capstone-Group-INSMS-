@@ -153,11 +153,58 @@ Runs on `http://localhost:3000`
 
 ## Environment Variables
 
-### Backend/.env
+### Docker Setup — One `.env` file at the root
+
+When running with Docker, you only need **one `.env` file** placed at the project root (same folder as `docker-compose.yml`). Docker Compose reads it automatically and injects the correct values into each container.
+
+```bash
+# From the project root
+cp .env.example .env
+# Then open .env and fill in your values
+```
+
+The root `.env` looks like this (all values required unless marked optional):
+
+```env
+# ── Database (PostgreSQL / AWS RDS) ──────────────────────────────────────────
+PGHOST=your-db-host.rds.amazonaws.com
+PGPORT=5432
+PGDATABASE=your_db_name
+PGUSER=your_db_user
+PGPASSWORD=your_db_password
+PGSSLMODE=require
+# Use PGSSLMODE=disable only if running a local containerised Postgres (no SSL)
+
+# ── Authentication ────────────────────────────────────────────────────────────
+JWT_SECRET=your_jwt_secret_here         # any long random string
+JWT_EXPIRY=24h
+
+# ── 2FA Email (Gmail app password) ───────────────────────────────────────────
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASSWORD=xxxx xxxx xxxx xxxx     # Gmail app password (not your login password)
+SKIP_2FA=false                          # Set to true to bypass 2FA during testing
+CODE_EXPIRY_MINUTES=10
+MAX_VERIFICATION_ATTEMPTS=3
+
+# ── OpenAI (OCR parsing + web scraping) ──────────────────────────────────────
+OPENAI_API_KEY=sk-proj-...
+
+# ── ML / Vectorisation ───────────────────────────────────────────────────────
+EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
+VECTOR_DIMENSION=384
+```
+
+> **Do not touch** `Backend/.env` or `Python_Services/.env` when using Docker — those are only used for local manual setup (Option B below).
+
+---
+
+### Manual Setup — Separate `.env` per service (Option B only)
+
+#### Backend/.env
 
 ```env
 PGHOST=<your-db-host>
-PGPORT=<your-db-port>
+PGPORT=5432
 PGDATABASE=<your-db-name>
 PGUSER=<your-db-user>
 PGPASSWORD=<your-db-password>
@@ -165,15 +212,25 @@ PGSSLMODE=require
 PORT=8000
 FRONTEND_URL=http://localhost:3000
 PYTHON_SERVICE_URL=http://localhost:8001
+JWT_SECRET=<your-jwt-secret>
+JWT_EXPIRY=24h
+EMAIL_USER=<your-gmail>
+EMAIL_PASSWORD=<your-gmail-app-password>
+SKIP_2FA=false
 ```
 
-### Python_Services/.env
+#### Python_Services/.env
 
 ```env
 OPENAI_API_KEY=sk-proj-xxxxx
 SERVICE_PORT=8001
 SERVICE_HOST=0.0.0.0
 BACKEND_URL=http://localhost:8000
+POSTGRES_HOST=<your-db-host>
+POSTGRES_PORT=5432
+POSTGRES_DB=<your-db-name>
+POSTGRES_USER=<your-db-user>
+POSTGRES_PASSWORD=<your-db-password>
 EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
 VECTOR_DIMENSION=384
 SCRAPER_HEADLESS=true
