@@ -51,6 +51,46 @@ async function getOrCreateMealParent(sessionId, client) {
   return created.rows[0];
 }
 
+async function getMealLogAudit(sessionId) {
+  const { rows } = await pool.query(
+    `SELECT al.changed_on,
+            COALESCE(NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), u.email) AS user_name
+     FROM audit.audit_log al
+     LEFT JOIN auth.users u ON u.id = al.user_id
+     WHERE (
+       al.table_name = 'consultation.session_meal'
+       AND EXISTS (
+         SELECT 1
+         FROM consultation.session_meal sm
+         WHERE sm.id = al.record_id
+           AND sm.sessions_id = $1
+       )
+     ) OR (
+       al.table_name = 'consultation.session_meal_log'
+       AND EXISTS (
+         SELECT 1
+         FROM consultation.session_meal_log sml
+         JOIN consultation.session_meal sm ON sm.id = sml.session_meal_id
+         WHERE sml.id = al.record_id
+           AND sm.sessions_id = $1
+       )
+     ) OR (
+       al.table_name = 'consultation.session_sleep'
+       AND EXISTS (
+         SELECT 1
+         FROM consultation.session_sleep ss
+         WHERE ss.id = al.record_id
+           AND ss.sessions_id = $1
+       )
+     )
+     ORDER BY al.changed_on DESC
+     LIMIT 1`,
+    [sessionId],
+  );
+
+  return rows[0] ?? null;
+}
+
 export async function getMealLogAndSleepBySessionId(sessionId) {
   await assertSessionExists(sessionId);
 
@@ -76,10 +116,14 @@ export async function getMealLogAndSleepBySessionId(sessionId) {
     ),
   ]);
 
+  const audit = await getMealLogAudit(sessionId);
+
   return {
     entries: entriesResult.rows.map(mapMealEntry),
     mealOtherRemarks: mealRow.other_remarks ?? null,
     sleep: mapSleep(sleepResult.rows[0] ?? null),
+    lastUpdatedAt: audit?.changed_on ?? null,
+    lastUpdatedBy: audit?.user_name ?? null,
   };
 }
 
@@ -205,10 +249,14 @@ export async function upsertMealLogAndSleepBySessionId(
       ),
     ]);
 
+    const audit = await getMealLogAudit(sessionId);
+
     return {
       entries: savedEntries.rows.map(mapMealEntry),
       mealOtherRemarks: mealOtherRemarks ?? null,
       sleep: mapSleep(savedSleep.rows[0] ?? null),
+      lastUpdatedAt: audit?.changed_on ?? null,
+      lastUpdatedBy: audit?.user_name ?? null,
     };
   });
 }

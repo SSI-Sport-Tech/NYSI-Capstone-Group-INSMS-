@@ -48,7 +48,7 @@ const router = express.Router();
  *                         type: string
  *                       gender:
  *                         type: string
- *                         enum: [MALE, FEMALE, OTHER]
+ *                         enum: [Male, Female, Other]
  *                       date_of_birth:
  *                         type: string
  *                         format: date
@@ -110,7 +110,7 @@ router.get("/athletes", authenticateToken, controller.listAthletes);
  *                       type: string
  *                     gender:
  *                       type: string
- *                       enum: [MALE, FEMALE, OTHER]
+ *                       enum: [Male, Female, Other]
  *                     date_of_birth:
  *                       type: string
  *                       format: date
@@ -224,7 +224,7 @@ router.get("/athletes/:id/profile", controller.getAthleteProfile);
  *                 type: string
  *               gender:
  *                 type: string
- *                 enum: [MALE, FEMALE, OTHER]
+ *                 enum: [Male, Female, Other]
  *               date_of_birth:
  *                 type: string
  *                 format: date
@@ -360,7 +360,7 @@ router.patch(
  *                 type: string
  *               gender:
  *                 type: string
- *                 enum: [MALE, FEMALE, OTHER]
+ *                 enum: [Male, Female, Other]
  *               date_of_birth:
  *                 type: string
  *                 format: date
@@ -481,7 +481,7 @@ router.patch(
  *       in a single transaction. If any insert fails, the entire transaction is rolled back.
  *       The logged-in nutritionist is automatically assigned to the athlete and pinned by default.
  *       Medical fields are optional (default to empty string).
- *       coach_ids is optional (defaults to empty array). Gender is either MALE, FEMALE or OTHER.
+ *       coach_ids is optional (defaults to empty array). Gender is either Male, Female or Other.
  *     tags: [AMS - Athletes]
  *     security:
  *       - bearerAuth: []
@@ -517,7 +517,7 @@ router.patch(
  *                 description: Athlete abbreviated name
  *               gender:
  *                 type: string
- *                 enum: [MALE, FEMALE, OTHER]
+ *                 enum: [Male, Female, Other]
  *               date_of_birth:
  *                 type: string
  *                 format: date
@@ -575,7 +575,7 @@ router.patch(
  *             sport_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
  *             sportsync_id: "SS-12345"
  *             athlete_name_abbr: "J. Smith"
- *             gender: "MALE"
+ *             gender: "Male"
  *             date_of_birth: "1998-03-15"
  *             ethnicity: "Chinese"
  *             target_event: "100m Sprint"
@@ -643,7 +643,7 @@ router.post(
  *       to assign instead of auto-assigning the logged-in user.
  *       The assigned nutritionist is pinned to the athlete by default.
  *       Medical fields are optional (default to empty string).
- *       coach_ids is optional (defaults to empty array). Gender is either MALE, FEMALE or OTHER.
+ *       coach_ids is optional (defaults to empty array). Gender is either Male, Female or Other.
  *     tags: [AMS - Athletes]
  *     security:
  *       - bearerAuth: []
@@ -680,7 +680,7 @@ router.post(
  *                 description: Athlete abbreviated name
  *               gender:
  *                 type: string
- *                 enum: [MALE, FEMALE, OTHER]
+ *                 enum: [Male, Female, Other]
  *               date_of_birth:
  *                 type: string
  *                 format: date
@@ -742,7 +742,7 @@ router.post(
  *             sport_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
  *             sportsync_id: "SS-12345"
  *             athlete_name_abbr: "J. Smith"
- *             gender: "MALE"
+ *             gender: "Male"
  *             date_of_birth: "1998-03-15"
  *             ethnicity: "Chinese"
  *             target_event: "100m Sprint"
@@ -808,7 +808,7 @@ router.post(
  *     description: |
  *       Create a new athlete record with only base fields.
  *       Does not create registry, medical, or assignment records.
- *       Gender is either MALE, FEMALE or OTHER.
+ *       Gender is either Male, Female or Other.
  *     tags: [AMS - Athletes]
  *     requestBody:
  *       required: true
@@ -835,7 +835,7 @@ router.post(
  *                 description: Athlete abbreviated name
  *               gender:
  *                 type: string
- *                 enum: [MALE, FEMALE, OTHER]
+ *                 enum: [Male, Female, Other]
  *               date_of_birth:
  *                 type: string
  *                 format: date
@@ -854,7 +854,7 @@ router.post(
  *             sport_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
  *             sportsync_id: "SS-12345"
  *             athlete_name_abbr: "J. Smith"
- *             gender: "MALE"
+ *             gender: "Male"
  *             date_of_birth: "1998-03-15"
  *             ethnicity: "Chinese"
  *             target_event: "100m Sprint"
