@@ -97,6 +97,53 @@ export async function getAthleteIdFromSession(sessionId) {
     return result.rows.length > 0 ? result.rows[0].athlete_id : null;
 }
 
+async function getMedicalHistoryAudit(sessionId, athleteId) {
+    const { rows } = await pool.query(
+        `SELECT al.changed_on,
+                COALESCE(NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), u.email) AS user_name
+         FROM audit.audit_log al
+         LEFT JOIN auth.users u ON u.id = al.user_id
+         WHERE (
+            al.table_name = 'ams.athlete_medical'
+            AND EXISTS (
+                SELECT 1
+                FROM ams.athlete_medical am
+                WHERE am.id = al.record_id
+                  AND am.athlete_id = $2
+            )
+         ) OR (
+            al.table_name = 'consultation.session_puberty'
+            AND EXISTS (
+                SELECT 1 FROM consultation.session_puberty p
+                WHERE p.id = al.record_id AND p.sessions_id = $1
+            )
+         ) OR (
+            al.table_name = 'consultation.session_bowel_movement'
+            AND EXISTS (
+                SELECT 1 FROM consultation.session_bowel_movement bm
+                WHERE bm.id = al.record_id AND bm.sessions_id = $1
+            )
+         ) OR (
+            al.table_name = 'consultation.session_hydration'
+            AND EXISTS (
+                SELECT 1 FROM consultation.session_hydration h
+                WHERE h.id = al.record_id AND h.sessions_id = $1
+            )
+         ) OR (
+            al.table_name = 'consultation.session_period'
+            AND EXISTS (
+                SELECT 1 FROM consultation.session_period per
+                WHERE per.id = al.record_id AND per.sessions_id = $1
+            )
+         )
+         ORDER BY al.changed_on DESC
+         LIMIT 1`,
+        [sessionId, athleteId]
+    );
+
+    return rows[0] ?? null;
+}
+
 // ============================================================================
 // GET MEDICAL HISTORY
 // ============================================================================
@@ -109,6 +156,7 @@ export async function getAthleteIdFromSession(sessionId) {
 export async function getMedicalHistory(sessionId) {
     const athleteId = await getAthleteIdFromSession(sessionId);
     if (!athleteId) return null;
+    const audit = await getMedicalHistoryAudit(sessionId, athleteId);
 
     // Fetch general medical data from ams.athlete_medical
     const generalResult = await pool.query(
@@ -202,6 +250,8 @@ export async function getMedicalHistory(sessionId) {
             any_signs_and_symptoms: row.any_signs_and_symptoms ?? null,
             other_remarks: row.period_other_remarks ?? null,
         },
+        lastUpdatedAt: audit?.changed_on ?? null,
+        lastUpdatedBy: audit?.user_name ?? null,
     };
 }
 

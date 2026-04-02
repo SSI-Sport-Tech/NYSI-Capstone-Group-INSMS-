@@ -30,8 +30,10 @@ import {
             athletePerformanceGoals: null,
             otherRemarks: null,
             pal: null,
-            rpeWeek: 0,
+            rpeWeek: null,
           },
+          lastUpdatedAt: null,
+          lastUpdatedBy: null,
           schedule: [],
         },
       });

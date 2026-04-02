@@ -429,9 +429,9 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                         )}
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-900">
-                        {athlete.gender === "MALE"
+                        {athlete.gender === "Male"
                           ? "M"
-                          : athlete.gender === "FEMALE"
+                          : athlete.gender === "Female"
                             ? "F"
                             : athlete.gender}
                       </td>

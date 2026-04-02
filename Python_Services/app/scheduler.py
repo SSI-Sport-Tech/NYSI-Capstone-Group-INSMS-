@@ -73,9 +73,16 @@ def getWebsitesToScrape():
             rows = cur.fetchall()
 
         return {key: id for id, key in rows}
-    
-CATALOG_URLS = list(getWebsitesToScrape())
-print(CATALOG_URLS)
+
+
+def load_catalog_urls():
+    try:
+        catalog_urls = list(getWebsitesToScrape())
+        print(f"Loaded {len(catalog_urls)} catalog URLs for scheduler")
+        return catalog_urls
+    except Exception as e:
+        print(f"⚠️ Could not load catalog URLs at startup: {e}")
+        return []
 
 async def run_full_scrape_job():
     """Scheduled job: runs the full scraping pipeline for all catalog URLs."""
@@ -84,11 +91,16 @@ async def run_full_scrape_job():
         print("❌ Scheduler: OPENAI_API_KEY not set — skipping run")
         return
 
+    catalog_urls = load_catalog_urls()
+    if not catalog_urls:
+        print("⚠️ Scheduler: No catalog URLs available — skipping run")
+        return
+
     print(f"\n{'='*60}")
     print(f"⏰ SCHEDULED SCRAPE STARTED: {datetime.now().isoformat()}")
     print(f"{'='*60}\n")
 
-    for catalog_url in CATALOG_URLS:
+    for catalog_url in catalog_urls:
         try:
             errors = []
 

@@ -48,7 +48,7 @@ function computeDerived(row) {
   return { bmi, fatMassPct, skeletalMuscleMassPct, targetBmi };
 }
 
-function mapResponse(row) {
+function mapResponse(row, audit) {
   const { bmi, fatMassPct, skeletalMuscleMassPct, targetBmi } = computeDerived(row);
   return {
     id: row.id ?? null,
@@ -70,7 +70,25 @@ function mapResponse(row) {
     otherRemarks: row.other_remarks ?? null,
     dateRecorded: row.date_recorded ?? null,
     measuredBy: row.measured_by ?? null,
+    lastUpdatedAt: audit?.changed_on ?? row.updated_at ?? row.created_at ?? null,
+    lastUpdatedBy: audit?.user_name ?? null,
   };
+}
+
+async function getAnthropometryAudit(rowId) {
+  const { rows } = await pool.query(
+    `SELECT al.changed_on,
+            COALESCE(NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), u.email) AS user_name
+     FROM audit.audit_log al
+     LEFT JOIN auth.users u ON u.id = al.user_id
+     WHERE al.table_name = 'consultation.session_anthropometry'
+       AND al.record_id = $1
+     ORDER BY al.changed_on DESC
+     LIMIT 1`,
+    [rowId],
+  );
+
+  return rows[0] ?? null;
 }
 
 export async function getAnthropometryBySessionId(sessionId) {
@@ -78,10 +96,15 @@ export async function getAnthropometryBySessionId(sessionId) {
   await getOrCreateAnthropometry(sessionId);
 
   const result = await pool.query(
-    `SELECT * FROM consultation.session_anthropometry WHERE sessions_id = $1 LIMIT 1`,
+    `SELECT sa.*
+     FROM consultation.session_anthropometry sa
+     WHERE sa.sessions_id = $1
+     LIMIT 1`,
     [sessionId]
   );
-  return mapResponse(result.rows[0]);
+  const row = result.rows[0];
+  const audit = await getAnthropometryAudit(row.id);
+  return mapResponse(row, audit);
 }
 
 export async function patchAnthropometryBySessionId(sessionId, payload, userId) {

@@ -4,6 +4,7 @@ import {
   consultationApi,
   ConsultationApiError,
 } from "../../../utils/consultationApi";
+import ConsultationCardLastUpdated from "./ConsultationCardLastUpdated";
 
 interface AnthropometryProps {
   athleteId: string;
@@ -21,6 +22,8 @@ interface AnthropometryProps {
 }
 
 interface AnthropometryData {
+  lastUpdatedAt?: string | null;
+  lastUpdatedBy?: string | null;
   height: number | null;
   weight: number | null;
   body_fat_percentage: number | null;
@@ -175,6 +178,8 @@ export default function Anthropometry({
         data: unknown;
       };
       const apiData: {
+        lastUpdatedAt?: string | null;
+        lastUpdatedBy?: string | null;
         heightCm?: string;
         weightKg?: string;
         bmi?: string;
@@ -198,6 +203,8 @@ export default function Anthropometry({
 
       // Map API response to our interface
       const data: AnthropometryData = {
+        lastUpdatedAt: apiData.lastUpdatedAt ?? null,
+        lastUpdatedBy: apiData.lastUpdatedBy ?? null,
         height: apiData.heightCm ? parseFloat(apiData.heightCm) : null,
         weight: apiData.weightKg ? parseFloat(apiData.weightKg) : null,
         bmi: apiData.bmi ? parseFloat(apiData.bmi) : null,
@@ -447,7 +454,13 @@ export default function Anthropometry({
     return (
       <section id="anthropometry" className="bg-white rounded-xl shadow-lg p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Anthropometry</h2>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Anthropometry</h2>
+            <ConsultationCardLastUpdated
+              lastUpdatedAt={anthropometryData?.lastUpdatedAt}
+              lastUpdatedBy={anthropometryData?.lastUpdatedBy}
+            />
+          </div>
         </div>
 
         {prevSessionId && (
@@ -727,7 +740,13 @@ export default function Anthropometry({
   return (
     <section id="anthropometry" className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">Anthropometry</h2>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Anthropometry</h2>
+          <ConsultationCardLastUpdated
+            lastUpdatedAt={anthropometryData?.lastUpdatedAt}
+            lastUpdatedBy={anthropometryData?.lastUpdatedBy}
+          />
+        </div>
         {!readOnly && (
           <button
             onClick={() => setIsEditing(true)}

@@ -4,29 +4,15 @@ services:
   backend:
     build:
       context: ./Backend
+    env_file:
+      - ./Backend/.env
     ports:
       - "8000:8000"
     environment:
       PORT: "8000"
-      # Database — reads from root .env
-      PGHOST: ${PGHOST}
-      PGPORT: ${PGPORT:-5432}
-      PGDATABASE: ${PGDATABASE}
-      PGUSER: ${PGUSER}
-      PGPASSWORD: ${PGPASSWORD}
-      PGSSLMODE: ${PGSSLMODE:-require}
       # Internal service URLs (Docker service names)
       FRONTEND_URL: "http://localhost:3000"
       PYTHON_SERVICE_URL: "http://python:8001"
-      # Auth
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRY: ${JWT_EXPIRY:-24h}
-      # Email (2FA)
-      EMAIL_USER: ${EMAIL_USER}
-      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
-      SKIP_2FA: ${SKIP_2FA:-false}
-      CODE_EXPIRY_MINUTES: ${CODE_EXPIRY_MINUTES:-10}
-      MAX_VERIFICATION_ATTEMPTS: ${MAX_VERIFICATION_ATTEMPTS:-3}
     depends_on:
       python:
         condition: service_healthy
@@ -42,23 +28,14 @@ services:
   python:
     build:
       context: ./Python_Services
+    env_file:
+      - ./Python_Services/.env
     ports:
       - "8001:8001"
     environment:
       SERVICE_HOST: "0.0.0.0"
       SERVICE_PORT: "8001"
       BACKEND_URL: "http://backend:8000"
-      # OpenAI
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      # Database — Pydantic reads POSTGRES_* naming; mapped from PGHOST etc.
-      POSTGRES_HOST: ${PGHOST}
-      POSTGRES_PORT: ${PGPORT:-5432}
-      POSTGRES_DB: ${PGDATABASE}
-      POSTGRES_USER: ${PGUSER}
-      POSTGRES_PASSWORD: ${PGPASSWORD}
-      # ML config
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
-      VECTOR_DIMENSION: ${VECTOR_DIMENSION:-384}
       SCRAPER_HEADLESS: "true"
     restart: unless-stopped
     healthcheck:
