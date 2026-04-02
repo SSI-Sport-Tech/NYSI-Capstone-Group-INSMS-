@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
 import { consultationApi } from "@/utils/consultationApi";
+import { getApiErrorMessage } from "@/utils/apiError";
+import ConsultationCardLastUpdated from "./ConsultationCardLastUpdated";
+
+const PAL_UPDATED_EVENT = "consultation-pal-updated";
 
 interface NutritionRequirementsProps {
   athleteId: string;
@@ -18,6 +22,8 @@ interface NutritionRequirementsProps {
 interface NutritionRequirementsData {
   id: string | null;
   sessionId: string;
+  lastUpdatedAt?: string | null;
+  lastUpdatedBy?: string | null;
   pal: number | null;
   minCarbGkg: number | null;
   maxCarbGkg: number | null;
@@ -148,6 +154,16 @@ function fmtPct(v: number | string | null | undefined): string {
   return `${num.toFixed(1)}%`;
 }
 
+function applyPalToNutritionData(
+  data: NutritionRequirementsData,
+  pal: number | null,
+): NutritionRequirementsData {
+  return {
+    ...data,
+    pal,
+  };
+}
+
 export default function NutritionRequirements({
   athleteId,
   sessionId,
@@ -189,6 +205,24 @@ export default function NutritionRequirements({
     onStepStatusChange?.(isSaved ? "saved" : effectiveEditing ? "dirty" : "default");
   }, [effectiveEditing, isSaved, onStepStatusChange]);
 
+  useEffect(() => {
+    const handlePalUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<{ sessionId: string; pal: number | null }>;
+      if (customEvent.detail?.sessionId !== sessionId) return;
+      const syncedPal = customEvent.detail.pal;
+      setNutritionRequirementsData((prev) => (prev ? applyPalToNutritionData(prev, syncedPal) : prev));
+      setEditForm((prev) => ({
+        ...prev,
+        pal: syncedPal !== null ? String(syncedPal) : "",
+      }));
+    };
+
+    window.addEventListener(PAL_UPDATED_EVENT, handlePalUpdated as EventListener);
+    return () => {
+      window.removeEventListener(PAL_UPDATED_EVENT, handlePalUpdated as EventListener);
+    };
+  }, [sessionId]);
+
   const fetchData = async () => {
     if (!sessionId) {
       setNutritionRequirementsData(null);
@@ -204,7 +238,22 @@ export default function NutritionRequirements({
           data: NutritionRequirementsData;
         }>
       );
-      const data = nutritionRequirementsRes.data;
+      let data = nutritionRequirementsRes.data;
+      if (data.pal == null) {
+        const trainingScheduleRes = await (
+          consultationApi.getTrainingSchedule(sessionId) as Promise<{
+            data?: {
+              trainingInfo?: {
+                pal?: number | null;
+              };
+            };
+          } | null>
+        ).catch(() => null);
+        const trainingPal = trainingScheduleRes?.data?.trainingInfo?.pal ?? null;
+        if (trainingPal != null) {
+          data = applyPalToNutritionData(data, trainingPal);
+        }
+      }
       setNutritionRequirementsData(data);
       setEditForm(toEditForm(data));
 
@@ -313,17 +362,22 @@ export default function NutritionRequirements({
       try {
         const token = localStorage.getItem("token");
         const headers = { Authorization: `Bearer ${token}` };
-        const latestRes = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/athlete/${athleteId}/latest`,
-          { headers },
-        );
-        if (!latestRes.ok) return;
-        const latestData = await latestRes.json();
-        const prevSessionId = latestData?.data?.id as string | undefined;
-        if (!prevSessionId) return;
+        let sourceSessionId = prevSessionId;
+
+        if (!sourceSessionId) {
+          const latestRes = await fetch(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/athlete/${athleteId}/latest`,
+            { headers },
+          );
+          if (!latestRes.ok) return;
+          const latestData = await latestRes.json();
+          sourceSessionId = latestData?.data?.id as string | undefined;
+        }
+
+        if (!sourceSessionId) return;
 
         const anthroRes = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${prevSessionId}/anthropometry`,
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${sourceSessionId}/anthropometry`,
           { headers },
         );
         if (!anthroRes.ok) return;
@@ -338,7 +392,7 @@ export default function NutritionRequirements({
         // non-critical — calculations will show "—" if unavailable
       }
     })();
-  }, [isNewConsultation, athleteId, weight]);
+  }, [isNewConsultation, athleteId, prevSessionId, weight]);
 
   // ── Live-calculated values ──────────────────────────────────────────────
   // Prefer live values streamed from the Anthropometry card (updated as user
@@ -355,6 +409,7 @@ export default function NutritionRequirements({
     activeTab === "previous"
       ? (prevTargetWeight ?? prevWeight)
       : (currentTargetWeight ?? currentWeight);
+  const priorityWeight = displayTargetWeight ?? displayWeight;
 
   const livePal = effectiveEditing ? n(editForm.pal) : (displayData?.pal ?? null);
   const liveMinCarbGkg = effectiveEditing ? n(editForm.minCarbGkg) : (displayData?.minCarbGkg ?? null);
@@ -371,12 +426,12 @@ export default function NutritionRequirements({
   const calcG = (gkg: number | null, w: number | null) =>
     gkg !== null && w !== null ? +(gkg * w).toFixed(1) : null;
 
-  const minCarbG = calcG(liveMinCarbGkg, displayWeight);
-  const maxCarbG = calcG(liveMaxCarbGkg, displayWeight);
-  const minProteinG = calcG(liveMinProteinGkg, displayWeight);
-  const maxProteinG = calcG(liveMaxProteinGkg, displayWeight);
-  const minFatG = calcG(liveMinFatGkg, displayWeight);
-  const maxFatG = calcG(liveMaxFatGkg, displayWeight);
+  const minCarbG = calcG(liveMinCarbGkg, priorityWeight);
+  const maxCarbG = calcG(liveMaxCarbGkg, priorityWeight);
+  const minProteinG = calcG(liveMinProteinGkg, priorityWeight);
+  const maxProteinG = calcG(liveMaxProteinGkg, priorityWeight);
+  const minFatG = calcG(liveMinFatGkg, priorityWeight);
+  const maxFatG = calcG(liveMaxFatGkg, priorityWeight);
 
   // Derived g values — target weight (same g/kg/bw as current weight)
   const liveTgtMinCarbGkg = liveMinCarbGkg;
@@ -386,12 +441,12 @@ export default function NutritionRequirements({
   const liveTgtMinFatGkg = liveMinFatGkg;
   const liveTgtMaxFatGkg = liveMaxFatGkg;
 
-  const targetMinCarbG = calcG(liveTgtMinCarbGkg, displayTargetWeight);
-  const targetMaxCarbG = calcG(liveTgtMaxCarbGkg, displayTargetWeight);
-  const targetMinProteinG = calcG(liveTgtMinProteinGkg, displayTargetWeight);
-  const targetMaxProteinG = calcG(liveTgtMaxProteinGkg, displayTargetWeight);
-  const targetMinFatG = calcG(liveTgtMinFatGkg, displayTargetWeight);
-  const targetMaxFatG = calcG(liveTgtMaxFatGkg, displayTargetWeight);
+  const targetMinCarbG = calcG(liveTgtMinCarbGkg, priorityWeight);
+  const targetMaxCarbG = calcG(liveTgtMaxCarbGkg, priorityWeight);
+  const targetMinProteinG = calcG(liveTgtMinProteinGkg, priorityWeight);
+  const targetMaxProteinG = calcG(liveTgtMaxProteinGkg, priorityWeight);
+  const targetMinFatG = calcG(liveTgtMinFatGkg, priorityWeight);
+  const targetMaxFatG = calcG(liveTgtMaxFatGkg, priorityWeight);
 
   // % of minimum required
   const calcPct = (estimated: number | null, minG: number | null) =>
@@ -409,15 +464,15 @@ export default function NutritionRequirements({
   const calcTEE = (rmr: number | null, pal: number | null) =>
     rmr !== null && pal !== null ? +(rmr * pal).toFixed(0) : null;
 
-  const rmrMale = calcRMR(displayWeight, displayHeight, 340);
+  const rmrMale = calcRMR(priorityWeight, displayHeight, 340);
   const teeMale = calcTEE(rmrMale, livePal);
-  const targetRmrMale = calcRMR(displayTargetWeight, displayHeight, 340);
+  const targetRmrMale = calcRMR(priorityWeight, displayHeight, 340);
   const targetTeeMale = calcTEE(targetRmrMale, livePal);
 
   // RMR/TEE — Female (formula: 11.1 × weight + 8.4 × height − 540)
-  const rmrFemale = calcRMR(displayWeight, displayHeight, 540);
+  const rmrFemale = calcRMR(priorityWeight, displayHeight, 540);
   const teeFemale = calcTEE(rmrFemale, livePal);
-  const targetRmrFemale = calcRMR(displayTargetWeight, displayHeight, 540);
+  const targetRmrFemale = calcRMR(priorityWeight, displayHeight, 540);
   const targetTeeFemale = calcTEE(targetRmrFemale, livePal);
 
   const handleSave = async () => {
@@ -451,15 +506,26 @@ export default function NutritionRequirements({
           body: JSON.stringify(body),
         },
       );
-      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(
+          await getApiErrorMessage(response, "Failed to save nutrition requirements"),
+        );
+      }
       const updated = (await response.json()) as { data: NutritionRequirementsData };
       setNutritionRequirementsData(updated.data);
       if (!isNewConsultation) setEditForm(toEditForm(updated.data));
+      window.dispatchEvent(
+        new CustomEvent(PAL_UPDATED_EVENT, {
+          detail: { sessionId: id, pal: updated.data.pal ?? null },
+        }),
+      );
       setIsEditing(false);
       setIsSaved(true);
     } catch (err) {
       console.error("Error saving nutrition requirements:", err);
-      setSaveError("Failed to save. Please try again.");
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to save nutrition requirements.",
+      );
     }
   };
 
@@ -513,7 +579,13 @@ export default function NutritionRequirements({
   return (
     <section id="nutrition-requirements" className="bg-white rounded-xl shadow-lg p-6 text-gray-900">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">Nutrition Requirements</h2>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Nutrition Requirements</h2>
+          <ConsultationCardLastUpdated
+            lastUpdatedAt={nutritionRequirementsData?.lastUpdatedAt}
+            lastUpdatedBy={nutritionRequirementsData?.lastUpdatedBy}
+          />
+        </div>
         {!readOnly && !effectiveEditing && (
           <button
             onClick={() => setIsEditing(true)}
@@ -872,22 +944,24 @@ export default function NutritionRequirements({
           <span className="text-gray-900 font-medium">
             Physical Activity Level (PAL):
           </span>
-          {effectiveEditing ? (
-            <input
-              type="number"
-              step="0.01"
-              value={editForm.pal}
-              onChange={(e) =>
-                setEditForm((p) => ({ ...p, pal: e.target.value }))
-              }
-              style={{ color: "#111827" }}
+          <div className="text-right">
+            {effectiveEditing ? (
+              <>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editForm.pal}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, pal: e.target.value }))
+                  }
+                  style={{ color: "#111827" }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right"
-            />
-          ) : (
-            <div className="text-right">
+                />
+              </>
+            ) : (
               <span className="font-medium">{fmt(displayData?.pal ?? null, 2)}</span>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Gender-based RMR/TEE — shows only the relevant section */}

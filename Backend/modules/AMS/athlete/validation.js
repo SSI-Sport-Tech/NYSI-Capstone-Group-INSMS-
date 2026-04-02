@@ -38,9 +38,9 @@ export const createBasicAthleteSchema = z
       .string()
       .trim()
       .min(1, "Athlete name abbreviation is required"),
-    gender: z.enum(["MALE", "FEMALE", "OTHER"], {
+    gender: z.enum(["Male", "Female", "Other"], {
       required_error: "Gender is required",
-      invalid_type_error: "Gender must be one of: MALE, FEMALE, OTHER",
+      invalid_type_error: "Gender must be one of: Male, Female, Other",
     }),
     date_of_birth: dateSchema,
     ethnicity: z.string().trim().optional(),
@@ -65,9 +65,9 @@ export const createCompleteAthleteSchema = z
       .string()
       .trim()
       .min(1, "Athlete name abbreviation is required"),
-    gender: z.enum(["MALE", "FEMALE", "OTHER"], {
+    gender: z.enum(["Male", "Female", "Other"], {
       required_error: "Gender is required",
-      invalid_type_error: "Gender must be one of: MALE, FEMALE, OTHER",
+      invalid_type_error: "Gender must be one of: Male, Female, Other",
     }),
     date_of_birth: dateSchema,
     ethnicity: z.string().trim().optional(),
@@ -118,9 +118,9 @@ export const adminCreateCompleteAthleteSchema = z
       .string()
       .trim()
       .min(1, "Athlete name abbreviation is required"),
-    gender: z.enum(["MALE", "FEMALE", "OTHER"], {
+    gender: z.enum(["Male", "Female", "Other"], {
       required_error: "Gender is required",
-      invalid_type_error: "Gender must be one of: MALE, FEMALE, OTHER",
+      invalid_type_error: "Gender must be one of: Male, Female, Other",
     }),
     date_of_birth: dateSchema,
     ethnicity: z.string().trim().optional(),
@@ -176,8 +176,8 @@ export const updateAthleteSchema = z
       .min(1, "Name cannot be empty")
       .optional(),
     gender: z
-      .enum(["MALE", "FEMALE", "OTHER"], {
-        invalid_type_error: "Gender must be one of: MALE, FEMALE, OTHER",
+      .enum(["Male", "Female", "Other"], {
+        invalid_type_error: "Gender must be one of: Male, Female, Other",
       })
       .optional(),
     date_of_birth: optionalDateSchema,
@@ -249,8 +249,8 @@ export const updateProfileSchema = z
       .min(1, "Name cannot be empty")
       .optional(),
     gender: z
-      .enum(["MALE", "FEMALE", "OTHER"], {
-        invalid_type_error: "Gender must be one of: MALE, FEMALE, OTHER",
+      .enum(["Male", "Female", "Other"], {
+        invalid_type_error: "Gender must be one of: Male, Female, Other",
       })
       .optional(),
     date_of_birth: optionalDateSchema,
@@ -310,8 +310,8 @@ export const adminUpdateProfileSchema = z
       .min(1, "Name cannot be empty")
       .optional(),
     gender: z
-      .enum(["MALE", "FEMALE", "OTHER"], {
-        invalid_type_error: "Gender must be one of: MALE, FEMALE, OTHER",
+      .enum(["Male", "Female", "Other"], {
+        invalid_type_error: "Gender must be one of: Male, Female, Other",
       })
       .optional(),
     date_of_birth: optionalDateSchema,

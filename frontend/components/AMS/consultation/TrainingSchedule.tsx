@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { consultationApi } from "@/utils/consultationApi";
+import { getApiErrorMessage } from "@/utils/apiError";
+import ConsultationCardLastUpdated from "./ConsultationCardLastUpdated";
+
+const PAL_UPDATED_EVENT = "consultation-pal-updated";
 
 // ============================================================
 // TYPES
@@ -40,11 +44,13 @@ interface TrainingInfoApi {
   athletePerformanceGoals: string | null;
   otherRemarks: string | null;
   pal: number | null;
-  rpeWeek: number;
+  rpeWeek: number | null;
 }
 
 interface TrainingScheduleData {
   trainingInfo: TrainingInfoApi;
+  lastUpdatedAt?: string | null;
+  lastUpdatedBy?: string | null;
   schedule: ScheduleEntryApi[];
 }
 
@@ -124,7 +130,7 @@ const makeEmptyForm = (): EditForm => ({
     athletePerformanceGoals: "",
     otherRemarks: "",
     pal: "",
-    rpeWeek: "0",
+    rpeWeek: "",
   },
   schedule: [],
 });
@@ -140,7 +146,7 @@ function parseFromApi(data: TrainingScheduleData): EditForm {
       athletePerformanceGoals: info.athletePerformanceGoals ?? "",
       otherRemarks: info.otherRemarks ?? "",
       pal: info.pal !== null && info.pal !== undefined ? String(info.pal) : "",
-      rpeWeek: String(info.rpeWeek ?? 0),
+      rpeWeek: info.rpeWeek !== null && info.rpeWeek !== undefined ? String(info.rpeWeek) : "",
     },
     schedule: data.schedule.map((s) => ({
       dayOfWeek: s.dayOfWeek,
@@ -150,6 +156,19 @@ function parseFromApi(data: TrainingScheduleData): EditForm {
       activity: s.activity,
       rpe: s.rpe !== null && s.rpe !== undefined ? String(s.rpe) : "",
     })),
+  };
+}
+
+function applyPalToTrainingData(
+  data: TrainingScheduleData,
+  pal: number | null,
+): TrainingScheduleData {
+  return {
+    ...data,
+    trainingInfo: {
+      ...data.trainingInfo,
+      pal,
+    },
   };
 }
 
@@ -638,6 +657,11 @@ function TrainingInfoSection({
                   onChange={(e) => setField(field, e.target.value)}
                   className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                 />
+                {/* {(field === "pal" || field === "rpeWeek") && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Manual input only. This value is not derived from the schedule table.
+                  </p>
+                )} */}
               </div>
             )
           )}
@@ -782,6 +806,27 @@ export default function TrainingSchedule({
     onStepStatusChange?.(isSaved ? "saved" : effectiveEditing ? "dirty" : "default");
   }, [effectiveEditing, isSaved, onStepStatusChange]);
 
+  useEffect(() => {
+    const handlePalUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<{ sessionId: string; pal: number | null }>;
+      if (customEvent.detail?.sessionId !== sessionId) return;
+      const syncedPal = customEvent.detail.pal;
+      setTrainingData((prev) => (prev ? applyPalToTrainingData(prev, syncedPal) : prev));
+      setEditForm((prev) => ({
+        ...prev,
+        trainingInfo: {
+          ...prev.trainingInfo,
+          pal: syncedPal !== null ? String(syncedPal) : "",
+        },
+      }));
+    };
+
+    window.addEventListener(PAL_UPDATED_EVENT, handlePalUpdated as EventListener);
+    return () => {
+      window.removeEventListener(PAL_UPDATED_EVENT, handlePalUpdated as EventListener);
+    };
+  }, [sessionId]);
+
   // Load current session data
   useEffect(() => {
     if (!sessionId) {
@@ -796,8 +841,18 @@ export default function TrainingSchedule({
           sessionId
         )) as { data: TrainingScheduleData };
         if (response?.data) {
-          setTrainingData(response.data);
-          setEditForm(parseFromApi(response.data));
+          let nextData = response.data;
+          if (nextData.trainingInfo.pal == null) {
+            const nutritionResponse = (await consultationApi.getNutritionRequirements(
+              sessionId
+            )) as { data: { pal: number | null } } | null;
+            const nutritionPal = nutritionResponse?.data?.pal ?? null;
+            if (nutritionPal != null) {
+              nextData = applyPalToTrainingData(nextData, nutritionPal);
+            }
+          }
+          setTrainingData(nextData);
+          setEditForm(parseFromApi(nextData));
         }
       } catch (err) {
         console.error("Error fetching training schedule:", err);
@@ -841,7 +896,7 @@ export default function TrainingSchedule({
           athletePerformanceGoals: info.athletePerformanceGoals || null,
           otherRemarks: info.otherRemarks || null,
           pal: info.pal !== "" ? parseFloat(info.pal) : null,
-          rpeWeek: info.rpeWeek !== "" ? parseInt(info.rpeWeek, 10) : 0,
+          rpeWeek: info.rpeWeek !== "" ? parseInt(info.rpeWeek, 10) : null,
         },
         schedule: editForm.schedule
           .filter((e) => e.activity.trim() !== "")
@@ -867,18 +922,26 @@ export default function TrainingSchedule({
       );
 
       if (!response.ok) {
-        const errBody = await response.json().catch(() => ({}));
-        throw new Error(`HTTP error: ${response.status} — ${JSON.stringify(errBody)}`);
+        throw new Error(
+          await getApiErrorMessage(response, "Failed to save training schedule"),
+        );
       }
 
       const updated = (await response.json()) as { data: TrainingScheduleData };
       setTrainingData(updated.data);
       if (!isNewConsultation) setEditForm(parseFromApi(updated.data));
+      window.dispatchEvent(
+        new CustomEvent(PAL_UPDATED_EVENT, {
+          detail: { sessionId: id, pal: updated.data.trainingInfo.pal ?? null },
+        }),
+      );
       setIsEditing(false);
       setIsSaved(true);
     } catch (err) {
       console.error("Error saving training schedule:", err);
-      setSaveError(err instanceof Error ? err.message : "Failed to save. Please try again.");
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to save training schedule.",
+      );
     }
   };
 
@@ -924,7 +987,13 @@ export default function TrainingSchedule({
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">Training Schedule</h2>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Training Schedule</h2>
+          <ConsultationCardLastUpdated
+            lastUpdatedAt={trainingData?.lastUpdatedAt}
+            lastUpdatedBy={trainingData?.lastUpdatedBy}
+          />
+        </div>
         {!readOnly && !effectiveEditing && (
           <button
             onClick={() => setIsEditing(true)}

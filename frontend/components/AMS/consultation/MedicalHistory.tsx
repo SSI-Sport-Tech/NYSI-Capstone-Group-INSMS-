@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { consultationApi, ConsultationApiError } from "@/utils/consultationApi";
+import ConsultationCardLastUpdated from "./ConsultationCardLastUpdated";
 
 interface MedicalHistoryProps {
   athleteId: string;
@@ -18,6 +19,8 @@ interface MedicalHistoryProps {
 interface MedicalHistoryApiData {
   session_id: string;
   athlete_id: string;
+  lastUpdatedAt?: string | null;
+  lastUpdatedBy?: string | null;
   general: {
     id: string | null;
     medical_condition: string | null;
@@ -218,6 +221,7 @@ export default function MedicalHistory({
   const [savedState, setSavedState] = useState(emptyState());
   const [isSaved, setIsSaved] = useState(false);
   const [prevData, setPrevData] = useState<ReturnType<typeof apiToState> | null>(null);
+  const [auditInfo, setAuditInfo] = useState<{ lastUpdatedAt?: string | null; lastUpdatedBy?: string | null }>({});
 
   useEffect(() => {
     setIsSaved(false);
@@ -244,6 +248,10 @@ export default function MedicalHistory({
         sessionId,
       )) as { data: MedicalHistoryApiData };
       const mapped = apiToState(response.data);
+      setAuditInfo({
+        lastUpdatedAt: response.data.lastUpdatedAt ?? null,
+        lastUpdatedBy: response.data.lastUpdatedBy ?? null,
+      });
       setGeneralInfo(mapped.general);
       setPubertyInfo(mapped.puberty);
       setBowelMovement(mapped.bowelMovement);
@@ -447,7 +455,13 @@ export default function MedicalHistory({
       )}
 
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-900 underline">Medical History</h2>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 underline">Medical History</h2>
+          <ConsultationCardLastUpdated
+            lastUpdatedAt={auditInfo.lastUpdatedAt}
+            lastUpdatedBy={auditInfo.lastUpdatedBy}
+          />
+        </div>
         {!readOnly && !effectiveEditing && (
           <button
             onClick={() => setIsEditing(true)}
