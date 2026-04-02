@@ -23,6 +23,18 @@ const timeField = z
   .optional()
   .nullable();
 
+const optionalInt = z.union([z.number(), z.string(), z.null()]).transform((value) => {
+  if (value === "" || value === null || value === undefined) return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isNaN(parsed) ? value : parsed;
+}).pipe(z.number().int().optional().nullable());
+
+const optionalNumber = z.union([z.number(), z.string(), z.null()]).transform((value) => {
+  if (value === "" || value === null || value === undefined) return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isNaN(parsed) ? value : parsed;
+}).pipe(z.number().optional().nullable());
+
 const scheduleEntrySchema = z
   .object({
     dayOfWeek: z.enum(DAY_OF_WEEK, {
@@ -32,7 +44,7 @@ const scheduleEntrySchema = z
     timeStart: timeField,
     timeEnd: timeField,
     activity: z.string().trim().min(1, "Activity is required").max(4000),
-    rpe: z.number().int().min(1).max(10).optional().nullable(),
+    rpe: optionalInt.pipe(z.number().int().min(1).max(10).optional().nullable()),
   })
   .strict();
 
@@ -66,8 +78,8 @@ export const upsertTrainingScheduleSchema = z
           .optional()
           .nullable(),
         otherRemarks: z.string().trim().max(4000).optional().nullable(),
-        pal: z.number().min(0).max(5).optional().nullable(),
-        rpeWeek: z.number().int().min(0).max(10).default(0),
+        pal: optionalNumber.pipe(z.number().min(0).max(5).optional().nullable()),
+        rpeWeek: optionalInt.pipe(z.number().int().min(1).max(10).optional().nullable()),
       })
       .strict(),
     schedule: z.array(scheduleEntrySchema).default([]),

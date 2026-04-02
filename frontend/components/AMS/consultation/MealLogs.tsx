@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { consultationApi, ConsultationApiError } from "@/utils/consultationApi";
 import { Plus, Trash2 } from "lucide-react";
+import ConsultationCardLastUpdated from "./ConsultationCardLastUpdated";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,6 +57,8 @@ interface MealEntryApi {
 interface MealLogApiData {
   entries: MealEntryApi[];
   mealOtherRemarks: string | null;
+  lastUpdatedAt?: string | null;
+  lastUpdatedBy?: string | null;
   sleep: {
     sleepDurationH: number | null;
     sleepQuality: number | null;
@@ -781,7 +784,13 @@ export default function MealLogs({
   return (
     <section id="meal-logs" className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-900 underline">Meal Log &amp; Sleep</h2>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 underline">Meal Log &amp; Sleep</h2>
+          <ConsultationCardLastUpdated
+            lastUpdatedAt={savedData?.lastUpdatedAt}
+            lastUpdatedBy={savedData?.lastUpdatedBy}
+          />
+        </div>
         {!readOnly && !effectiveEditing && activeTab === "current" && (
           <button
             onClick={() => setIsEditing(true)}

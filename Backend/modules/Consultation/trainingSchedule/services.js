@@ -14,7 +14,7 @@ export async function assertSessionExists(sessionId) {
   }
 }
 
-function mapTrainingRow(training, scheduleRows) {
+function mapTrainingRow(training, scheduleRows, audit) {
   return {
     trainingInfo: {
       upcomingMajorCompetitions: training.upcoming_major_competitions ?? null,
@@ -28,8 +28,10 @@ function mapTrainingRow(training, scheduleRows) {
         training.physical_activity_level_pal !== undefined
           ? Number(training.physical_activity_level_pal)
           : null,
-      rpeWeek: training.rpe_week ?? 0,
+      rpeWeek: training.rpe_week ?? null,
     },
+    lastUpdatedAt: audit?.changed_on ?? training.updated_at ?? training.created_at ?? null,
+    lastUpdatedBy: audit?.user_name ?? null,
     schedule: scheduleRows.map((r) => ({
       dayOfWeek: r.day_of_week,
       timeStart: r.time_start ?? null,
@@ -40,13 +42,30 @@ function mapTrainingRow(training, scheduleRows) {
   };
 }
 
+async function getTrainingScheduleAudit(recordId, executor = pool) {
+  const { rows } = await executor.query(
+    `SELECT al.changed_on,
+            COALESCE(NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), u.email) AS user_name
+     FROM audit.audit_log al
+     LEFT JOIN auth.users u ON u.id = al.user_id
+     WHERE al.table_name = 'consultation.session_training'
+       AND al.record_id = $1
+     ORDER BY al.changed_on DESC
+     LIMIT 1`,
+    [recordId],
+  );
+
+  return rows[0] ?? null;
+}
+
 export async function getTrainingScheduleBySessionId(sessionId) {
   const { rows: trainingRows } = await pool.query(
-    `SELECT id, upcoming_major_competitions, upcoming_local_competitions,
-            current_performance, coach_performance_goals, athlete_performance_goals,
-            other_remarks, physical_activity_level_pal, rpe_week
-     FROM consultation.session_training
-     WHERE sessions_id = $1
+    `SELECT st.id, st.upcoming_major_competitions, st.upcoming_local_competitions,
+            st.current_performance, st.coach_performance_goals, st.athlete_performance_goals,
+            st.other_remarks, st.physical_activity_level_pal, st.rpe_week,
+            st.created_at, st.updated_at
+     FROM consultation.session_training st
+     WHERE st.sessions_id = $1
      LIMIT 1`,
     [sessionId]
   );
@@ -73,7 +92,8 @@ export async function getTrainingScheduleBySessionId(sessionId) {
     [training.id]
   );
 
-  return mapTrainingRow(training, scheduleRows);
+  const audit = await getTrainingScheduleAudit(training.id);
+  return mapTrainingRow(training, scheduleRows, audit);
 }
 
 export async function upsertTrainingScheduleBySessionId(
@@ -172,6 +192,17 @@ export async function upsertTrainingScheduleBySessionId(
       );
     }
 
+    const { rows: savedTraining } = await client.query(
+      `SELECT st.upcoming_major_competitions, st.upcoming_local_competitions,
+              st.current_performance, st.coach_performance_goals, st.athlete_performance_goals,
+              st.other_remarks, st.physical_activity_level_pal, st.rpe_week,
+              st.created_at, st.updated_at
+       FROM consultation.session_training st
+       WHERE st.id = $1`,
+      [trainingId]
+    );
+    const audit = await getTrainingScheduleAudit(trainingId, client);
+
     // 4. Fetch saved schedule to return consistent DB state
     const { rows: savedSchedule } = await client.query(
       `SELECT day_of_week, time_start, time_end, activity, rpe
@@ -192,17 +223,9 @@ export async function upsertTrainingScheduleBySessionId(
     );
 
     return mapTrainingRow(
-      {
-        upcoming_major_competitions: trainingInfo.upcomingMajorCompetitions ?? null,
-        upcoming_local_competitions: trainingInfo.upcomingLocalCompetitions ?? null,
-        current_performance: trainingInfo.currentPerformance ?? null,
-        coach_performance_goals: trainingInfo.coachPerformanceGoals ?? null,
-        athlete_performance_goals: trainingInfo.athletePerformanceGoals ?? null,
-        other_remarks: trainingInfo.otherRemarks ?? null,
-        physical_activity_level_pal: trainingInfo.pal ?? null,
-        rpe_week: trainingInfo.rpeWeek,
-      },
-      savedSchedule
+      savedTraining[0],
+      savedSchedule,
+      audit
     );
   });
 }

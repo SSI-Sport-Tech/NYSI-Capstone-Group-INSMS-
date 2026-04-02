@@ -52,7 +52,7 @@ async function getAthleteGender(sessionId) {
   return rows[0]?.gender ?? null;
 }
 
-function mapResponse(baseRow, computedRow, pal, gender) {
+function mapResponse(baseRow, computedRow, pal, gender, audit) {
   const normalizedGender = gender?.toLowerCase?.() ?? null;
   const computedRmr = computedRow?.resting_metabolic_rate ?? null;
   const computedTee = computedRow?.total_energy_expenditure ?? null;
@@ -111,6 +111,8 @@ function mapResponse(baseRow, computedRow, pal, gender) {
     teeFemale: isFemale ? computedTee : null,
     targetRmrFemale: isFemale ? computedRmr : null,
     targetTeeFemale: isFemale ? computedTee : null,
+    lastUpdatedAt: audit?.changed_on ?? null,
+    lastUpdatedBy: audit?.user_name ?? null,
   };
 }
 
@@ -125,17 +127,86 @@ async function getPalFromTraining(sessionId) {
   return rows[0]?.physical_activity_level_pal ?? null;
 }
 
+async function getNutritionRequirementsAudit(sessionId) {
+  const { rows } = await pool.query(
+    `SELECT al.changed_on,
+            COALESCE(NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), u.email) AS user_name
+     FROM audit.audit_log al
+     LEFT JOIN auth.users u ON u.id = al.user_id
+     WHERE (
+       al.table_name = 'consultation.session_nutrition_review'
+       AND EXISTS (
+         SELECT 1
+         FROM consultation.session_nutrition_review nr
+         WHERE nr.id = al.record_id
+           AND nr.sessions_id = $1
+       )
+     ) OR (
+       al.table_name = 'consultation.session_training'
+       AND EXISTS (
+         SELECT 1
+         FROM consultation.session_training st
+         WHERE st.id = al.record_id
+           AND st.sessions_id = $1
+       )
+     )
+     ORDER BY al.changed_on DESC
+     LIMIT 1`,
+    [sessionId],
+  );
+
+  return rows[0] ?? null;
+}
+
+async function upsertPalOnTraining(sessionId, pal, client) {
+  const q = client ?? pool;
+  const existing = await q.query(
+    `SELECT id
+     FROM consultation.session_training
+     WHERE sessions_id = $1
+     LIMIT 1`,
+    [sessionId],
+  );
+
+  if (existing.rows.length) {
+    await q.query(
+      `UPDATE consultation.session_training
+       SET physical_activity_level_pal = $2
+       WHERE sessions_id = $1`,
+      [sessionId, pal],
+    );
+    return;
+  }
+
+  await q.query(
+    `INSERT INTO consultation.session_training (
+       sessions_id,
+       upcoming_major_competitions,
+       upcoming_local_competitions,
+       current_performance,
+       coach_performance_goals,
+       athlete_performance_goals,
+       other_remarks,
+       physical_activity_level_pal,
+       rpe_week
+     )
+     VALUES ($1, NULL, NULL, NULL, NULL, NULL, NULL, $2, NULL)`,
+    [sessionId, pal],
+  );
+}
+
 export async function getNutritionRequirementsBySessionId(sessionId) {
   await assertSessionExists(sessionId);
   const baseRow = await getOrCreateNutritionReview(sessionId);
 
-  const [computedRow, pal, gender] = await Promise.all([
+  const [computedRow, pal, gender, audit] = await Promise.all([
     getComputedNutritionReview(sessionId),
     getPalFromTraining(sessionId),
     getAthleteGender(sessionId),
+    getNutritionRequirementsAudit(sessionId),
   ]);
 
-  return mapResponse(baseRow, computedRow, pal, gender);
+  return mapResponse(baseRow, computedRow, pal, gender, audit);
 }
 
 export async function patchNutritionRequirementsBySessionId(sessionId, payload, userId) {
@@ -173,6 +244,10 @@ export async function patchNutritionRequirementsBySessionId(sessionId, payload, 
   await withUserContext(userId, async (client) => {
     // Ensure row exists inside the transaction so INSERT inherits user context
     await getOrCreateNutritionReview(sessionId, client);
+
+    if (payload.pal !== undefined) {
+      await upsertPalOnTraining(sessionId, payload.pal, client);
+    }
 
     if (setParts.length) {
       await client.query(
