@@ -4,6 +4,7 @@ Loads environment variables from .env file using Pydantic
 """
 
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from typing import Optional
 
 
@@ -99,6 +100,31 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
         case_sensitive = False
         extra = "ignore"  # Ignore extra fields in .env
+
+    @field_validator("backend_url", mode="before")
+    @classmethod
+    def normalize_backend_url(cls, value):
+        return value or "http://localhost:8000"
+
+    @field_validator("postgres_host", mode="before")
+    @classmethod
+    def normalize_postgres_host(cls, value):
+        return value or "localhost"
+
+    @field_validator("postgres_port", mode="before")
+    @classmethod
+    def normalize_postgres_port(cls, value):
+        return value or 5432
+
+    @field_validator("postgres_db", mode="before")
+    @classmethod
+    def normalize_postgres_db(cls, value):
+        return value or "nysi_db"
+
+    @field_validator("postgres_user", mode="before")
+    @classmethod
+    def normalize_postgres_user(cls, value):
+        return value or "postgres"
     
     # ========================================================================
     # Helper Methods
