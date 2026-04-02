@@ -1300,7 +1300,7 @@ def build_batch_id_summary(results: List[Dict]) -> Dict[str, Any]:
         "batch_verified_websites": [r.get("organisation") for r in batch_verified_results],
         "batch_verified_urls": batch_verified_urls,
         "product_found": len(found_results) > 0,
-        "product_found_count": len(found_results),
+        "found_count": len(found_results),
         "product_found_websites": [r.get("organisation") for r in found_results],
         "product_found_urls": found_urls,
         "quick_links": [u["product_url"] for u in found_urls if u.get("product_url")]
