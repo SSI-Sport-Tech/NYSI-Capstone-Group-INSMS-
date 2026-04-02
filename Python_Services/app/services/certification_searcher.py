@@ -47,13 +47,24 @@ class ChromeDriverPool:
 
     def _create_driver(self):
         options = Options()
-        options.add_argument("--headless=new")
+        if settings.scraper_headless:
+            options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
         # Skip fake_headers overhead — set a static UA
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+
+        # Use system-installed Chromium when running in Docker (ARM64/amd64)
+        chrome_bin = os.environ.get("CHROME_BIN")
+        if chrome_bin:
+            options.binary_location = chrome_bin
+
+        chromedriver_bin = os.environ.get("CHROMEDRIVER_BIN")
+        if chromedriver_bin:
+            from selenium.webdriver.chrome.service import Service
+            return webdriver.Chrome(service=Service(chromedriver_bin), options=options)
         return webdriver.Chrome(options=options)
 
     def acquire(self):

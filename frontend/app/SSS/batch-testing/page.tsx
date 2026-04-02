@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useState, useRef } from "react";
 import axios from "axios";
 import DashboardLayout from "@/components/DashboardLayout";

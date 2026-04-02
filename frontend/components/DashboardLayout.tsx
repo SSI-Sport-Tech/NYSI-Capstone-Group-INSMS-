@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
@@ -21,9 +21,35 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
+function AthleteProfileLinks({ athleteId }: { athleteId: string }) {
+  const searchParams = useSearchParams();
+  const currentTab = searchParams.get("tab") || "profile";
+  return (
+    <>
+      <Link
+        href={`/AMS/athlete-management/${athleteId}?tab=profile`}
+        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${currentTab === "profile" ? "bg-blue-100 text-blue-900 font-medium" : "text-gray-600 hover:bg-gray-50"}`}
+      >
+        <span>Current Profile</span>
+      </Link>
+      <Link
+        href={`/AMS/athlete-management/${athleteId}?tab=consultation`}
+        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${currentTab === "consultation" ? "bg-blue-100 text-blue-900 font-medium" : "text-gray-600 hover:bg-gray-50"}`}
+      >
+        <span>Consultation</span>
+      </Link>
+      <Link
+        href={`/AMS/athlete-management/${athleteId}?tab=history`}
+        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${currentTab === "history" ? "bg-blue-100 text-blue-900 font-medium" : "text-gray-600 hover:bg-gray-50"}`}
+      >
+        <span>History</span>
+      </Link>
+    </>
+  );
+}
+
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   // Check if we're on an athlete profile page
   const isAthleteProfilePage =
@@ -44,9 +70,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [athleteName, setAthleteName] = useState<string>("");
   const { isAuthenticated, loading, user, logout } = useAuth();
   const router = useRouter();
-
-  // Get current tab from URL parameters
-  const currentTab = searchParams.get("tab") || "profile";
 
   const fetchAthleteName = async (id: string) => {
     try {
@@ -245,36 +268,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
               {athleteProfileOpen && (
                 <div className="mt-2 space-y-1">
-                  <Link
-                    href={`/AMS/athlete-management/${athleteId}?tab=profile`}
-                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${isAthleteProfilePage && currentTab === "profile"
-                      ? "bg-blue-100 text-blue-900 font-medium"
-                      : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                  >
-                    <UserCog className="w-4 h-4" />
-                    <span>Current Profile</span>
-                  </Link>
-                  <Link
-                    href={`/AMS/athlete-management/${athleteId}?tab=consultation`}
-                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${isAthleteProfilePage && currentTab === "consultation"
-                      ? "bg-blue-100 text-blue-900 font-medium"
-                      : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                  >
-                    <BookOpenText className="w-4 h-4" />
-                    <span>Consultation</span>
-                  </Link>
-                  <Link
-                    href={`/AMS/athlete-management/${athleteId}?tab=history`}
-                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${isAthleteProfilePage && currentTab === "history"
-                      ? "bg-blue-100 text-blue-900 font-medium"
-                      : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                  >
-                    <Archive className="w-4 h-4" />
-                    <span>History</span>
-                  </Link>
+                  <Suspense fallback={null}>
+                    <AthleteProfileLinks athleteId={athleteId!} />
+                  </Suspense>
                 </div>
               )}
             </div>

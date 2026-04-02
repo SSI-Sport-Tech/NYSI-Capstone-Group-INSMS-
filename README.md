@@ -70,13 +70,44 @@ Backend (Express 5, port 8000)
 
 ## Quick Start
 
-### Prerequisites
+### Option A — Docker (Recommended)
+
+The easiest way to run the full stack. Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+
+```bash
+# 1. Copy the environment template and fill in your values
+cp .env.example .env
+
+# 2. Build and start all three services
+docker compose up --build
+```
+
+> **First build takes 20–40 minutes** — PaddleOCR, PyTorch, and Playwright install inside the Python image. Subsequent builds use the layer cache and are much faster.
+
+Once all containers are healthy:
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| Backend API | http://localhost:8000 |
+| Swagger Docs | http://localhost:8000/docs |
+| Python Service | http://localhost:8001 |
+
+To stop: `docker compose down`
+
+See [DOCKER.md](DOCKER.md) for full setup details and troubleshooting.
+
+---
+
+### Option B — Manual Setup
+
+#### Prerequisites
 
 - Node.js 18+
 - Python 3.10+ (recommended: 3.10)
 - PostgreSQL 14+ with pgvector extension
 
-### 1. Backend (Express)
+#### 1. Backend (Express)
 
 ```bash
 cd Backend
@@ -91,7 +122,7 @@ node server.js           # production
 
 Runs on `http://localhost:8000` | Swagger docs at `http://localhost:8000/docs`
 
-### 2. Python Services (FastAPI)
+#### 2. Python Services (FastAPI)
 
 ```bash
 cd Python_Services
@@ -110,7 +141,7 @@ uvicorn app.main:app --port 8001 --reload
 
 Runs on `http://localhost:8001` | Docs at `http://localhost:8001/docs`
 
-### 3. Frontend (Next.js)
+#### 3. Frontend (Next.js)
 
 ```bash
 cd frontend
@@ -122,11 +153,58 @@ Runs on `http://localhost:3000`
 
 ## Environment Variables
 
-### Backend/.env
+### Docker Setup — One `.env` file at the root
+
+When running with Docker, you only need **one `.env` file** placed at the project root (same folder as `docker-compose.yml`). Docker Compose reads it automatically and injects the correct values into each container.
+
+```bash
+# From the project root
+cp .env.example .env
+# Then open .env and fill in your values
+```
+
+The root `.env` looks like this (all values required unless marked optional):
+
+```env
+# ── Database (PostgreSQL / AWS RDS) ──────────────────────────────────────────
+PGHOST=your-db-host.rds.amazonaws.com
+PGPORT=5432
+PGDATABASE=your_db_name
+PGUSER=your_db_user
+PGPASSWORD=your_db_password
+PGSSLMODE=require
+# Use PGSSLMODE=disable only if running a local containerised Postgres (no SSL)
+
+# ── Authentication ────────────────────────────────────────────────────────────
+JWT_SECRET=your_jwt_secret_here         # any long random string
+JWT_EXPIRY=24h
+
+# ── 2FA Email (Gmail app password) ───────────────────────────────────────────
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASSWORD=xxxx xxxx xxxx xxxx     # Gmail app password (not your login password)
+SKIP_2FA=false                          # Set to true to bypass 2FA during testing
+CODE_EXPIRY_MINUTES=10
+MAX_VERIFICATION_ATTEMPTS=3
+
+# ── OpenAI (OCR parsing + web scraping) ──────────────────────────────────────
+OPENAI_API_KEY=sk-proj-...
+
+# ── ML / Vectorisation ───────────────────────────────────────────────────────
+EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
+VECTOR_DIMENSION=384
+```
+
+> **Do not touch** `Backend/.env` or `Python_Services/.env` when using Docker — those are only used for local manual setup (Option B below).
+
+---
+
+### Manual Setup — Separate `.env` per service (Option B only)
+
+#### Backend/.env
 
 ```env
 PGHOST=<your-db-host>
-PGPORT=<your-db-port>
+PGPORT=5432
 PGDATABASE=<your-db-name>
 PGUSER=<your-db-user>
 PGPASSWORD=<your-db-password>
@@ -134,15 +212,25 @@ PGSSLMODE=require
 PORT=8000
 FRONTEND_URL=http://localhost:3000
 PYTHON_SERVICE_URL=http://localhost:8001
+JWT_SECRET=<your-jwt-secret>
+JWT_EXPIRY=24h
+EMAIL_USER=<your-gmail>
+EMAIL_PASSWORD=<your-gmail-app-password>
+SKIP_2FA=false
 ```
 
-### Python_Services/.env
+#### Python_Services/.env
 
 ```env
 OPENAI_API_KEY=sk-proj-xxxxx
 SERVICE_PORT=8001
 SERVICE_HOST=0.0.0.0
 BACKEND_URL=http://localhost:8000
+POSTGRES_HOST=<your-db-host>
+POSTGRES_PORT=5432
+POSTGRES_DB=<your-db-name>
+POSTGRES_USER=<your-db-user>
+POSTGRES_PASSWORD=<your-db-password>
 EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
 VECTOR_DIMENSION=384
 SCRAPER_HEADLESS=true
