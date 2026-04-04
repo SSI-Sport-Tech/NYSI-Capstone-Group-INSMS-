@@ -41,7 +41,7 @@ async def verify_from_text(
     - found_websites: List of sites where product was found
     - urls: Direct links to product on certification sites
     """
-    logger.info(f"🔍 Verifying: {supplement_brand} - {supplement_name}")
+    print(f"🔍 Verifying: {supplement_brand} - {supplement_name}")
     
     try:
         results = await certification_searcher.search_all_certifications(
@@ -51,7 +51,7 @@ async def verify_from_text(
         
         summary = certification_searcher.build_verification_summary(results)
         
-        logger.info(f"✅ Verified: {summary['is_verified']} (found on {summary['found_count']} sites)")
+        print(f"✅ Verified: {summary['is_verified']} (found on {summary['found_count']} sites)")
         
         return {
             "success": True,
@@ -112,7 +112,7 @@ async def verify_from_image(file: UploadFile = File(...)):
             content = await file.read()
             f.write(content)
         
-        logger.info(f"🔍 Verifying from image: {file.filename}")
+        print(f"🔍 Verifying from image: {file.filename}")
         
         # OCR
         try:
@@ -127,14 +127,14 @@ async def verify_from_image(file: UploadFile = File(...)):
         name = identification.get("supplement_name", "Unknown")
         variant = identification.get("variant")
         
-        logger.info(f"📦 Identified: {brand} - {name}")
+        print(f"📦 Identified: {brand} - {name}")
         
         # Search certifications
         results = await certification_searcher.search_all_certifications(brand, name, variant)
         
         summary = certification_searcher.build_verification_summary(results)
         
-        logger.info(f"✅ Verified: {summary['is_verified']} (found on {summary['found_count']} sites)")
+        print(f"✅ Verified: {summary['is_verified']} (found on {summary['found_count']} sites)")
         
         return {
             "success": True,
@@ -205,7 +205,7 @@ async def verify_batch_id(
     - product_verified: True if product found on any site
     - urls: Direct links
     """
-    logger.info(f"🔍 Verifying batch ID: {batch_id}")
+    print(f"🔍 Verifying batch ID: {batch_id}")
     
     try:
         results = await certification_searcher.search_by_batch_id(
@@ -216,10 +216,9 @@ async def verify_batch_id(
         
         summary = certification_searcher.build_batch_id_summary(results)
         
-        # Overall verification: TRUE if batch verified OR product found
-        is_verified = summary["batch_id_verified"] or summary["product_found"]
+        is_verified = summary["batch_id_verified"] and summary["product_found"]
         
-        logger.info(f"✅ Batch verified: {summary['batch_id_verified']}, Product found: {summary['product_found']}")
+        print(f"✅ Batch verified: {summary['batch_id_verified']}, Product found: {summary['product_found']}")
         
         return {
             "success": True,
@@ -233,21 +232,18 @@ async def verify_batch_id(
             "product_found": summary["product_found"],
             
             # BATCH ID VERIFICATION DETAILS
-            "batch_verification": {
-                "verified": summary["batch_id_verified"],
-                "verified_on": summary["batch_verified_websites"],
-                "urls": summary["batch_verified_urls"]
-            },
+            "is_batch_tested": summary["batch_id_verified"],
+            "batch_verified_on": summary["batch_verified_websites"],
+            "batch_urls": summary["batch_verified_urls"],
             
             # PRODUCT VERIFICATION DETAILS
-            "product_verification": {
-                "found": summary["product_found"],
-                "found_on": summary["product_found_websites"],
-                "urls": summary["product_found_urls"]
-            },
+            "found": summary["product_found"],
+            "found_websites": summary["product_found_websites"],
+            "quick_links": summary["product_found_urls"],
+            "found_count": summary["found_count"],
             
             # ALL URLS (easy access)
-            "all_urls": summary["quick_links"],
+            "quick_links": summary["quick_links"],
             
             # DETAILED RESULTS
             "all_results": [
@@ -267,7 +263,7 @@ async def verify_batch_id(
         }
         
     except Exception as e:
-        logger.error(f"Batch ID verification failed: {str(e)}")
+        print(f"Batch ID verification failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -296,7 +292,7 @@ async def verify_batch_id_from_image(
             content = await file.read()
             f.write(content)
         
-        logger.info(f"🔍 Extracting batch ID from: {file.filename}")
+        print(f"🔍 Extracting batch ID from: {file.filename}")
         
         # Extract batch ID
         extraction = extract_batch_id_from_image(str(img_path))
@@ -316,7 +312,7 @@ async def verify_batch_id_from_image(
                 "urls": []
             }
         
-        logger.info(f"📋 Extracted batch ID: {batch_id}")
+        print(f"📋 Extracted batch ID: {batch_id}")
         
         # Verify batch ID
         results = await certification_searcher.search_by_batch_id(
@@ -326,7 +322,7 @@ async def verify_batch_id_from_image(
         )
         
         summary = certification_searcher.build_batch_id_summary(results)
-        is_verified = summary["batch_id_verified"] or summary["product_found"]
+        is_verified = summary["batch_id_verified"] and summary["product_found"]
         
         return {
             "success": True,
@@ -342,13 +338,13 @@ async def verify_batch_id_from_image(
             
             # MAIN RESULT
             "is_verified": is_verified,
-            "batch_id_verified": summary["batch_id_verified"],
+            "is_batch_tested": summary["batch_id_verified"],
             "product_found": summary["product_found"],
             
             # URLS
             "batch_verified_urls": summary["batch_verified_urls"],
             "product_found_urls": summary["product_found_urls"],
-            "all_urls": summary["quick_links"],
+            "quick_links": summary["quick_links"],
             
             "errors": [r.get("error") for r in results if r.get("error")]
         }
@@ -379,7 +375,7 @@ async def verify_combined(
     - batch_id_verified: True if batch ID verified (if provided)
     - urls: All URLs where product/batch was found
     """
-    logger.info(f"🔍 Combined verification: {supplement_brand} - {supplement_name}, batch={batch_id}")
+    print(f"🔍 Combined verification: {supplement_brand} - {supplement_name}, batch={batch_id}")
     
     try:
         results = await certification_searcher.search_combined(
@@ -407,7 +403,7 @@ async def verify_combined(
                 if url not in all_urls:
                     all_urls.append(url)
         
-        logger.info(f"✅ Product verified: {is_verified}, Batch verified: {batch_verified}")
+        print(f"✅ Product verified: {is_verified}, Batch verified: {batch_verified}")
         
         return {
             "success": True,
@@ -423,22 +419,18 @@ async def verify_combined(
             "is_fully_verified": results.get("is_fully_verified", False),
             
             # PRODUCT VERIFICATION
-            "product_verification": {
-                "verified": brand_summary["is_verified"],
-                "found_count": brand_summary["found_count"],
-                "found_websites": brand_summary["found_websites"],
-                "urls": brand_summary["urls"]
-            },
+            "batch_id_verified": brand_summary["is_verified"],
+            "found_count": brand_summary["found_count"],
+            "found_websites": brand_summary["found_websites"],
+            "brand_urls": brand_summary["urls"],
             
             # BATCH ID VERIFICATION (if batch_id provided)
-            "batch_verification": {
-                "verified": batch_verified,
-                "verified_websites": batch_summary["batch_verified_websites"] if batch_summary else [],
-                "urls": batch_summary["batch_verified_urls"] if batch_summary else []
-            } if batch_id else None,
+            "batch_id_verified": batch_verified if batch_id else None,
+            "batch_verified_on": (batch_summary["batch_verified_websites"] if batch_summary else []) if batch_id else None,
+            "batch_urls": (batch_summary["batch_verified_urls"] if batch_summary else []) if batch_id else None,
             
             # ALL URLS
-            "all_urls": all_urls,
+            "quick_links": all_urls,
             
             # PRIMARY MATCH
             "primary_match": {
@@ -488,13 +480,13 @@ async def verify_combined_from_images(
         with open(product_path, "wb") as f:
             f.write(await product_image.read())
         
-        logger.info(f"🔍 Combined image verification")
+        print(f"🔍 Combined image verification")
         
         # Extract batch ID
         batch_extraction = extract_batch_id_from_image(str(batch_path))
         batch_id = batch_extraction.get("batch_id")
         
-        logger.info(f"   Batch ID: {batch_id or 'Not found'}")
+        print(f"   Batch ID: {batch_id or 'Not found'}")
         
         # Extract brand/product
         try:
@@ -508,7 +500,7 @@ async def verify_combined_from_images(
         name = product_id.get("supplement_name", "Unknown")
         variant = product_id.get("variant")
         
-        logger.info(f"   Brand: {brand}, Product: {name}")
+        print(f"   Brand: {brand}, Product: {name}")
         
         # Run combined search
         results = await certification_searcher.search_combined(
@@ -558,22 +550,18 @@ async def verify_combined_from_images(
             "batch_id_verified": batch_verified,
             
             # PRODUCT VERIFICATION
-            "product_verification": {
-                "verified": brand_summary["is_verified"],
-                "found_count": brand_summary["found_count"],
-                "found_websites": brand_summary["found_websites"],
-                "urls": brand_summary["urls"]
-            },
+            "batch_id_verified": brand_summary["is_verified"],
+            "found_count": brand_summary["found_count"],
+            "found_websites": brand_summary["found_websites"],
+            "brand_urls": brand_summary["urls"],
             
             # BATCH VERIFICATION
-            "batch_verification": {
-                "verified": batch_verified,
-                "verified_websites": batch_summary["batch_verified_websites"] if batch_summary else [],
-                "urls": batch_summary["batch_verified_urls"] if batch_summary else []
-            } if batch_id else None,
+            "batch_id_verified": batch_verified if batch_id else None,
+            "batch_verified_on": (batch_summary["batch_verified_websites"] if batch_summary else []) if batch_id else None,
+            "batch_urls": (batch_summary["batch_verified_urls"] if batch_summary else []) if batch_id else None,
             
             # ALL URLS
-            "all_urls": all_urls,
+            "quick_links": all_urls,
             
             # PRIMARY MATCH
             "primary_match": {
