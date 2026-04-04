@@ -247,7 +247,7 @@ function ScheduleTable({ data }: { data: TrainingScheduleData }) {
             <th className="border border-gray-300 px-3 py-2 text-left font-medium text-gray-700">
               Activity
             </th>
-            <th className="border border-gray-300 px-3 py-2 text-center font-medium text-gray-700 w-24">
+            <th className="border border-gray-300 px-3 py-2 text-center font-medium text-gray-700 w-32">
               RPE (1–10)
             </th>
             <th className="border border-gray-300 px-3 py-2 text-center font-medium text-gray-700 w-32">
