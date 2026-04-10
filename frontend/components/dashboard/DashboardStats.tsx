@@ -7,9 +7,10 @@ import Link from "next/link";
 
 interface DashboardStatsProps {
   onQuickAction?: (action: string) => void;
+  refreshKey?: number;
 }
 
-export default function DashboardStats({ onQuickAction }: DashboardStatsProps) {
+export default function DashboardStats({ onQuickAction, refreshKey = 0 }: DashboardStatsProps) {
   const [stats, setStats] = useState({
     todayTotal: 0,
     todayCompleted: 0,
@@ -39,12 +40,12 @@ export default function DashboardStats({ onQuickAction }: DashboardStatsProps) {
 
   useEffect(() => {
     fetchStats();
-    
+
     // Refresh stats every 5 minutes
     const interval = setInterval(fetchStats, 5 * 60 * 1000);
-    
+
     return () => clearInterval(interval);
-  }, []);
+  }, [refreshKey]);
 
   const handleQuickAction = (action: string) => {
     if (onQuickAction) {

@@ -23,21 +23,23 @@ export async function listAthletes(req, res) {
 
     console.log(`DEBUG: listAthletes called with userId: ${req.user?.userId}`);
 
-    let athletes, totalCount;
+    let athletes, totalCount, activeCount;
 
     if (search) {
       // Step 2a: Search athletes
       console.log(`Step 2: Searching athletes with query: "${search}"`);
-      [athletes, totalCount] = await Promise.all([
+      [athletes, totalCount, activeCount] = await Promise.all([
         services.searchAthletes(search, page, pageSize, req.user?.userId),
         services.getSearchAthleteCount(search),
+        services.getActiveAthleteCount(),
       ]);
     } else {
       // Step 2b: Get all athletes paginated
       console.log(`Step 2: Fetching athletes page ${page}`);
-      [athletes, totalCount] = await Promise.all([
+      [athletes, totalCount, activeCount] = await Promise.all([
         services.getAthletesByPage(page, pageSize, req.user?.userId),
         services.getTotalAthleteCount(),
+        services.getActiveAthleteCount(),
       ]);
     }
 
@@ -50,6 +52,7 @@ export async function listAthletes(req, res) {
       currentPage: page,
       totalPages,
       totalCount,
+      activeCount,
       searchQuery: search || null,
     });
   } catch (error) {

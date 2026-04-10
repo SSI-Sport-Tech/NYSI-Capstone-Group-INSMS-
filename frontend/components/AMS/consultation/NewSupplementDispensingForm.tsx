@@ -539,24 +539,6 @@ export default function NewSupplementDispensingForm({
         if (!prescRes.ok)
           throw new Error(`Dispensing save failed: ${prescRes.status}`);
 
-        // Deduct from batch inventory
-        if (entry.batchId && entry.quantity && entry.batchCurrentQty !== null) {
-          const prescribed = parseFloat(entry.quantity);
-          if (prescribed > 0) {
-            const newQty = Math.max(0, entry.batchCurrentQty - prescribed);
-            await fetch(
-              `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/SSS/batches/${entry.batchId}`,
-              {
-                method: "PATCH",
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ batch_initial_quantity: newQty }),
-              },
-            );
-          }
-        }
       }
 
       setSaved(true);

@@ -59,7 +59,7 @@ const PRESCRIPTION_SELECT = `
  * Recalculates and updates the stock status for a batch based on current ticket totals.
  * Rules:
  *   available = 0                     → OUT OF STOCK
- *   available / initial <= 0.2        → LOW STOCK
+ *   available / initial < 0.2         → LOW STOCK
  *   else                              → AVAILABLE
  *
  * @param {import('pg').PoolClient} client - Transaction client
@@ -84,7 +84,7 @@ async function recalculateBatchStatus(client, batchId) {
     let newStatusName;
     if (available === 0) {
         newStatusName = 'OUT OF STOCK';
-    } else if (available / initial <= 0.2) {
+    } else if (initial > 0 && available / initial < 0.2) {
         newStatusName = 'LOW STOCK';
     } else {
         newStatusName = 'AVAILABLE';
