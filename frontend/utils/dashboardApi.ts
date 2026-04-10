@@ -32,7 +32,7 @@ export interface ConsultationSession {
   venue?: string;
   location?: string;
   duration?: number;
-  status?: "scheduled" | "completed" | "cancelled" | "in-progress";
+  status?: "scheduled" | "expired" | "completed" | "cancelled";
   is_scheduled_booking?: boolean;
 }
 
@@ -164,7 +164,7 @@ export const dashboardApi = {
 
   updateSessionStatus: async (
     sessionId: string,
-    status: "scheduled" | "completed" | "cancelled" | "in-progress"
+    status: "scheduled" | "completed" | "cancelled"
   ): Promise<{ data: ConsultationSession }> => {
     return apiCall(`/api/Consultation/consultation-session/${sessionId}/status`, {
       method: "PATCH",

@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { Edit, Eye, Clock, MapPin, Trash2, CheckCircle2, Circle } from "lucide-react";
-import { ConsultationSession, dashboardApi } from "@/utils/dashboardApi";
+import {
+  ConsultationSession,
+  dashboardApi,
+} from "@/utils/dashboardApi";
 import { nutritionistColor, getInitials } from "@/utils/nutritionistAvatar";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,8 +47,8 @@ export default function SessionCard({
     switch (status) {
       case "completed":
         return "bg-green-100 text-green-700 border-green-200";
-      case "in-progress":
-        return "bg-blue-100 text-blue-700 border-blue-200";
+      case "expired":
+        return "bg-gray-200 text-gray-700 border-gray-300";
       case "cancelled":
         return "bg-red-100 text-red-700 border-red-200";
       case "scheduled":
@@ -58,8 +61,8 @@ export default function SessionCard({
     switch (status) {
       case "completed":
         return "Completed";
-      case "in-progress":
-        return "In Progress";
+      case "expired":
+        return "Expired";
       case "cancelled":
         return "Cancelled";
       case "scheduled":
@@ -113,16 +116,17 @@ export default function SessionCard({
   };
 
   const isCompleted = currentStatus === "completed";
+  const isExpired = currentStatus === "expired";
 
   return (
     <div
       onClick={handleViewClick}
-      className={`border rounded-lg p-4 hover:shadow-md transition-shadow bg-white cursor-pointer ${isCompleted ? "border-gray-100 opacity-60" : "border-gray-200"}`}
+      className={`border rounded-lg p-4 hover:shadow-md transition-shadow bg-white cursor-pointer ${isCompleted || isExpired ? "border-gray-100 opacity-60" : "border-gray-200"}`}
     >
       {/* Header with athlete name, date, and checkmark */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
-          <h3 className={`font-semibold ${isCompleted ? "text-gray-400" : "text-gray-900"}`}>
+          <h3 className={`font-semibold ${isCompleted || isExpired ? "text-gray-400" : "text-gray-900"}`}>
             {session.athlete_name_abbr}
           </h3>
           <p className="text-sm text-gray-500">{formatDate(session.date_of_consult)}</p>
@@ -224,7 +228,7 @@ export default function SessionCard({
             <Eye className="w-4 h-4" />
           </button>
 
-          {canModify && currentStatus !== "completed" && currentStatus !== "cancelled" && (
+          {canModify && currentStatus !== "completed" && currentStatus !== "cancelled" && currentStatus !== "expired" && (
             <button
               onClick={handleDeleteClick}
               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"

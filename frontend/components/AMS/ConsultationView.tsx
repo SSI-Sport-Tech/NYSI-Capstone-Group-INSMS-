@@ -130,6 +130,43 @@ export default function ConsultationView({
   // Session selector modal
   const [showSessionSelector, setShowSessionSelector] = useState(false);
 
+  const markSessionCompleted = useCallback(
+    async (sessionId: string, status?: LatestConsultation["status"]) => {
+      if (!sessionId || status === "completed" || status === "cancelled") {
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${sessionId}/status`,
+          {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ status: "completed" }),
+          },
+        );
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(
+            errData?.message || errData?.error || `Status update failed (${res.status})`,
+          );
+        }
+
+        setLatestConsultation((prev) =>
+          prev && prev.id === sessionId ? { ...prev, status: "completed" } : prev,
+        );
+      } catch (e) {
+        console.error("[ConsultationView] Auto-complete session failed:", e);
+      }
+    },
+    [],
+  );
+
   const ensureSession = useCallback(async (): Promise<string> => {
     if (sessionIdRef.current) return sessionIdRef.current;
     if (sessionCreationRef.current) return sessionCreationRef.current;
@@ -362,6 +399,12 @@ export default function ConsultationView({
     try {
       await handleSaveUpdateCard();
       await previousConsultRef.current?.save();
+      const sessionIdToComplete = sessionIdRef.current || currentSessionId;
+      const sessionStatusToComplete =
+        isNewConsultation ? undefined : latestConsultation?.status;
+      if (sessionIdToComplete) {
+        await markSessionCompleted(sessionIdToComplete, sessionStatusToComplete);
+      }
       setIsNewConsultation(false);
       setNewSessionId("");
       setNewConsultation(null);
@@ -496,6 +539,7 @@ export default function ConsultationView({
       setLastSavedUpdateForm(normalizeUpdateForm(updateForm));
       setIsUpdateCardSaved(true);
       markSaved(1);
+      await markSessionCompleted(currentSessionId, latestConsultation?.status);
       await fetchLatestConsultation();
     } catch (e) {
       setUpdateSaveError(e instanceof Error ? e.message : "Failed to save");
@@ -543,6 +587,7 @@ export default function ConsultationView({
       setLastSavedUpdateForm(normalizeUpdateForm(updateForm));
       setIsUpdateCardSaved(true);
       markSaved(1);
+      await markSessionCompleted(id, isNewConsultation ? undefined : latestConsultation?.status);
     } catch (e) {
       setUpdateSaveError(e instanceof Error ? e.message : "Failed to save");
     } finally {

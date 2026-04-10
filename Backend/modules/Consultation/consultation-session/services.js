@@ -5,6 +5,30 @@ import pool, { withUserContext } from "../../../config/db.js";
 // ============================================================================
 
 /**
+ * Persist overdue scheduled sessions as expired.
+ * A session expires once its scheduled date/time has passed and it was never completed/cancelled.
+ * For sessions without a time, the session expires at the end of the consult date.
+ *
+ * @returns {Promise<number>} Number of expired sessions updated
+ */
+export async function expireOverdueScheduledSessions() {
+    const result = await pool.query(`
+        UPDATE consultation.sessions
+        SET status = 'expired'
+        WHERE status = 'scheduled'
+          AND (
+              date_of_consult < CURRENT_DATE
+              OR (
+                  date_of_consult = CURRENT_DATE
+                  AND COALESCE(time_of_consult, TIME '23:59:59') < CURRENT_TIME
+              )
+          )
+    `);
+
+    return result.rowCount ?? 0;
+}
+
+/**
  * Get consultation session data
  * Returns session fields with joined nutritionist name, athlete name, and consult type
  * @param {string} sessionId - UUID of session
@@ -370,7 +394,7 @@ export async function getTodaySessionsForNutritionist(nutritionistId, date) {
 /**
  * Update the status of a consultation session
  * @param {string} sessionId - Session UUID
- * @param {string} status - New status ('scheduled' | 'in-progress' | 'completed' | 'cancelled')
+ * @param {string} status - New status ('scheduled' | 'completed' | 'cancelled')
  * @param {string} userId - Auth user UUID for audit
  * @returns {Promise<Object|null>} Updated session or null
  */

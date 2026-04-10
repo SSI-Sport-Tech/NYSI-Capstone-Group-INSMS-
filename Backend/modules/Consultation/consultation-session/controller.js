@@ -9,6 +9,7 @@ import pool from '../../../config/db.js';
 export async function getConsultationSession(req, res) {
     try {
         const { id } = uuidParamSchema.parse(req.params);
+        await services.expireOverdueScheduledSessions();
 
         const session = await services.getConsultationSession(id);
 
@@ -40,6 +41,7 @@ export async function getConsultationSession(req, res) {
 export async function getLatestConsultationSession(req, res) {
     try {
         const { athleteId } = athleteIdParamSchema.parse(req.params);
+        await services.expireOverdueScheduledSessions();
 
         // Verify athlete exists
         const athleteCheck = await pool.query(
@@ -80,6 +82,7 @@ export async function getLatestConsultationSession(req, res) {
 export async function getAllConsultationSessions(req, res) {
     try {
         const { athleteId } = athleteIdParamSchema.parse(req.params);
+        await services.expireOverdueScheduledSessions();
 
         // Verify athlete exists
         const athleteCheck = await pool.query(
@@ -116,6 +119,7 @@ export async function getAllConsultationSessions(req, res) {
 export async function getPreviousConsultationSession(req, res) {
     try {
         const { id } = req.params;
+        await services.expireOverdueScheduledSessions();
         const data = await services.getPreviousConsultationSession(id);
         if (!data) {
             return res.status(404).json({ error: 'No previous session found' });
@@ -134,6 +138,7 @@ export async function getPreviousConsultationSession(req, res) {
 export async function getUpcomingConsultationSessions(req, res) {
     try {
         const limit = parseInt(req.query.limit) || 20;
+        await services.expireOverdueScheduledSessions();
         const sessions = await services.getUpcomingConsultationSessions(limit);
         res.json({ data: sessions });
     } catch (error) {
@@ -318,6 +323,7 @@ export async function getSessionsByDateRange(req, res) {
         if (!from || !to) {
             return res.status(400).json({ error: 'Query params "from" and "to" (YYYY-MM-DD) are required' });
         }
+        await services.expireOverdueScheduledSessions();
         const sessions = await services.getSessionsByDateRange(from, to);
         res.json({ data: sessions });
     } catch (error) {
@@ -332,6 +338,7 @@ export async function getSessionsByDateRange(req, res) {
 
 export async function getTodaySessionsForNutritionist(req, res) {
     try {
+        await services.expireOverdueScheduledSessions();
         const nutritionistId = await services.getNutritionistIdByUserId(req.user.userId);
         if (!nutritionistId) {
             return res.json({ data: [] });
@@ -356,6 +363,7 @@ export async function updateSessionStatus(req, res) {
     try {
         const { id } = uuidParamSchema.parse(req.params);
         const { status } = updateStatusSchema.parse(req.body);
+        await services.expireOverdueScheduledSessions();
 
         const exists = await pool.query('SELECT id FROM consultation.sessions WHERE id = $1', [id]);
         if (exists.rows.length === 0) {
