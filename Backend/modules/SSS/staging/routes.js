@@ -56,6 +56,75 @@ const router = express.Router();
 // Lookup values for packaging form and status dropdowns (no auth required)
 router.get('/staging-lookups', controller.listStagingLookups);
 
+/**
+ * @swagger
+ * /api/SSS/staging-lookups:
+ *   get:
+ *     summary: Get Staging Lookup Values
+ *     description: |
+ *       Retrieve lookup values used for dropdowns in the Supplement Staging UI.
+ *
+ *       **Includes:**
+ *       - Packaging forms (e.g., TUB, CAPSULE)
+ *       - Supplement statuses (e.g., NOT BATCH TESTED, BATCH TESTED)
+ *
+ *       **Behavior:**
+ *       - No authentication required
+ *       - Values are sorted alphabetically
+ *
+ *       **Use Case:** Populate dropdown fields when creating/editing staging supplements
+ *     tags: [SSS - Staging]
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved lookup values
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 packagingForms:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       supplement_packaging_form:
+ *                         type: string
+ *                 statuses:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       supplement_status:
+ *                         type: string
+ *             example:
+ *               packagingForms:
+ *                 - id: "uuid-1"
+ *                   supplement_packaging_form: "TUB"
+ *                 - id: "uuid-2"
+ *                   supplement_packaging_form: "CAPSULE"
+ *               statuses:
+ *                 - id: "uuid-1"
+ *                   supplement_status: "NOT BATCH TESTED"
+ *                 - id: "uuid-2"
+ *                   supplement_status: "BATCH TESTED"
+ *       500:
+ *         description: Failed to fetch lookup values
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *             example:
+ *               error: "Internal server error"
+ */
 router.get('/staging-supplements', controller.listStagingSupplements);
 
 /**
