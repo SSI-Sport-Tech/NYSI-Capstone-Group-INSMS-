@@ -5,7 +5,7 @@ services:
     build:
       context: ./Backend
     env_file:
-      - ./Backend/.env
+      - ./.env
     ports:
       - "8000:8000"
     environment:
@@ -29,7 +29,7 @@ services:
     build:
       context: ./Python_Services
     env_file:
-      - ./Python_Services/.env
+      - ./.env
     ports:
       - "8001:8001"
     environment:
@@ -37,6 +37,12 @@ services:
       SERVICE_PORT: "8001"
       BACKEND_URL: "http://backend:8000"
       SCRAPER_HEADLESS: "true"
+      # Map PG* vars from root .env to POSTGRES_* names that Python service expects
+      POSTGRES_HOST: "${PGHOST}"
+      POSTGRES_PORT: "${PGPORT}"
+      POSTGRES_DB: "${PGDATABASE}"
+      POSTGRES_USER: "${PGUSER}"
+      POSTGRES_PASSWORD: "${PGPASSWORD}"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]

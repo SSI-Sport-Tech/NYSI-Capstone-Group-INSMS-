@@ -14,15 +14,7 @@ docker compose version
 
 ---
 
-## Step 1 — Switch to this branch
-
-```bash
-git checkout docker-main
-```
-
----
-
-## Step 2 — Create your `.env` file
+## Step 1 — Create your `.env` file
 
 ```bash
 cp .env.example .env
@@ -41,7 +33,7 @@ Then open `.env` and fill in the real values. You can copy them from `Backend/.e
 
 ---
 
-## Step 3 — Build and start everything
+## Step 2 — Build and start everything
 
 ```bash
 docker compose up --build
@@ -53,7 +45,7 @@ Watch the logs. Services start in order: `backend` → `python` → `frontend`.
 
 ---
 
-## Step 4 — Verify each service is running
+## Step 3 — Verify each service is running
 
 Open these in your browser:
 
@@ -67,7 +59,7 @@ Open these in your browser:
 
 ---
 
-## Step 5 — Smoke test
+## Step 4 — Smoke test
 
 Try logging in through the frontend at `http://localhost:3000`. If the 2FA email comes through and you land on the dashboard, everything is working — database, backend, auth, and frontend are all connected.
 
