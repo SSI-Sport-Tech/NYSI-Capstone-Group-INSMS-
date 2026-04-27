@@ -57,6 +57,13 @@ Backend (Express 5, port 8000)
 - Previous session tab on each card for comparison
 - Nutritionist auto-assigned from JWT on session creation
 
+### Dashboard
+- Home page (`/`) for nutritionists
+- Daily stats: today's session count, completed sessions, active athletes
+- Calendar view with session scheduling and booking modal
+- Today's schedule and upcoming sessions list
+- Create, reschedule, cancel, and update session status directly from the dashboard
+
 ### Admin - Administration
 - User management: create, edit, deactivate users with role assignment
 - Sports & coaches management: CRUD for sports and coach records
@@ -242,6 +249,7 @@ SCRAPER_HEADLESS=true
 NYSI-Capstone-Group-INSMS/
 ├── frontend/                     # Next.js 15 frontend
 │   ├── app/
+│   │   ├── page.tsx              # Dashboard home (stats, calendar, session booking)
 │   │   ├── SSS/                  # Supplement Support System pages
 │   │   │   ├── library/          # Supplement library
 │   │   │   ├── inventory/        # Batch inventory management
@@ -261,7 +269,8 @@ NYSI-Capstone-Group-INSMS/
 │   │   │   └── sports-coaches/   # Sports & coaches management
 │   │   └── login/                # Authentication pages
 │   ├── components/               # Shared React components
-│   ├── contexts/                 # AuthContext
+│   │   └── dashboard/            # Dashboard-specific components (stats, calendar, session cards)
+│   ├── contexts/                 # AuthContext, ThemeContext
 │   └── utils/                    # API clients, helpers
 │
 ├── Backend/

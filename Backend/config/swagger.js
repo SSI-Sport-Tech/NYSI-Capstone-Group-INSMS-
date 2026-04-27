@@ -4,13 +4,13 @@ const swaggerOptions = {
     definition: {
         openapi: "3.0.0",
         info: {
-            title: "NYSI Backend API",
+            title: "HPSI Backend API",
             version: "2.1.0", // ✅ UPDATED: Incremented version
             description:
-                "New York Sports Institute - Supplement Management System API. Comprehensive API for managing supplements, inventory batches, athlete profiles, and web scraping operations.",
+                "HPSI - Supplement Management System API. Comprehensive API for managing supplements, inventory batches, athlete profiles, and web scraping operations.",
             contact: {
-                name: "NYSI Development Team",
-                email: "dev@nysi.com",
+                name: "HPSI Development Team",
+                email: "dev@hpsi.com",
             },
             license: {
                 name: "MIT",
@@ -138,275 +138,288 @@ const swaggerOptions = {
         components: {
             schemas: {
                 // ==================== TRAINING SCHEDULE SCHEMAS ====================
-                TrainingScheduleDay: {
-                  type: "object",
-                  properties: {
-                    am: {
-                      type: "string",
-                      nullable: true,
-                      maxLength: 4000,
-                      description: "Morning training notes/routine",
-                    },
-                    pm: {
-                      type: "string",
-                      nullable: true,
-                      maxLength: 4000,
-                      description: "Afternoon/Evening training notes/routine",
-                    },
-                    trainingHours: {
-                      type: "number",
-                      format: "float",
-                      nullable: true,
-                      minimum: 0,
-                      maximum: 24,
-                      description: "Total hours trained",
-                    },
-                    rpe: {
-                      type: "number",
-                      format: "float",
-                      nullable: true,
-                      minimum: 0,
-                      maximum: 10,
-                      description: "Rating of Perceived Exertion (0-10)",
-                    },
-                  },
-                },
-        
-                TrainingDetails: {
-                  type: "object",
-                  properties: {
-                    upcomingMajorCompetitions: {
-                      type: "string",
-                      nullable: true,
-                      maxLength: 4000,
-                    },
-                    upcomingLocalCompetitions: {
-                      type: "string",
-                      nullable: true,
-                      maxLength: 4000,
-                    },
-                  },
-                },
-        
-                PerformanceDetails: {
-                  type: "object",
-                  properties: {
-                    currentPerformance: { type: "string", nullable: true, maxLength: 4000 },
-                    coachPerformanceGoals: { type: "string", nullable: true, maxLength: 4000 },
-                    athletePerformanceGoals: { type: "string", nullable: true, maxLength: 4000 },
-                    otherRemarks: { type: "string", nullable: true, maxLength: 4000 },
-                  },
-                },
-        
-                TrainingSchedulePayload: {
-                  type: "object",
-                  required: ["days"],
-                  properties: {
-                    days: {
-                      type: "object",
-                      required: [
-                        "monday",
-                        "tuesday",
-                        "wednesday",
-                        "thursday",
-                        "friday",
-                        "saturday",
-                        "sunday",
-                      ],
-                      properties: {
-                        monday: { $ref: "#/components/schemas/TrainingScheduleDay" },
-                        tuesday: { $ref: "#/components/schemas/TrainingScheduleDay" },
-                        wednesday: { $ref: "#/components/schemas/TrainingScheduleDay" },
-                        thursday: { $ref: "#/components/schemas/TrainingScheduleDay" },
-                        friday: { $ref: "#/components/schemas/TrainingScheduleDay" },
-                        saturday: { $ref: "#/components/schemas/TrainingScheduleDay" },
-                        sunday: { $ref: "#/components/schemas/TrainingScheduleDay" },
-                      },
-                    },
-                    trainingDetails: { $ref: "#/components/schemas/TrainingDetails" },
-                    performanceDetails: { $ref: "#/components/schemas/PerformanceDetails" },
-                    pal: {
-                      type: "number",
-                      format: "float",
-                      nullable: true,
-                      description: "Physical Activity Level (saves to nutrition review)",
-                    },
-                  },
-                },
-        
-                TrainingScheduleResponse: {
-                  allOf: [
-                    {
-                      type: "object",
-                      properties: {
-                        id: { type: "string", format: "uuid", nullable: true },
-                        sessionId: { type: "string", format: "uuid" },
-                        totalTrainingHours: {
-                          type: "number",
-                          format: "float",
-                          description: "Database generated sum of weekly training hours",
+                TrainingScheduleEntry: {
+                    type: "object",
+                    required: ["dayOfWeek", "activity"],
+                    properties: {
+                        dayOfWeek: {
+                            type: "string",
+                            enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+                            description: "Day of the week (title case)",
                         },
-                      },
+                        timeStart: {
+                            type: "string",
+                            nullable: true,
+                            pattern: "^\\d{2}:\\d{2}$",
+                            description: "Start time in HH:MM format",
+                            example: "09:00",
+                        },
+                        timeEnd: {
+                            type: "string",
+                            nullable: true,
+                            pattern: "^\\d{2}:\\d{2}$",
+                            description: "End time in HH:MM format",
+                            example: "10:30",
+                        },
+                        activity: {
+                            type: "string",
+                            maxLength: 4000,
+                            description: "Description of the training activity",
+                        },
+                        rpe: {
+                            type: "integer",
+                            nullable: true,
+                            minimum: 1,
+                            maximum: 10,
+                            description: "Rating of Perceived Exertion (1–10)",
+                        },
                     },
-                    { $ref: "#/components/schemas/TrainingSchedulePayload" },
-                  ],
+                },
+
+                TrainingSchedulePayload: {
+                    type: "object",
+                    required: ["trainingInfo", "schedule"],
+                    properties: {
+                        trainingInfo: {
+                            type: "object",
+                            properties: {
+                                upcomingMajorCompetitions: { type: "string", nullable: true, maxLength: 4000 },
+                                upcomingLocalCompetitions: { type: "string", nullable: true, maxLength: 4000 },
+                                currentPerformance: { type: "string", nullable: true, maxLength: 4000 },
+                                coachPerformanceGoals: { type: "string", nullable: true, maxLength: 4000 },
+                                athletePerformanceGoals: { type: "string", nullable: true, maxLength: 4000 },
+                                otherRemarks: { type: "string", nullable: true, maxLength: 4000 },
+                                pal: {
+                                    type: "number",
+                                    format: "float",
+                                    nullable: true,
+                                    minimum: 0,
+                                    maximum: 5,
+                                    description: "Physical Activity Level",
+                                },
+                                rpeWeek: {
+                                    type: "integer",
+                                    nullable: true,
+                                    minimum: 1,
+                                    maximum: 10,
+                                    description: "Overall weekly RPE (1–10)",
+                                },
+                            },
+                        },
+                        schedule: {
+                            type: "array",
+                            items: { $ref: "#/components/schemas/TrainingScheduleEntry" },
+                            description: "List of individual training sessions for the week",
+                        },
+                    },
+                },
+
+                TrainingScheduleResponse: {
+                    type: "object",
+                    properties: {
+                        trainingInfo: {
+                            type: "object",
+                            properties: {
+                                upcomingMajorCompetitions: { type: "string", nullable: true },
+                                upcomingLocalCompetitions: { type: "string", nullable: true },
+                                currentPerformance: { type: "string", nullable: true },
+                                coachPerformanceGoals: { type: "string", nullable: true },
+                                athletePerformanceGoals: { type: "string", nullable: true },
+                                otherRemarks: { type: "string", nullable: true },
+                                pal: { type: "number", format: "float", nullable: true },
+                                rpeWeek: { type: "integer", nullable: true },
+                            },
+                        },
+                        schedule: {
+                            type: "array",
+                            items: { $ref: "#/components/schemas/TrainingScheduleEntry" },
+                        },
+                        lastUpdatedAt: { type: "string", format: "date-time", nullable: true },
+                        lastUpdatedBy: { type: "string", nullable: true },
+                    },
                 },
 
                 MealLogEntry: {
                     type: "object",
+                    required: ["mealDescription"],
                     properties: {
-                      food: { type: "string", nullable: true, maxLength: 4000 },
-                      macro: { type: "string", nullable: true, maxLength: 4000 }
-                    }
+                        foodTime: {
+                            type: "string",
+                            nullable: true,
+                            pattern: "^\\d{2}:\\d{2}$",
+                            description: "Meal time in HH:MM format",
+                            example: "07:30",
+                        },
+                        mealDescription: { type: "string", maxLength: 4000, description: "Description of what was eaten" },
+                        lowerCarbG: { type: "number", format: "float", nullable: true, minimum: 0 },
+                        upperCarbG: { type: "number", format: "float", nullable: true, minimum: 0 },
+                        lowerProteinG: { type: "number", format: "float", nullable: true, minimum: 0 },
+                        upperProteinG: { type: "number", format: "float", nullable: true, minimum: 0 },
+                        lowerFatG: { type: "number", format: "float", nullable: true, minimum: 0 },
+                        upperFatG: { type: "number", format: "float", nullable: true, minimum: 0 },
+                    },
                 },
-                  MealLogPayload: {
+                MealLogSleep: {
+                    type: "object",
+                    nullable: true,
+                    properties: {
+                        sleepDurationH: { type: "number", format: "float", nullable: true, minimum: 0, maximum: 24, description: "Sleep duration in hours" },
+                        sleepQuality: { type: "integer", nullable: true, minimum: 1, maximum: 10, description: "Sleep quality rating (1–10)" },
+                        otherRemarks: { type: "string", nullable: true, maxLength: 4000 },
+                    },
+                },
+                MealLogPayload: {
                     type: "object",
                     properties: {
-                      amBreakfast: { $ref: "#/components/schemas/MealLogEntry" },
-                      amTraining: { $ref: "#/components/schemas/MealLogEntry" },
-                      pmLunch: { $ref: "#/components/schemas/MealLogEntry" },
-                      pmTraining: { $ref: "#/components/schemas/MealLogEntry" },
-                      pmDinner: { $ref: "#/components/schemas/MealLogEntry" },
-                      supper: { $ref: "#/components/schemas/MealLogEntry" },
-                      totalCarbohydrateIntake: { type: "number", format: "float", nullable: true },
-                      totalProteinIntake: { type: "number", format: "float", nullable: true },
-                      totalFatIntake: { type: "number", format: "float", nullable: true },
-                      otherRemarks: { type: "string", nullable: true, maxLength: 4000 }
-                    }
+                        entries: {
+                            type: "array",
+                            items: { $ref: "#/components/schemas/MealLogEntry" },
+                            description: "List of meal entries for the day",
+                        },
+                        mealOtherRemarks: { type: "string", nullable: true, maxLength: 4000 },
+                        sleep: { $ref: "#/components/schemas/MealLogSleep" },
+                    },
                 },
-                  MealLogResponse: {
+                MealLogResponse: {
                     allOf: [
-                      {
-                        type: "object",
-                        properties: {
-                          id: { type: "string", format: "uuid", nullable: true },
-                          sessionId: { type: "string", format: "uuid" }
-                        }
-                      },
-                      { $ref: "#/components/schemas/MealLogPayload" }
-                    ]
+                        { $ref: "#/components/schemas/MealLogPayload" },
+                        {
+                            type: "object",
+                            properties: {
+                                lastUpdatedAt: { type: "string", format: "date-time", nullable: true },
+                                lastUpdatedBy: { type: "string", nullable: true },
+                            },
+                        },
+                    ],
                 },
                 AnthropometryPatchRequest: {
                     type: "object",
                     properties: {
-                      heightCm: { type: "number", format: "float", nullable: true },
-                      weightKg: { type: "number", format: "float", nullable: true },
-                      targetWeightKg: { type: "number", format: "float", nullable: true },
-                      fatMassKg: { type: "number", format: "float", nullable: true },
-                      skeletalMuscleMassKg: { type: "number", format: "float", nullable: true },
-                  
-                      bmiCategory: { type: "string", nullable: true, enum: ["Normal", "Underweight", "Overweight"] },
-                      sumOf8Skinfold: { type: "number", format: "float", nullable: true },
-                      motherHeightCm: { type: "number", format: "float", nullable: true },
-                      fatherHeightCm: { type: "number", format: "float", nullable: true },
-                      otherRemarks: { type: "string", nullable: true, maxLength: 4000 },
+                        heightCm: { type: "number", format: "float", nullable: true },
+                        weightKg: { type: "number", format: "float", nullable: true },
+                        targetWeightKg: { type: "number", format: "float", nullable: true },
+                        fatMassKg: { type: "number", format: "float", nullable: true },
+                        skeletalMuscleMassKg: { type: "number", format: "float", nullable: true },
+
+                        bmiCategory: { type: "string", nullable: true, enum: ["Normal", "Underweight", "Overweight", "Obese"] },
+                        sumOf8Skinfold: { type: "number", format: "float", nullable: true },
+                        motherHeightCm: { type: "number", format: "float", nullable: true },
+                        fatherHeightCm: { type: "number", format: "float", nullable: true },
+                        otherRemarks: { type: "string", nullable: true, maxLength: 4000 },
+                        dateRecorded: { type: "string", format: "date", nullable: true, description: "Date measurements were taken (YYYY-MM-DD)" },
+                        measuredBy: { type: "string", nullable: true, maxLength: 255, description: "Name of the person who took the measurements" },
+                        athletePotentialAdultHeightCm: { type: "integer", nullable: true, minimum: 0, maximum: 300 },
                     },
                 },
-                  
-                  AnthropometryResponse: {
+
+                AnthropometryResponse: {
                     type: "object",
                     properties: {
-                      id: { type: "string", format: "uuid", nullable: true },
-                      sessionId: { type: "string", format: "uuid" },
-                  
-                      heightCm: { type: "number", format: "float", nullable: true },
-                      weightKg: { type: "number", format: "float", nullable: true },
-                      bmi: { type: "number", format: "float", nullable: true },
-                      bmiCategory: { type: "string", nullable: true },
-                  
-                      fatMassKg: { type: "number", format: "float", nullable: true },
-                      fatMassPct: { type: "number", format: "float", nullable: true },
-                      skeletalMuscleMassKg: { type: "number", format: "float", nullable: true },
-                      skeletalMuscleMassPct: { type: "number", format: "float", nullable: true },
-                  
-                      sumOf8Skinfold: { type: "number", format: "float", nullable: true },
-                      targetWeightKg: { type: "number", format: "float", nullable: true },
-                      targetBmi: { type: "number", format: "float", nullable: true },
-                  
-                      motherHeightCm: { type: "number", format: "float", nullable: true },
-                      fatherHeightCm: { type: "number", format: "float", nullable: true },
-                  
-                      athletePotentialAdultHeightCm: { type: "number", format: "float", nullable: true, description: "Not stored in DB by default" },
-                      otherRemarks: { type: "string", nullable: true },
+                        id: { type: "string", format: "uuid", nullable: true },
+                        sessionId: { type: "string", format: "uuid" },
+
+                        heightCm: { type: "number", format: "float", nullable: true },
+                        weightKg: { type: "number", format: "float", nullable: true },
+                        bmi: { type: "number", format: "float", nullable: true },
+                        bmiCategory: { type: "string", nullable: true },
+
+                        fatMassKg: { type: "number", format: "float", nullable: true },
+                        fatMassPct: { type: "number", format: "float", nullable: true },
+                        skeletalMuscleMassKg: { type: "number", format: "float", nullable: true },
+                        skeletalMuscleMassPct: { type: "number", format: "float", nullable: true },
+
+                        sumOf8Skinfold: { type: "number", format: "float", nullable: true },
+                        targetWeightKg: { type: "number", format: "float", nullable: true },
+                        targetBmi: { type: "number", format: "float", nullable: true },
+
+                        motherHeightCm: { type: "number", format: "float", nullable: true },
+                        fatherHeightCm: { type: "number", format: "float", nullable: true },
+
+                        athletePotentialAdultHeightCm: { type: "integer", nullable: true },
+                        otherRemarks: { type: "string", nullable: true },
+                        dateRecorded: { type: "string", format: "date", nullable: true },
+                        measuredBy: { type: "string", nullable: true },
+                        lastUpdatedAt: { type: "string", format: "date-time", nullable: true },
+                        lastUpdatedBy: { type: "string", nullable: true },
                     },
                 },
-                  
-                  NutritionRequirementsPatchRequest: {
+
+                NutritionRequirementsPatchRequest: {
                     type: "object",
                     properties: {
-                      pal: { type: "number", format: "float", nullable: true },
-                  
-                      minCarbGkg: { type: "number", format: "float", nullable: true },
-                      maxCarbGkg: { type: "number", format: "float", nullable: true },
-                      minProteinGkg: { type: "number", format: "float", nullable: true },
-                      maxProteinGkg: { type: "number", format: "float", nullable: true },
-                      minFatGkg: { type: "number", format: "float", nullable: true },
-                      maxFatGkg: { type: "number", format: "float", nullable: true },
-                  
-                      estimatedCarbG: { type: "number", format: "float", nullable: true },
-                      estimatedProteinG: { type: "number", format: "float", nullable: true },
-                      estimatedFatG: { type: "number", format: "float", nullable: true },
-                  
-                      commentsWeekday: { type: "string", nullable: true, maxLength: 4000 },
-                      commentsWeekend: { type: "string", nullable: true, maxLength: 4000 },
-                      otherRemarks: { type: "string", nullable: true, maxLength: 4000 },
+                        pal: { type: "number", format: "float", nullable: true },
+
+                        minCarbGkg: { type: "number", format: "float", nullable: true },
+                        maxCarbGkg: { type: "number", format: "float", nullable: true },
+                        minProteinGkg: { type: "number", format: "float", nullable: true },
+                        maxProteinGkg: { type: "number", format: "float", nullable: true },
+                        minFatGkg: { type: "number", format: "float", nullable: true },
+                        maxFatGkg: { type: "number", format: "float", nullable: true },
+
+                        estimatedCarbG: { type: "number", format: "float", nullable: true },
+                        estimatedProteinG: { type: "number", format: "float", nullable: true },
+                        estimatedFatG: { type: "number", format: "float", nullable: true },
+
+                        commentsWeekday: { type: "string", nullable: true, maxLength: 4000 },
+                        commentsWeekend: { type: "string", nullable: true, maxLength: 4000 },
+                        otherRemarks: { type: "string", nullable: true, maxLength: 4000 },
                     },
                 },
-                  
-                  NutritionRequirementsResponse: {
+
+                NutritionRequirementsResponse: {
                     type: "object",
                     properties: {
-                      id: { type: "string", format: "uuid", nullable: true },
-                      sessionId: { type: "string", format: "uuid" },
-                  
-                      pal: { type: "number", format: "float", nullable: true },
-                  
-                      minCarbGkg: { type: "number", format: "float", nullable: true },
-                      maxCarbGkg: { type: "number", format: "float", nullable: true },
-                      minProteinGkg: { type: "number", format: "float", nullable: true },
-                      maxProteinGkg: { type: "number", format: "float", nullable: true },
-                      minFatGkg: { type: "number", format: "float", nullable: true },
-                      maxFatGkg: { type: "number", format: "float", nullable: true },
-                  
-                      estimatedCarbG: { type: "number", format: "float", nullable: true },
-                      estimatedProteinG: { type: "number", format: "float", nullable: true },
-                      estimatedFatG: { type: "number", format: "float", nullable: true },
-                  
-                      commentsWeekday: { type: "string", nullable: true },
-                      commentsWeekend: { type: "string", nullable: true },
-                      otherRemarks: { type: "string", nullable: true },
-                  
-                      // computed outputs
-                      minCarbG: { type: "number", format: "float", nullable: true },
-                      maxCarbG: { type: "number", format: "float", nullable: true },
-                      minProteinG: { type: "number", format: "float", nullable: true },
-                      maxProteinG: { type: "number", format: "float", nullable: true },
-                      minFatG: { type: "number", format: "float", nullable: true },
-                      maxFatG: { type: "number", format: "float", nullable: true },
-                  
-                      targetMinCarbG: { type: "number", format: "float", nullable: true },
-                      targetMaxCarbG: { type: "number", format: "float", nullable: true },
-                      targetMinProteinG: { type: "number", format: "float", nullable: true },
-                      targetMaxProteinG: { type: "number", format: "float", nullable: true },
-                      targetMinFatG: { type: "number", format: "float", nullable: true },
-                      targetMaxFatG: { type: "number", format: "float", nullable: true },
-                  
-                      pctMinCarb: { type: "number", format: "float", nullable: true },
-                      pctMinProtein: { type: "number", format: "float", nullable: true },
-                      pctMinFat: { type: "number", format: "float", nullable: true },
-                  
-                      rmrMale: { type: "number", format: "float", nullable: true },
-                      teeMale: { type: "number", format: "float", nullable: true },
-                      targetRmrMale: { type: "number", format: "float", nullable: true },
-                      targetTeeMale: { type: "number", format: "float", nullable: true },
-                  
-                      rmrFemale: { type: "number", format: "float", nullable: true },
-                      teeFemale: { type: "number", format: "float", nullable: true },
-                      targetRmrFemale: { type: "number", format: "float", nullable: true },
-                      targetTeeFemale: { type: "number", format: "float", nullable: true },
+                        id: { type: "string", format: "uuid", nullable: true },
+                        sessionId: { type: "string", format: "uuid" },
+
+                        pal: { type: "number", format: "float", nullable: true },
+
+                        minCarbGkg: { type: "number", format: "float", nullable: true },
+                        maxCarbGkg: { type: "number", format: "float", nullable: true },
+                        minProteinGkg: { type: "number", format: "float", nullable: true },
+                        maxProteinGkg: { type: "number", format: "float", nullable: true },
+                        minFatGkg: { type: "number", format: "float", nullable: true },
+                        maxFatGkg: { type: "number", format: "float", nullable: true },
+
+                        estimatedCarbG: { type: "number", format: "float", nullable: true },
+                        estimatedProteinG: { type: "number", format: "float", nullable: true },
+                        estimatedFatG: { type: "number", format: "float", nullable: true },
+
+                        commentsWeekday: { type: "string", nullable: true },
+                        commentsWeekend: { type: "string", nullable: true },
+                        otherRemarks: { type: "string", nullable: true },
+
+                        // computed outputs
+                        minCarbG: { type: "number", format: "float", nullable: true },
+                        maxCarbG: { type: "number", format: "float", nullable: true },
+                        minProteinG: { type: "number", format: "float", nullable: true },
+                        maxProteinG: { type: "number", format: "float", nullable: true },
+                        minFatG: { type: "number", format: "float", nullable: true },
+                        maxFatG: { type: "number", format: "float", nullable: true },
+
+                        targetMinCarbG: { type: "number", format: "float", nullable: true },
+                        targetMaxCarbG: { type: "number", format: "float", nullable: true },
+                        targetMinProteinG: { type: "number", format: "float", nullable: true },
+                        targetMaxProteinG: { type: "number", format: "float", nullable: true },
+                        targetMinFatG: { type: "number", format: "float", nullable: true },
+                        targetMaxFatG: { type: "number", format: "float", nullable: true },
+
+                        pctMinCarb: { type: "number", format: "float", nullable: true },
+                        pctMinProtein: { type: "number", format: "float", nullable: true },
+                        pctMinFat: { type: "number", format: "float", nullable: true },
+
+                        rmrMale: { type: "number", format: "float", nullable: true },
+                        teeMale: { type: "number", format: "float", nullable: true },
+                        targetRmrMale: { type: "number", format: "float", nullable: true },
+                        targetTeeMale: { type: "number", format: "float", nullable: true },
+
+                        rmrFemale: { type: "number", format: "float", nullable: true },
+                        teeFemale: { type: "number", format: "float", nullable: true },
+                        targetRmrFemale: { type: "number", format: "float", nullable: true },
+                        targetTeeFemale: { type: "number", format: "float", nullable: true },
                     },
                 },
-        
+
                 // ==================== SUPPLEMENT SCHEMAS ====================
 
                 // Full Supplement Schema (for detailed view)
@@ -1512,11 +1525,12 @@ const swaggerOptions = {
         "./modules/AMS/coach/routes.js",
         "./modules/AMS/nutritionist/routes.js",
         "./modules/Consultation/consultation-session/routes.js",
-        "./modules/Consultation/open-items/routes.js",
+        "./modules/Consultation/actionables/routes.js",
         "./modules/Consultation/consultation-lookups/routes.js",
-        "./modules/Consultation/nutrition-diagnosis/routes.js",
+        "./modules/Consultation/nutrition-diagnosis-summary/routes.js",
+        "./modules/Consultation/nutrition-requirements/routes.js",
         "./modules/Consultation/medical-history/routes.js",
-        "./modules/Consultation/prescription/routes.js",
+        "./modules/Consultation/supplement-dispensing/routes.js",
         "./modules/OCR/routes.js",
         "./server.js",
         "./modules/Auth/routes.js",
