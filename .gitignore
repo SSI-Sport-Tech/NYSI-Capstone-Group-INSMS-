@@ -69,7 +69,7 @@ env/
 
 # Claude Code
 CLAUDE.md
-
+.claude
 *~
 
 # OS
@@ -91,7 +91,3 @@ htmlcov/
 /env.txt
 /Applied_Nutrition_Images/
 /tmp_images/
-
-# Claude Code xd
-CLAUDE.md
-.claude
