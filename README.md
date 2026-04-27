@@ -319,13 +319,28 @@ NYSI-Capstone-Group-INSMS/
 │   └── requirements.txt
 │
 └── docs/                         # Project documentation
-    ├── PROJECT_ARCHITECTURE.md   # Full architecture details
-    ├── DATABASE_SCHEMA.md        # Database schema reference
-    ├── AMS_DATABASE_SCHEMA.md    # AMS schema reference
-    ├── USE_CASES_IMPLEMENTATION.md
-    ├── PYTHON_SERVICES.md
-    └── ...
+    ├── Term_8_Technical_Documentation_v1.pdf  # Full technical documentation
+    └── Nutrifusion_database_handover_v2/      # Database handover files
+        ├── aws_handover_full_final_Test.dump   # Full pg_dump restore (use this)
+        ├── aws_handover_schema_final.sql       # Schema only (tables, functions, constraints)
+        ├── insert_reference_lookup_data_final.sql  # Lookup reference data
+        ├── migration_reference_lookup_data_final.sql  # Lookup data with fixed UUIDs
+        └── Dbdiagram_Nutrifusion_v5.rtf        # Database diagram
 ```
+
+## Database Setup
+
+The database files are in `docs/Nutrifusion_database_handover_v2/`.
+
+Restore schema and data from the pg_dump binary:
+
+```bash
+pg_restore --no-owner --no-privileges -d <your_db_name> docs/Nutrifusion_database_handover_v2/aws_handover_full_final_Test.dump
+```
+
+The database uses five PostgreSQL schemas: `sss`, `ams`, `consultation`, `auth`, and `audit`. Requires the `pgvector` and `pgcrypto` extensions.
+
+---
 
 ## API Overview
 
@@ -387,9 +402,5 @@ Each backend module follows MVC with:
 
 ## Documentation
 
-Detailed documentation lives in the `docs/` folder:
-- **[PROJECT_ARCHITECTURE.md](docs/PROJECT_ARCHITECTURE.md)** - Full architecture, patterns, and design decisions
-- **[DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md)** - Complete database schema reference
-- **[AMS_DATABASE_SCHEMA.md](docs/AMS_DATABASE_SCHEMA.md)** - AMS module schema
-- **[PYTHON_SERVICES.md](docs/PYTHON_SERVICES.md)** - Python service architecture
-- **[USE_CASES_IMPLEMENTATION.md](docs/USE_CASES_IMPLEMENTATION.md)** - Use case mapping
+- **[Term_8_Technical_Documentation_v1.pdf](docs/Term_8_Technical_Documentation_v1.pdf)** - Full technical documentation: system architecture, module design, API reference, database design, security, and deployment
+- **[docs/Nutrifusion_database_handover_v2/](docs/Nutrifusion_database_handover_v2/)** - Database handover files (schema SQL, seed data, full pg_dump, DB diagram)
