@@ -7,6 +7,7 @@ import {
   consultationLookupApi,
   ConsultationApiError,
 } from "../../utils/consultationApi";
+import { getBackendUrl } from "@/utils/backendUrl";
 import Actionables from "./consultation/Actionables";
 import PreviousConsultation, { type PreviousConsultationHandle } from "./consultation/PreviousConsultation";
 import SupplementDispensing from "./consultation/SupplementDispensing";
@@ -39,6 +40,8 @@ interface ConsultationViewProps {
   /** When provided (e.g. navigating from dashboard), load this session instead of the latest. */
   initialSessionId?: string;
 }
+
+const BACKEND_URL = getBackendUrl();
 
 
 export default function ConsultationView({
@@ -119,7 +122,7 @@ export default function ConsultationView({
   useEffect(() => {
     if (!currentSessionId || isNewConsultation) { setFetchedPrevSessionId(undefined); return; }
     const token = localStorage.getItem("token");
-    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${currentSessionId}/previous`, {
+    fetch(`${BACKEND_URL}/api/Consultation/consultation-session/${currentSessionId}/previous`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.ok ? r.json() : null)
@@ -139,7 +142,7 @@ export default function ConsultationView({
       try {
         const token = localStorage.getItem("token");
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${sessionId}/status`,
+          `${BACKEND_URL}/api/Consultation/consultation-session/${sessionId}/status`,
           {
             method: "PATCH",
             headers: {
@@ -180,7 +183,7 @@ export default function ConsultationView({
         if (!defaultTypeId) throw new Error("No active consult types found");
 
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session`,
+          `${BACKEND_URL}/api/Consultation/consultation-session`,
           {
             method: "POST",
             headers: {
@@ -441,7 +444,7 @@ export default function ConsultationView({
         if (form.consultation_objective_id) body.consultation_objective_id = form.consultation_objective_id;
         if (Object.keys(body).length === 0) return;
         await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${id}`,
+          `${BACKEND_URL}/api/Consultation/consultation-session/${id}`,
           {
             method: "PATCH",
             headers: {
@@ -519,7 +522,7 @@ export default function ConsultationView({
       if (updateForm.consultation_objective_id) body.consultation_objective_id = updateForm.consultation_objective_id;
       if (Object.keys(body).length === 0) return;
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${currentSessionId}`,
+        `${BACKEND_URL}/api/Consultation/consultation-session/${currentSessionId}`,
         {
           method: "PATCH",
           headers: {
@@ -568,7 +571,7 @@ export default function ConsultationView({
         return;
       }
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${id}`,
+        `${BACKEND_URL}/api/Consultation/consultation-session/${id}`,
         {
           method: "PATCH",
           headers: {

@@ -11,6 +11,7 @@ import MealLogs from "@/components/AMS/consultation/MealLogs";
 import Anthropometry from "@/components/AMS/consultation/Anthropometry";
 import NutritionRequirements from "@/components/AMS/consultation/NutritionRequirements";
 import MedicalHistory from "@/components/AMS/consultation/MedicalHistory";
+import { getBackendUrl } from "@/utils/backendUrl";
 
 interface SessionData {
   id: string;
@@ -37,6 +38,8 @@ const STEPS = [
   { id: 9, label: "Supplement Dispensing" },
 ];
 
+const BACKEND_URL = getBackendUrl();
+
 export default function ConsultationDetailsPage() {
   const params = useParams();
   const router = useRouter();
@@ -51,7 +54,7 @@ export default function ConsultationDetailsPage() {
       try {
         const token = localStorage.getItem("token");
         const headers = { Authorization: `Bearer ${token}` };
-        const base = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session`;
+        const base = `${BACKEND_URL}/api/Consultation/consultation-session`;
         const res = await fetch(`${base}/${sessionId}`, { headers });
         if (res.ok) {
           const data = await res.json();

@@ -3,6 +3,9 @@ import { useState, useEffect, useMemo } from "react";
 import { consultationApi, ConsultationApiError } from "@/utils/consultationApi";
 import { Plus, Trash2 } from "lucide-react";
 import ConsultationCardLastUpdated from "./ConsultationCardLastUpdated";
+import { getBackendUrl } from "@/utils/backendUrl";
+
+const BACKEND_URL = getBackendUrl();
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -414,7 +417,7 @@ export default function MealLogs({
       const payload = toApiPayload(state);
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${id}/meal-log`,
+        `${BACKEND_URL}/api/Consultation/sessions/${id}/meal-log`,
         {
           method: "PUT",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },

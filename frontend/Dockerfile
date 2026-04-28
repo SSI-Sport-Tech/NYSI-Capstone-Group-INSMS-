@@ -15,6 +15,13 @@ COPY . .
 ARG BACKEND_URL=http://backend:8000
 ENV BACKEND_URL=$BACKEND_URL
 
+# NEXT_PUBLIC_* vars must be baked in at build time to reach the browser bundle.
+# BACKEND_URL above is the internal Docker URL (backend:8000) used only by the
+# Next.js server-side rewrite proxy. NEXT_PUBLIC_BACKEND_URL is what the browser
+# uses — it must be the host-accessible URL (localhost:8000 via Docker port map).
+ARG NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
+
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

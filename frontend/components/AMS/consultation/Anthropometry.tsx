@@ -5,6 +5,9 @@ import {
   ConsultationApiError,
 } from "../../../utils/consultationApi";
 import ConsultationCardLastUpdated from "./ConsultationCardLastUpdated";
+import { getBackendUrl } from "@/utils/backendUrl";
+
+const BACKEND_URL = getBackendUrl();
 
 interface AnthropometryProps {
   athleteId: string;
@@ -352,7 +355,7 @@ export default function Anthropometry({
       if (editForm.measured_by) payload.measuredBy = editForm.measured_by;
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${targetId}/anthropometry`,
+        `${BACKEND_URL}/api/Consultation/sessions/${targetId}/anthropometry`,
         {
           method: "PATCH",
           headers: {

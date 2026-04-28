@@ -56,8 +56,10 @@ services:
     build:
       context: ./frontend
       args:
-        # Passed at build time so next.config.ts can use it during `next build`
+        # Server-side rewrite proxy: Next.js rewrites /api/* to this internal URL
         BACKEND_URL: "http://backend:8000"
+        # Browser-side: must be the host-accessible URL (via Docker port mapping)
+        NEXT_PUBLIC_BACKEND_URL: "http://localhost:8000"
     ports:
       - "3000:3000"
     environment:

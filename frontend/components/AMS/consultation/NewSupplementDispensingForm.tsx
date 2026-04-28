@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { getBackendUrl } from "@/utils/backendUrl";
+
+const BACKEND_URL = getBackendUrl();
 
 interface NewSupplementDispensingFormProps {
   ensureSession: () => Promise<string>;
@@ -115,7 +118,7 @@ function DispensingEntryCard({
     suppTimeoutRef.current = setTimeout(async () => {
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/SSS/supplements?search=${encodeURIComponent(value)}&limit=10`,
+          `${BACKEND_URL}/api/SSS/supplements?search=${encodeURIComponent(value)}&limit=10`,
         );
         const data = await res.json();
         setSuppResults(data.data || []);
@@ -148,7 +151,7 @@ function DispensingEntryCard({
     setBatchesLoading(true);
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/SSS/batches?search=${encodeURIComponent(supp.supplement_name)}&page=1`,
+        `${BACKEND_URL}/api/SSS/batches?search=${encodeURIComponent(supp.supplement_name)}&page=1`,
       );
       const data = await res.json();
       const all: BatchOption[] = data.data || [];
@@ -481,7 +484,7 @@ export default function NewSupplementDispensingForm({
       try {
         const token = localStorage.getItem("token");
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/supplement-dispensing/session/${prevSessionId}`,
+          `${BACKEND_URL}/api/Consultation/supplement-dispensing/session/${prevSessionId}`,
           { headers: { Authorization: `Bearer ${token}` } },
         );
         if (!res.ok) return;
@@ -515,7 +518,7 @@ export default function NewSupplementDispensingForm({
         if (!entry.batchId) continue; // skip incomplete entries
 
         const prescRes = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/supplement-dispensing`,
+          `${BACKEND_URL}/api/Consultation/supplement-dispensing`,
           {
             method: "POST",
             headers: {
