@@ -635,7 +635,7 @@ const PreviousConsultation = forwardRef<
                 Clear All
               </button>
               <button
-                onClick={handleSave}
+                onClick={isNewConsultation ? handleSave : handleSaveEdit}
                 disabled={saving}
                 className={`px-4 py-2 text-white text-sm rounded disabled:opacity-50 ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
               >

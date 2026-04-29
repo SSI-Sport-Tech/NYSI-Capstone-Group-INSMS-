@@ -116,19 +116,35 @@ export default function ConsultationView({
   const ensureSessionForUpdateRef = useRef<() => Promise<string>>(async () => "");
   const previousConsultRef = useRef<PreviousConsultationHandle>(null);
 
-  // Previous session ID — fetched when viewing an existing session
+  // Previous session ID — fetched when viewing an existing session, or when new consultation's
+  // latest session is not completed (avoids pointing the Previous tab at an in-progress session)
   const [fetchedPrevSessionId, setFetchedPrevSessionId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if (!currentSessionId || isNewConsultation) { setFetchedPrevSessionId(undefined); return; }
     const token = localStorage.getItem("token");
+    if (isNewConsultation) {
+      // If latestConsultation is not completed it was created by a previous ensureSession call.
+      // Fetch its own previous so the Previous tab shows a genuinely older session.
+      if (latestConsultation?.id && latestConsultation?.status !== "completed") {
+        fetch(`${BACKEND_URL}/api/Consultation/consultation-session/${latestConsultation.id}/previous`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((r) => r.ok ? r.json() : null)
+          .then((json) => setFetchedPrevSessionId(json?.data?.id ?? undefined))
+          .catch(() => {});
+      } else {
+        setFetchedPrevSessionId(undefined);
+      }
+      return;
+    }
+    if (!currentSessionId) { setFetchedPrevSessionId(undefined); return; }
     fetch(`${BACKEND_URL}/api/Consultation/consultation-session/${currentSessionId}/previous`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.ok ? r.json() : null)
       .then((json) => setFetchedPrevSessionId(json?.data?.id ?? undefined))
       .catch(() => {});
-  }, [currentSessionId, isNewConsultation]);
+  }, [currentSessionId, isNewConsultation, latestConsultation?.id, latestConsultation?.status]);
 
   // Session selector modal
   const [showSessionSelector, setShowSessionSelector] = useState(false);
@@ -804,7 +820,11 @@ export default function ConsultationView({
     </>
   );
 
-  const prevSessionId = isNewConsultation ? (latestConsultation?.id ?? undefined) : fetchedPrevSessionId;
+  // For new consultation: use latestConsultation directly if it's completed (normal case),
+  // or use fetchedPrevSessionId (the session before the in-progress latestConsultation) if not.
+  const prevSessionId = isNewConsultation
+    ? (latestConsultation?.status === "completed" ? latestConsultation?.id : fetchedPrevSessionId)
+    : fetchedPrevSessionId;
   const stepStatuses = Object.fromEntries(
     STEPS.map((step) => {
       const isActive = step.id === currentStep;

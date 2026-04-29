@@ -11,6 +11,7 @@ Version: 1.2.0
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import asyncio
 import logging
 
 from app.routers import ocr, vectorization, webscraper, batch_verification
@@ -40,13 +41,24 @@ async def lifespan(app: FastAPI):
 
     start_scheduler()
 
-    try:
-        logger.info("🔥 Pre-warming OCR engine...")
-        from app.services.ocr_engine import get_ocr_instance
-        get_ocr_instance()
-        logger.info("✅ OCR engine pre-warmed and ready")
-    except Exception as e:
-        logger.warning(f"⚠️ OCR pre-warm failed: {e}")
+    async def _prewarm():
+        loop = asyncio.get_event_loop()
+        try:
+            logger.info("🔥 Pre-warming OCR engine (background)...")
+            from app.services.ocr_engine import get_ocr_instance
+            await loop.run_in_executor(None, get_ocr_instance)
+            logger.info("✅ OCR engine pre-warmed and ready")
+        except Exception as e:
+            logger.warning(f"⚠️ OCR pre-warm failed: {e}")
+        try:
+            logger.info("🔥 Pre-warming embedding model (background)...")
+            from app.services.vectorizer import _get_embed_model
+            await loop.run_in_executor(None, _get_embed_model)
+            logger.info("✅ Embedding model pre-warmed and ready")
+        except Exception as e:
+            logger.warning(f"⚠️ Embedding model pre-warm failed: {e}")
+
+    asyncio.create_task(_prewarm())
 
     yield  # App runs here
 

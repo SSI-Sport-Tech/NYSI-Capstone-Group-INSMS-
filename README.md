@@ -404,3 +404,11 @@ Each backend module follows MVC with:
 
 - **[Term_8_Technical_Documentation_v1.pdf](docs/Term_8_Technical_Documentation_v1.pdf)** - Full technical documentation: system architecture, module design, API reference, database design, security, and deployment
 - **[docs/Nutrifusion_database_handover_v2/](docs/Nutrifusion_database_handover_v2/)** - Database handover files (schema SQL, seed data, full pg_dump, DB diagram)
+
+## Known Issues
+
+### Batch Verification — Slow Performance
+Batch verification against external certification databases (Informed Sport, Informed Choice, HASTA, NSF Sport, Cologne List, BSCG) currently takes **3–5 minutes per check**. Each verification spawns a Playwright browser session to scrape six live websites sequentially. Possible improvements: parallelise the six checks, cache results by batch ID, or use official certification APIs where available.
+
+### Supplement Similarity Search — Poor Score Discrimination
+Vector similarity scores for supplement alternatives are compressed into a narrow band (~80–93%), making it difficult to distinguish "not similar" from "very similar" supplements. Root cause: the embedding model (BAAI/bge-small-en-v1.5) produces high cosine similarity for all nutrition-label text, regardless of actual nutritional differences. Possible improvements: switch to a nutrition-domain-specific embedding model, incorporate structured nutritional distance metrics (e.g. Euclidean distance on macro values) alongside vector similarity, or re-scale and re-threshold the displayed scores.
