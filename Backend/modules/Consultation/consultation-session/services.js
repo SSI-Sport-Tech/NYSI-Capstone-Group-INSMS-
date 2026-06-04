@@ -53,7 +53,8 @@ export async function getConsultationSession(sessionId) {
             s.consultation_objective_id,
             col.consultation_objective,
             s.is_scheduled_booking,
-            s.status
+            s.status,
+            s.ssp
         FROM consultation.sessions s
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
@@ -68,7 +69,7 @@ export async function getConsultationSession(sessionId) {
 
 /**
  * Create a new consultation session
- * @param {Object} data - { nutritionist_id, athlete_id, type_of_consult_id, date_of_consult, date_of_next_follow_up }
+ * @param {Object} data - { nutritionist_id, athlete_id, type_of_consult_id, date_of_consult, date_of_next_follow_up, ssp }
  * @returns {Promise<Object>} Created session row
  */
 export async function createConsultationSession(data, userId) {
@@ -81,8 +82,9 @@ export async function createConsultationSession(data, userId) {
                 date_of_consult, time_of_consult,
                 date_of_next_follow_up, time_of_next_follow_up,
                 consultation_objective_id,
-                is_scheduled_booking
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                is_scheduled_booking,
+                ssp
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             RETURNING *
         `, [
             data.nutritionist_id,
@@ -96,6 +98,7 @@ export async function createConsultationSession(data, userId) {
             data.time_of_next_follow_up || null,
             data.consultation_objective_id || null,
             data.is_scheduled_booking ?? false,
+            data.ssp ?? false,
         ]);
         const session = sessionResult.rows[0];
 
@@ -128,6 +131,7 @@ export async function updateConsultationSession(sessionId, updateData, userId) {
             time_of_next_follow_up: updateData.time_of_next_follow_up,
             consultation_objective_id: updateData.consultation_objective_id,
             is_scheduled_booking: updateData.is_scheduled_booking,
+            ssp: updateData.ssp,
         };
 
         for (const [field, value] of Object.entries(fieldMapping)) {
@@ -178,7 +182,8 @@ export async function getLatestConsultationSession(athleteId) {
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
             s.is_scheduled_booking,
-            s.status
+            s.status,
+            s.ssp
         FROM consultation.sessions s
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
@@ -239,6 +244,7 @@ export async function getAllConsultationSessions(athleteId) {
             s.time_of_next_follow_up,
             s.is_scheduled_booking,
             s.status,
+            s.ssp,
             sup.supplement_name,
             ib.batch_number,
             sp.dosage,
@@ -288,7 +294,8 @@ export async function getUpcomingConsultationSessions(limit = 20) {
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
             s.is_scheduled_booking,
-            s.status
+            s.status,
+            s.ssp
         FROM consultation.sessions s
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
@@ -331,7 +338,8 @@ export async function getSessionsByDateRange(from, to) {
             s.date_of_consult,
             s.time_of_consult,
             s.is_scheduled_booking,
-            s.status
+            s.status,
+            s.ssp
         FROM consultation.sessions s
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
@@ -378,7 +386,8 @@ export async function getTodaySessionsForNutritionist(nutritionistId, date) {
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
             s.is_scheduled_booking,
-            s.status
+            s.status,
+            s.ssp
         FROM consultation.sessions s
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id

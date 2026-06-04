@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Calendar, Clock, User, MapPin, FileText } from "lucide-react";
+import { X, Calendar, Clock, User, MapPin, FileText , School} from "lucide-react";
 import { dashboardApi, Athlete, ConsultationType, ConsultationSession } from "@/utils/dashboardApi";
 import { consultationLookupApi } from "@/utils/consultationApi";
 
@@ -35,6 +35,7 @@ export default function BookingModal({
     venue: "",
     consultation_objective_id: "",
     duration: 60,
+    ssp: false,
   });
 
   // Time slot options
@@ -58,6 +59,7 @@ export default function BookingModal({
           venue: existingSession.location || "",
           consultation_objective_id: "",
           duration: existingSession.duration || 60,
+          ssp: (existingSession as any).ssp ?? false,
         });
       } else if (selectedDate) {
         // New booking mode - use selected date (local date, not UTC)
@@ -82,6 +84,7 @@ export default function BookingModal({
         venue: "",
         consultation_objective_id: "",
         duration: 60,
+        ssp: false,
       });
       setErrors({});
     }
@@ -168,6 +171,7 @@ export default function BookingModal({
         ...(formData.time_of_consult && { time_of_consult: formData.time_of_consult }),
         ...(formData.venue?.trim() && { venue: formData.venue.trim() }),
         ...(formData.consultation_objective_id && { consultation_objective_id: formData.consultation_objective_id }),
+        ssp: formData.ssp,
         // Mark sessions created from the dashboard so ConsultationView can detect them
         ...(!existingSession && { is_scheduled_booking: true }),
       };
@@ -210,7 +214,7 @@ export default function BookingModal({
     }
   };
 
-  const handleInputChange = (field: string, value: string | number) => {
+  const handleInputChange = (field: string, value: string | number | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // Clear field error when user starts typing
     if (errors[field]) {
@@ -301,6 +305,35 @@ export default function BookingModal({
             {errors.type_of_consult_id && (
               <p className="mt-1 text-sm text-red-600">{errors.type_of_consult_id}</p>
             )}
+          </div>
+
+          {/* SSP */}
+          <div>
+            <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+              <School className="w-4 h-4" />
+              <span>SSP *</span>
+            </label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => handleInputChange("ssp", true)}
+                className={`flex-1 py-2 rounded-lg border ${
+                  formData.ssp ? "bg-green-600 text-white border-green-600" : "border-gray-300"
+                }`}
+              >
+                Yes
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleInputChange("ssp", false)}
+                className={`flex-1 py-2 rounded-lg border ${
+                  !formData.ssp ? "bg-gray-600 text-white border-gray-600" : "border-gray-300"
+                }`}
+              >
+                No
+              </button>
+            </div>
           </div>
 
           {/* Date and Time */}

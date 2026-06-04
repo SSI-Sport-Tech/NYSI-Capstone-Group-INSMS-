@@ -17,6 +17,7 @@ export interface LatestConsultation {
   title_description: string;
   is_scheduled_booking?: boolean;
   status?: "scheduled" | "expired" | "completed" | "cancelled";
+  ssp?: boolean;
 }
 
 export interface ConsultType {
@@ -24,7 +25,19 @@ export interface ConsultType {
   type_of_consult: string;
 }
 
-export const EMPTY_UPDATE_FORM = {
+export type UpdateForm = {
+  type_of_consult_id: string;
+  title_description: string;
+  venue: string;
+  date_of_consult: string;
+  time_of_consult: string;
+  date_of_next_follow_up: string;
+  time_of_next_follow_up: string;
+  consultation_objective_id: string;
+  ssp: boolean;
+};
+
+export const EMPTY_UPDATE_FORM: UpdateForm = {
   type_of_consult_id: "",
   title_description: "",
   venue: "",
@@ -33,9 +46,10 @@ export const EMPTY_UPDATE_FORM = {
   date_of_next_follow_up: "",
   time_of_next_follow_up: "",
   consultation_objective_id: "",
+  ssp: false,
 };
 
-export type UpdateForm = typeof EMPTY_UPDATE_FORM;
+// export type UpdateForm = typeof EMPTY_UPDATE_FORM;
 
 export function normalizeUpdateForm(form: UpdateForm): UpdateForm {
   return {
@@ -47,6 +61,7 @@ export function normalizeUpdateForm(form: UpdateForm): UpdateForm {
     date_of_next_follow_up: form.date_of_next_follow_up || "",
     time_of_next_follow_up: form.time_of_next_follow_up || "",
     consultation_objective_id: form.consultation_objective_id || "",
+    ssp: form.ssp,
   };
 }
 

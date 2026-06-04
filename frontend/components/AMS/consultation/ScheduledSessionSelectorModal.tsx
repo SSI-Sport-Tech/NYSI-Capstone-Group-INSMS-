@@ -21,6 +21,7 @@ export interface ScheduledSession {
   nutritionist_name: string | null;
   is_scheduled_booking: boolean;
   status?: "scheduled" | "expired" | "completed" | "cancelled";
+  ssp?: boolean;
 }
 
 function isSelectableScheduledSession(session: ScheduledSession): boolean {
