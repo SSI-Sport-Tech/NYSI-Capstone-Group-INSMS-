@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, Users, UserPlus } from "lucide-react";
+import { Calendar, Users, UserPlus, CalendarDays } from "lucide-react";
 import { dashboardApi } from "@/utils/dashboardApi";
 import Link from "next/link";
 
@@ -111,6 +111,14 @@ export default function DashboardStats({ onQuickAction, refreshKey = 0 }: Dashbo
           >
             <UserPlus className="w-4 h-4" />
             <span>Add New Athlete</span>
+          </button>
+          
+          <button
+            onClick={() => handleQuickAction("add-schedule")}
+            className="w-full flex items-center space-x-2 px-3 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 text-sm transition-colors"
+          >
+            <CalendarDays className="w-4 h-4" />
+            <span>Add Schedule</span>
           </button>
         </div>
       </div>

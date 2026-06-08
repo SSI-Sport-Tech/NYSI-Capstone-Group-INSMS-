@@ -9,6 +9,8 @@ import adminRoutes from "./modules/Admin/adminRoutes.js";
 import athleteRoutes from "./modules/AMS/index.js";
 import authRoutes from "./modules/Auth/routes.js";
 import consultationRoutes from "./modules/Consultation/index.js";
+import nutritionistScheduleRoutes from "./modules/AMS/nutritionist_schedule/routes.js";
+// import scheduleRoutes from "./modules/AMS/nutritionist_schedule/routes.js";
 import { verifyEmailConfig } from "./modules/Auth/emailService.js";
 import { ZodError } from "zod";
 
@@ -91,6 +93,7 @@ app.use("/api/AMS", athleteRoutes);
 app.use("/api/ocr", ocrRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/Consultation", consultationRoutes);
+// app.use("/api/Nutritionist", nutritionistScheduleRoutes);
 
 // ==================== HEALTH CHECK ENDPOINTS ====================
 

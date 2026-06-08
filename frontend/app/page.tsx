@@ -9,12 +9,15 @@ import UpcomingSessions from "@/components/dashboard/UpcomingSessions";
 import CalendarComponent from "@/components/dashboard/CalendarComponent";
 import TodaySchedule from "@/components/dashboard/TodaySchedule";
 import BookingModal from "@/components/dashboard/BookingModal";
-import { ConsultationSession } from "@/utils/dashboardApi";
+import ScheduleModal from "@/components/dashboard/NutritionistSchedule";
+import { ConsultationSession, NutritionistScheduleSession } from "@/utils/dashboardApi";
 
 export default function Home() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [editingSession, setEditingSession] = useState<ConsultationSession | null>(null);
+  const [editingSchedule, setEditingSchedule] = useState<NutritionistScheduleSession | null>(null);
   const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0);
   const [statsRefreshKey, setStatsRefreshKey] = useState(0);
   const router = useRouter();
@@ -36,12 +39,25 @@ export default function Home() {
     setShowBookingModal(true);
   };
 
+  const handleScheduleEdit = (schedule: NutritionistScheduleSession) => {
+    setEditingSchedule(schedule);
+    setShowScheduleModal(true);
+  };
+
   // Handle booking creation/update
   const handleBookingCreated = () => {
     setScheduleRefreshKey((k) => k + 1);
     setStatsRefreshKey((k) => k + 1);
     setShowBookingModal(false);
     setEditingSession(null);
+  };
+
+  // Handle nutritionist schedule creation/update
+  const handleScheduleCreated = () => {
+    setScheduleRefreshKey((k) => k + 1);
+    setStatsRefreshKey((k) => k + 1);
+    setShowScheduleModal(false);
+    setEditingSchedule(null);
   };
 
   // Handle quick actions from stats component
@@ -55,6 +71,11 @@ export default function Home() {
       case "add-athlete":
         router.push("/AMS/athlete-management?action=add");
         break;
+      case "add-schedule":
+        setSelectedDate(new Date());
+        setEditingSchedule(null);
+        setShowScheduleModal(true);
+      break;
       default:
         break;
     }
@@ -79,6 +100,7 @@ export default function Home() {
               {/* Upcoming Sessions */}
               <UpcomingSessions
                 onSessionEdit={handleSessionEdit}
+                onNutritionistScheduleEdit={handleScheduleEdit}
                 onSessionStatusChange={() => {
                   setScheduleRefreshKey((k) => k + 1);
                   setStatsRefreshKey((k) => k + 1);
@@ -113,6 +135,19 @@ export default function Home() {
             onBookingCreated={handleBookingCreated}
             selectedDate={selectedDate || undefined}
             existingSession={editingSession}
+          />
+
+          {/* Nutritionist Schedule Modal */}
+          <ScheduleModal
+            isOpen={showScheduleModal}
+            onClose={() => {
+              setShowScheduleModal(false);
+              setEditingSchedule(null);
+              setSelectedDate(null);
+            }}
+            onScheduleCreated={handleScheduleCreated}
+            selectedDate={selectedDate || undefined}
+            existingSchedule={editingSchedule}
           />
         </div>
       </div>

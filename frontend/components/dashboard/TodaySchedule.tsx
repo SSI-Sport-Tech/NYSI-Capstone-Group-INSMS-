@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   dashboardApi,
   ConsultationSession,
+  NutritionistScheduleSession,
 } from "@/utils/dashboardApi";
 
 // Hours shown in the calendar grid (6 AM to 9 PM inclusive)
@@ -34,8 +35,18 @@ function toDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+type CalendarEvent = {
+  id: string;
+  title: string;
+  startTime: string;
+  duration: number;
+  type: "consultation" | "nutritionist";
+  meta?: any;
+};
+
 export default function TodaySchedule({ date, refreshKey }: { date?: Date; refreshKey?: number }) {
   const [sessions, setSessions] = useState<ConsultationSession[]>([]);
+  const [nutritionistSchedules, setNutritionistSchedules] = useState<NutritionistScheduleSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [nowTop, setNowTop] = useState<number | null>(null);
@@ -47,12 +58,21 @@ export default function TodaySchedule({ date, refreshKey }: { date?: Date; refre
       setLoading(true);
       setError("");
       const dateStr = date ? toDateStr(date) : undefined;
-      const response = await dashboardApi.getTodaySessions(dateStr);
-      setSessions(response.data || []);
+      const [sessionsResponse, nutritionistSchedulesResponse] = await Promise.all([
+        dashboardApi.getTodaySessions(dateStr),
+        dashboardApi.getTodayNutritionistSchedules(dateStr)
+      ]);
+
+      // console.log("Consultation sessions response:", sessionsResponse.data);
+      // console.log("Nutritionist schedules response:", nutritionistSchedulesResponse.data);
+
+      setSessions(sessionsResponse.data || []);
+      setNutritionistSchedules(nutritionistSchedulesResponse.data || []);
     } catch (err: unknown) {
       console.error("Error fetching today's schedule:", err);
       setError("Schedule not available");
       setSessions([]);
+      setNutritionistSchedules([]);
     } finally {
       setLoading(false);
     }
@@ -97,6 +117,34 @@ export default function TodaySchedule({ date, refreshKey }: { date?: Date; refre
     month: "short",
     day: "numeric",
   });
+
+  // console.log("Current sessions state:", sessions);
+  // console.log("Current nutritionistSchedules state:", nutritionistSchedules);
+
+  const events: CalendarEvent[] = [
+    ...sessions.map((s) => ({
+      id: s.id,
+      title: s.athlete_name_abbr,
+      startTime: s.time_of_consult ?? s.time_slot ?? "",
+      duration: (s.duration ?? 60) / 60,
+      type: "consultation" as const,
+      meta: s,
+    })),
+
+    ...nutritionistSchedules.map((s) => {
+      const start = timeToHours(s.start_time);
+      const end = timeToHours(s.end_time);
+
+      return {
+        id: `ns-${s.id}`,
+        title: `Nutritionist: ${s.nutritionist_name}`,
+        startTime: s.start_time,
+        duration: end - start,
+        type: "nutritionist" as const,
+        meta: s,
+      };
+    }),
+  ];
 
   if (loading) {
     return (
@@ -168,8 +216,9 @@ export default function TodaySchedule({ date, refreshKey }: { date?: Date; refre
           )}
 
           {/* Session blocks */}
-          {sessions.map((session) => {
-            const time = session.time_of_consult ?? session.time_slot;
+          {/* {sessions.map((session) => {
+            // const time = session.time_of_consult ?? session.time_slot;
+            const time = session.time_of_consult;
             if (!time) return null;
 
             const startHours = timeToHours(time);
@@ -208,6 +257,37 @@ export default function TodaySchedule({ date, refreshKey }: { date?: Date; refre
                   </p>
                 )}
               </button>
+            );
+          })} */}
+          {events.map((e) => {
+            const start = timeToHours(e.startTime);
+            if (isNaN(start)) return null;
+
+            const top = hoursToTop(start);
+            const height = Math.max(e.duration * HOUR_HEIGHT_PX, 36);
+
+            const isNutritionist = e.type === "nutritionist";
+
+            return (
+              <div
+                key={e.id}
+                onClick={() => {
+                  if (!isNutritionist) {
+                    router.push(
+                      `/AMS/athlete-management/${e.meta.athlete_id}?tab=consultation`
+                    );
+                  }
+                }}
+                className={`absolute left-16 right-2 rounded-md px-2 py-1 text-xs text-white ${
+                  isNutritionist ? "bg-purple-500" : "bg-teal-500"
+                }`}
+                style={{ top, height }}
+              >
+                <div className="font-semibold truncate">{e.title}</div>
+                <div className="text-xs opacity-80">
+                  {isNutritionist ? e.meta.schedule_type : e.meta.type_of_consult}
+                </div>
+              </div>
             );
           })}
         </div>
