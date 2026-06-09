@@ -251,11 +251,10 @@ export async function getTodaySchedulesForNutritionist(nutritionistId, date) {
         FROM ams.nutritionist_schedule ns
         LEFT JOIN ams.nutritionist n ON ns.nutritionist_id = n.id
         LEFT JOIN ams.schedule_type_lookup st ON ns.schedule_type_id = st.id
-        WHERE ns.nutritionist_id = $1
-          AND ns.schedule_date = $2::date
+        WHERE ns.schedule_date = $1::date
         ORDER BY ns.start_time
     `;
-    const result = await pool.query(query, [nutritionistId, date]);
+    const result = await pool.query(query, [date]);
     return result.rows;
 }
 

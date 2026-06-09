@@ -71,6 +71,13 @@ export default function SessionCardNutritionistSchedule({
     }
   };
 
+  const handleViewClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    router.push(
+      `/AMS/nutritionist-schedules`,
+    );
+  };
+
   // Edit — opens the NutritionistScheduleModal to change schedule details (date, time, type, remarks)
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -93,6 +100,7 @@ export default function SessionCardNutritionistSchedule({
 
   return (
     <div
+      onClick={handleViewClick}
       className={`border rounded-lg p-4 hover:shadow-md transition-shadow bg-white cursor-pointer`}
     >
       {/* Header with nutritionist name, date, and checkmark */}

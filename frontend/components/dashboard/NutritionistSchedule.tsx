@@ -254,8 +254,8 @@ export default function NutritionistSchedule({
               onChange={(e) => handleInputChange("nutritionist_id", e.target.value)}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                 errors.nutritionist_id ? "border-red-500" : "border-gray-300"
-              }`}
-              disabled={loading}
+              }${existingSchedule ? "bg-gray-100 cursor-not-allowed" : ""}`}
+              disabled={loading || !!existingSchedule}
             >
               <option value="">Select a nutritionist</option>
               {nutritionist.map((nutritionists) => (
