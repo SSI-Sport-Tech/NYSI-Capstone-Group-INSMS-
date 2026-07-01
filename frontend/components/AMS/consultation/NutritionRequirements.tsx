@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { consultationApi } from "@/utils/consultationApi";
 import { getApiErrorMessage } from "@/utils/apiError";
 import ConsultationCardLastUpdated from "./ConsultationCardLastUpdated";
+import { getBackendUrl } from "@/utils/backendUrl";
+
+const BACKEND_URL = getBackendUrl();
 
 const PAL_UPDATED_EVENT = "consultation-pal-updated";
 
@@ -342,7 +345,7 @@ export default function NutritionRequirements({
       try {
         const token = localStorage.getItem("token");
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/AMS/athletes/${athleteId}/profile`,
+          `${BACKEND_URL}/api/AMS/athletes/${athleteId}/profile`,
           { headers: { Authorization: `Bearer ${token}` } },
         );
         if (!res.ok) return;
@@ -366,7 +369,7 @@ export default function NutritionRequirements({
 
         if (!sourceSessionId) {
           const latestRes = await fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/athlete/${athleteId}/latest`,
+            `${BACKEND_URL}/api/Consultation/consultation-session/athlete/${athleteId}/latest`,
             { headers },
           );
           if (!latestRes.ok) return;
@@ -377,7 +380,7 @@ export default function NutritionRequirements({
         if (!sourceSessionId) return;
 
         const anthroRes = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${sourceSessionId}/anthropometry`,
+          `${BACKEND_URL}/api/Consultation/sessions/${sourceSessionId}/anthropometry`,
           { headers },
         );
         if (!anthroRes.ok) return;
@@ -496,7 +499,7 @@ export default function NutritionRequirements({
       body.otherRemarks = editForm.otherRemarks || null;
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/sessions/${id}/nutrition-requirements`,
+        `${BACKEND_URL}/api/Consultation/sessions/${id}/nutrition-requirements`,
         {
           method: "PATCH",
           headers: {

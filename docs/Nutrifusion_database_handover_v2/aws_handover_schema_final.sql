@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict uLSOZjmnrNL6bWoT0Hb35RMENsqaUOES8bhO2MEbfT8qplPr0p9Z5BObaSWpmh9
+\restrict 70XrsFTScas0QjkrzeyGSfnPUuU4sLg4eAjIWLSvkJR4kuJwynQr1xXlzTT5cJb
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.8 (Homebrew)
@@ -243,7 +243,7 @@ CREATE TABLE ams.athlete (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by uuid,
     updated_by uuid,
-    CONSTRAINT chk_athlete_gender CHECK ((gender = ANY (ARRAY['MALE'::text, 'FEMALE'::text, 'OTHER'::text]))),
+    CONSTRAINT chk_athlete_gender CHECK ((gender = ANY (ARRAY['Male'::text, 'Female'::text, 'Other'::text]))),
     CONSTRAINT chk_range_0_99 CHECK (((sport_start_date >= 0) AND (sport_start_date <= 99)))
 );
 
@@ -477,6 +477,10 @@ CREATE TABLE consultation.session_anthropometry (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by uuid,
     updated_by uuid,
+    bmi numeric(5,2) GENERATED ALWAYS AS ((NULLIF(weight_kg, (0)::numeric) / power((NULLIF(height_cm, (0)::numeric) / 100.0), (2)::numeric))) STORED,
+    target_bmi numeric(5,2) GENERATED ALWAYS AS ((NULLIF(target_weight_kg, (0)::numeric) / power((NULLIF(height_cm, (0)::numeric) / 100.0), (2)::numeric))) STORED,
+    fat_mass_percentage numeric(5,2) GENERATED ALWAYS AS (((NULLIF(fat_mass_kg, (0)::numeric) / NULLIF(weight_kg, (0)::numeric)) * 100.0)) STORED,
+    skeletal_muscle_mass_percentage numeric(5,2) GENERATED ALWAYS AS (((NULLIF(skeletal_muscle_mass_kg, (0)::numeric) / NULLIF(weight_kg, (0)::numeric)) * 100.0)) STORED,
     CONSTRAINT chk_anthro_bmi CHECK ((bmi_category = ANY (ARRAY['Normal'::text, 'Underweight'::text, 'Overweight'::text])))
 );
 
@@ -646,7 +650,6 @@ CREATE TABLE consultation.session_period (
 
 CREATE TABLE consultation.session_prescription (
     id uuid DEFAULT public.uuid_generate_v7() NOT NULL,
-    sessions_id uuid NOT NULL,
     batch_id uuid NOT NULL,
     dosage integer,
     dosage_unit text,
@@ -654,13 +657,28 @@ CREATE TABLE consultation.session_prescription (
     start_date date,
     projected_end_date date,
     follow_up_required boolean DEFAULT false,
-    other_remarks text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by uuid,
     updated_by uuid,
     prescriber text,
-    prescription_date date DEFAULT CURRENT_DATE
+    prescription_date date DEFAULT CURRENT_DATE,
+    session_prescription_note_id uuid NOT NULL
+);
+
+
+--
+-- Name: session_prescription_note; Type: TABLE; Schema: consultation; Owner: -
+--
+
+CREATE TABLE consultation.session_prescription_note (
+    id uuid DEFAULT public.uuid_generate_v7() NOT NULL,
+    sessions_id uuid NOT NULL,
+    other_remarks text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid,
+    updated_by uuid
 );
 
 
@@ -733,6 +751,11 @@ CREATE TABLE consultation.session_training_schedule (
     time_end time without time zone,
     activity text,
     rpe integer,
+    training_duration_hours numeric(5,2) GENERATED ALWAYS AS ((EXTRACT(epoch FROM
+CASE
+    WHEN (time_end >= time_start) THEN (time_end - time_start)
+    ELSE ((time_end - time_start) + '24:00:00'::interval)
+END) / 3600.0)) STORED,
     CONSTRAINT chk_day_of_week CHECK ((day_of_week = ANY (ARRAY['Monday'::text, 'Tuesday'::text, 'Wednesday'::text, 'Thursday'::text, 'Friday'::text, 'Saturday'::text, 'Sunday'::text]))),
     CONSTRAINT chk_rpe_range CHECK (((rpe >= 1) AND (rpe <= 10)))
 );
@@ -760,7 +783,7 @@ CREATE TABLE consultation.sessions (
     updated_by uuid,
     status character varying(20) DEFAULT 'scheduled'::character varying NOT NULL,
     consultation_objective_id uuid,
-    CONSTRAINT sessions_status_check CHECK (((status)::text = ANY ((ARRAY['scheduled'::character varying, 'in-progress'::character varying, 'completed'::character varying, 'cancelled'::character varying])::text[])))
+    CONSTRAINT sessions_status_check CHECK (((status)::text = ANY ((ARRAY['scheduled'::character varying, 'expired'::character varying, 'completed'::character varying, 'cancelled'::character varying])::text[])))
 );
 
 
@@ -775,7 +798,7 @@ COMMENT ON COLUMN consultation.sessions.is_scheduled_booking IS 'TRUE if this se
 -- Name: COLUMN sessions.status; Type: COMMENT; Schema: consultation; Owner: -
 --
 
-COMMENT ON COLUMN consultation.sessions.status IS 'Lifecycle status: scheduled, in-progress, completed, cancelled';
+COMMENT ON COLUMN consultation.sessions.status IS 'Lifecycle status of the consultation session: scheduled, expired, completed, cancelled';
 
 
 --
@@ -787,6 +810,131 @@ CREATE TABLE consultation.type_of_consult_lookup (
     type_of_consult text NOT NULL,
     is_active boolean DEFAULT true NOT NULL
 );
+
+
+--
+-- Name: v_session_hydration_summary; Type: VIEW; Schema: consultation; Owner: -
+--
+
+CREATE VIEW consultation.v_session_hydration_summary AS
+ SELECT sh.id,
+    sh.sessions_id,
+    sh.water_intake_per_day,
+    sh.urine_colour,
+    sh.hydration_status,
+    sh.other_remarks,
+    NULLIF(sa.weight_kg, (0)::numeric) AS current_weight_kg,
+    NULLIF(sa.target_weight_kg, (0)::numeric) AS target_weight_kg,
+    (NULLIF(sa.weight_kg, (0)::numeric) * 45.0) AS hydration_requirement_for_current_weight,
+    (NULLIF(sa.target_weight_kg, (0)::numeric) * 45.0) AS hydration_water_intake_for_target_weight
+   FROM (consultation.session_hydration sh
+     LEFT JOIN consultation.session_anthropometry sa ON ((sh.sessions_id = sa.sessions_id)));
+
+
+--
+-- Name: v_session_meal_summary; Type: VIEW; Schema: consultation; Owner: -
+--
+
+CREATE VIEW consultation.v_session_meal_summary AS
+ WITH aggregated_logs AS (
+         SELECT session_meal_log.session_meal_id,
+            COALESCE(sum(session_meal_log.lower_carbohydrate_g), (0)::numeric) AS total_lower_carbohydrate_g,
+            COALESCE(sum(session_meal_log.upper_carbohydrate_g), (0)::numeric) AS total_upper_carbohydrate_g,
+            COALESCE(sum(session_meal_log.lower_protein_g), (0)::numeric) AS total_lower_protein_g,
+            COALESCE(sum(session_meal_log.upper_protein_g), (0)::numeric) AS total_upper_protein_g,
+            COALESCE(sum(session_meal_log.lower_fat_g), (0)::numeric) AS total_lower_fat_g,
+            COALESCE(sum(session_meal_log.upper_fat_g), (0)::numeric) AS total_upper_fat_g
+           FROM consultation.session_meal_log
+          GROUP BY session_meal_log.session_meal_id
+        )
+ SELECT sm.id AS session_meal_id,
+    sm.sessions_id,
+    al.total_lower_carbohydrate_g,
+    al.total_upper_carbohydrate_g,
+    al.total_lower_protein_g,
+    al.total_upper_protein_g,
+    al.total_lower_fat_g,
+    al.total_upper_fat_g,
+    sa.weight_kg AS current_weight_kg,
+    sa.target_weight_kg,
+    round((al.total_lower_carbohydrate_g / NULLIF(sa.weight_kg, (0)::numeric)), 2) AS total_lower_carbohydrate_g_bw,
+    round((al.total_upper_carbohydrate_g / NULLIF(sa.weight_kg, (0)::numeric)), 2) AS total_upper_carbohydrate_g_bw,
+    round((al.total_lower_protein_g / NULLIF(sa.weight_kg, (0)::numeric)), 2) AS total_lower_protein_g_bw,
+    round((al.total_upper_protein_g / NULLIF(sa.weight_kg, (0)::numeric)), 2) AS total_upper_protein_g_bw,
+    round((al.total_lower_fat_g / NULLIF(sa.weight_kg, (0)::numeric)), 2) AS total_lower_fat_g_bw,
+    round((al.total_upper_fat_g / NULLIF(sa.weight_kg, (0)::numeric)), 2) AS total_upper_fat_g_bw
+   FROM ((consultation.session_meal sm
+     LEFT JOIN aggregated_logs al ON ((sm.id = al.session_meal_id)))
+     LEFT JOIN consultation.session_anthropometry sa ON ((sm.sessions_id = sa.sessions_id)));
+
+
+--
+-- Name: v_session_nutrition_review; Type: VIEW; Schema: consultation; Owner: -
+--
+
+CREATE VIEW consultation.v_session_nutrition_review AS
+ WITH base_data AS (
+         SELECT snr.id AS nutrition_review_id,
+            snr.sessions_id,
+            snr.estimated_carbohydrate_intake_g,
+            snr.estimated_protein_intake_g,
+            snr.estimated_fat_intake_g,
+            snr.minimum_carbohydrate_requirment_g_kg_bw,
+            snr.maximum_carbohydrate_requirment_g_kg_bw,
+            snr.minimum_protein_requirment_g_kg_bw,
+            snr.maximum_protein_requirment_g_kg_bw,
+            snr.minimum_fat_requirment_g_kg_bw,
+            snr.maximum_fat_requirment_g_kg_bw,
+            NULLIF(sa.weight_kg, (0)::numeric) AS current_weight_kg,
+            NULLIF(sa.target_weight_kg, (0)::numeric) AS target_weight_kg,
+            COALESCE(NULLIF(sa.target_weight_kg, (0)::numeric), NULLIF(sa.weight_kg, (0)::numeric)) AS priority_weight_kg,
+            NULLIF(sa.height_cm, (0)::numeric) AS height_cm,
+            st.physical_activity_level_pal,
+            a.gender
+           FROM ((((consultation.session_nutrition_review snr
+             LEFT JOIN consultation.session_anthropometry sa ON ((snr.sessions_id = sa.sessions_id)))
+             LEFT JOIN consultation.session_training st ON ((snr.sessions_id = st.sessions_id)))
+             LEFT JOIN consultation.sessions sess ON ((snr.sessions_id = sess.id)))
+             LEFT JOIN ams.athlete a ON ((sess.athlete_id = a.id)))
+        )
+ SELECT nutrition_review_id,
+    sessions_id,
+    round((minimum_carbohydrate_requirment_g_kg_bw * priority_weight_kg), 2) AS minimum_carbohydrate_requirment_g,
+    round((maximum_carbohydrate_requirment_g_kg_bw * priority_weight_kg), 2) AS maximum_carbohydrate_requirment_g,
+    round((minimum_protein_requirment_g_kg_bw * priority_weight_kg), 2) AS minimum_protein_requirment_g,
+    round((maximum_protein_requirment_g_kg_bw * priority_weight_kg), 2) AS maximum_protein_requirment_g,
+    round((minimum_fat_requirment_g_kg_bw * priority_weight_kg), 2) AS minimum_fat_requirment_g,
+    round((maximum_fat_requirment_g_kg_bw * priority_weight_kg), 2) AS maximum_fat_requirment_g,
+    round(((estimated_carbohydrate_intake_g / NULLIF((minimum_carbohydrate_requirment_g_kg_bw * priority_weight_kg), (0)::numeric)) * 100.0), 2) AS percentage_of_min_carbohydrate_required,
+    round(((estimated_protein_intake_g / NULLIF((minimum_protein_requirment_g_kg_bw * priority_weight_kg), (0)::numeric)) * 100.0), 2) AS percentage_of_min_protein_required,
+    round(((estimated_fat_intake_g / NULLIF((minimum_fat_requirment_g_kg_bw * priority_weight_kg), (0)::numeric)) * 100.0), 2) AS percentage_of_min_fat_required,
+    round(
+        CASE
+            WHEN (gender = 'Male'::text) THEN (((11.1 * priority_weight_kg) + (8.4 * height_cm)) - (340)::numeric)
+            WHEN (gender = 'Female'::text) THEN (((11.1 * priority_weight_kg) + (8.4 * height_cm)) - (540)::numeric)
+            ELSE NULL::numeric
+        END, 2) AS resting_metabolic_rate,
+    round((
+        CASE
+            WHEN (gender = 'Male'::text) THEN (((11.1 * priority_weight_kg) + (8.4 * height_cm)) - (340)::numeric)
+            WHEN (gender = 'Female'::text) THEN (((11.1 * priority_weight_kg) + (8.4 * height_cm)) - (540)::numeric)
+            ELSE NULL::numeric
+        END * physical_activity_level_pal), 2) AS total_energy_expenditure
+   FROM base_data;
+
+
+--
+-- Name: v_session_training_summary; Type: VIEW; Schema: consultation; Owner: -
+--
+
+CREATE VIEW consultation.v_session_training_summary AS
+ SELECT session_training_id,
+    COALESCE(sum(training_duration_hours), (0)::numeric) AS total_weekly_hours,
+    round(avg(rpe), 1) AS average_weekly_rpe,
+    count(id) AS total_workout_sessions,
+    array_agg(DISTINCT activity) FILTER (WHERE (activity IS NOT NULL)) AS activity_types
+   FROM consultation.session_training_schedule
+  GROUP BY session_training_id;
 
 
 --
@@ -831,7 +979,8 @@ CREATE TABLE sss.inventory_batch (
     created_by uuid,
     updated_by uuid,
     batch_unit character varying(50),
-    inv_batch_testing_org_id uuid
+    inv_batch_testing_org_id uuid,
+    CONSTRAINT chk_batch_quantity_positive CHECK ((batch_initial_quantity >= 0))
 );
 
 
@@ -852,7 +1001,8 @@ CREATE TABLE sss.inventory_ticket (
     athlete_id uuid NOT NULL,
     ticket_status_id uuid NOT NULL,
     quantity smallint NOT NULL,
-    prescription_id uuid NOT NULL
+    prescription_id uuid NOT NULL,
+    CONSTRAINT chk_ticket_quantity_positive CHECK ((quantity > 0))
 );
 
 
@@ -1272,6 +1422,14 @@ ALTER TABLE ONLY consultation.session_period
 
 
 --
+-- Name: session_prescription_note session_prescription_note_pkey; Type: CONSTRAINT; Schema: consultation; Owner: -
+--
+
+ALTER TABLE ONLY consultation.session_prescription_note
+    ADD CONSTRAINT session_prescription_note_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: session_prescription session_prescription_pkey; Type: CONSTRAINT; Schema: consultation; Owner: -
 --
 
@@ -1480,6 +1638,48 @@ ALTER TABLE ONLY sss.webscraper_catalog_url
 
 
 --
+-- Name: idx_athlete_sport_id; Type: INDEX; Schema: ams; Owner: -
+--
+
+CREATE INDEX idx_athlete_sport_id ON ams.athlete USING btree (sport_id);
+
+
+--
+-- Name: idx_athlete_user_id; Type: INDEX; Schema: ams; Owner: -
+--
+
+CREATE INDEX idx_athlete_user_id ON ams.athlete USING btree (user_id);
+
+
+--
+-- Name: idx_coach_athlete_map_athlete; Type: INDEX; Schema: ams; Owner: -
+--
+
+CREATE INDEX idx_coach_athlete_map_athlete ON ams.coach_athlete_mapping USING btree (athlete_id);
+
+
+--
+-- Name: idx_coach_athlete_map_coach; Type: INDEX; Schema: ams; Owner: -
+--
+
+CREATE INDEX idx_coach_athlete_map_coach ON ams.coach_athlete_mapping USING btree (coach_id);
+
+
+--
+-- Name: idx_nutri_athlete_map_athlete; Type: INDEX; Schema: ams; Owner: -
+--
+
+CREATE INDEX idx_nutri_athlete_map_athlete ON ams.nutritionist_athlete_mapping USING btree (athlete_id);
+
+
+--
+-- Name: idx_nutri_athlete_map_nutri; Type: INDEX; Schema: ams; Owner: -
+--
+
+CREATE INDEX idx_nutri_athlete_map_nutri ON ams.nutritionist_athlete_mapping USING btree (nutritionist_id);
+
+
+--
 -- Name: idx_user_athlete_pins_athlete_id; Type: INDEX; Schema: ams; Owner: -
 --
 
@@ -1533,6 +1733,132 @@ CREATE INDEX idx_users_email ON auth.users USING btree (email);
 --
 
 CREATE INDEX idx_users_role ON auth.users USING btree (role);
+
+
+--
+-- Name: idx_anthro_sessions_id; Type: INDEX; Schema: consultation; Owner: -
+--
+
+CREATE INDEX idx_anthro_sessions_id ON consultation.session_anthropometry USING btree (sessions_id);
+
+
+--
+-- Name: idx_hydration_sessions_id; Type: INDEX; Schema: consultation; Owner: -
+--
+
+CREATE INDEX idx_hydration_sessions_id ON consultation.session_hydration USING btree (sessions_id);
+
+
+--
+-- Name: idx_meal_log_meal_id; Type: INDEX; Schema: consultation; Owner: -
+--
+
+CREATE INDEX idx_meal_log_meal_id ON consultation.session_meal_log USING btree (session_meal_id);
+
+
+--
+-- Name: idx_meal_sessions_id; Type: INDEX; Schema: consultation; Owner: -
+--
+
+CREATE INDEX idx_meal_sessions_id ON consultation.session_meal USING btree (sessions_id);
+
+
+--
+-- Name: idx_note_sessions_id; Type: INDEX; Schema: consultation; Owner: -
+--
+
+CREATE INDEX idx_note_sessions_id ON consultation.session_note USING btree (sessions_id);
+
+
+--
+-- Name: idx_nutrition_review_sessions_id; Type: INDEX; Schema: consultation; Owner: -
+--
+
+CREATE INDEX idx_nutrition_review_sessions_id ON consultation.session_nutrition_review USING btree (sessions_id);
+
+
+--
+-- Name: idx_sessions_athlete_id; Type: INDEX; Schema: consultation; Owner: -
+--
+
+CREATE INDEX idx_sessions_athlete_id ON consultation.sessions USING btree (athlete_id);
+
+
+--
+-- Name: idx_sessions_nutritionist_id; Type: INDEX; Schema: consultation; Owner: -
+--
+
+CREATE INDEX idx_sessions_nutritionist_id ON consultation.sessions USING btree (nutritionist_id);
+
+
+--
+-- Name: idx_training_schedule_training_id; Type: INDEX; Schema: consultation; Owner: -
+--
+
+CREATE INDEX idx_training_schedule_training_id ON consultation.session_training_schedule USING btree (session_training_id);
+
+
+--
+-- Name: idx_training_sessions_id; Type: INDEX; Schema: consultation; Owner: -
+--
+
+CREATE INDEX idx_training_sessions_id ON consultation.session_training USING btree (sessions_id);
+
+
+--
+-- Name: idx_inv_batch_supplement_id; Type: INDEX; Schema: sss; Owner: -
+--
+
+CREATE INDEX idx_inv_batch_supplement_id ON sss.inventory_batch USING btree (supplement_id);
+
+
+--
+-- Name: idx_inv_ticket_athlete_id; Type: INDEX; Schema: sss; Owner: -
+--
+
+CREATE INDEX idx_inv_ticket_athlete_id ON sss.inventory_ticket USING btree (athlete_id);
+
+
+--
+-- Name: idx_inv_ticket_batch_id; Type: INDEX; Schema: sss; Owner: -
+--
+
+CREATE INDEX idx_inv_ticket_batch_id ON sss.inventory_ticket USING btree (inventory_batch_id);
+
+
+--
+-- Name: idx_inv_ticket_prescription_id; Type: INDEX; Schema: sss; Owner: -
+--
+
+CREATE INDEX idx_inv_ticket_prescription_id ON sss.inventory_ticket USING btree (prescription_id);
+
+
+--
+-- Name: idx_supplement_ingredient_gin; Type: INDEX; Schema: sss; Owner: -
+--
+
+CREATE INDEX idx_supplement_ingredient_gin ON sss.supplement USING gin (supplement_ingredient);
+
+
+--
+-- Name: idx_supplement_nutri_100g_gin; Type: INDEX; Schema: sss; Owner: -
+--
+
+CREATE INDEX idx_supplement_nutri_100g_gin ON sss.supplement USING gin (nutritional_info_per_100g);
+
+
+--
+-- Name: idx_supplement_nutri_serving_gin; Type: INDEX; Schema: sss; Owner: -
+--
+
+CREATE INDEX idx_supplement_nutri_serving_gin ON sss.supplement USING gin (nutritional_info_per_serving);
+
+
+--
+-- Name: idx_supplement_status_id; Type: INDEX; Schema: sss; Owner: -
+--
+
+CREATE INDEX idx_supplement_status_id ON sss.supplement USING btree (supplement_status_id);
 
 
 --
@@ -1739,6 +2065,13 @@ CREATE TRIGGER audit_prescription_changes AFTER INSERT OR DELETE OR UPDATE ON co
 
 
 --
+-- Name: session_prescription_note audit_prescription_note_changes; Type: TRIGGER; Schema: consultation; Owner: -
+--
+
+CREATE TRIGGER audit_prescription_note_changes AFTER INSERT OR DELETE OR UPDATE ON consultation.session_prescription_note FOR EACH ROW EXECUTE FUNCTION audit.audit_trigger_func();
+
+
+--
 -- Name: session_puberty audit_puberty_changes; Type: TRIGGER; Schema: consultation; Owner: -
 --
 
@@ -1799,6 +2132,13 @@ CREATE TRIGGER set_timestamp_open_item BEFORE UPDATE ON consultation.session_ope
 --
 
 CREATE TRIGGER set_timestamp_prescription BEFORE UPDATE ON consultation.session_prescription FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
+
+
+--
+-- Name: session_prescription_note set_timestamp_prescription_note; Type: TRIGGER; Schema: consultation; Owner: -
+--
+
+CREATE TRIGGER set_timestamp_prescription_note BEFORE UPDATE ON consultation.session_prescription_note FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
 
 
 --
@@ -1872,6 +2212,13 @@ CREATE TRIGGER set_timestamp_sessions BEFORE UPDATE ON consultation.sessions FOR
 
 
 --
+-- Name: session_prescription touch_prescription_note_on_prescription_change; Type: TRIGGER; Schema: consultation; Owner: -
+--
+
+CREATE TRIGGER touch_prescription_note_on_prescription_change AFTER INSERT OR DELETE OR UPDATE ON consultation.session_prescription FOR EACH ROW EXECUTE FUNCTION public.touch_parent_timestamp('consultation.session_prescription_note', 'id', 'session_prescription_note_id');
+
+
+--
 -- Name: session_meal_log touch_session_meal_on_log_change; Type: TRIGGER; Schema: consultation; Owner: -
 --
 
@@ -1935,10 +2282,10 @@ CREATE TRIGGER touch_session_on_period_change AFTER INSERT OR DELETE OR UPDATE O
 
 
 --
--- Name: session_prescription touch_session_on_prescription_change; Type: TRIGGER; Schema: consultation; Owner: -
+-- Name: session_prescription_note touch_session_on_prescription_note_change; Type: TRIGGER; Schema: consultation; Owner: -
 --
 
-CREATE TRIGGER touch_session_on_prescription_change AFTER INSERT OR DELETE OR UPDATE ON consultation.session_prescription FOR EACH ROW EXECUTE FUNCTION public.touch_parent_timestamp('consultation.sessions', 'id', 'sessions_id');
+CREATE TRIGGER touch_session_on_prescription_note_change AFTER INSERT OR DELETE OR UPDATE ON consultation.session_prescription_note FOR EACH ROW EXECUTE FUNCTION public.touch_parent_timestamp('consultation.sessions', 'id', 'sessions_id');
 
 
 --
@@ -2152,7 +2499,7 @@ ALTER TABLE ONLY ams.coach
 --
 
 ALTER TABLE ONLY ams.nutritionist_athlete_mapping
-    ADD CONSTRAINT fk_map_athlete FOREIGN KEY (athlete_id) REFERENCES ams.athlete(id) ON DELETE CASCADE;
+    ADD CONSTRAINT fk_map_athlete FOREIGN KEY (athlete_id) REFERENCES ams.athlete(id) ON DELETE RESTRICT;
 
 
 --
@@ -2168,7 +2515,7 @@ ALTER TABLE ONLY ams.nutritionist_athlete_mapping
 --
 
 ALTER TABLE ONLY ams.coach_athlete_mapping
-    ADD CONSTRAINT fk_mapping_athlete FOREIGN KEY (athlete_id) REFERENCES ams.athlete(id) ON DELETE CASCADE;
+    ADD CONSTRAINT fk_mapping_athlete FOREIGN KEY (athlete_id) REFERENCES ams.athlete(id) ON DELETE RESTRICT;
 
 
 --
@@ -2184,7 +2531,7 @@ ALTER TABLE ONLY ams.coach_athlete_mapping
 --
 
 ALTER TABLE ONLY ams.athlete_medical
-    ADD CONSTRAINT fk_medical_athlete FOREIGN KEY (athlete_id) REFERENCES ams.athlete(id) ON DELETE CASCADE;
+    ADD CONSTRAINT fk_medical_athlete FOREIGN KEY (athlete_id) REFERENCES ams.athlete(id) ON DELETE RESTRICT;
 
 
 --
@@ -2200,7 +2547,7 @@ ALTER TABLE ONLY ams.nutritionist
 --
 
 ALTER TABLE ONLY ams.athlete_registry
-    ADD CONSTRAINT fk_registry_athlete FOREIGN KEY (athlete_id) REFERENCES ams.athlete(id) ON DELETE CASCADE;
+    ADD CONSTRAINT fk_registry_athlete FOREIGN KEY (athlete_id) REFERENCES ams.athlete(id) ON DELETE RESTRICT;
 
 
 --
@@ -2292,14 +2639,6 @@ ALTER TABLE ONLY consultation.session_prescription
 
 
 --
--- Name: session_prescription fk_prescription_session; Type: FK CONSTRAINT; Schema: consultation; Owner: -
---
-
-ALTER TABLE ONLY consultation.session_prescription
-    ADD CONSTRAINT fk_prescription_session FOREIGN KEY (sessions_id) REFERENCES consultation.sessions(id) ON DELETE CASCADE;
-
-
---
 -- Name: session_puberty fk_puberty_session; Type: FK CONSTRAINT; Schema: consultation; Owner: -
 --
 
@@ -2320,7 +2659,7 @@ ALTER TABLE ONLY consultation.session_nutrition_review
 --
 
 ALTER TABLE ONLY consultation.sessions
-    ADD CONSTRAINT fk_session_athlete FOREIGN KEY (athlete_id) REFERENCES ams.athlete(id) ON DELETE CASCADE;
+    ADD CONSTRAINT fk_session_athlete FOREIGN KEY (athlete_id) REFERENCES ams.athlete(id) ON DELETE RESTRICT;
 
 
 --
@@ -2497,6 +2836,38 @@ ALTER TABLE ONLY consultation.session_period
 
 ALTER TABLE ONLY consultation.session_prescription
     ADD CONSTRAINT session_prescription_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: session_prescription_note session_prescription_note_created_by_fkey; Type: FK CONSTRAINT; Schema: consultation; Owner: -
+--
+
+ALTER TABLE ONLY consultation.session_prescription_note
+    ADD CONSTRAINT session_prescription_note_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: session_prescription_note session_prescription_note_sessions_id_fkey; Type: FK CONSTRAINT; Schema: consultation; Owner: -
+--
+
+ALTER TABLE ONLY consultation.session_prescription_note
+    ADD CONSTRAINT session_prescription_note_sessions_id_fkey FOREIGN KEY (sessions_id) REFERENCES consultation.sessions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: session_prescription_note session_prescription_note_updated_by_fkey; Type: FK CONSTRAINT; Schema: consultation; Owner: -
+--
+
+ALTER TABLE ONLY consultation.session_prescription_note
+    ADD CONSTRAINT session_prescription_note_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: session_prescription session_prescription_session_prescription_note_id_fkey; Type: FK CONSTRAINT; Schema: consultation; Owner: -
+--
+
+ALTER TABLE ONLY consultation.session_prescription
+    ADD CONSTRAINT session_prescription_session_prescription_note_id_fkey FOREIGN KEY (session_prescription_note_id) REFERENCES consultation.session_prescription_note(id) ON DELETE CASCADE;
 
 
 --
@@ -2767,5 +3138,5 @@ ALTER TABLE ONLY sss.supplement
 -- PostgreSQL database dump complete
 --
 
-\unrestrict uLSOZjmnrNL6bWoT0Hb35RMENsqaUOES8bhO2MEbfT8qplPr0p9Z5BObaSWpmh9
+\unrestrict 70XrsFTScas0QjkrzeyGSfnPUuU4sLg4eAjIWLSvkJR4kuJwynQr1xXlzTT5cJb
 

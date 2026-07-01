@@ -20,7 +20,7 @@ export interface ScheduledSession {
   consultation_objective: string | null;
   nutritionist_name: string | null;
   is_scheduled_booking: boolean;
-  status?: "scheduled" | "completed" | "cancelled" | "in-progress";
+  status?: "scheduled" | "expired" | "completed" | "cancelled";
 }
 
 function isSelectableScheduledSession(session: ScheduledSession): boolean {

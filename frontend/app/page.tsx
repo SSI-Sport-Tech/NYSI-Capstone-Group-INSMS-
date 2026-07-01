@@ -16,6 +16,7 @@ export default function Home() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [editingSession, setEditingSession] = useState<ConsultationSession | null>(null);
   const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0);
+  const [statsRefreshKey, setStatsRefreshKey] = useState(0);
   const router = useRouter();
 
   // Handle calendar date selection
@@ -36,10 +37,11 @@ export default function Home() {
   };
 
   // Handle booking creation/update
-  const handleBookingCreated = (_booking: ConsultationSession) => {
-    // Refresh the page data by triggering re-renders
-    // This could be improved with a state management solution
-    window.location.reload();
+  const handleBookingCreated = () => {
+    setScheduleRefreshKey((k) => k + 1);
+    setStatsRefreshKey((k) => k + 1);
+    setShowBookingModal(false);
+    setEditingSession(null);
   };
 
   // Handle quick actions from stats component
@@ -69,12 +71,18 @@ export default function Home() {
             {/* Left Section - Stats and Sessions */}
             <div className="lg:col-span-2 space-y-6">
               {/* Stats Cards */}
-              <DashboardStats onQuickAction={handleQuickAction} />
+              <DashboardStats
+                onQuickAction={handleQuickAction}
+                refreshKey={statsRefreshKey}
+              />
 
               {/* Upcoming Sessions */}
               <UpcomingSessions
                 onSessionEdit={handleSessionEdit}
-                onSessionStatusChange={() => setScheduleRefreshKey(k => k + 1)}
+                onSessionStatusChange={() => {
+                  setScheduleRefreshKey((k) => k + 1);
+                  setStatsRefreshKey((k) => k + 1);
+                }}
                 limit={4}
                 selectedDate={selectedDate}
               />

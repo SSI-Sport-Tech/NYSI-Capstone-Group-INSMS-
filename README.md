@@ -57,6 +57,13 @@ Backend (Express 5, port 8000)
 - Previous session tab on each card for comparison
 - Nutritionist auto-assigned from JWT on session creation
 
+### Dashboard
+- Home page (`/`) for nutritionists
+- Daily stats: today's session count, completed sessions, active athletes
+- Calendar view with session scheduling and booking modal
+- Today's schedule and upcoming sessions list
+- Create, reschedule, cancel, and update session status directly from the dashboard
+
 ### Admin - Administration
 - User management: create, edit, deactivate users with role assignment
 - Sports & coaches management: CRUD for sports and coach records
@@ -242,6 +249,7 @@ SCRAPER_HEADLESS=true
 NYSI-Capstone-Group-INSMS/
 ├── frontend/                     # Next.js 15 frontend
 │   ├── app/
+│   │   ├── page.tsx              # Dashboard home (stats, calendar, session booking)
 │   │   ├── SSS/                  # Supplement Support System pages
 │   │   │   ├── library/          # Supplement library
 │   │   │   ├── inventory/        # Batch inventory management
@@ -261,7 +269,8 @@ NYSI-Capstone-Group-INSMS/
 │   │   │   └── sports-coaches/   # Sports & coaches management
 │   │   └── login/                # Authentication pages
 │   ├── components/               # Shared React components
-│   ├── contexts/                 # AuthContext
+│   │   └── dashboard/            # Dashboard-specific components (stats, calendar, session cards)
+│   ├── contexts/                 # AuthContext, ThemeContext
 │   └── utils/                    # API clients, helpers
 │
 ├── Backend/
@@ -310,13 +319,28 @@ NYSI-Capstone-Group-INSMS/
 │   └── requirements.txt
 │
 └── docs/                         # Project documentation
-    ├── PROJECT_ARCHITECTURE.md   # Full architecture details
-    ├── DATABASE_SCHEMA.md        # Database schema reference
-    ├── AMS_DATABASE_SCHEMA.md    # AMS schema reference
-    ├── USE_CASES_IMPLEMENTATION.md
-    ├── PYTHON_SERVICES.md
-    └── ...
+    ├── Term_8_Technical_Documentation_v1.pdf  # Full technical documentation
+    └── Nutrifusion_database_handover_v2/      # Database handover files
+        ├── aws_handover_full_final_Test.dump   # Full pg_dump restore (use this)
+        ├── aws_handover_schema_final.sql       # Schema only (tables, functions, constraints)
+        ├── insert_reference_lookup_data_final.sql  # Lookup reference data
+        ├── migration_reference_lookup_data_final.sql  # Lookup data with fixed UUIDs
+        └── Dbdiagram_Nutrifusion_v5.rtf        # Database diagram
 ```
+
+## Database Setup
+
+The database files are in `docs/Nutrifusion_database_handover_v2/`.
+
+Restore schema and data from the pg_dump binary:
+
+```bash
+pg_restore --no-owner --no-privileges -d <your_db_name> docs/Nutrifusion_database_handover_v2/aws_handover_full_final_Test.dump
+```
+
+The database uses five PostgreSQL schemas: `sss`, `ams`, `consultation`, `auth`, and `audit`. Requires the `pgvector` and `pgcrypto` extensions.
+
+---
 
 ## API Overview
 
@@ -378,9 +402,13 @@ Each backend module follows MVC with:
 
 ## Documentation
 
-Detailed documentation lives in the `docs/` folder:
-- **[PROJECT_ARCHITECTURE.md](docs/PROJECT_ARCHITECTURE.md)** - Full architecture, patterns, and design decisions
-- **[DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md)** - Complete database schema reference
-- **[AMS_DATABASE_SCHEMA.md](docs/AMS_DATABASE_SCHEMA.md)** - AMS module schema
-- **[PYTHON_SERVICES.md](docs/PYTHON_SERVICES.md)** - Python service architecture
-- **[USE_CASES_IMPLEMENTATION.md](docs/USE_CASES_IMPLEMENTATION.md)** - Use case mapping
+- **[Term_8_Technical_Documentation_v1.pdf](docs/Term_8_Technical_Documentation_v1.pdf)** - Full technical documentation: system architecture, module design, API reference, database design, security, and deployment
+- **[docs/Nutrifusion_database_handover_v2/](docs/Nutrifusion_database_handover_v2/)** - Database handover files (schema SQL, seed data, full pg_dump, DB diagram)
+
+## Known Issues
+
+### Batch Verification — Slow Performance
+Batch verification against external certification databases (Informed Sport, Informed Choice, HASTA, NSF Sport, Cologne List, BSCG) currently takes **3–5 minutes per check**. Each verification spawns a Playwright browser session to scrape six live websites sequentially. Possible improvements: parallelise the six checks, cache results by batch ID, or use official certification APIs where available.
+
+### Supplement Similarity Search — Poor Score Discrimination
+Vector similarity scores for supplement alternatives are compressed into a narrow band (~80–93%), making it difficult to distinguish "not similar" from "very similar" supplements. Root cause: the embedding model (BAAI/bge-small-en-v1.5) produces high cosine similarity for all nutrition-label text, regardless of actual nutritional differences. Possible improvements: switch to a nutrition-domain-specific embedding model, incorporate structured nutritional distance metrics (e.g. Euclidean distance on macro values) alongside vector similarity, or re-scale and re-threshold the displayed scores.

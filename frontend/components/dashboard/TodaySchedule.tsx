@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { dashboardApi, ConsultationSession } from "@/utils/dashboardApi";
+import {
+  dashboardApi,
+  ConsultationSession,
+} from "@/utils/dashboardApi";
 
 // Hours shown in the calendar grid (6 AM to 9 PM inclusive)
 const HOUR_START = 6;
@@ -178,6 +181,7 @@ export default function TodaySchedule({ date, refreshKey }: { date?: Date; refre
 
             const isCompleted = session.status === "completed";
             const isCancelled = session.status === "cancelled";
+            const isExpired = session.status === "expired";
 
             return (
               <button
@@ -190,15 +194,15 @@ export default function TodaySchedule({ date, refreshKey }: { date?: Date; refre
                 className={`
                   absolute left-16 right-2 rounded-lg px-2 py-1 text-left
                   transition-opacity hover:opacity-90 shadow-sm
-                  ${isCompleted ? "bg-gray-200 opacity-60" : isCancelled ? "bg-red-100 opacity-60" : "bg-teal-500"}
+                  ${isCompleted || isExpired ? "bg-gray-200 opacity-60" : isCancelled ? "bg-red-100 opacity-60" : "bg-teal-500"}
                 `}
                 style={{ top: `${topPx}px`, height: `${heightPx}px`, zIndex: 5 }}
               >
-                <p className={`text-xs font-semibold truncate ${isCompleted || isCancelled ? "text-gray-500" : "text-white"}`}>
+                <p className={`text-xs font-semibold truncate ${isCompleted || isCancelled || isExpired ? "text-gray-500" : "text-white"}`}>
                   {session.athlete_name_abbr}
                 </p>
                 {heightPx > 40 && (
-                  <p className={`text-xs truncate ${isCompleted || isCancelled ? "text-gray-400" : "text-teal-100"}`}>
+                  <p className={`text-xs truncate ${isCompleted || isCancelled || isExpired ? "text-gray-400" : "text-teal-100"}`}>
                     {session.type_of_consult}
                     {session.venue ? ` · ${session.venue}` : ""}
                   </p>

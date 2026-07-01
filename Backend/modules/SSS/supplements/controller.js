@@ -378,11 +378,14 @@ export async function updateSupplement(req, res) {
             }
         }
 
-        // STEP 5: Check if vectorization is needed (only if relevant fields are updated)
+        // STEP 5: Check if vectorization is needed (only if relevant fields actually changed)
         console.log('Step 5: Checking if vectorization is needed...');
-        const ingredientsUpdated = validatedData.supplement_ingredient !== undefined;
-        const nutritionPer100gUpdated = validatedData.nutritional_info_per_100g !== undefined;
-        const nutritionPerServingUpdated = validatedData.nutritional_info_per_serving !== undefined;
+        const ingredientsUpdated = validatedData.supplement_ingredient !== undefined &&
+            JSON.stringify(validatedData.supplement_ingredient) !== JSON.stringify(existingSupplement.supplement_ingredient);
+        const nutritionPer100gUpdated = validatedData.nutritional_info_per_100g != null &&
+            JSON.stringify(validatedData.nutritional_info_per_100g) !== JSON.stringify(existingSupplement.nutritional_info_per_100g);
+        const nutritionPerServingUpdated = validatedData.nutritional_info_per_serving != null &&
+            JSON.stringify(validatedData.nutritional_info_per_serving) !== JSON.stringify(existingSupplement.nutritional_info_per_serving);
 
         const needsVectorization = ingredientsUpdated || nutritionPer100gUpdated || nutritionPerServingUpdated;
         let vectorizationResult = null;

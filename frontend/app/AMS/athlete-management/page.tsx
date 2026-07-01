@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import AthleteTable from "@/components/AMS/AthleteTable";
@@ -29,6 +29,8 @@ interface SearchResponse {
   searchQuery?: string;
 }
 
+const inFlightAthleteRequests = new Map<string, Promise<SearchResponse>>();
+
 export default function AthleteManagementPage() {
   const { token, loading: authLoading } = useAuth();
   const [athletes, setAthletes] = useState<Athlete[]>([]);
@@ -40,36 +42,40 @@ export default function AthleteManagementPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const fetchAthletes = async (page = 1, searchQuery = "") => {
+  const fetchAthletes = useCallback(async (page = 1, searchQuery = "") => {
     setLoading(true);
     setError(null);
     try {
       const backendUrl =
         process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
-
-      // Include authorization header for user-specific pin data
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const requestKey = JSON.stringify({
+        page,
+        searchQuery,
+        token: token ?? "",
+      });
 
-      console.log("Fetching athletes with token present:", !!token);
+      let request = inFlightAthleteRequests.get(requestKey);
+      if (!request) {
+        request = axios
+          .get<SearchResponse>(`${backendUrl}/api/AMS/athletes`, {
+            params: { page, search: searchQuery },
+            headers,
+          })
+          .then((response) => response.data)
+          .finally(() => {
+            inFlightAthleteRequests.delete(requestKey);
+          });
 
-      const response = await axios.get<SearchResponse>(
-        `${backendUrl}/api/AMS/athletes`,
-        {
-          params: { page, search: searchQuery },
-          headers,
-        },
-      );
+        inFlightAthleteRequests.set(requestKey, request);
+      }
 
-      console.log("Fetched athlete data:", response.data.data);
-      console.log(
-        "First athlete pin status:",
-        response.data.data[0]?.is_pinned,
-      );
+      const data = await request;
 
-      setAthletes(response.data.data);
-      setCurrentPage(response.data.currentPage);
-      setTotalPages(response.data.totalPages);
-      setTotalCount(response.data.totalCount);
+      setAthletes(data.data);
+      setCurrentPage(data.currentPage);
+      setTotalPages(data.totalPages);
+      setTotalCount(data.totalCount);
     } catch (err) {
       console.error("Error fetching athletes:", err);
       setError("Failed to load athletes. Please try again.");
@@ -77,12 +83,12 @@ export default function AthleteManagementPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     if (authLoading) return;
     fetchAthletes();
-  }, [authLoading]);
+  }, [authLoading, fetchAthletes]);
 
   const handleSearch = async () => {
     fetchAthletes(1, query);

@@ -70,23 +70,30 @@ export default function SupplementAlternativesPage() {
     try {
       setLoading(true);
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      const response = await axios.get(
-        `${apiUrl}/api/SSS/supplements/${params.id}/alternatives?page=${page}`,
-      );
+      const [altResponse, detailResponse] = await Promise.all([
+        axios.get(`${apiUrl}/api/SSS/supplements/${params.id}/alternatives?page=${page}`),
+        axios.get(`${apiUrl}/api/SSS/supplements/${params.id}`),
+      ]);
 
-      const data = response.data;
+      const data = altResponse.data;
+      const detail = detailResponse.data.supplement;
 
       if (!data.currentSupplementId) {
         setError("Supplement not found");
         return;
       }
 
-      // Create current supplement object from response data
       const currentSupp: Supplement = {
         id: data.currentSupplementId,
         supplement_name: data.currentSupplementName,
-        supplement_brand: "", // Will be populated from detail view if needed
-        supplement_status: "CURRENT",
+        supplement_brand: detail?.supplement_brand || "",
+        supplement_packaging_form: detail?.supplement_packaging_form || undefined,
+        supplement_status: detail?.supplement_status || "CURRENT",
+        batch_testing_org: detail?.batch_testing_org || null,
+        batch_testing_org_url: detail?.batch_testing_org_url || null,
+        product_source_url: detail?.product_source_url || null,
+        description: detail?.supplement_description || undefined,
+        serving_size: detail?.nutritional_info_per_serving_definition || undefined,
       };
 
       setCurrentSupplement(currentSupp);

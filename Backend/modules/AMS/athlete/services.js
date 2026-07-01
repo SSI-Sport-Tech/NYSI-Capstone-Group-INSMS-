@@ -263,6 +263,21 @@ export async function getTotalAthleteCount() {
 }
 
 /**
+ * Get total count of athletes with active carding status
+ * @returns {Promise<number>} Active athlete count
+ */
+export async function getActiveAthleteCount() {
+  const query = `
+    SELECT COUNT(DISTINCT a.id) AS count
+    FROM AMS.Athlete a
+    JOIN AMS.Athlete_Registry r ON a.id = r.athlete_id
+    WHERE UPPER(TRIM(r.carding_status)) = 'ACTIVE'
+  `;
+  const result = await pool.query(query);
+  return parseInt(result.rows[0].count);
+}
+
+/**
  * Get total count of athletes matching a search query
  * @param {string} searchQuery - Search string
  * @returns {Promise<number>} Total count

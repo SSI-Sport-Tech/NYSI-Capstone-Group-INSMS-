@@ -2,6 +2,9 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { consultationApi, ConsultationApiError } from "@/utils/consultationApi";
 import ConsultationCardLastUpdated from "./ConsultationCardLastUpdated";
+import { getBackendUrl } from "@/utils/backendUrl";
+
+const BACKEND_URL = getBackendUrl();
 
 interface MedicalHistoryProps {
   athleteId: string;
@@ -292,7 +295,7 @@ export default function MedicalHistory({
       try {
         const token = localStorage.getItem("token");
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/AMS/athletes/${athleteId}/profile`,
+          `${BACKEND_URL}/api/AMS/athletes/${athleteId}/profile`,
           { headers: { Authorization: `Bearer ${token}` } },
         );
         if (!res.ok) return;
@@ -310,7 +313,7 @@ export default function MedicalHistory({
       const id = isNewConsultation && ensureSession ? await ensureSession() : sessionId;
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/medical-history/${id}`,
+        `${BACKEND_URL}/api/Consultation/medical-history/${id}`,
         {
           method: "PATCH",
           headers: {

@@ -16,6 +16,7 @@ export interface LatestConsultation {
   time_of_consult: string;
   title_description: string;
   is_scheduled_booking?: boolean;
+  status?: "scheduled" | "expired" | "completed" | "cancelled";
 }
 
 export interface ConsultType {

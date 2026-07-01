@@ -7,6 +7,7 @@ import {
   consultationLookupApi,
   ConsultationApiError,
 } from "../../utils/consultationApi";
+import { getBackendUrl } from "@/utils/backendUrl";
 import Actionables from "./consultation/Actionables";
 import PreviousConsultation, { type PreviousConsultationHandle } from "./consultation/PreviousConsultation";
 import SupplementDispensing from "./consultation/SupplementDispensing";
@@ -39,6 +40,8 @@ interface ConsultationViewProps {
   /** When provided (e.g. navigating from dashboard), load this session instead of the latest. */
   initialSessionId?: string;
 }
+
+const BACKEND_URL = getBackendUrl();
 
 
 export default function ConsultationView({
@@ -113,22 +116,75 @@ export default function ConsultationView({
   const ensureSessionForUpdateRef = useRef<() => Promise<string>>(async () => "");
   const previousConsultRef = useRef<PreviousConsultationHandle>(null);
 
-  // Previous session ID — fetched when viewing an existing session
+  // Previous session ID — fetched when viewing an existing session, or when new consultation's
+  // latest session is not completed (avoids pointing the Previous tab at an in-progress session)
   const [fetchedPrevSessionId, setFetchedPrevSessionId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if (!currentSessionId || isNewConsultation) { setFetchedPrevSessionId(undefined); return; }
     const token = localStorage.getItem("token");
-    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${currentSessionId}/previous`, {
+    if (isNewConsultation) {
+      // If latestConsultation is not completed it was created by a previous ensureSession call.
+      // Fetch its own previous so the Previous tab shows a genuinely older session.
+      if (latestConsultation?.id && latestConsultation?.status !== "completed") {
+        fetch(`${BACKEND_URL}/api/Consultation/consultation-session/${latestConsultation.id}/previous`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((r) => r.ok ? r.json() : null)
+          .then((json) => setFetchedPrevSessionId(json?.data?.id ?? undefined))
+          .catch(() => {});
+      } else {
+        setFetchedPrevSessionId(undefined);
+      }
+      return;
+    }
+    if (!currentSessionId) { setFetchedPrevSessionId(undefined); return; }
+    fetch(`${BACKEND_URL}/api/Consultation/consultation-session/${currentSessionId}/previous`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.ok ? r.json() : null)
       .then((json) => setFetchedPrevSessionId(json?.data?.id ?? undefined))
       .catch(() => {});
-  }, [currentSessionId, isNewConsultation]);
+  }, [currentSessionId, isNewConsultation, latestConsultation?.id, latestConsultation?.status]);
 
   // Session selector modal
   const [showSessionSelector, setShowSessionSelector] = useState(false);
+
+  const markSessionCompleted = useCallback(
+    async (sessionId: string, status?: LatestConsultation["status"]) => {
+      if (!sessionId || status === "completed" || status === "cancelled") {
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(
+          `${BACKEND_URL}/api/Consultation/consultation-session/${sessionId}/status`,
+          {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ status: "completed" }),
+          },
+        );
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(
+            errData?.message || errData?.error || `Status update failed (${res.status})`,
+          );
+        }
+
+        setLatestConsultation((prev) =>
+          prev && prev.id === sessionId ? { ...prev, status: "completed" } : prev,
+        );
+      } catch (e) {
+        console.error("[ConsultationView] Auto-complete session failed:", e);
+      }
+    },
+    [],
+  );
 
   const ensureSession = useCallback(async (): Promise<string> => {
     if (sessionIdRef.current) return sessionIdRef.current;
@@ -143,7 +199,7 @@ export default function ConsultationView({
         if (!defaultTypeId) throw new Error("No active consult types found");
 
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session`,
+          `${BACKEND_URL}/api/Consultation/consultation-session`,
           {
             method: "POST",
             headers: {
@@ -362,6 +418,12 @@ export default function ConsultationView({
     try {
       await handleSaveUpdateCard();
       await previousConsultRef.current?.save();
+      const sessionIdToComplete = sessionIdRef.current || currentSessionId;
+      const sessionStatusToComplete =
+        isNewConsultation ? undefined : latestConsultation?.status;
+      if (sessionIdToComplete) {
+        await markSessionCompleted(sessionIdToComplete, sessionStatusToComplete);
+      }
       setIsNewConsultation(false);
       setNewSessionId("");
       setNewConsultation(null);
@@ -398,7 +460,7 @@ export default function ConsultationView({
         if (form.consultation_objective_id) body.consultation_objective_id = form.consultation_objective_id;
         if (Object.keys(body).length === 0) return;
         await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${id}`,
+          `${BACKEND_URL}/api/Consultation/consultation-session/${id}`,
           {
             method: "PATCH",
             headers: {
@@ -476,7 +538,7 @@ export default function ConsultationView({
       if (updateForm.consultation_objective_id) body.consultation_objective_id = updateForm.consultation_objective_id;
       if (Object.keys(body).length === 0) return;
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${currentSessionId}`,
+        `${BACKEND_URL}/api/Consultation/consultation-session/${currentSessionId}`,
         {
           method: "PATCH",
           headers: {
@@ -496,6 +558,7 @@ export default function ConsultationView({
       setLastSavedUpdateForm(normalizeUpdateForm(updateForm));
       setIsUpdateCardSaved(true);
       markSaved(1);
+      await markSessionCompleted(currentSessionId, latestConsultation?.status);
       await fetchLatestConsultation();
     } catch (e) {
       setUpdateSaveError(e instanceof Error ? e.message : "Failed to save");
@@ -524,7 +587,7 @@ export default function ConsultationView({
         return;
       }
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${id}`,
+        `${BACKEND_URL}/api/Consultation/consultation-session/${id}`,
         {
           method: "PATCH",
           headers: {
@@ -543,6 +606,7 @@ export default function ConsultationView({
       setLastSavedUpdateForm(normalizeUpdateForm(updateForm));
       setIsUpdateCardSaved(true);
       markSaved(1);
+      await markSessionCompleted(id, isNewConsultation ? undefined : latestConsultation?.status);
     } catch (e) {
       setUpdateSaveError(e instanceof Error ? e.message : "Failed to save");
     } finally {
@@ -756,7 +820,11 @@ export default function ConsultationView({
     </>
   );
 
-  const prevSessionId = isNewConsultation ? (latestConsultation?.id ?? undefined) : fetchedPrevSessionId;
+  // For new consultation: use latestConsultation directly if it's completed (normal case),
+  // or use fetchedPrevSessionId (the session before the in-progress latestConsultation) if not.
+  const prevSessionId = isNewConsultation
+    ? (latestConsultation?.status === "completed" ? latestConsultation?.id : fetchedPrevSessionId)
+    : fetchedPrevSessionId;
   const stepStatuses = Object.fromEntries(
     STEPS.map((step) => {
       const isActive = step.id === currentStep;

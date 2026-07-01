@@ -82,7 +82,7 @@ export const athleteIdParamSchema = z.object({
 // ============================================================================
 
 export const updateStatusSchema = z.object({
-    status: z.enum(['scheduled', 'in-progress', 'completed', 'cancelled']),
+    status: z.enum(['scheduled', 'completed', 'cancelled']),
 });
 
 // Re-export shared schemas

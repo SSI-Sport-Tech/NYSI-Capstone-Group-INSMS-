@@ -20,15 +20,17 @@ const pool = new Pool({
     user: process.env.PGUSER,
     password: process.env.PGPASSWORD,
     ssl: process.env.PGSSLMODE === "require" ? { rejectUnauthorized: false } : false,
-    connectionTimeoutMillis: 10000, // 10 seconds
+    connectionTimeoutMillis: 10000,  // 10 seconds to establish a new connection
     query_timeout: 10000,
     statement_timeout: 10000,
+    idleTimeoutMillis: 60000,        // remove idle connections after 60 s (before RDS cuts them)
+    keepAlive: true,                 // send TCP keepalives so NAT/firewalls don't drop the socket
 });
 
-// handle pool errors gracefully
+// Log pool errors but do NOT exit — RDS dropping an idle connection is normal.
+// The pool will open a fresh connection on the next request.
 pool.on("error", (err) => {
-    console.error("Unexpected PostgreSQL pool error:", err);
-    process.exit(-1);
+    console.error("PostgreSQL pool error (stale connection removed):", err.message);
 });
 
 // verify connection once on startup (with retry)

@@ -50,6 +50,8 @@ function AthleteProfileLinks({ athleteId }: { athleteId: string }) {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
+  const useSssUnifiedHeader =
+    pathname.startsWith("/SSS") && pathname !== "/SSS/search";
 
   // Check if we're on an athlete profile page
   const isAthleteProfilePage =
@@ -354,31 +356,29 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top header with user profile */}
-        <header className="shrink-0 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-end">
-          <div className="flex items-center gap-3">
-            {/* Avatar */}
-            <div className="relative">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-sm font-semibold select-none">
-                {(user?.first_name?.[0] ?? "").toUpperCase()}
-                {(user?.last_name?.[0] ?? "").toUpperCase()}
+        {!useSssUnifiedHeader && (
+          <header className="shrink-0 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-end">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-sm font-semibold select-none">
+                  {(user?.first_name?.[0] ?? "").toUpperCase()}
+                  {(user?.last_name?.[0] ?? "").toUpperCase()}
+                </div>
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 border-2 border-white rounded-full" />
               </div>
-              {/* Online dot */}
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 border-2 border-white rounded-full" />
+              <div className="text-sm leading-tight">
+                <p className="font-semibold text-gray-900">
+                  {user?.first_name} {user?.last_name}
+                </p>
+                <p className="text-gray-500 text-xs">
+                  {user?.role
+                    ? user.role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+                    : ""}
+                </p>
+              </div>
             </div>
-            {/* Name + role */}
-            <div className="text-sm leading-tight">
-              <p className="font-semibold text-gray-900">
-                {user?.first_name} {user?.last_name}
-              </p>
-              <p className="text-gray-500 text-xs">
-                {user?.role
-                  ? user.role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-                  : ""}
-              </p>
-            </div>
-          </div>
-        </header>
+          </header>
+        )}
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>

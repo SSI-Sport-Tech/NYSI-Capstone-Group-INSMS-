@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { consultationApi, apiCall } from "@/utils/consultationApi";
+import { getBackendUrl } from "@/utils/backendUrl";
+
+const BACKEND_URL = getBackendUrl();
 
 export interface PreviousConsultationHandle {
   save: () => Promise<void>;
@@ -180,13 +183,13 @@ const PreviousConsultation = forwardRef<
           );
           if (typeMatch) {
             await fetch(
-              `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${id}`,
+              `${BACKEND_URL}/api/Consultation/consultation-session/${id}`,
               { method: "PATCH", headers, body: JSON.stringify({ type_of_consult_id: typeMatch.id }) },
             );
           }
         }
         await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis-summary`,
+          `${BACKEND_URL}/api/Consultation/nutrition-diagnosis-summary`,
           {
             method: "POST",
             headers,
@@ -342,14 +345,14 @@ const PreviousConsultation = forwardRef<
         const typeMatch = consultTypes.find((t) => t.type_of_consult === form.consult_type);
         if (typeMatch) {
           await fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/consultation-session/${id}`,
+            `${BACKEND_URL}/api/Consultation/consultation-session/${id}`,
             { method: "PATCH", headers, body: JSON.stringify({ type_of_consult_id: typeMatch.id }) },
           );
         }
       }
 
       const detailsRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis-summary`,
+        `${BACKEND_URL}/api/Consultation/nutrition-diagnosis-summary`,
         {
           method: "POST",
           headers,
@@ -388,7 +391,7 @@ const PreviousConsultation = forwardRef<
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/nutrition-diagnosis-summary/${sessionId}`,
+        `${BACKEND_URL}/api/Consultation/nutrition-diagnosis-summary/${sessionId}`,
         {
           method: "PATCH",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -632,7 +635,7 @@ const PreviousConsultation = forwardRef<
                 Clear All
               </button>
               <button
-                onClick={handleSave}
+                onClick={isNewConsultation ? handleSave : handleSaveEdit}
                 disabled={saving}
                 className={`px-4 py-2 text-white text-sm rounded disabled:opacity-50 ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}`}
               >

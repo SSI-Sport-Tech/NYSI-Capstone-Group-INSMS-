@@ -1,4 +1,5 @@
 import * as services from './services.js';
+import axios from 'axios';
 import {
     updateStagingSupplementSchema,
     approveStagingSchema,
@@ -12,6 +13,18 @@ import {
     uuidParamSchema,
 } from '../shared/validation.js';
 import { z } from 'zod';
+
+const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
+const SCRAPER_SUBMIT_TIMEOUT_MS = 5 * 60 * 1000;
+
+const scraperClient = axios.create({
+    baseURL: PYTHON_SERVICE_URL,
+    timeout: SCRAPER_SUBMIT_TIMEOUT_MS,
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    validateStatus: () => true
+});
 
 // ============================================================================
 // SUPPLEMENT STAGING FUNCTIONS
@@ -661,22 +674,20 @@ export async function startScrapingJob(req, res) {
 
         console.log(`Found ${catalogUrlRecords.length} catalog URL(s) to scrape`);
 
-        // Fire async requests to Python webscraper service
-        const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
-
-        // Call your existing /scrape-full endpoint for each catalog URL
+        // Fire async requests to Python webscraper service. This endpoint may not
+        // respond immediately because the Python service can start work synchronously,
+        // so use axios with an explicit long timeout instead of Node's default fetch.
         const scrapePromises = catalogUrlRecords.map(record =>
-            fetch(`${PYTHON_SERVICE_URL}/api/webscraper/scrape-full`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            scraperClient.post('/api/webscraper/scrape-full', {
                     catalog_url: record.product_catalog_website,
                     push_to_staging: true
                 })
-            })
                 .then(response => {
-                    if (!response.ok) {
-                        console.error(`Failed to scrape ${record.product_catalog_website}: ${response.statusText}`);
+                    if (response.status < 200 || response.status >= 300) {
+                        console.error(
+                            `Failed to scrape ${record.product_catalog_website}: HTTP ${response.status}`,
+                            response.data
+                        );
                     }
                     return response;
                 })
@@ -685,8 +696,11 @@ export async function startScrapingJob(req, res) {
                 })
         );
 
-        // Fire all requests (don't await, fire-and-forget)
-        Promise.all(scrapePromises);
+        // Fire all requests (don't await, fire-and-forget) while still preventing
+        // unhandled rejections if one catalog submission fails later.
+        Promise.allSettled(scrapePromises).catch((err) => {
+            console.error('Unexpected scraping submission failure:', err);
+        });
 
         // Return immediately
         res.status(202).json({

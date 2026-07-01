@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { getBackendUrl } from "@/utils/backendUrl";
 
 interface ActionablesProps {
   athleteId: string;
@@ -33,6 +34,8 @@ const emptyNewItem = {
   statusId: "",
 };
 
+const BACKEND_URL = getBackendUrl();
+
 export default function Actionables({
   athleteId: _athleteId,
   sessionId,
@@ -59,7 +62,7 @@ export default function Actionables({
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/actionables/statuses`,
+        `${BACKEND_URL}/api/Consultation/actionables/statuses`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (!res.ok) return;
@@ -90,7 +93,7 @@ export default function Actionables({
       setError("");
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/actionables/session/${effectiveId}`,
+        `${BACKEND_URL}/api/Consultation/actionables/session/${effectiveId}`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
@@ -118,7 +121,7 @@ export default function Actionables({
       try {
         const token = localStorage.getItem("token");
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/actionables/session/${prevSessionId}`,
+          `${BACKEND_URL}/api/Consultation/actionables/session/${prevSessionId}`,
           { headers: { Authorization: `Bearer ${token}` } },
         );
         if (!res.ok) return;
@@ -159,7 +162,7 @@ export default function Actionables({
       await Promise.all(
         [...selectedIds].map((id) =>
           fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/actionables/${id}`,
+            `${BACKEND_URL}/api/Consultation/actionables/${id}`,
             {
               method: "PATCH",
               headers: {
@@ -190,7 +193,7 @@ export default function Actionables({
       setSaveError("");
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/Consultation/actionables`,
+        `${BACKEND_URL}/api/Consultation/actionables`,
         {
           method: "DELETE",
           headers: {
@@ -220,7 +223,7 @@ export default function Actionables({
       if (id) resolvedSessionIdRef.current = id;
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/Consultation/actionables`,
+        `${BACKEND_URL}/api/Consultation/actionables`,
         {
           method: "POST",
           headers: {

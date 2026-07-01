@@ -32,7 +32,7 @@ export interface ConsultationSession {
   venue?: string;
   location?: string;
   duration?: number;
-  status?: "scheduled" | "completed" | "cancelled" | "in-progress";
+  status?: "scheduled" | "expired" | "completed" | "cancelled";
   is_scheduled_booking?: boolean;
 }
 
@@ -44,6 +44,16 @@ export interface Athlete {
   sport_name?: string;
 }
 
+export interface AssignedAthlete {
+  id: string;
+  athlete_name_abbr: string;
+  sportsync_id: string;
+  sport_name?: string;
+  is_pinned?: boolean;
+  is_active?: boolean;
+  start_date?: string;
+}
+
 export interface ConsultationType {
   id: string;
   /** Field name returned by the API */
@@ -52,6 +62,10 @@ export interface ConsultationType {
   name?: string;
   description?: string;
   duration?: number;
+}
+
+function toDateStr(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 // Generic API call function
@@ -104,6 +118,10 @@ export const dashboardApi = {
     return consultationLookupApi.getConsultationTypes();
   },
 
+  getMyAthletes: async (): Promise<{ data: AssignedAthlete[] }> => {
+    return apiCall("/api/AMS/nutritionists/my-athletes");
+  },
+
   // Create new consultation session (this endpoint exists)
   createConsultationSession: async (sessionData: {
     athlete_id: string;
@@ -146,7 +164,7 @@ export const dashboardApi = {
 
   updateSessionStatus: async (
     sessionId: string,
-    status: "scheduled" | "completed" | "cancelled" | "in-progress"
+    status: "scheduled" | "completed" | "cancelled"
   ): Promise<{ data: ConsultationSession }> => {
     return apiCall(`/api/Consultation/consultation-session/${sessionId}/status`, {
       method: "PATCH",
@@ -177,9 +195,10 @@ export const dashboardApi = {
       newAthletes: number;
     };
   }> => {
+    const today = toDateStr(new Date());
     const [todayRes, athletesRes] = await Promise.allSettled([
-      apiCall<{ data: ConsultationSession[] }>("/api/Consultation/consultation-session/today"),
-      apiCall<{ totalCount: number }>("/api/AMS/athletes"),
+      apiCall<{ data: ConsultationSession[] }>(`/api/Consultation/consultation-session/today?date=${today}`),
+      apiCall<{ activeCount?: number }>("/api/AMS/athletes"),
     ]);
 
     const sessions = todayRes.status === "fulfilled" ? todayRes.value.data : [];
@@ -187,7 +206,7 @@ export const dashboardApi = {
     const todayCompleted = sessions.filter((s) => s.status === "completed").length;
 
     const activeAthletes =
-      athletesRes.status === "fulfilled" ? (athletesRes.value.totalCount ?? 0) : 0;
+      athletesRes.status === "fulfilled" ? (athletesRes.value.activeCount ?? 0) : 0;
 
     return {
       data: {

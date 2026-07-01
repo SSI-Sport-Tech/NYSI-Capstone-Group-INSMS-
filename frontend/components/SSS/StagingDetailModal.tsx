@@ -638,8 +638,8 @@ const StagingDetailModal: React.FC<StagingDetailModalProps> = ({
       />
 
       {/* Panel */}
-      <div className="relative min-h-screen flex items-start justify-center p-4 pt-10">
-        <div className="relative bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+      <div className="relative flex min-h-screen items-start justify-center p-4 pt-24 lg:pt-28">
+        <div className="relative flex max-h-[calc(100vh-8rem)] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white shadow-xl lg:max-h-[calc(100vh-9rem)]">
           {/* ── Duplicate Banner ─────────────────────────────────────── */}
           {duplicateInfo && (
             <div className="shrink-0 bg-amber-50 border-b border-amber-200 px-6 py-4">

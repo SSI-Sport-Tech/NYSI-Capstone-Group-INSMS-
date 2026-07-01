@@ -4,6 +4,66 @@ import pool, { withUserContext } from "../../../config/db.js";
 // BATCH/INVENTORY FUNCTIONS
 // ============================================================================
 
+async function recalculateBatchStatus(client, batchId) {
+  const batchResult = await client.query(
+    `
+      SELECT batch_initial_quantity
+      FROM SSS.Inventory_Batch
+      WHERE id = $1
+    `,
+    [batchId],
+  );
+
+  if (batchResult.rows.length === 0) {
+    return;
+  }
+
+  const initial = Number(batchResult.rows[0].batch_initial_quantity);
+
+  const ticketSumResult = await client.query(
+    `
+      SELECT COALESCE(SUM(quantity), 0) AS booked
+      FROM SSS.Inventory_Ticket
+      WHERE inventory_batch_id = $1
+    `,
+    [batchId],
+  );
+
+  const booked = Number(ticketSumResult.rows[0].booked);
+  const available = initial - booked;
+
+  let statusName = "AVAILABLE";
+  if (available === 0) {
+    statusName = "OUT OF STOCK";
+  } else if (initial > 0 && available / initial < 0.2) {
+    statusName = "LOW STOCK";
+  }
+
+  const statusResult = await client.query(
+    `
+      SELECT id
+      FROM SSS.Batch_Stock_Status_Lookup
+      WHERE UPPER(batch_stock_status) = $1
+        AND is_active = true
+      LIMIT 1
+    `,
+    [statusName],
+  );
+
+  if (statusResult.rows.length === 0) {
+    return;
+  }
+
+  await client.query(
+    `
+      UPDATE SSS.Inventory_Batch
+      SET batch_stock_status_id = $1
+      WHERE id = $2
+    `,
+    [statusResult.rows[0].id, batchId],
+  );
+}
+
 // Use case: Show Inventory Library
 export async function getBatchesByPage(pageNumber, pageSize = 10) {
   const offset = (pageNumber - 1) * pageSize;
@@ -346,7 +406,36 @@ export async function updateBatch(batchId, updateData, userId) {
 
   return withUserContext(userId, async (client) => {
     const result = await client.query(query, values);
-    return result.rows.length > 0 ? result.rows[0] : null;
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    if (updateData.batch_initial_quantity !== undefined) {
+      await recalculateBatchStatus(client, batchId);
+      const refreshed = await client.query(
+        `
+          SELECT
+              id,
+              supplement_id,
+              batch_stock_status_id,
+              batch_number,
+              batch_initial_quantity,
+              batch_price,
+              batch_expiration_date,
+              batch_manufacture_date,
+              inv_batch_testing_org_id,
+              inv_batch_testing_org_url,
+              batch_unit
+          FROM SSS.Inventory_Batch
+          WHERE id = $1
+        `,
+        [batchId],
+      );
+      return refreshed.rows[0] ?? null;
+    }
+
+    return result.rows[0];
   });
 }
 
