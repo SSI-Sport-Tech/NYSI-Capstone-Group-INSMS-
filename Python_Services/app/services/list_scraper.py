@@ -99,25 +99,23 @@ def selenium_fetch(
 
 async def scrape_product_list(
     list_url: str,
-    openai_api_key: str,
     max_pages: int = None
 ) -> List[str]:
     """
     Scrape all product URLs from a listing page with pagination.
-    
+
     Args:
         list_url: URL of product listing page
-        openai_api_key: OpenAI API key for GPT-4o
         max_pages: Maximum pages to scrape (None = all pages)
-        
+
     Returns:
         List[str]: List of unique product URLs
     """
     # ScrapeGraphAI configuration
     config = {
         "llm": {
-            "api_key": openai_api_key,
-            "model": "openai/gpt-4o",
+            "model": "ollama/qwen3:8b",
+            "base_url": "http://localhost:11434",
         },
         "headless": False,
     }

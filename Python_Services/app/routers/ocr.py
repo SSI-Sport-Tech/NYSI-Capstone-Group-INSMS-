@@ -296,7 +296,7 @@ async def ocr_health_check():
     return {
         "status": "healthy",
         "model": "PaddleOCR PP-OCRv4",
-        "llm": "gpt-4o-mini",
+        "llm": "ollama/qwen3:8b",
         "lazy_loading": {
             "ocr_engine_loaded": ocr_engine.is_loaded(),
             "llm_loaded": llm_structurer.is_loaded(),

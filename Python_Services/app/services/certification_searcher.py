@@ -33,17 +33,33 @@ logger = logging.getLogger(__name__)
 
 # Thread pool for running sync scrapers
 _executor = ThreadPoolExecutor(max_workers=6)
+_ollama_semaphore = asyncio.Semaphore(2)  # Max 2 concurrent Ollama calls
+
 
 from fake_headers import Headers
 import queue
 import threading
 
 class ChromeDriverPool:
-    def __init__(self, size=6):
+    def __init__(self, size=3):
         self._pool = queue.Queue()
         self._lock = threading.Lock()
-        for _ in range(size):
-            self._pool.put(self._create_driver())
+        self._size = size
+        self._use_counts = {}
+        self._initialize_pool()
+
+    def _initialize_pool(self):
+        """Create drivers one at a time with delay to avoid resource contention."""
+        for i in range(self._size):
+            try:
+                if i > 0:
+                    time.sleep(2)  # stagger creation to avoid simultaneous Chrome launches
+                driver = self._create_driver()
+                self._pool.put(driver)
+                logger.info(f"✅ ChromeDriver {i+1}/{self._size} created successfully")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to create driver {i+1}/{self._size}: {e}")
+                # Don't crash — continue with fewer drivers
 
     def _create_driver(self):
         options = Options()
@@ -53,8 +69,24 @@ class ChromeDriverPool:
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
-        # Skip fake_headers overhead — set a static UA
-        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+        options.add_argument("--disable-extensions")      # add this
+        options.add_argument("--single-process")          # add this — reduces memory at startup
+        options.add_argument("--disable-background-networking")  # add this
+
+        # --- STEALTH MEASURES (bypass bot detection, e.g. Cloudflare) ---
+        # Hide the most common automation fingerprints that sites like
+        # sport.wetestyoutrust.com (Informed Sport) and hasta.org.au check for.
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option("useAutomationExtension", False)
+
+        # Realistic, current-looking UA (was a static string before — kept,
+        # but paired with the flags above so it's no longer the only signal)
+        options.add_argument(
+            "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/131.0.0.0 Safari/537.36"
+        )
 
         # Use system-installed Chromium when running in Docker (ARM64/amd64)
         chrome_bin = os.environ.get("CHROME_BIN")
@@ -64,8 +96,31 @@ class ChromeDriverPool:
         chromedriver_bin = os.environ.get("CHROMEDRIVER_BIN")
         if chromedriver_bin:
             from selenium.webdriver.chrome.service import Service
-            return webdriver.Chrome(service=Service(chromedriver_bin), options=options)
-        return webdriver.Chrome(options=options)
+            driver = webdriver.Chrome(service=Service(chromedriver_bin), options=options)
+        else:
+            driver = webdriver.Chrome(options=options)
+
+        # Hide navigator.webdriver and other headless tells via CDP —
+        # this is the single biggest signal bot-detection scripts check for.
+        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+            "source": """
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
+
+                Object.defineProperty(navigator, 'plugins', {
+                    get: () => [1, 2, 3, 4, 5]
+                });
+
+                Object.defineProperty(navigator, 'languages', {
+                    get: () => ['en-US', 'en']
+                });
+
+                window.chrome = { runtime: {} };
+            """
+        })
+
+        return driver
 
     def acquire(self):
         return self._pool.get(timeout=30)
@@ -79,7 +134,7 @@ class ChromeDriverPool:
             self._pool.put(self._create_driver())
 
 # Module-level singleton
-_driver_pool = ChromeDriverPool(size=6)
+_driver_pool = ChromeDriverPool(size=2)
 
 
 # ============================================================================
@@ -123,14 +178,12 @@ def informed_choice_wait(driver, wait):
 
 
 def hasta_wait(driver, wait):
-    """HASTA specific wait function - handles their custom search."""
     driver.execute_script("""
         document.querySelectorAll(
             '[role="dialog"], .modal, .popup, .overlay'
         ).forEach(el => el.remove());
     """)
-    
-    # Wait until the input element exists in the DOM and is displayed & enabled
+
     input_el = wait.until(lambda d: next(
         (el for el in d.find_elements(By.NAME, "woof_text")
          if el.is_displayed() and el.is_enabled()),
@@ -140,7 +193,6 @@ def hasta_wait(driver, wait):
     if input_el is None:
         raise Exception("HASTA search input not found")
 
-    # Scroll and focus AFTER we know the element exists
     driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", input_el)
     driver.execute_script("arguments[0].focus();", input_el)
 
@@ -248,7 +300,8 @@ CERTIFICATION_DATABASES = {
         "use_selenium": True,
         "selenium_wait_fn": hasta_wait,
         "selenium_base_url": "https://hasta.org.au/certified",
-        "has_relative_urls": False
+        "has_relative_urls": False,
+        "selenium_wait_time": 8,   # ← add this
     },
     "NSF Sport": {
         "search_url": "https://www.nsfsport.com/certified-products/",
@@ -303,20 +356,35 @@ CERTIFICATION_DATABASES = {
 
 
 
-def selenium_fetch_search_results(url, search_term, wait_fn, wait_time=5):
+def selenium_fetch_search_results(
+    url: str,
+    search_term: str,
+    wait_fn,
+    wait_time: int = 5,
+    post_search_wait: int = 3,   # ← add this param
+) -> str:
+    """
+    Use Selenium to search and fetch page content.
+    """
     driver = _driver_pool.acquire()
+    wait = WebDriverWait(driver, 10)
+
     try:
+        logger.debug(f"Navigating to {url}")
         driver.get(url)
-        wait = WebDriverWait(driver, 10)
-        wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
-        wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-        time.sleep(0.3)  # Minimal buffer for JS frameworks to mount
+        time.sleep(wait_time)
+
         search_input = wait_fn(driver, wait)
         search_input.clear()
         search_input.send_keys(search_term)
         search_input.send_keys(Keys.ENTER)
+
+        # Wait for search term to appear, then extra buffer for JS rendering
         wait.until(lambda d: search_term.lower() in d.page_source.lower())
+        time.sleep(post_search_wait)   # ← add this
+
         return driver.page_source
+
     except Exception as e:
         logger.error(f"Selenium search failed: {str(e)}")
         raise
@@ -328,7 +396,8 @@ async def selenium_search_async(
     url: str,
     search_term: str,
     wait_fn,
-    wait_time: int = 5
+    wait_time: int = 5,
+    post_search_wait: int = 3,
 ) -> str:
     """Run selenium search in thread pool."""
     loop = asyncio.get_event_loop()
@@ -339,7 +408,8 @@ async def selenium_search_async(
             url,
             search_term,
             wait_fn,
-            wait_time
+            wait_time,
+            post_search_wait, 
         )
     )
 
@@ -405,39 +475,109 @@ def _run_scraper_sync(prompt: str, source: str) -> Dict:
     """Run ScrapeGraphAI scraper synchronously."""
     try:
         from scrapegraphai.graphs import SmartScraperGraph
-        
+
+        if source.startswith("<") and len(source) > 15000:
+            # Skip header/nav (first ~15%), focus on content area
+            skip = len(source) // 7
+            source = source[skip:skip + 15000]
+            logger.debug(f"📦 HTML trimmed to 15000 chars (was {len(source) + skip})")
+
+        # Log what we're about to scrape
+        source_preview = source[:100] if isinstance(source, str) else f"HTML ({len(source)} chars)"
+        logger.info(f"🤖 Running scraper on: {source_preview}...")
+
         graph_config = {
             "llm": {
-                "api_key": settings.openai_api_key,
-                "model": "openai/gpt-4o-mini",
+                "model": f"ollama/{settings.ollama_model}",
+                "base_url": settings.ollama_base_url,
+                "format": "json",
+                "model_tokens": 10000,
+                "temperature": 0, 
             },
             "verbose": False,
         }
-        
+
+        print(f"=== PASSING TO MODEL ===")
+        print(f"SOURCE TYPE: {'HTML' if source.strip().startswith('<') else 'URL'}")
+        print(f"SOURCE LENGTH: {len(source)}")
+        print(f"SOURCE PREVIEW:\n{source}")
+        print(f"PROMPT:\n{prompt}")
+        print(f"========================")
         scraper = SmartScraperGraph(
             prompt=prompt,
             source=source,
             config=graph_config,
         )
-        
+
         result = scraper.run()
-        
+
+        # Log the raw result before any processing
+        logger.debug(f"📦 Raw result type: {type(result).__name__}")
+        if isinstance(result, dict):
+            logger.debug(f"📦 Raw result keys: {list(result.keys())}")
+        logger.debug(f"📦 Raw result: {str(result)[:300]}")
+
         if isinstance(result, str):
+            logger.debug("📦 Result was string, parsing as JSON")
             result = json.loads(result)
-        
+
+        # Unwrap ScrapeGraphAI's content wrapper if present
+        if isinstance(result, dict) and list(result.keys()) == ["content"]:
+            logger.debug("📦 Unwrapping 'content' wrapper")
+            result = result["content"]
+
+        if isinstance(result, dict) and list(result.keys()) == ["content"]:
+            inner = result["content"]
+            if isinstance(inner, str):
+                try:
+                    inner = json.loads(inner)
+                except json.JSONDecodeError:
+                    logger.warning(f"⚠️ content is plain text: {inner[:100]}")
+                    return {"found": False, "products_found": [], "page_has_results": False, "confidence": "low"}
+            logger.debug("📦 Unwrapping 'content' wrapper")
+            result = inner
+            logger.debug(f"📦 After unwrap keys: {list(result.keys()) if isinstance(result, dict) else type(result)}")  # ← add this
+            logger.debug(f"📦 After unwrap value: {str(result)[:300]}")  # ← add this
+
+        # Handle freeform response blob (Ollama ignoring JSON instruction)
+        if isinstance(result, dict) and list(result.keys()) == ["response"]:
+            logger.warning("⚠️ Scraper returned freeform text instead of JSON — treating as not found")
+            logger.debug(f"   Response preview: {str(result.get('response', ''))[:200]}")
+            return {"found": False, "products_found": [], "page_has_results": False, "confidence": "low"}
+
+        # Handle Pydantic model instance returned directly
+        if hasattr(result, "model_dump"):
+            logger.debug("📦 Result is Pydantic model, converting to dict")
+            result = result.model_dump()
+
+        # Log the final processed result
+        logger.info(
+            f"✅ Scraper result: found={result.get('found')}, "
+            f"page_has_results={result.get('page_has_results')}, "
+            f"products={len(result.get('products_found', []))}, "
+            f"confidence={result.get('confidence')}"
+        )
+
         return result
-        
+
+    except json.JSONDecodeError as e:
+        logger.error(f"❌ JSON parse error: {e}")
+        return {"error": f"JSON parse error: {str(e)}", "found": False}
     except Exception as e:
+        logger.error(f"❌ Scraper failed: {type(e).__name__}: {str(e)[:200]}")
         return {"error": str(e), "found": False}
+
 
 
 async def _run_scraper_async(prompt: str, source: str) -> Dict:
     """Run the synchronous scraper in a thread pool."""
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(
-        _executor,
-        functools.partial(_run_scraper_sync, prompt, source)
-    )
+    async with _ollama_semaphore:  # ← add this
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            _executor,
+            functools.partial(_run_scraper_sync, prompt, source)
+        )
+
 
 
 def _fix_url_domain(url: str, correct_domain: str) -> str:
@@ -579,6 +719,11 @@ CRITICAL VALIDATION:
 - Do NOT return found=true just because the page loaded
 - A valid product must have a NAME and ideally a link to its product page
 
+CRITICAL OUTPUT REQUIREMENT:
+Respond with ONLY a valid JSON object matching the structure above.
+No explanation text, no markdown, no preamble. Just JSON.
+If no products are found, still return the structure with found=false.
+
 URL REQUIREMENTS:
 - Product URLs should be SPECIFIC product pages, not search result pages
 - Valid product URL example: {base_url}/supplement-search/product-name-here
@@ -610,11 +755,14 @@ SEARCH INSTRUCTIONS FOR HASTA:
 """
     elif org_name == "NSF Sport":
         specific = f"""
-SEARCH INSTRUCTIONS FOR NSF SPORT:
-1. Look for certified products in search results
-2. Check if brand "{brand}" or product "{product_name}" appears
-3. Product URLs should point to specific product detail pages
-"""
+    SEARCH INSTRUCTIONS FOR NSF SPORT:
+    1. Look for certified products in search results
+    2. Products appear in elements with CSS class "results__product-name" and "results__company-name"
+    3. Product detail links follow this exact pattern: /certified-products/listing-detail.php?id=XXXXX
+    4. Full URL should be: https://www.nsfsport.com/certified-products/listing-detail.php?id=XXXXX
+    5. Check if brand "{brand}" or product "{product_name}" appears in results__company-name or results__product-name
+    6. Each result card contains one product name and one company name
+    """
     elif org_name == "BSCG":
         specific = f"""
 SEARCH INSTRUCTIONS FOR BSCG:
@@ -822,7 +970,8 @@ async def _search_single_certification(
                         selenium_url,
                         search_term,
                         wait_fn,
-                        wait_time=2
+                        wait_time=2,
+                        post_search_wait=config.get("selenium_wait_time", 3)
                     )
             except Exception as e:
                 logger.warning(f"Selenium failed for {org_name}: {str(e)}, falling back to AI")
@@ -842,6 +991,9 @@ async def _search_single_certification(
         
         try:
             result = await _run_scraper_async(prompt, source)
+
+            logger.debug(f"[{org_name}] Scraper returned: {str(result)[:200]}")
+            logger.debug(f"[{org_name}] Source type passed to scraper: {'HTML' if source.startswith('<') else 'URL'} ({len(source)} chars)")
             
             if result.get("error"):
                 logger.debug(f"Attempt {i+1} error: {result.get('error')[:50]}")
@@ -857,10 +1009,14 @@ async def _search_single_certification(
             product_info = _extract_product_info(result, config, search_url)
             
             # Only count as "found" if we have actual products
+            # is_found = (
+            #     result.get("found") and 
+            #     result.get("page_has_results") and
+            #     (product_info["has_valid_product"] or len(product_info["products_found"]) > 0)
+            # )
+
             is_found = (
-                result.get("found") and 
-                result.get("page_has_results") and
-                (product_info["has_valid_product"] or len(product_info["products_found"]) > 0)
+                result.get("found") is True
             )
             
             if is_found:
@@ -1024,7 +1180,8 @@ async def _search_single_by_batch_id(
                     selenium_url,
                     batch_id,
                     wait_fn,
-                    wait_time=2
+                    wait_time=2,
+                    post_search_wait=config.get("selenium_wait_time", 3)
                 )
         except Exception as e:
             logger.warning(f"Selenium failed for {org_name}: {str(e)}, falling back to AI")
@@ -1047,6 +1204,9 @@ async def _search_single_by_batch_id(
     
     try:
         result = await _run_scraper_async(prompt, source)
+
+        logger.debug(f"[{org_name}] Scraper returned: {str(result)[:200]}")
+
         
         if result.get("error"):
             return {

@@ -17,10 +17,21 @@ class Settings(BaseSettings):
     """
     
     # ========================================================================
-    # OpenAI Configuration
+    # Ollama / Local LLM Configuration
     # ========================================================================
-    openai_api_key: str
-    """OpenAI API key for GPT-4o-mini (OCR parsing, web scraping)"""
+    ollama_base_url: str = "http://localhost:11434"
+    """Base URL for local Ollama instance"""
+
+    ollama_model: str = "qwen3:8b"
+    """Local model used for scraping/extraction (via Ollama)"""
+
+    # ========================================================================
+    # OpenAI Configuration (OPTIONAL — kept only for any remaining
+    # third-party integration that might still need it; not required
+    # to start the app)
+    # ========================================================================
+    openai_api_key: Optional[str] = None
+    """OpenAI API key — no longer required; pipeline runs on local Ollama"""
     
     # ========================================================================
     # Service Configuration
@@ -40,7 +51,7 @@ class Settings(BaseSettings):
     postgres_host: str = "localhost"
     """PostgreSQL host address"""
     
-    postgres_port: int = 5432
+    postgres_port: int = 5433
     """PostgreSQL port number"""
     
     postgres_db: str = "nysi_db"
@@ -152,7 +163,20 @@ class Settings(BaseSettings):
         """
         return {
             "api_key": self.openai_api_key,
-            "model": "openai/gpt-4o-mini"
+            "model": "ollama/qwen3:8b"
+        }
+    
+    def get_ollama_config(self) -> dict:
+        """
+        Get Ollama configuration for ScrapeGraphAI / LlamaIndex.
+
+        Returns:
+            dict: Ollama configuration
+        """
+        return {
+            "model": f"ollama/{self.ollama_model}",
+            "base_url": self.ollama_base_url,
+            "format": "json",
         }
     
     def get_embedding_config(self) -> dict:
@@ -169,28 +193,22 @@ class Settings(BaseSettings):
         }
     
     def validate_required_settings(self) -> bool:
-        """
-        Validate that all required settings are present.
-        
-        Returns:
-            bool: True if all required settings valid
-            
-        Raises:
-            ValueError: If required settings missing
-        """
-        required = [
-            ("openai_api_key", self.openai_api_key),
-            ("postgres_password", self.postgres_password)
-        ]
-        
-        missing = [name for name, value in required if not value]
-        
-        if missing:
-            raise ValueError(
-                f"Missing required environment variables: {', '.join(missing)}"
-            )
-        
-        return True
+            """
+            Validate that all required settings are present.
+            postgres_password is required; openai_api_key is not.
+            """
+            required = [
+                ("postgres_password", self.postgres_password)
+            ]
+
+            missing = [name for name, value in required if not value]
+
+            if missing:
+                raise ValueError(
+                    f"Missing required environment variables: {', '.join(missing)}"
+                )
+
+            return True
     
     def __repr__(self) -> str:
         """Safe string representation (hides secrets)"""
@@ -199,7 +217,7 @@ class Settings(BaseSettings):
             f"service_port={self.service_port}, "
             f"database={self.postgres_db}, "
             f"embedding_model={self.embedding_model}, "
-            f"openai_api_key={'*' * 20 if self.openai_api_key else 'NOT SET'}"
+            f"ollama_model={self.ollama_model}"
             f")"
         )
 
@@ -215,7 +233,6 @@ Import this in your services:
 
     from app.config.settings import settings
     
-    openai_key = settings.openai_api_key
     db_url = settings.database_url
 """
 

@@ -9,6 +9,7 @@ Searches web for batch testing certifications (Informed Sport, NSF, etc.)
 from typing import Dict, List
 from pydantic import BaseModel
 from scrapegraphai import graphs
+from app.config.settings import settings
 import asyncio
 # import sys
 # if 'win32' in sys.platform:
@@ -24,18 +25,18 @@ class ProductSearchSchema(BaseModel):
 
 async def search_batch_testing(
     brand_supplement: str,
-    openai_api_key: str,
     max_tries: int = 2
 ) -> Dict:
 
 
     config = {
         "llm": {
-            "api_key": openai_api_key,
-            "model": "openai/gpt-4o-mini",
+            "model": "ollama/qwen3:8b",
+            "base_url": "http://localhost:11434",
+            "format": "json",
+            "model_tokens": 8192,
         },
     }
-
 
     prompt = f"""Is the supplement "{brand_supplement}" batch tested?
    Important: 
@@ -81,7 +82,6 @@ async def search_batch_testing(
 
     return await search_batch_testing(
         brand_supplement,
-        openai_api_key,
         max_tries - 1
     )
     
@@ -89,13 +89,11 @@ async def search_batch_testing(
 # import os
 # from dotenv import load_dotenv
 # load_dotenv()
-# openai_key = os.getenv("OPENAI_API_KEY")
 # import asyncio
 # if __name__ == "__main__":
 #     result = asyncio.run(
 #         search_batch_testing(
 #             brand_supplement="Applied Nutrition Creatine Monohydrate",
-#             openai_api_key=openai_key
 #         )
 #     )
 #     print(result)
@@ -103,7 +101,6 @@ async def search_batch_testing(
 
 async def search_batch_testing_with_consensus(
     brand_supplement: str,
-    openai_api_key: str,
     num_searches: int = 3,
     consensus_threshold: int = 3
 ) -> Dict:
@@ -120,10 +117,12 @@ async def search_batch_testing_with_consensus(
         Dict with batch testing results from the first searches to complete
     """
     config = {
-        "llm": {
-            "api_key": openai_api_key,
-            "model": "openai/gpt-4o-mini",
-        },
+    "llm": {
+        "model": f"ollama/{settings.ollama_model}",
+        "base_url": settings.ollama_base_url,
+        "format": "json",
+        "model_tokens": 8192,
+    },
     }
 
     prompt = f"""Is the supplement "{brand_supplement}" batch tested?
@@ -278,16 +277,17 @@ class URLSearchSchema(BaseModel):
 async def search_batch_testing_url(
     brand_supplement: str,
     organisation: str,
-    openai_api_key: str,
     max_tries: int = 2
 ) -> Dict:
 
 
     config = {
-        "llm": {
-            "api_key": openai_api_key,
-            "model": "openai/gpt-4o-mini",
-        },
+    "llm": {
+        "model": f"ollama/{settings.ollama_model}",
+        "base_url": settings.ollama_base_url,
+        "format": "json",
+        "model_tokens": 8192,
+    },
     }
 
 
@@ -332,7 +332,6 @@ async def search_batch_testing_url(
     return await search_batch_testing_url(
         brand_supplement,
         organisation,
-        openai_api_key,
         max_tries - 1
     )
     

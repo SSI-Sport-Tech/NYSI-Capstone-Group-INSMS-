@@ -219,23 +219,21 @@ def selenium_fetch(
 
 async def scrape_product_details(
     product_url: str,
-    openai_api_key: str
 ) -> List[Dict]:
     """
     Scrape detailed product information from a product page.
-    
+
     Args:
         product_url: URL of product detail page
-        openai_api_key: OpenAI API key for GPT-4o
-        
+
     Returns:
         List[Dict]: List of product variants (can be multiple flavors)
     """
     # ScrapeGraphAI configuration
     config = {
         "llm": {
-            "api_key": openai_api_key,
-            "model": "openai/gpt-4o",
+            "model": "ollama/qwen3:8b",
+            "base_url": "http://localhost:11434",
         },
     }
 
@@ -279,26 +277,24 @@ async def scrape_product_details(
 
 async def scrape_multiple_products(
     product_urls: List[str],
-    openai_api_key: str
 ) -> tuple[List[Dict], List[str]]:
     """
     Scrape multiple product pages.
-    
+
     Args:
         product_urls: List of product URLs
-        openai_api_key: OpenAI API key
-        
+
     Returns:
         tuple: (list of products, list of errors)
     """
     all_products = []
     errors = []
-    
+
     for i, url in enumerate(product_urls):
         print(f"\n[{i+1}/{len(product_urls)}] Scraping: {url}")
-        
+
         try:
-            products = await scrape_product_details(url, openai_api_key)
+            products = await scrape_product_details(url)
             
             # Filter out rejected products
             nutritional_products = [

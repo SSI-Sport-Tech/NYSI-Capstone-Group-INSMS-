@@ -1,5 +1,5 @@
 """
-LLM-powered text structuring with lazy-loaded GPT-4o-mini singleton.
+LLM-powered text structuring with lazy-loaded Ollama qwen3:8b singleton.
 Converts raw text strings into structured dicts. No OCR, no vectorization.
 """
 
@@ -17,24 +17,24 @@ _llm_instance = None
 
 def get_llm_instance():
     """
-    Lazy-load OpenAI LLM instance.
-    
+    Lazy-load Ollama LLM instance.
+
     Returns:
-        OpenAI: Initialized LLM
+        Ollama: Initialized LLM
     """
     global _llm_instance
-    
+
     if _llm_instance is None:
-        logger.info("🔄 Initializing GPT-4o-mini LLM (lazy load)...")
-        from llama_index.llms.openai import OpenAI
-        
-        _llm_instance = OpenAI(
-            model="gpt-4o-mini",
+        logger.info("🔄 Initializing qwen3:8b LLM via Ollama (lazy load)...")
+        from llama_index.llms.ollama import Ollama
+
+        _llm_instance = Ollama(
+            model="qwen3:8b",
+            base_url="http://localhost:11434",
             temperature=0,
-            api_key=settings.openai_api_key
         )
         logger.info("✅ LLM initialized")
-    
+
     return _llm_instance
 
 

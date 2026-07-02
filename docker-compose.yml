@@ -7,17 +7,20 @@ services:
     env_file:
       - ./.env
     ports:
-      - "8000:8000"
+      - "8080:8000"   # CHANGED: host 8000 was unavailable, now mapped to 8080
     environment:
       PORT: "8000"
       # Internal service URLs (Docker service names)
       FRONTEND_URL: "http://localhost:3000"
       PYTHON_SERVICE_URL: "http://python:8001"
+      BACKEND_URL: "http://localhost:8080"   # CHANGED: matches new host port, for CORS/browser-facing URL
     depends_on:
       python:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
+      # Unchanged on purpose — this runs INSIDE the container against its own
+      # internal listening port (8000), not the host-published port.
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:8000/api/test', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 10s
@@ -28,6 +31,7 @@ services:
   python:
     build:
       context: ./Python_Services
+    shm_size: '256mb'     
     env_file:
       - ./.env
     ports:
@@ -35,7 +39,7 @@ services:
     environment:
       SERVICE_HOST: "0.0.0.0"
       SERVICE_PORT: "8001"
-      BACKEND_URL: "http://backend:8000"
+      BACKEND_URL: "http://backend:8000"   # Unchanged — container-to-container, uses Docker service name + internal port
       SCRAPER_HEADLESS: "true"
       # Map PG* vars from root .env to POSTGRES_* names that Python service expects
       POSTGRES_HOST: "${PGHOST}"
@@ -43,6 +47,8 @@ services:
       POSTGRES_DB: "${PGDATABASE}"
       POSTGRES_USER: "${PGUSER}"
       POSTGRES_PASSWORD: "${PGPASSWORD}"
+      OLLAMA_BASE_URL: "${OLLAMA_BASE_URL}"
+      OLLAMA_MODEL: "${OLLAMA_MODEL}"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
@@ -56,7 +62,8 @@ services:
     build:
       context: ./frontend
       args:
-        # Server-side rewrite proxy: Next.js rewrites /api/* to this internal URL
+        # Passed at build time so next.config.ts can use it during `next build`
+        # Unchanged — server-side build-time reference, container-to-container
         BACKEND_URL: "http://backend:8000"
         # Browser-side: must be the host-accessible URL (via Docker port mapping)
         NEXT_PUBLIC_BACKEND_URL: "http://localhost:8000"
@@ -65,32 +72,30 @@ services:
     environment:
       NODE_ENV: "production"
       # Also passed at runtime — next.config.ts rewrites() reads this on startup
+      # Unchanged — this is server-side (SSR/rewrites), stays container-to-container
       BACKEND_URL: "http://backend:8000"
     depends_on:
       backend:
         condition: service_healthy
     restart: unless-stopped
 
-  # ── Optional: Local PostgreSQL with pgvector ────────────────────────────────
-  # Uncomment this block ONLY if you are NOT using an external database (e.g. AWS RDS).
-  # If using AWS RDS, leave this commented out and set PGHOST in your .env.
-  #
-  # db:
-  #   image: pgvector/pgvector:pg16
-  #   ports:
-  #     - "5432:5432"
-  #   environment:
-  #     POSTGRES_DB: ${PGDATABASE}
-  #     POSTGRES_USER: ${PGUSER}
-  #     POSTGRES_PASSWORD: ${PGPASSWORD}
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U ${PGUSER} -d ${PGDATABASE}"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-  #
-  # volumes:
-  #   postgres_data:
+  # ── Local PostgreSQL with pgvector ──────────────────────────────────────────
+  db:
+    image: pgvector/pgvector:pg17
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: ${PGDATABASE}
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER} -d ${PGDATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

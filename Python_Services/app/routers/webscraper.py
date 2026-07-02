@@ -101,15 +101,10 @@ async def scrape_product_list(request: ScrapeListRequest):
         ScrapeListResponse: List of product URLs found
     """
     try:
-        openai_key = os.getenv("OPENAI_API_KEY")
-        if not openai_key:
-            raise HTTPException(500, "OPENAI_API_KEY not configured")
-        
         print(f"📋 Scraping product list: {request.list_url}")
         
         product_urls = await list_scraper.scrape_product_list(
             list_url=request.list_url,
-            openai_api_key=openai_key,
             max_pages=request.max_pages
         )
         
@@ -139,16 +134,11 @@ async def scrape_single_product(request: ScrapeProductRequest):
         ScrapeProductResponse: Extracted product data
     """
     try:
-        openai_key = os.getenv("OPENAI_API_KEY")
-        if not openai_key:
-            raise HTTPException(500, "OPENAI_API_KEY not configured")
-        
         print(f"🛒 Scraping product: {request.product_url}")
-        
+
         # Scrape product details
         products = await product_scraper.scrape_product_details(
             product_url=request.product_url,
-            openai_api_key=openai_key
         )
         
         errors = []
@@ -224,9 +214,6 @@ async def scrape_full_catalog(
         ScrapeFullResponse: Summary of scraping results
     """
     try:
-        openai_key = os.getenv("OPENAI_API_KEY")
-        if not openai_key:
-            raise HTTPException(500, "OPENAI_API_KEY not configured")
         
         print(f"\n{'='*60}")
         print(f"🚀 FULL SCRAPING PIPELINE: {request.catalog_url}")
@@ -238,7 +225,6 @@ async def scrape_full_catalog(
         print("📋 Step 1: Scraping product list...")
         product_urls = await list_scraper.scrape_product_list(
             list_url=request.catalog_url,
-            openai_api_key=openai_key,
             max_pages=None  # Get all pages
         )
         
@@ -251,7 +237,6 @@ async def scrape_full_catalog(
         print("\n🛒 Step 2: Scraping product details...")
         all_products, scrape_errors = await product_scraper.scrape_multiple_products(
             product_urls=product_urls,
-            openai_api_key=openai_key
         )
         errors.extend(scrape_errors)
         

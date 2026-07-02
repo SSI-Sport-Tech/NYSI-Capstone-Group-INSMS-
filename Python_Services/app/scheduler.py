@@ -86,10 +86,6 @@ def load_catalog_urls():
 
 async def run_full_scrape_job():
     """Scheduled job: runs the full scraping pipeline for all catalog URLs."""
-    openai_key = os.getenv("OPENAI_API_KEY")
-    if not openai_key:
-        print("❌ Scheduler: OPENAI_API_KEY not set — skipping run")
-        return
 
     catalog_urls = load_catalog_urls()
     if not catalog_urls:
@@ -108,7 +104,6 @@ async def run_full_scrape_job():
             print(f"📋 Scraping list: {catalog_url}")
             product_urls = await list_scraper.scrape_product_list(
                 list_url=catalog_url,
-                openai_api_key=openai_key,
                 max_pages=None
             )
             print(f"  ✅ Found {len(product_urls)} URLs")
@@ -116,7 +111,6 @@ async def run_full_scrape_job():
             # Step 2: Scrape products
             all_products, scrape_errors = await product_scraper.scrape_multiple_products(
                 product_urls=product_urls,
-                openai_api_key=openai_key
             )
             errors.extend(scrape_errors)
 
