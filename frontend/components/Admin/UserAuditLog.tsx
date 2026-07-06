@@ -66,19 +66,19 @@ const UserAuditLog: React.FC<UserAuditLogProps> = ({ userId }) => {
 
             // Load sports
             const sportsRes = await axios.get(
-                "http://localhost:8000/api/AMS/sports?includeInactive=true",
+                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/sports?includeInactive=true`,
                 { headers }
             );
 
             // Load coaches
             const coachesRes = await axios.get(
-                "http://localhost:8000/api/AMS/coaches",
+                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/coaches`,
                 { headers }
             );
 
             // Load users (for user_id references)
             const usersRes = await axios.get(
-                "http://localhost:8000/api/admin/users",
+                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/admin/users`,
                 { headers }
             );
 
@@ -107,7 +107,7 @@ const UserAuditLog: React.FC<UserAuditLogProps> = ({ userId }) => {
             if (endDate) params.end_date = endDate;
 
             const response = await axios.get<{ data: AuditLog[] }>(
-                "http://localhost:8000/api/admin/audit-logs",
+                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/admin/audit-logs`,
                 {
                     params,
                     headers: {

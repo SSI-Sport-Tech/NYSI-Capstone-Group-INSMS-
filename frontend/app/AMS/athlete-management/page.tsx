@@ -7,6 +7,8 @@ import AthleteTable from "@/components/AMS/AthleteTable";
 import AthleteSearchSection from "@/components/AMS/AthleteSearchSection";
 import DashboardLayout from "@/components/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
+import { getBackendUrl } from "@/utils/backendUrl";
+
 
 interface Athlete {
   id: string;
@@ -31,6 +33,7 @@ interface SearchResponse {
 
 const inFlightAthleteRequests = new Map<string, Promise<SearchResponse>>();
 
+
 export default function AthleteManagementPage() {
   const { token, loading: authLoading } = useAuth();
   const [athletes, setAthletes] = useState<Athlete[]>([]);
@@ -47,7 +50,7 @@ export default function AthleteManagementPage() {
     setError(null);
     try {
       const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+        process.env.NEXT_PUBLIC_BACKEND_URL || getBackendUrl();
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const requestKey = JSON.stringify({
         page,

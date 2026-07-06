@@ -69,7 +69,7 @@ const EditCoachModal: React.FC<EditCoachModalProps> = ({
             }
 
             await axios.patch(
-                `http://localhost:8000/api/AMS/coaches/${coach.id}`,
+                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/coaches/${coach.id}`,
                 updates,
                 {
                     headers: {

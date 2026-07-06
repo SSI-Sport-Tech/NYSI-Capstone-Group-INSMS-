@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getBackendUrl } from "@/utils/backendUrl";
 
 export const maxDuration = 360;
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
+const BACKEND_URL = process.env.BACKEND_URL || getBackendUrl();
 
 export async function POST(req: NextRequest) {
     try {

@@ -85,7 +85,7 @@ const CoachesSection: React.FC<CoachesSectionProps> = ({
 
         try {
             const token = localStorage.getItem("token");
-            await axios.delete("http://localhost:8000/api/AMS/coaches", {
+            await axios.delete(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/coaches`, {
                 data: { ids: selectedCoaches },
                 headers: {
                     Authorization: `Bearer ${token}`,

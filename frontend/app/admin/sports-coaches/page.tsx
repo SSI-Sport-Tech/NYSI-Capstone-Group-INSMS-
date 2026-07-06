@@ -67,7 +67,7 @@ export default function SportsCoachesPage() {
         try {
             const token = localStorage.getItem("token");
             const response = await axios.get<{ data: Sport[] }>(
-                "http://localhost:8000/api/AMS/sports",
+                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/sports`,
                 {
                     params: { includeInactive },
                     headers: {
@@ -97,7 +97,7 @@ export default function SportsCoachesPage() {
         try {
             const token = localStorage.getItem("token");
             const response = await axios.get<{ data: Coach[] }>(
-                "http://localhost:8000/api/AMS/coaches",
+                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/coaches`,
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,

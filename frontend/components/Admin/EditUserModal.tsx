@@ -66,7 +66,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                 updates.is_email_verified = isEmailVerified;
 
             await axios.patch(
-                `http://localhost:8000/api/admin/users/${user.id}`,
+                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/admin/users/${user.id}`,
                 updates,
                 {
                     headers: {

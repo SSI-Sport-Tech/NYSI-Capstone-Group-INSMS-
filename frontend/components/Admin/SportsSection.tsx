@@ -50,7 +50,7 @@ const SportsSection: React.FC<SportsSectionProps> = ({
         try {
             const token = localStorage.getItem("token");
             await axios.patch(
-                `http://localhost:8000/api/AMS/sports/${sport.id}`,
+                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/sports/${sport.id}`,
                 { is_active: !sport.is_active },
                 {
                     headers: {
@@ -86,7 +86,7 @@ const SportsSection: React.FC<SportsSectionProps> = ({
 
         try {
             const token = localStorage.getItem("token");
-            await axios.delete("http://localhost:8000/api/AMS/sports", {
+            await axios.delete(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/sports`, {
                 data: { ids: selectedSports },
                 headers: {
                     Authorization: `Bearer ${token}`,

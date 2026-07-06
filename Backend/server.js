@@ -27,7 +27,7 @@ const PORT = process.env.PORT || 8000;
 // CORS - Allow requests from Next.js dev server
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: [process.env.FRONTEND_URL || "http://localhost:3000", "http://127.0.0.1",],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -301,8 +301,7 @@ const server = app.listen(PORT, async () => {
   console.log(`📚 API Docs:          http://localhost:${PORT}/docs`);
   console.log(`📄 OpenAPI JSON:      http://localhost:${PORT}/docs.json`);
   console.log(
-    `🔗 CORS Enabled For:  ${
-      process.env.FRONTEND_URL || "http://localhost:3000"
+    `🔗 CORS Enabled For:  ${process.env.FRONTEND_URL || "http://localhost:3000"
     }`,
   );
   console.log("=".repeat(60));

@@ -171,7 +171,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get<{ data: Sport[] }>(
-        "http://localhost:8000/api/AMS/sports",
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/sports`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -186,7 +186,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get<{ data: Coach[] }>(
-        "http://localhost:8000/api/AMS/coaches",
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/coaches`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -201,7 +201,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get<{ data: Nutritionist[] }>(
-        "http://localhost:8000/api/AMS/nutritionists/nutritionists",
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/nutritionists/nutritionists`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -248,7 +248,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
     try {
       const authToken = localStorage.getItem("token");
       const response = await axios.post(
-        "http://localhost:8000/api/AMS/sports",
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/sports`,
         { sport: newSportName.trim() },
         { headers: { Authorization: `Bearer ${authToken}` } },
       );
@@ -271,7 +271,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
     try {
       const authToken = localStorage.getItem("token");
       const response = await axios.post(
-        "http://localhost:8000/api/AMS/coaches",
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/coaches`,
         { name: newCoachName.trim(), sport_id: newCoachSportId },
         { headers: { Authorization: `Bearer ${authToken}` } },
       );
@@ -347,8 +347,8 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
 
       // Choose the correct endpoint based on user role
       const endpoint = isAdmin
-        ? "http://localhost:8000/api/AMS/athletes/complete/admin"
-        : "http://localhost:8000/api/AMS/athletes/complete";
+        ? `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/athletes/complete/admin`
+        : `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/athletes/complete`;
 
       await axios.post(endpoint, payload, {
         headers: {
@@ -783,8 +783,8 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                     value={formData.carding_start_date}
                     onChange={handleInputChange}
                     className={`w-full px-3 py-2 text-gray-400 valid:text-black border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${validationErrors.some(e => e.includes("Carding"))
-                        ? "border-red-500"
-                        : "border-gray-300"
+                      ? "border-red-500"
+                      : "border-gray-300"
                       }`}
                     required
                   />
@@ -801,8 +801,8 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                     onChange={handleInputChange}
                     min={formData.carding_start_date || undefined}
                     className={`w-full px-3 py-2 text-gray-400 valid:text-black border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${validationErrors.some(e => e.includes("Carding"))
-                        ? "border-red-500"
-                        : "border-gray-300"
+                      ? "border-red-500"
+                      : "border-gray-300"
                       }`}
                     required
                   />
@@ -832,8 +832,8 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                     value={formData.approved_start_date}
                     onChange={handleInputChange}
                     className={`w-full px-3 py-2 text-gray-400 valid:text-black border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${validationErrors.some(e => e.includes("Approved"))
-                        ? "border-red-500"
-                        : "border-gray-300"
+                      ? "border-red-500"
+                      : "border-gray-300"
                       }`}
                     required
                   />
@@ -850,8 +850,8 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                     onChange={handleInputChange}
                     min={formData.approved_start_date || undefined}
                     className={`w-full px-3 py-2 text-gray-400 valid:text-black border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${validationErrors.some(e => e.includes("Approved"))
-                        ? "border-red-500"
-                        : "border-gray-300"
+                      ? "border-red-500"
+                      : "border-gray-300"
                       }`}
                     required
                   />

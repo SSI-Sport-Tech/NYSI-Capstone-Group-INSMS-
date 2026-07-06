@@ -67,7 +67,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
         try {
             const token = localStorage.getItem("token");
             const response = await axios.get<UserActivity>(
-                `http://localhost:8000/api/admin/users/${user.id}/activity`,
+                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/admin/users/${user.id}/activity`,
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,

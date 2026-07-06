@@ -75,7 +75,7 @@ export const requireITAdmin = (req, res, next) => {
       return res.status(401).json({ error: "Authentication required" });
     }
 
-    if (req.user.role !== "IT_ADMIN") {
+    if (req.user.nomsrole !== "IT_ADMIN") {
       return res.status(403).json({
         error: "Access denied",
         message: "IT Admin privileges required",
@@ -103,18 +103,18 @@ export const requireAdmin = (req, res, next) => {
       return res.status(401).json({ error: "Authentication required" });
     }
 
-    console.log("requireAdmin: User role:", req.user.role);
+    console.log("requireAdmin: User role:", req.user.nomsRole);
 
-    if (req.user.role !== "ADMIN" && req.user.role !== "IT_ADMIN") {
-      console.log("requireAdmin: Access denied for role:", req.user.role);
+    if (req.user.nomsRole !== "ADMIN" && req.user.nomsRole !== "IT_ADMIN") {
+      console.log("requireAdmin: Access denied for role:", req.user.nomsRole);
       return res.status(403).json({
         error: "Access denied",
         message: "Admin privileges required",
-        userRole: req.user.role,
+        userRole: req.user.nomsRole,
       });
     }
 
-    console.log("requireAdmin: Access granted for role:", req.user.role);
+    console.log("requireAdmin: Access granted for role:", req.user.nomsRole);
     next();
   } catch (error) {
     console.error("Admin check error:", error);
@@ -133,7 +133,7 @@ export const requireNutritionist = (req, res, next) => {
     }
 
     const allowedRoles = ["IT_ADMIN", "ADMIN", "NUTRITIONIST"];
-    if (!allowedRoles.includes(req.user.role)) {
+    if (!allowedRoles.includes(req.user.nomsRole)) {
       return res.status(403).json({
         error: "Access denied",
         message: "Nutritionist access required",
@@ -161,11 +161,11 @@ export const requireRole = (allowedRoles) => {
         return res.status(401).json({ error: "Authentication required" });
       }
 
-      if (!allowedRoles.includes(req.user.role)) {
+      if (!allowedRoles.includes(req.user.nomsRole)) {
         return res.status(403).json({
           error: "Access denied",
           message: `Required role: ${allowedRoles.join(" or ")}`,
-          yourRole: req.user.role,
+          yourRole: req.user.nomsRole,
         });
       }
 
@@ -215,7 +215,7 @@ export const optionalAuth = (req, res, next) => {
  * @returns {boolean}
  */
 export const isITAdmin = (user) => {
-  return user && user.role === "IT_ADMIN";
+  return user && user.nomsRole === "IT_ADMIN";
 };
 
 /**
@@ -224,7 +224,7 @@ export const isITAdmin = (user) => {
  * @returns {boolean}
  */
 export const isAdmin = (user) => {
-  return user && (user.role === "ADMIN" || user.role === "IT_ADMIN");
+  return user && (user.nomsRole === "ADMIN" || user.nomsRole === "IT_ADMIN");
 };
 
 /**
@@ -233,7 +233,7 @@ export const isAdmin = (user) => {
  * @returns {boolean}
  */
 export const isNutritionist = (user) => {
-  return user && ["IT_ADMIN", "ADMIN", "NUTRITIONIST"].includes(user.role);
+  return user && ["IT_ADMIN", "ADMIN", "NUTRITIONIST"].includes(user.nomsRole);
 };
 
 /**
@@ -243,5 +243,5 @@ export const isNutritionist = (user) => {
  * @returns {boolean}
  */
 export const hasRole = (user, roles) => {
-  return user && roles.includes(user.role);
+  return user && roles.includes(user.nomsRole);
 };

@@ -1,4 +1,4 @@
-const FALLBACK_BACKEND_URL = "http://localhost:8000";
+const FALLBACK_BACKEND_URL = "http://localhost:8080";
 
 export function getBackendUrl() {
   const rawValue = process.env.NEXT_PUBLIC_BACKEND_URL?.trim();

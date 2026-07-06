@@ -45,7 +45,7 @@ const CreateCoachModal: React.FC<CreateCoachModalProps> = ({
         try {
             const token = localStorage.getItem("token");
             await axios.post(
-                "http://localhost:8000/api/AMS/coaches",
+                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/coaches`,
                 {
                     name: coachName.trim(),
                     sport_id: sportId,

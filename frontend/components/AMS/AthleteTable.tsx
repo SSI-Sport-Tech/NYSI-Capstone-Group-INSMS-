@@ -86,7 +86,7 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
       );
 
       const response = await axios.patch(
-        `http://localhost:8000/api/AMS/nutritionists/pin`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/nutritionists/pin`,
         {
           athlete_id: athleteId,
           is_pinned: !isPinned,

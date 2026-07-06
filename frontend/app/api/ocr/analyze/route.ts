@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getBackendUrl } from "@/utils/backendUrl";
 
 // Allow up to 5 minutes for OCR processing (Vercel + local)
 export const maxDuration = 300;
 
 const BACKEND_URL =
-  process.env.BACKEND_URL || "http://localhost:8000";
+  process.env.BACKEND_URL || getBackendUrl();
 
 export async function POST(req: NextRequest) {
   try {

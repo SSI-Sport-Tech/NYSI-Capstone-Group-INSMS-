@@ -1,6 +1,7 @@
+import { getBackendUrl } from "@/utils/backendUrl";
 // API utility functions for consultation components
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+  process.env.NEXT_PUBLIC_BACKEND_URL || getBackendUrl();
 
 interface ApiError {
   message: string;

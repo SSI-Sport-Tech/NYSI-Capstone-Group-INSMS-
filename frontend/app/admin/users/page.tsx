@@ -107,7 +107,7 @@ export default function AdminUsersPage() {
             const token = localStorage.getItem("token");
 
             const response = await axios.get<UsersResponse>(
-                "http://localhost:8000/api/admin/users",
+                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/admin/users`,
                 {
                     params,
                     headers: {
@@ -214,7 +214,7 @@ export default function AdminUsersPage() {
         try {
             const token = localStorage.getItem("token");
             await axios.patch(
-                `http://localhost:8000/api/admin/users/${user.id}/active`,
+                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/admin/users/${user.id}/active`,
                 { is_active: !user.is_active },
                 {
                     headers: {
@@ -255,7 +255,7 @@ export default function AdminUsersPage() {
         try {
             const token = localStorage.getItem("token");
             await axios.delete(
-                `http://localhost:8000/api/admin/users/${user.id}`,
+                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/admin/users/${user.id}`,
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,

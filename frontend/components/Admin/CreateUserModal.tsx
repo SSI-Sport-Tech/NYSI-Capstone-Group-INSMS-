@@ -62,7 +62,7 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
         try {
             const token = localStorage.getItem("token");
             await axios.post(
-                "http://localhost:8000/api/auth/register",
+                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/auth/register`,
                 {
                     email,
                     password,

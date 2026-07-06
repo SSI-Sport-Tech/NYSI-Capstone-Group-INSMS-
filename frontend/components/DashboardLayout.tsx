@@ -16,6 +16,7 @@ import {
   TestTube,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { getBackendUrl } from "@/utils/backendUrl";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -76,7 +77,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const fetchAthleteName = async (id: string) => {
     try {
       const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+        process.env.NEXT_PUBLIC_BACKEND_URL || getBackendUrl();
       const response = await axios.get(
         `${backendUrl}/api/AMS/athletes/${id}/profile`,
       );
@@ -160,95 +161,95 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
           {/* Supplement Support Section */}
           {!isDashboardUser && (
-          <div>
-            <button
-              onClick={() => setSupplementOpen(!supplementOpen)}
-              className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50"
-            >
-              <div className="flex items-center space-x-3">
-                <span className="font-medium">Supplement Support</span>
-              </div>
-              <ChevronDown
-                className={`w-4 h-4 transition-transform ${supplementOpen ? "rotate-180" : ""}`}
-              />
-            </button>
+            <div>
+              <button
+                onClick={() => setSupplementOpen(!supplementOpen)}
+                className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50"
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="font-medium">Supplement Support</span>
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform ${supplementOpen ? "rotate-180" : ""}`}
+                />
+              </button>
 
-            {supplementOpen && (
-              <div className="mt-2 space-y-1">
-                <Link
-                  href="/SSS/library"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/SSS/library"
-                    ? "bg-gray-100 text-gray-900 font-medium"
-                    : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                >
-                  <BookOpenText className="w-4 h-4" />
-                  <span>Library</span>
-                </Link>
-                <Link
-                  href="/SSS/inventory"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/SSS/inventory"
-                    ? "bg-gray-100 text-gray-900 font-medium"
-                    : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                >
-                  <Archive className="w-4 h-4" />
-                  <span>Inventory</span>
-                </Link>
-                <Link
-                  href="/SSS/web-scraper"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/SSS/web-scraper"
-                    ? "bg-gray-100 text-gray-900 font-medium"
-                    : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                >
-                  <Globe className="w-4 h-4" />
-                  <span>Web Scraper</span>
-                </Link>
-                <Link
-                  href="/SSS/batch-testing"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/SSS/batch-testing"
-                    ? "bg-gray-100 text-gray-900 font-medium"
-                    : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                >
-                  <TestTube className="w-4 h-4" />
-                  <span>Batch Testing</span>
-                </Link>
-              </div>
-            )}
-          </div>
+              {supplementOpen && (
+                <div className="mt-2 space-y-1">
+                  <Link
+                    href="/SSS/library"
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/SSS/library"
+                      ? "bg-gray-100 text-gray-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                  >
+                    <BookOpenText className="w-4 h-4" />
+                    <span>Library</span>
+                  </Link>
+                  <Link
+                    href="/SSS/inventory"
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/SSS/inventory"
+                      ? "bg-gray-100 text-gray-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                  >
+                    <Archive className="w-4 h-4" />
+                    <span>Inventory</span>
+                  </Link>
+                  <Link
+                    href="/SSS/web-scraper"
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/SSS/web-scraper"
+                      ? "bg-gray-100 text-gray-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                  >
+                    <Globe className="w-4 h-4" />
+                    <span>Web Scraper</span>
+                  </Link>
+                  <Link
+                    href="/SSS/batch-testing"
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/SSS/batch-testing"
+                      ? "bg-gray-100 text-gray-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                  >
+                    <TestTube className="w-4 h-4" />
+                    <span>Batch Testing</span>
+                  </Link>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Athlete Management Section */}
           {!isDashboardUser && (
-          <div>
-            <button
-              onClick={() => setAmsOpen(!amsOpen)}
-              className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50"
-            >
-              <div className="flex items-center space-x-3">
-                <span className="font-medium">Athlete Management</span>
-              </div>
-              <ChevronDown
-                className={`w-4 h-4 transition-transform ${amsOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-            {amsOpen && (
-              <div className="mt-2 space-y-1">
-                <Link
-                  href="/AMS/athlete-management"
-                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/AMS/athlete-management"
-                    ? "bg-gray-100 text-gray-900 font-medium"
-                    : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                >
-                  <Users className="w-4 h-4" />
-                  <span>Athletes</span>
-                </Link>
-              </div>
-            )}
-          </div>
+            <div>
+              <button
+                onClick={() => setAmsOpen(!amsOpen)}
+                className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50"
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="font-medium">Athlete Management</span>
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform ${amsOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              {amsOpen && (
+                <div className="mt-2 space-y-1">
+                  <Link
+                    href="/AMS/athlete-management"
+                    className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm ${pathname === "/AMS/athlete-management"
+                      ? "bg-gray-100 text-gray-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                  >
+                    <Users className="w-4 h-4" />
+                    <span>Athletes</span>
+                  </Link>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Athlete Profile Section (Only when viewing athlete profile) */}
