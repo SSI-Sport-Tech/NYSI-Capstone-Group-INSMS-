@@ -1,642 +1,322 @@
 /**
- * NYSI Admin Controller
- * Admin-only endpoints for user management
- * 
- * Features:
- * - List all users
- * - View user details
- * - Activate/deactivate users
- * - Change user passwords
- * - Update user email (2FA email)
- * - Update user roles
- * - Delete users
+ * Unified Admin Controller
+ * Handles all user management operations across AEMS, ICS and NOMS
  */
-
-import * as adminservices from './adminServices.js';
-import * as authservices from '../Auth/services.js';
-import {
-    adminUpdateUserSchema,
-    adminChangePasswordSchema,
-    adminChangeEmailSchema,
-    adminToggleActiveSchema,
-} from './adminValidation.js';
-import { canManageUser } from "../../utils/permissions.js";
-
+import * as services from './adminServices.js';
 import { z } from 'zod';
-import bcrypt from 'bcrypt';
+
+// ── Validation schemas ────────────────────────────────────────────────────────
+const createUserSchema = z.object({
+    email: z.string().email(),
+    pin: z.string().regex(/^\d{6}$/, 'PIN must be 6 digits'),
+    full_name: z.string().min(1).optional(),
+    first_name: z.string().optional(),
+    last_name: z.string().optional(),
+    role: z.enum(['IT_ADMIN', 'ADMIN', 'NUTRITIONIST', 'COACH', 'ATHLETE', 'DASHBOARD']).default('DASHBOARD'),
+});
+
+const updateUserSchema = z.object({
+    email: z.string().email().optional(),
+    full_name: z.string().optional(),
+    first_name: z.string().optional(),
+    last_name: z.string().optional(),
+    pin: z.string().regex(/^\d{6}$/).optional(),
+    role: z.enum(['IT_ADMIN', 'ADMIN', 'NUTRITIONIST', 'COACH', 'ATHLETE', 'DASHBOARD']).optional(),
+    is_active: z.boolean().optional(),
+    is_email_verified: z.boolean().optional(),
+});
+
+// ── Helper: check if performer can modify target ──────────────────────────────
+function canModify(performerRole, targetRole) {
+    if (performerRole === 'IT_ADMIN') return true;
+    if (performerRole === 'ADMIN') {
+        return !['IT_ADMIN', 'ADMIN'].includes(targetRole);
+    }
+    return false;
+}
 
 // ============================================================================
-// LIST ALL USERS
+// GET ALL USERS
 // ============================================================================
-
-/**
- * Get all users (admin only)
- * GET /api/admin/users
- */
 export async function getAllUsers(req, res) {
     try {
         console.log('📋 Admin fetching all users...');
-        console.log('Requested by:', req.user.email, '(', req.user.role, ')');
+        console.log(`Requested by: ${req.user.email} ( ${req.user.role} )`);
 
-        // Optional filters from query params
-        const { role, is_active, search } = req.query;
+        const filters = {};
+        if (req.query.role) filters.role = req.query.role;
+        if (req.query.search) filters.search = req.query.search;
+        if (req.query.is_active !== undefined) {
+            filters.is_active = req.query.is_active === 'true';
+        }
 
-        const users = await adminservices.getAllUsers({
-            role,
-            is_active: is_active === 'true' ? true : is_active === 'false' ? false : undefined,
-            search,
-        });
-
+        const users = await services.getAllUsers(filters);
         console.log(`Found ${users.length} users`);
 
         res.json({
             message: 'Users retrieved successfully',
             count: users.length,
-            users: users.map(user => ({
-                id: user.id,
-                email: user.email,
-                first_name: user.first_name,
-                last_name: user.last_name,
-                role: user.role,
-                is_active: user.is_active,
-                is_email_verified: user.is_email_verified,
-                last_login: user.last_login,
-                has_nutritionist_profile: !!user.nutritionist_id,
-                created_at: user.created_at
-            })),
+            users,
         });
-
     } catch (error) {
         console.error('Error fetching users:', error);
-        res.status(500).json({
-            error: 'Failed to fetch users',
-            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
-        });
+        res.status(500).json({ error: 'Failed to fetch users', message: error.message });
     }
 }
 
 // ============================================================================
-// GET USER DETAILS
+// GET USER BY ID (alias: getUserDetails for route compat)
 // ============================================================================
-
-/**
- * Get user details by ID (admin only)
- * GET /api/admin/users/:id
- */
 export async function getUserDetails(req, res) {
+    return getUserById(req, res);
+}
+
+export async function getUserById(req, res) {
     try {
-        console.log('👤 Admin fetching user details...');
-        console.log('User ID:', req.params.id);
-        console.log('Requested by:', req.user.email);
-
-        const user = await adminservices.getUserByIdWithProfile(req.params.id);
-
-        if (!user) {
-            return res.status(404).json({
-                error: 'User not found',
-                message: 'No user found with this ID',
-            });
-        }
-
-        console.log('User details retrieved');
-
-        res.json({
-            user: {
-                id: user.id,
-                email: user.email,
-                first_name: user.first_name,
-                last_name: user.last_name,
-                role: user.role,
-                is_active: user.is_active,
-                is_email_verified: user.is_email_verified,
-                created_at: user.created_at,
-                last_login: user.last_login,
-                updated_at: user.updated_at,
-                // AMS profile info if exists
-                nutritionist_profile: user.nutritionist_id ? {
-                    id: user.nutritionist_id,
-                    name: user.nutritionist_name,
-                } : null,
-            },
-        });
-
+        const user = await services.getUserByIdWithProfile(req.params.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        res.json({ user });
     } catch (error) {
-        console.error('Error fetching user details:', error);
-        res.status(500).json({
-            error: 'Failed to fetch user details',
-            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
-        });
+        console.error('Error fetching user:', error);
+        res.status(500).json({ error: 'Failed to fetch user' });
     }
 }
 
 // ============================================================================
-// ACTIVATE/DEACTIVATE USER (UPDATED)
+// CREATE USER
 // ============================================================================
-
-export async function toggleUserActive(req, res) {
+export async function createUser(req, res) {
     try {
-        console.log('🔄 Admin toggling user active status...');
-        console.log('User ID:', req.params.id);
-        console.log('Requested by:', req.user.email);
+        const validatedData = createUserSchema.parse(req.body);
 
-        const validatedData = adminToggleActiveSchema.parse(req.body);
-
-        if (req.params.id === req.user.userId) {
-            return res.status(400).json({
-                error: 'Cannot modify own account',
-            });
+        // Only IT_ADMIN can create ADMIN or IT_ADMIN
+        const effectiveRole = req.user.nomsRole || req.user.role;
+        if (['ADMIN', 'IT_ADMIN'].includes(validatedData.role) && effectiveRole !== 'IT_ADMIN') {
+            return res.status(403).json({ error: 'Only IT Admins can create Admin users' });
         }
 
-        const user = await authservices.getUserById(req.params.id);
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        if (!canManageUser(req.user.role, user.role)) {
-            return res.status(403).json({
-                error: "You do not have permission to manage this user",
-            });
-        }
-
-        // ✅ PASS CURRENT USER ID FOR AUDIT
-        const currentUserId = req.user.userId;
-        await adminservices.updateUserActiveStatus(
-            req.params.id,
-            validatedData.is_active,
-            currentUserId  // ← Added for audit
-        );
-
-        console.log(`User ${validatedData.is_active ? 'activated' : 'deactivated'} successfully`);
-
-        res.json({
-            message: `User ${validatedData.is_active ? 'activated' : 'deactivated'} successfully`,
-            user: {
-                id: user.id,
-                email: user.email,
-                is_active: validatedData.is_active,
-            },
-        });
-
+        const newUser = await services.createUser(validatedData, req.user.id || req.user.userId);
+        console.log(`✅ Created user: ${newUser.email}`);
+        res.status(201).json({ message: 'User created successfully', user: newUser });
     } catch (error) {
-        console.error('Error toggling user active status:', error);
-        res.status(500).json({ error: 'Failed to update user status' });
+        if (error.code === '23505') {
+            return res.status(409).json({ error: 'Email already exists' });
+        }
+        if (error.name === 'ZodError') {
+            return res.status(400).json({ error: 'Validation failed', details: error.issues });
+        }
+        console.error('Error creating user:', error);
+        res.status(500).json({ error: 'Failed to create user', message: error.message });
     }
 }
 
 // ============================================================================
-// CHANGE USER PASSWORD (UPDATED)
+// UPDATE USER
 // ============================================================================
-
-export async function changeUserPassword(req, res) {
-    try {
-        console.log('🔑 Admin changing user password...');
-
-        const validatedData = adminChangePasswordSchema.parse(req.body);
-
-        const user = await authservices.getUserById(req.params.id);
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        if (!canManageUser(req.user.role, user.role)) {
-            return res.status(403).json({
-                error: "You do not have permission to manage this user",
-            });
-        }
-
-        const hashedPassword = await bcrypt.hash(validatedData.new_password, 10);
-
-        // ✅ PASS CURRENT USER ID FOR AUDIT
-        const currentUserId = req.user.userId;
-        await adminservices.updateUserPassword(
-            req.params.id,
-            hashedPassword,
-            currentUserId  // ← Added for audit
-        );
-
-        await authservices.invalidateAllSessions(req.params.id);
-
-        console.log('Password changed successfully');
-
-        res.json({
-            message: 'Password changed successfully. User will need to login again.',
-            user: { id: user.id, email: user.email },
-        });
-
-    } catch (error) {
-        console.error('Error changing user password:', error);
-        res.status(500).json({ error: 'Failed to change password' });
-    }
-}
-// ============================================================================
-// CHANGE USER EMAIL (UPDATED)
-// ============================================================================
-
-export async function changeUserEmail(req, res) {
-    try {
-        console.log('📧 Admin changing user email...');
-
-        const validatedData = adminChangeEmailSchema.parse(req.body);
-
-        if (req.params.id === req.user.userId) {
-            return res.status(400).json({
-                error: 'Cannot modify own email',
-            });
-        }
-
-        const user = await authservices.getUserById(req.params.id);
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        if (!canManageUser(req.user.role, user.role)) {
-            return res.status(403).json({
-                error: "You do not have permission to manage this user",
-            });
-        }
-
-        const existingUser = await authservices.getUserByEmail(validatedData.new_email);
-        if (existingUser && existingUser.id !== req.params.id) {
-            return res.status(409).json({ error: 'Email already in use' });
-        }
-
-        // ✅ PASS CURRENT USER ID FOR AUDIT
-        const currentUserId = req.user.userId;
-        await adminservices.updateUserEmail(
-            req.params.id,
-            validatedData.new_email,
-            currentUserId  // ← Added for audit
-        );
-
-        if (validatedData.reset_verification) {
-            await adminservices.updateUserEmailVerification(
-                req.params.id,
-                false,
-                currentUserId  // ← Added for audit
-            );
-        }
-
-        console.log('Email changed successfully');
-
-        res.json({
-            message: 'Email changed successfully',
-            user: {
-                id: user.id,
-                old_email: user.email,
-                new_email: validatedData.new_email,
-            },
-        });
-
-    } catch (error) {
-        console.error('Error changing user email:', error);
-        res.status(500).json({ error: 'Failed to change email' });
-    }
-}
-
-// ============================================================================
-// UPDATE USER DETAILS (UPDATED)
-// ============================================================================
-
 export async function updateUser(req, res) {
     try {
-        console.log('✏️ Admin updating user details...');
+        const targetUser = await services.getUserByIdWithProfile(req.params.id);
+        if (!targetUser) return res.status(404).json({ error: 'User not found' });
 
-        const validatedData = adminUpdateUserSchema.parse(req.body);
-
-        const user = await authservices.getUserById(req.params.id);
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+        const effectiveRole = req.user.nomsRole || req.user.role;
+        if (!canModify(effectiveRole, targetUser.role)) {
+            return res.status(403).json({ error: 'Insufficient permissions to modify this user' });
         }
 
-        if (!canManageUser(req.user.role, user.role)) {
-            return res.status(403).json({
-                error: "You do not have permission to manage this user",
-            });
+        // Non-IT_ADMINs cannot change roles
+        if (req.body.role && effectiveRole !== 'IT_ADMIN') {
+            return res.status(403).json({ error: 'Only IT Admins can change user roles' });
         }
 
-        if (req.params.id === req.user.userId && validatedData.role) {
-            return res.status(400).json({
-                error: 'Cannot modify own role',
-            });
-        }
-
-        // ✅ PASS CURRENT USER ID FOR AUDIT
-        const currentUserId = req.user.userId;
-        const updatedUser = await adminservices.updateUser(
+        const validatedData = updateUserSchema.parse(req.body);
+        const updated = await services.updateUser(
             req.params.id,
             validatedData,
-            currentUserId  // ← Added for audit
+            req.user.id || req.user.userId
         );
 
-        // Create AMS profile if role changed to ADMIN/NUTRITIONIST
-        if (validatedData.role && ['ADMIN', 'NUTRITIONIST'].includes(validatedData.role)) {
-            const existingProfile = await authservices.getNutritionistByUserId(req.params.id);
-            if (!existingProfile) {
-                console.log('Creating AMS nutritionist profile for role change...');
-                await authservices.createNutritionistProfile({
-                    name: `${updatedUser.first_name} ${updatedUser.last_name}`,
-                    user_id: req.params.id,
-                });
-            }
-        }
-
-        console.log('User updated successfully');
-
-        res.json({
-            message: 'User updated successfully',
-            user: {
-                id: updatedUser.id,
-                email: updatedUser.email,
-                first_name: updatedUser.first_name,
-                last_name: updatedUser.last_name,
-                role: updatedUser.role,
-                is_active: updatedUser.is_active,
-            },
-        });
-
+        console.log(`✅ Updated user: ${updated.email}`);
+        res.json({ message: 'User updated successfully', user: updated });
     } catch (error) {
+        if (error.code === '23505') {
+            return res.status(409).json({ error: 'Email already exists' });
+        }
+        if (error.name === 'ZodError') {
+            return res.status(400).json({ error: 'Validation failed', details: error.issues });
+        }
         console.error('Error updating user:', error);
-        res.status(500).json({ error: 'Failed to update user' });
+        res.status(500).json({ error: 'Failed to update user', message: error.message });
     }
 }
 
 // ============================================================================
-// DELETE USER (UPDATED - Uses authservices)
+// DELETE USER
 // ============================================================================
-
 export async function deleteUser(req, res) {
     try {
-        console.log('🗑️ Admin deleting user...');
-        console.log('User ID:', req.params.id);
-        console.log('Requested by:', req.user.email);
+        const effectiveRole = req.user.nomsRole || req.user.role;
+        if (effectiveRole !== 'IT_ADMIN') {
+            return res.status(403).json({ error: 'Only IT Admins can delete users' });
+        }
+
+        const targetUser = await services.getUserByIdWithProfile(req.params.id);
+        if (!targetUser) return res.status(404).json({ error: 'User not found' });
 
         // Prevent self-deletion
-        if (req.params.id === req.user.userId) {
-            return res.status(400).json({
-                error: 'Cannot delete own account',
-                message: 'You cannot delete your own account',
-            });
+        const performerId = req.user.id || req.user.userId;
+        if (targetUser.id === performerId) {
+            return res.status(400).json({ error: 'Cannot delete your own account' });
         }
 
-        // Get user to check if exists
-        const user = await authservices.getUserById(req.params.id);
-        if (!user) {
-            return res.status(404).json({
-                error: 'User not found',
-                message: 'No user found with this ID',
-            });
-        }
-
-        // Check permissions
-        if (!canManageUser(req.user.role, user.role)) {
-            return res.status(403).json({
-                error: 'Forbidden',
-                message: 'You do not have permission to delete this user',
-            });
-        }
-
-        // ✅ USE authservices.deleteUserById with current user ID
-        const currentUserId = req.user.userId;
-        await authservices.deleteUserById(
-            req.params.id,   // User to delete
-            currentUserId    // WHO is deleting (for audit)
-        );
-
-        console.log('✅ User deleted successfully');
-
-        res.json({
-            message: 'User deleted successfully',
-            deleted_user: {
-                id: user.id,
-                email: user.email,
-                first_name: user.first_name,
-                last_name: user.last_name,
-            },
-        });
-
+        await services.deleteUser(req.params.id, performerId);
+        console.log(`🗑️  Deleted user: ${targetUser.email}`);
+        res.json({ message: 'User deleted successfully' });
     } catch (error) {
         console.error('Error deleting user:', error);
-        res.status(500).json({
-            error: 'Failed to delete user',
-            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
-        });
+        res.status(500).json({ error: 'Failed to delete user', message: error.message });
     }
 }
 
 // ============================================================================
-// GET USER ACTIVITY LOG
+// TOGGLE ACTIVE STATUS
 // ============================================================================
+export async function toggleUserActive(req, res) {
+    try {
+        const { is_active } = req.body;
+        if (typeof is_active !== 'boolean') {
+            return res.status(400).json({ error: 'is_active must be a boolean' });
+        }
 
-/**
- * Get user's recent activity/sessions (admin only)
- * GET /api/admin/users/:id/activity
- */
+        const targetUser = await services.getUserByIdWithProfile(req.params.id);
+        if (!targetUser) return res.status(404).json({ error: 'User not found' });
+
+        const effectiveRole = req.user.nomsRole || req.user.role;
+        if (!canModify(effectiveRole, targetUser.role)) {
+            return res.status(403).json({ error: 'Insufficient permissions' });
+        }
+
+        const updated = await services.updateUserActiveStatus(
+            req.params.id,
+            is_active,
+            req.user.id || req.user.userId
+        );
+        res.json({ message: `User ${is_active ? 'activated' : 'deactivated'}`, user: updated });
+    } catch (error) {
+        console.error('Error toggling user active:', error);
+        res.status(500).json({ error: 'Failed to update status' });
+    }
+}
+
+// ============================================================================
+// GET USER STATISTICS
+// ============================================================================
+export async function getUserStats(req, res) {
+    try {
+        const stats = await services.getUserStatistics();
+        res.json({ stats });
+    } catch (error) {
+        console.error('Error fetching stats:', error);
+        res.status(500).json({ error: 'Failed to fetch statistics' });
+    }
+}
+
+// ============================================================================
+// CHANGE PASSWORD (legacy - now PIN-based, kept for route compat)
+// ============================================================================
+export async function changeUserPassword(req, res) {
+    // Redirect to PIN update
+    const { new_password, pin } = req.body;
+    const newPin = pin || new_password;
+    if (!newPin || !/^\d{6}$/.test(newPin)) {
+        return res.status(400).json({ error: 'PIN must be 6 digits' });
+    }
+    req.body = { pin: newPin };
+    return updateUser(req, res);
+}
+
+// ============================================================================
+// CHANGE EMAIL (kept for route compat)
+// ============================================================================
+export async function changeUserEmail(req, res) {
+    const { new_email } = req.body;
+    if (!new_email) return res.status(400).json({ error: 'new_email required' });
+    req.body = { email: new_email };
+    return updateUser(req, res);
+}
+
+// ============================================================================
+// GET USER ACTIVITY
+// ============================================================================
 export async function getUserActivity(req, res) {
     try {
-        console.log('📊 Admin fetching user activity...');
-        console.log('User ID:', req.params.id);
-
-        const user = await authservices.getUserById(req.params.id);
-        if (!user) {
-            return res.status(404).json({
-                error: 'User not found',
-                message: 'No user found with this ID',
-            });
-        }
-
-        const sessions = await authservices.getActiveSessions(req.params.id);
-
-        res.json({
-            message: 'User activity retrieved',
-            user: {
-                id: user.id,
-                email: user.email,
-                last_login: user.last_login,
-            },
-            active_sessions: sessions.length,
-            sessions: sessions.map(session => ({
-                id: session.id,
-                ip_address: session.ip_address,
-                user_agent: session.user_agent,
-                created_at: session.created_at,
-                expires_at: session.expires_at,
-            })),
+        const logs = await services.getAuditLogs({
+            user_id: req.params.id,
+            limit: 20,
         });
-
+        res.json({ activity: logs });
     } catch (error) {
-        console.error('Error fetching user activity:', error);
-        res.status(500).json({
-            error: 'Failed to fetch user activity',
-            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
-        });
+        res.status(500).json({ error: 'Failed to fetch activity' });
     }
 }
-// ============================================================================
-// GET AUDIT LOGS (ENHANCED with date filtering)
-// ============================================================================
 
-/**
- * Get audit logs with filters (admin only)
- * GET /api/admin/audit-logs
- */
+// ============================================================================
+// GET AUDIT LOGS
+// ============================================================================
 export async function getAuditLogs(req, res) {
     try {
-        console.log('📋 Admin fetching audit logs...');
-        console.log('Requested by:', req.user.email, '(', req.user.role, ')');
-
-        // Optional filters from query params
-        const { user_id, table_name, action, limit, start_date, end_date } = req.query;
-
-        // Log date filters if provided
-        if (start_date || end_date) {
-            console.log('Date filters:', { start_date, end_date });
-        }
-
-        const logs = await adminservices.getAuditLogs({
-            user_id,
-            table_name,
-            action,
-            start_date,
-            end_date,
-            limit: limit ? parseInt(limit) : 50,
-        });
-
-        console.log(`Found ${logs.length} audit log entries`);
-
-        res.json({
-            message: 'Audit logs retrieved successfully',
-            count: logs.length,
-            filters_applied: {
-                user_id: user_id || null,
-                table_name: table_name || null,
-                action: action || null,
-                start_date: start_date || null,
-                end_date: end_date || null,
-            },
-            data: logs,
-        });
-
+        const filters = {
+            user_id: req.query.user_id,
+            table_name: req.query.table_name,
+            action: req.query.action,
+            start_date: req.query.start_date,
+            end_date: req.query.end_date,
+            limit: req.query.limit || 50,
+        };
+        const logs = await services.getAuditLogs(filters);
+        res.json({ logs, count: logs.length });
     } catch (error) {
         console.error('Error fetching audit logs:', error);
-        res.status(500).json({
-            error: 'Failed to fetch audit logs',
-            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
-        });
+        res.status(500).json({ error: 'Failed to fetch audit logs' });
     }
 }
-
 
 // ============================================================================
 // GET AUDIT LOG STATISTICS
 // ============================================================================
-
-/**
- * Get audit log statistics (admin only)
- * GET /api/admin/audit-logs/statistics
- */
 export async function getAuditLogStatistics(req, res) {
     try {
-        console.log('📊 Admin fetching audit log statistics...');
-        console.log('Requested by:', req.user.email);
-
-        const { user_id } = req.query;
-
-        const stats = await adminservices.getAuditLogStatistics(user_id);
-
-        console.log('Audit log statistics retrieved');
-
-        res.json({
-            message: 'Audit log statistics retrieved successfully',
-            statistics: {
-                total_logs: parseInt(stats.total_logs),
-                creates: parseInt(stats.creates),
-                updates: parseInt(stats.updates),
-                deletes: parseInt(stats.deletes),
-                tables_affected: parseInt(stats.tables_affected),
-                earliest_log: stats.earliest_log,
-                latest_log: stats.latest_log,
-            },
-        });
-
+        const stats = await services.getAuditLogStatistics(req.query.user_id || null);
+        res.json({ message: 'Audit log statistics retrieved', statistics: stats });
     } catch (error) {
-        console.error('Error fetching audit log statistics:', error);
-        res.status(500).json({
-            error: 'Failed to fetch audit log statistics',
-            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
-        });
+        console.error('Error fetching audit statistics:', error);
+        res.status(500).json({ error: 'Failed to fetch audit statistics' });
     }
 }
 
 // ============================================================================
 // GET AUDITED TABLES
 // ============================================================================
-
-/**
- * Get list of unique table names in audit log (admin only)
- * GET /api/admin/audit-logs/tables
- */
 export async function getAuditedTables(req, res) {
     try {
-        console.log('📋 Admin fetching audited tables...');
-        console.log('Requested by:', req.user.email);
-
-        const tables = await adminservices.getAuditedTables();
-
-        console.log(`Found ${tables.length} audited tables`);
-
-        res.json({
-            message: 'Audited tables retrieved successfully',
-            count: tables.length,
-            tables: tables,
-        });
-
+        const tables = await services.getAuditedTables();
+        res.json({ message: 'Audited tables retrieved', count: tables.length, tables });
     } catch (error) {
         console.error('Error fetching audited tables:', error);
-        res.status(500).json({
-            error: 'Failed to fetch audited tables',
-            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
-        });
+        res.status(500).json({ error: 'Failed to fetch audited tables' });
     }
 }
 
 // ============================================================================
 // GET RECORD AUDIT HISTORY
 // ============================================================================
-
-/**
- * Get audit history for a specific record (admin only)
- * GET /api/admin/audit-logs/:tableName/:recordId
- */
 export async function getRecordAuditHistory(req, res) {
     try {
-        console.log('📝 Admin fetching record audit history...');
-        console.log('Table:', req.params.tableName);
-        console.log('Record ID:', req.params.recordId);
-        console.log('Requested by:', req.user.email);
-
-        const { limit } = req.query;
-
-        const logs = await adminservices.getRecordAuditHistory(
-            req.params.tableName,
-            req.params.recordId,
-            limit ? parseInt(limit) : 10
-        );
-
-        console.log(`Found ${logs.length} audit log entries for record`);
-
-        res.json({
-            message: 'Record audit history retrieved successfully',
-            table_name: req.params.tableName,
-            record_id: req.params.recordId,
-            count: logs.length,
-            data: logs,
-        });
-
+        const { tableName, recordId } = req.params;
+        const limit = parseInt(req.query.limit) || 10;
+        const logs = await services.getRecordAuditHistory(tableName, recordId, limit);
+        res.json({ message: 'Record audit history retrieved', table_name: tableName, record_id: recordId, count: logs.length, data: logs });
     } catch (error) {
         console.error('Error fetching record audit history:', error);
-        res.status(500).json({
-            error: 'Failed to fetch record audit history',
-            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
-        });
+        res.status(500).json({ error: 'Failed to fetch record audit history' });
     }
 }
