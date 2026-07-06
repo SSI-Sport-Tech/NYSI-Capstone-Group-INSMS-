@@ -444,7 +444,7 @@ router.post("/resend-code", resendLimiter, resendCode);
  *                     created_at:
  *                       type: string
  *                       format: date-time
- *                     last_login_at:
+ *                     last_login:
  *                       type: string
  *                       format: date-time
  *       401:

@@ -90,7 +90,7 @@ export const registerSchema = z.object({
     is_active: z.never().optional(),
     is_email_verified: z.never().optional(),
     created_at: z.never().optional(),
-    last_login_at: z.never().optional(),
+    last_login: z.never().optional(),
     updated_at: z.never().optional(),
 
 }).strict();
@@ -171,7 +171,7 @@ export const updateProfileSchema = z.object({
     is_active: z.never().optional(),
     is_email_verified: z.never().optional(),
     created_at: z.never().optional(),
-    last_login_at: z.never().optional(),
+    last_login: z.never().optional(),
     updated_at: z.never().optional(),
 
 }).strict()

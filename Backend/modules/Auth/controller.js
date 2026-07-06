@@ -604,7 +604,7 @@ export async function getCurrentUser(req, res) {
         is_active: user.is_active,
         is_email_verified: user.is_email_verified,
         created_at: user.created_at,
-        last_login_at: user.last_login_at,
+        last_login: user.last_login,
         nutritionist_id: nutritionist_id ?? undefined,
       },
     });

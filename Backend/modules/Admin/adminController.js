@@ -60,7 +60,7 @@ export async function getAllUsers(req, res) {
                 role: user.role,
                 is_active: user.is_active,
                 is_email_verified: user.is_email_verified,
-                last_login_at: user.last_login_at,
+                last_login: user.last_login,
                 has_nutritionist_profile: !!user.nutritionist_id,
                 created_at: user.created_at
             })),
@@ -110,7 +110,7 @@ export async function getUserDetails(req, res) {
                 is_active: user.is_active,
                 is_email_verified: user.is_email_verified,
                 created_at: user.created_at,
-                last_login_at: user.last_login_at,
+                last_login: user.last_login,
                 updated_at: user.updated_at,
                 // AMS profile info if exists
                 nutritionist_profile: user.nutritionist_id ? {
@@ -451,7 +451,7 @@ export async function getUserActivity(req, res) {
             user: {
                 id: user.id,
                 email: user.email,
-                last_login_at: user.last_login_at,
+                last_login: user.last_login,
             },
             active_sessions: sessions.length,
             sessions: sessions.map(session => ({

@@ -406,7 +406,7 @@ CREATE TABLE auth.users (
     role character varying(50) NOT NULL,
     is_active boolean DEFAULT true,
     is_email_verified boolean DEFAULT false,
-    last_login_at timestamp with time zone,
+    last_login timestamp with time zone,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     first_name character varying(100),

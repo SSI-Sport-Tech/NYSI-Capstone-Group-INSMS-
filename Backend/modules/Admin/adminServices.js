@@ -30,7 +30,7 @@ export async function getAllUsers(filters = {}) {
             u.is_active,
             u.is_email_verified,
             u.created_at,
-            u.last_login_at,
+            u.last_login,
             u.updated_at,
             n.id AS nutritionist_id,
             n.name AS nutritionist_name
@@ -90,7 +90,7 @@ export async function getUserByIdWithProfile(userId) {
             u.is_active,
             u.is_email_verified,
             u.created_at,
-            u.last_login_at,
+            u.last_login,
             u.updated_at,
             n.id AS nutritionist_id,
             n.name AS nutritionist_name
@@ -219,7 +219,7 @@ export async function updateUser(userId, updates, doneByUserId) {
             RETURNING 
                 id, email, first_name, last_name, role, 
                 is_active, is_email_verified, created_at, 
-                last_login_at, updated_at
+                last_login, updated_at
         `;
 
         const result = await client.query(query, values);
@@ -242,7 +242,7 @@ export async function getUserStatistics() {
             COUNT(*) FILTER (WHERE role = 'NUTRITIONIST') AS nutritionists,
             COUNT(*) FILTER (WHERE role = 'COACH') AS coaches,
             COUNT(*) FILTER (WHERE role = 'ATHLETE') AS athletes,
-            COUNT(*) FILTER (WHERE last_login_at > NOW() - INTERVAL '7 days') AS active_last_week,
+            COUNT(*) FILTER (WHERE last_login > NOW() - INTERVAL '7 days') AS active_last_week,
             COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '30 days') AS new_last_month
         FROM auth.users
     `;

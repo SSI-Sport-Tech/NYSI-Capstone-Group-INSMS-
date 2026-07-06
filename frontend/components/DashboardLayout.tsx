@@ -328,12 +328,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* Switch System button */}
           <button
             onClick={() => {
-              // Clear NOMS localStorage token
-              localStorage.removeItem('token');
-              // Clear the ICS/AEMS auth_token cookie
-              document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=strict';
-              // Redirect to ICS login
-              window.location.href = '/ics/login';
+              window.location.href = '/ics/select-system';
             }}
             className="flex items-center space-x-2 w-full px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition"
             title="Switch system"
@@ -367,7 +362,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               onClick={() => {
                 // Clear NOMS localStorage token
                 localStorage.removeItem('token');
-                // Redirect to ICS logout which clears the auth_token cookie
+                // Clear the ICS/AEMS auth_token cookie
+                document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=strict';
+                // Redirect to ICS login
                 window.location.href = '/ics/login';
               }}
               className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition"

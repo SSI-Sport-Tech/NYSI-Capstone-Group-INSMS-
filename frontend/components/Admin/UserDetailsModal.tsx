@@ -23,7 +23,7 @@ interface User {
     is_active: boolean;
     is_email_verified: boolean;
     created_at: string;
-    last_login_at: string | null;
+    last_login: string | null;
     has_nutritionist_profile: boolean;
 }
 
@@ -37,7 +37,7 @@ interface UserActivity {
     user: {
         id: string;
         email: string;
-        last_login_at: string | null;
+        last_login: string | null;
     };
     active_sessions: number;
     sessions: Array<{
@@ -248,7 +248,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                                         <div className="bg-gray-50 rounded-lg p-2">
                                             <div className="text-xs text-gray-500">Last Login</div>
                                             <div className="text-xs font-medium text-gray-900">
-                                                {formatDate(user.last_login_at)}
+                                                {formatDate(user.last_login)}
                                             </div>
                                         </div>
                                     </div>

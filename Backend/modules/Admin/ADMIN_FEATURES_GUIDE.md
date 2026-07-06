@@ -53,7 +53,7 @@ curl -X GET "http://localhost:8000/api/admin/users?role=NUTRITIONIST&is_active=t
       "is_active": true,
       "is_email_verified": true,
       "created_at": "2024-01-15T10:30:00Z",
-      "last_login_at": "2024-02-10T14:22:00Z",
+      "last_login": "2024-02-10T14:22:00Z",
       "has_nutritionist_profile": true
     }
   ]
@@ -84,7 +84,7 @@ curl -X GET "http://localhost:8000/api/admin/users/USER_UUID" \
     "is_active": true,
     "is_email_verified": true,
     "created_at": "2024-01-15T10:30:00Z",
-    "last_login_at": "2024-02-10T14:22:00Z",
+    "last_login": "2024-02-10T14:22:00Z",
     "updated_at": "2024-02-10T14:22:00Z",
     "nutritionist_profile": {
       "id": "profile-uuid",
@@ -331,7 +331,7 @@ curl -X GET "http://localhost:8000/api/admin/users/USER_UUID/activity" \
   "user": {
     "id": "uuid",
     "email": "jane@nysi.org.sg",
-    "last_login_at": "2024-02-10T14:22:00Z"
+    "last_login": "2024-02-10T14:22:00Z"
   },
   "active_sessions": 2,
   "sessions": [

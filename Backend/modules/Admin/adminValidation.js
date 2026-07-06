@@ -120,7 +120,7 @@ export const adminUpdateUserSchema = z.object({
     password: z.never().optional(),  // Use dedicated password change endpoint
     password_hash: z.never().optional(),
     created_at: z.never().optional(),
-    last_login_at: z.never().optional(),
+    last_login: z.never().optional(),
     updated_at: z.never().optional(),
 
 }).strict()

@@ -29,7 +29,7 @@ CREATE TABLE auth.users (
     is_active BOOLEAN DEFAULT TRUE,
     is_email_verified BOOLEAN DEFAULT FALSE,
     
-    last_login_at TIMESTAMPTZ,
+    last_login TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );

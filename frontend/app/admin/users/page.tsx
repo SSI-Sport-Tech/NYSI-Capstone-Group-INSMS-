@@ -24,7 +24,7 @@ interface User {
     is_active: boolean;
     is_email_verified: boolean;
     created_at: string;
-    last_login_at: string | null;
+    last_login: string | null;
     has_nutritionist_profile: boolean;
 }
 

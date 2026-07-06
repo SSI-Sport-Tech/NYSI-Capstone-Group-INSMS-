@@ -27,7 +27,7 @@ export async function getUserByEmail(email) {
             is_active,
             is_email_verified,
             created_at,
-            last_login_at
+            last_login
         FROM auth.users
         WHERE email = $1
     `;
@@ -150,7 +150,7 @@ export async function deleteUserById(userId, doneByUserId = null) {
 export async function updateLastLogin(userId) {
   const query = `
         UPDATE auth.users
-        SET last_login_at = NOW()
+        SET last_login = NOW()
         WHERE id = $1
     `;
 
