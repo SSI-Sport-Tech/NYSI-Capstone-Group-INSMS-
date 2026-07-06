@@ -324,7 +324,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </nav>
 
         {/* User info + Logout */}
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 space-y-2">
+          {/* Switch System button */}
+          <button
+            onClick={() => {
+              // Clear NOMS localStorage token
+              localStorage.removeItem('token');
+              // Clear the ICS/AEMS auth_token cookie
+              document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=strict';
+              // Redirect to ICS login
+              window.location.href = '/ics/login';
+            }}
+            className="flex items-center space-x-2 w-full px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition"
+            title="Switch system"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            <span>Switch System</span>
+          </button>
+
           <div className="flex items-center justify-between">
             <div className="text-sm truncate">
               <p className="font-medium text-gray-900 truncate">
@@ -336,7 +355,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     ? user.role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
                     : ""}
                 </p>
-                {/* NEW: Admin badge */}
                 {isAdmin && (
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
                     <Shield className="w-2.5 h-2.5 mr-0.5" />
@@ -346,7 +364,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             </div>
             <button
-              onClick={logout}
+              onClick={() => {
+                // Clear NOMS localStorage token
+                localStorage.removeItem('token');
+                // Redirect to ICS logout which clears the auth_token cookie
+                window.location.href = '/ics/login';
+              }}
               className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition"
               title="Log out"
             >
