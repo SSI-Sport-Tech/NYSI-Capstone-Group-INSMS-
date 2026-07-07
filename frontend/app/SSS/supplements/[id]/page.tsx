@@ -71,7 +71,7 @@ export default function SupplementDetailPage() {
   const loadSupplementDetails = async () => {
     try {
       setLoading(true);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
       const response = await axios.get(
         `${apiUrl}/api/SSS/supplements/${params.id}`,
       );

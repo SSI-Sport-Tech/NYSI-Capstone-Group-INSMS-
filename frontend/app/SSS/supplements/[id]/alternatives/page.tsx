@@ -69,7 +69,7 @@ export default function SupplementAlternativesPage() {
   const loadAlternatives = async (page = 1) => {
     try {
       setLoading(true);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
       const [altResponse, detailResponse] = await Promise.all([
         axios.get(`${apiUrl}/api/SSS/supplements/${params.id}/alternatives?page=${page}`),
         axios.get(`${apiUrl}/api/SSS/supplements/${params.id}`),
@@ -217,7 +217,7 @@ export default function SupplementAlternativesPage() {
             original={currentSupplement}
             alternatives={alternativesData.alternatives}
             selectedSupplements={[]}
-            onSupplementSelect={() => {}}
+            onSupplementSelect={() => { }}
             comparisonMode="grid"
             comparisonCriteria={[]}
             alternativesData={alternativesData}
@@ -243,11 +243,10 @@ export default function SupplementAlternativesPage() {
                   <button
                     key={page}
                     onClick={() => handlePageChange(page)}
-                    className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                      page === currentPage
+                    className={`px-3 py-2 text-sm font-medium rounded-lg ${page === currentPage
                         ? "bg-blue-500 text-white"
                         : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-50"
-                    }`}
+                      }`}
                   >
                     {page}
                   </button>
