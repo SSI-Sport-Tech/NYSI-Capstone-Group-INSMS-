@@ -1,6 +1,7 @@
 import * as services from './services.js';
 import { createSessionSchema, updateSessionSchema, updateStatusSchema, uuidParamSchema, athleteIdParamSchema } from './validation.js';
 import pool from '../../../config/db.js';
+import { createNOMSMondayItem, buildNOMSMondayColumnValues, updateMondayItem, MONDAY_COLUMNS } from "../../../utils/monday.js";
 
 // ============================================================================
 // GET CONSULTATION SESSION
@@ -236,7 +237,32 @@ export async function createConsultationSession(req, res) {
             time_of_next_follow_up: validated.time_of_next_follow_up,
             consultation_objective_id: validated.consultation_objective_id,
             is_scheduled_booking: validated.is_scheduled_booking ?? false,
+            ssp: validated.ssp ?? false,
         }, req.user.userId);
+
+        try {
+            // await createNOMSMondayItem(session);
+            const sessionRow = await pool.query(`
+                SELECT * FROM consultation.v_session
+                WHERE id = $1
+                `, [session.id]);
+
+            const fullSession = sessionRow.rows[0];
+
+            const mondayResult = await createNOMSMondayItem(fullSession);
+            console.log("Saved monday_item_id:", mondayResult?.monday_item_id);
+
+            if (mondayResult?.monday_item_id) {
+                await pool.query(
+                    `UPDATE consultation.sessions
+                    SET monday_item_id = $1
+                    WHERE id = $2`,
+                    [mondayResult.monday_item_id, session.id]
+                );
+            }
+        } catch (err) {
+            console.error("Monday sync failed:", err);
+        }
 
         res.status(201).json({
             message: 'Consultation session created successfully',
@@ -266,6 +292,7 @@ export async function updateConsultationSession(req, res) {
     try {
         const { id } = uuidParamSchema.parse(req.params);
         const validated = updateSessionSchema.parse(req.body);
+        console.log("VALIDATED UPDATE BODY:", validated);
 
         // Check session exists
         const exists = await pool.query('SELECT id FROM consultation.sessions WHERE id = $1', [id]);
@@ -291,6 +318,26 @@ export async function updateConsultationSession(req, res) {
 
         if (!updated) {
             return res.status(400).json({ error: 'No fields to update' });
+        }
+
+        try {
+            const sessionRow = await pool.query(
+                // `SELECT * FROM consultation.sessions WHERE id = $1`,
+                `SELECT * FROM consultation.v_session WHERE id = $1`,
+                [id]
+            );
+
+            const session = sessionRow.rows[0];
+
+            if (session?.monday_item_id) {
+                const mondayPayload = buildNOMSMondayColumnValues(session);
+
+                console.log("FULL Monday sync payload:", mondayPayload);
+
+                await updateMondayItem(session.monday_item_id, mondayPayload);
+            }
+        } catch (err) {
+            console.error("Monday update failed:", err);
         }
 
         res.json({

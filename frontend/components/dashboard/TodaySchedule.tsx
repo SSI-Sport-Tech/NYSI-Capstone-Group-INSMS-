@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   dashboardApi,
   ConsultationSession,
+  NutritionistScheduleSession,
 } from "@/utils/dashboardApi";
 
 // Hours shown in the calendar grid (6 AM to 9 PM inclusive)
@@ -34,8 +35,19 @@ function toDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+type CalendarEvent = {
+  id: string;
+  title: string;
+  startTime: string;
+  duration: number;
+  type: "consultation" | "nutritionist";
+  meta?: any;
+  laneIndex?: number;
+};
+
 export default function TodaySchedule({ date, refreshKey }: { date?: Date; refreshKey?: number }) {
   const [sessions, setSessions] = useState<ConsultationSession[]>([]);
+  const [nutritionistSchedules, setNutritionistSchedules] = useState<NutritionistScheduleSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [nowTop, setNowTop] = useState<number | null>(null);
@@ -47,12 +59,18 @@ export default function TodaySchedule({ date, refreshKey }: { date?: Date; refre
       setLoading(true);
       setError("");
       const dateStr = date ? toDateStr(date) : undefined;
-      const response = await dashboardApi.getTodaySessions(dateStr);
-      setSessions(response.data || []);
+      const [sessionsResponse, nutritionistSchedulesResponse] = await Promise.all([
+        dashboardApi.getTodaySessions(dateStr),
+        dashboardApi.getTodayNutritionistSchedules(dateStr)
+      ]);
+
+      setSessions(sessionsResponse.data || []);
+      setNutritionistSchedules(nutritionistSchedulesResponse.data || []);
     } catch (err: unknown) {
       console.error("Error fetching today's schedule:", err);
       setError("Schedule not available");
       setSessions([]);
+      setNutritionistSchedules([]);
     } finally {
       setLoading(false);
     }
@@ -67,6 +85,48 @@ export default function TodaySchedule({ date, refreshKey }: { date?: Date; refre
       setNowTop(null);
     }
   };
+
+  // Calendar ovrerlap handling - assign each event a lane index to avoid visual overlap
+  function assignEventLanes(events: CalendarEvent[]) {
+    const sorted = [...events].sort(
+      (a, b) => timeToHours(a.startTime) - timeToHours(b.startTime)
+    );
+
+    const lanes: CalendarEvent[][] = [];
+
+    const result = sorted.map((event) => {
+      const start = timeToHours(event.startTime);
+      const end = start + event.duration;
+
+      let laneIndex = 0;
+
+      while (true) {
+        const lane = lanes[laneIndex] || [];
+        const conflict = lane.some((e) => {
+          const eStart = timeToHours(e.startTime);
+          const eEnd = eStart + e.duration;
+          return !(end <= eStart || start >= eEnd);
+        });
+
+        if (!conflict) {
+          if (!lanes[laneIndex]) lanes[laneIndex] = [];
+          lanes[laneIndex].push(event);
+          break;
+        }
+
+        laneIndex++;
+      }
+
+      return {
+        ...event,
+        laneIndex,
+      };
+    });
+
+    const maxLane = Math.max(...result.map((e: any) => e.laneIndex || 0), 0);
+
+    return { events: result, laneCount: maxLane + 1 };
+  }
 
   useEffect(() => {
     fetchSchedule();
@@ -97,6 +157,33 @@ export default function TodaySchedule({ date, refreshKey }: { date?: Date; refre
     month: "short",
     day: "numeric",
   });
+
+  const baseEvents: CalendarEvent[] = [
+    ...sessions.map((s) => ({
+      id: s.id,
+      title: s.athlete_name_abbr,
+      startTime: s.time_of_consult ?? s.time_slot ?? "",
+      duration: (s.duration ?? 60) / 60,
+      type: "consultation" as const,
+      meta: s,
+    })),
+
+    ...nutritionistSchedules.map((s) => {
+      const start = timeToHours(s.start_time);
+      const end = timeToHours(s.end_time);
+
+      return {
+        id: `ns-${s.id}`,
+        title: `${s.nutritionist_name}`,
+        startTime: s.start_time,
+        duration: end - start,
+        type: "nutritionist" as const,
+        meta: s,
+      };
+    }),
+  ];
+
+  const { events, laneCount } = assignEventLanes(baseEvents);
 
   if (loading) {
     return (
@@ -131,7 +218,7 @@ export default function TodaySchedule({ date, refreshKey }: { date?: Date; refre
       {/* Scrollable time grid */}
       <div
         ref={gridRef}
-        className="relative overflow-y-auto"
+        className="relative overflow-y-auto overflow-x-visible"
         style={{ height: `${HOUR_HEIGHT_PX * 7}px` }} // show ~7 hours at once
       >
         {/* Hour rows */}
@@ -166,61 +253,68 @@ export default function TodaySchedule({ date, refreshKey }: { date?: Date; refre
               <div className="flex-1 border-t-2 border-red-500" />
             </div>
           )}
+          {events.map((e) => {
+            const start = timeToHours(e.startTime);
+            if (isNaN(start)) return null;
 
-          {/* Session blocks */}
-          {sessions.map((session) => {
-            const time = session.time_of_consult ?? session.time_slot;
-            if (!time) return null;
+            const top = hoursToTop(start);
+            const height = Math.max(e.duration * HOUR_HEIGHT_PX, 36);
 
-            const startHours = timeToHours(time);
-            if (startHours < HOUR_START || startHours >= HOUR_END) return null;
+            const laneWidth = 100 / laneCount;
+            const leftPercent = (e.laneIndex ?? 0) * laneWidth;
 
-            const durationHours = (session.duration || 60) / 60;
-            const topPx = hoursToTop(startHours);
-            const heightPx = Math.max(durationHours * HOUR_HEIGHT_PX, 36);
-
-            const isCompleted = session.status === "completed";
-            const isCancelled = session.status === "cancelled";
-            const isExpired = session.status === "expired";
+            const isNutritionist = e.type === "nutritionist";
 
             return (
-              <button
-                key={session.id}
-                onClick={() =>
-                  router.push(
-                    `/AMS/athlete-management/${session.athlete_id}?tab=consultation&sessionId=${session.id}`
-                  )
-                }
-                className={`
-                  absolute left-16 right-2 rounded-lg px-2 py-1 text-left
-                  transition-opacity hover:opacity-90 shadow-sm
-                  ${isCompleted || isExpired ? "bg-gray-200 opacity-60" : isCancelled ? "bg-red-100 opacity-60" : "bg-teal-500"}
-                `}
-                style={{ top: `${topPx}px`, height: `${heightPx}px`, zIndex: 5 }}
+              <div
+                key={e.id}
+                onClick={() => {
+                  if (isNutritionist) {
+                    router.push("/AMS/nutritionist-schedules");
+                  } else {
+                    router.push(
+                      `/AMS/athlete-management/${e.meta.athlete_id}?tab=consultation`
+                    );
+                  }
+                }}
+                className={`group absolute left-16 right-2 rounded-md px-2 py-1 text-xs text-white ${
+                  isNutritionist ? "bg-purple-500" : "bg-teal-500"
+                } z-10 hover:z-50`}
+                style={{ top, height, left: `calc(64px + ${leftPercent}%)`, width: `calc(${laneWidth}% - 6px)`}}
               >
-                <p className={`text-xs font-semibold truncate ${isCompleted || isCancelled || isExpired ? "text-gray-500" : "text-white"}`}>
-                  {session.athlete_name_abbr}
-                </p>
-                {heightPx > 40 && (
-                  <p className={`text-xs truncate ${isCompleted || isCancelled || isExpired ? "text-gray-400" : "text-teal-100"}`}>
-                    {session.type_of_consult}
-                    {session.venue ? ` · ${session.venue}` : ""}
-                  </p>
-                )}
-              </button>
+                <div className="font-semibold truncate">{e.title}</div>
+                <div className="text-xs opacity-80">
+                  {isNutritionist ? e.meta.schedule_type : e.meta.type_of_consult}
+                </div>
+
+                {/* Hover popup */}
+                <div className="hidden group-hover:block absolute left-full ml-2 top-0 bg-gray-900 text-white text-xs rounded-md px-3 py-2 shadow-lg z-50 whitespace-nowrap z-[9999] pointer-events-none">
+                  <div className="font-semibold">
+                    {isNutritionist ? e.meta.nutritionist_name : e.meta.athlete_name_abbr}
+                  </div>
+
+                  <div className="opacity-80 mt-1">
+                    {isNutritionist ? "Nutritionist Schedule" : "Consultation"}
+                  </div>
+
+                  <div className="opacity-80">
+                    {isNutritionist ? e.meta.schedule_type : e.meta.type_of_consult}
+                  </div>
+                </div>
+              </div>
             );
           })}
         </div>
       </div>
 
       {/* Empty state */}
-      {sessions.length === 0 && !error && (
+      {events.length === 0 && !error && (
         <div className="text-center py-4">
           <p className="text-sm text-gray-400">No sessions scheduled for today.</p>
         </div>
       )}
 
-      {error && sessions.length === 0 && (
+      {error && events.length === 0 && (
         <div className="text-center py-4">
           <p className="text-xs text-red-500">{error}</p>
           <button onClick={fetchSchedule} className="text-xs text-blue-600 underline mt-1">

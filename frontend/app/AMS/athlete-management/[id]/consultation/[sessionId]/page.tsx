@@ -24,6 +24,7 @@ interface SessionData {
   venue: string;
   time_of_consult: string;
   title_description: string;
+  ssp: boolean;
 }
 
 const STEPS = [
@@ -139,14 +140,21 @@ export default function ConsultationDetailsPage() {
                     </span>
                   </div>
                 )}
-                <div className="md:col-span-2">
+                <div>
                   <span className="text-gray-500">Objective:</span>
                   <span className="ml-2 font-medium">
                     {sessionData.consultation_objective ||
                       "No objective specified"}
                   </span>
                 </div>
+                <div>
+                  <span className="text-gray-500">SSP:</span>
+                  <span className="ml-2 font-medium">
+                    {sessionData.ssp ? "Yes" : "No"}
+                  </span>
+                </div>
               </div>
+              
             ) : (
               <div className="animate-pulse space-y-3">
                 <div className="h-4 bg-gray-200 rounded w-1/2"></div>

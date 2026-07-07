@@ -40,6 +40,7 @@ export const createSessionSchema = z.object({
     date_of_next_follow_up: optionalDateSchema,
     time_of_next_follow_up: optionalTimeSchema,
     consultation_objective_id: uuidFormatSchema.optional(),
+    ssp: z.boolean().optional(),
 
     // --- Optional: override nutritionist (falls back to logged-in user if omitted) ---
     nutritionist_id: uuidSchema.optional(),
@@ -65,6 +66,7 @@ export const updateSessionSchema = z.object({
     time_of_next_follow_up: optionalTimeSchema,
     consultation_objective_id: uuidFormatSchema.optional(),
     is_scheduled_booking: z.boolean().optional(),
+    ssp: z.boolean().optional(),
 
     // --- Reject immutable fields ---
     id: z.never().optional(),

@@ -65,6 +65,29 @@ export interface ConsultationType {
   duration?: number;
 }
 
+export interface Nutritionist {
+  id: string;
+  name: string;
+}
+
+export interface NutritionistScheduleSession {
+  id: string;
+  nutritionist_id: string;
+  nutritionist_name: string;
+  schedule_date: string;
+  schedule_type_id: string;
+  schedule_type: string;
+  start_time: string;
+  end_time: string;
+  remarks?: string;
+}
+
+export interface ScheduleType {
+  id: string;
+  /** Field name returned by the API */
+  schedule_type?: string;
+}
+
 function toDateStr(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -110,6 +133,11 @@ export const dashboardApi = {
   // Get all athletes for booking (this endpoint exists)
   getAthletes: async (): Promise<{ data: Athlete[] }> => {
     return apiCall("/api/AMS/athletes");
+  },
+
+  // Get nutritionists (this endpoint exists)
+  getNutritionists: async (): Promise<{ data: Nutritionist[] }> => {
+    return apiCall("/api/AMS/nutritionists");
   },
 
   // Get consultation types (use shared consultation API)
@@ -217,5 +245,98 @@ export const dashboardApi = {
         newAthletes: 0,
       },
     };
+  },
+
+  // Nutritionist schedule functions
+  getScheduleTypes: async (): Promise<{ data: ScheduleType[] }> => {
+    return apiCall("/api/AMS/lookups/schedule-types");
+  },
+
+  getNutritionistSchedule: async (
+    scheduleId: string
+  ): Promise<{ data: NutritionistScheduleSession }> => {
+    return apiCall(
+      `/api/AMS/nutritionist-schedule/${scheduleId}`
+    );
+  },
+
+  getNutritionistSchedules: async (
+    from: string,
+    to: string,
+    nutritionistId?: string
+  ): Promise<{ data: NutritionistScheduleSession[] }> => {
+    let url =
+      `/api/AMS/nutritionist-schedule/range?from=${from}&to=${to}`;
+
+    if (nutritionistId) {
+      url += `&nutritionist_id=${nutritionistId}`;
+    }
+
+    return apiCall(url);
+  },
+
+  getTodayNutritionistSchedules: async (
+    date?: string
+  ): Promise<{ data: NutritionistScheduleSession[] }> => {
+    const query = date ? `?date=${date}` : "";
+
+    return apiCall(
+      `/api/AMS/nutritionist-schedule/today${query}`
+    );
+  },
+
+  getUpcomingNutritionistSchedules: async (
+    limit = 20
+  ): Promise<{ data: NutritionistScheduleSession[] }> => {
+    return apiCall(
+      `/api/AMS/nutritionist-schedule/upcoming?limit=${limit}`
+    );
+  },
+
+  createNutritionistSchedule: async (scheduleData: {
+    nutritionist_id?: string;
+    schedule_type_id: string;
+    schedule_date: string;
+    start_time: string;
+    end_time: string;
+    remarks?: string;
+  }): Promise<{ data: NutritionistScheduleSession }> => {
+    return apiCall(
+      "/api/AMS/nutritionist-schedule",
+      {
+        method: "POST",
+        body: JSON.stringify(scheduleData),
+      }
+    );
+  },
+
+  updateNutritionistSchedule: async (
+    scheduleId: string,
+    updates: {
+      schedule_type_id?: string;
+      schedule_date?: string;
+      start_time?: string;
+      end_time?: string;
+      remarks?: string;
+    }
+  ): Promise<{ data: NutritionistScheduleSession }> => {
+    return apiCall(
+      `/api/AMS/nutritionist-schedule/${scheduleId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      }
+    );
+  },
+
+  deleteNutritionistSchedule: async (
+    scheduleId: string
+  ): Promise<void> => {
+    await apiCall(
+      `/api/AMS/nutritionist-schedule/${scheduleId}`,
+      {
+        method: "DELETE",
+      }
+    );
   },
 };

@@ -86,9 +86,13 @@ function ReadOnlyDetails({ latestConsultation }: { latestConsultation: LatestCon
           <span className="ml-2 font-medium">{d.title_description}</span>
         </div>
       )}
-      <div className="md:col-span-2">
+      <div>
         <span className="text-gray-500">Objective:</span>
         <span className="ml-2 font-medium">{d.consultation_objective || "No objective specified"}</span>
+      </div>
+      <div>
+        <span className="text-gray-500">Support SSP:</span>
+        <span className="ml-2 font-medium">{d.ssp === true ? "Yes" : "No"}</span>
       </div>
     </div>
   );
@@ -150,6 +154,19 @@ export default function ConsultationDetailsStep(props: ConsultationDetailsStepPr
         <div>
           <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Time of Next Follow-Up</label>
           <TimePicker value={updateForm.time_of_next_follow_up} onChange={(val) => onUpdateFormChange({ time_of_next_follow_up: val })} />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Support SSP</label>
+          <select
+            value={updateForm.ssp ? "Yes" : "No"} onChange={(e) => onUpdateFormChange({
+                ssp: e.target.value === "Yes",
+              })
+            }
+            className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900"
+          >
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
         </div>
         <div className="md:col-span-2">
           <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Consultation Objective</label>

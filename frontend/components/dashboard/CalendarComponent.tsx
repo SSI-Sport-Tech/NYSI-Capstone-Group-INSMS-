@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { dashboardApi, ConsultationSession } from "@/utils/dashboardApi";
+import { dashboardApi, ConsultationSession, NutritionistScheduleSession } from "@/utils/dashboardApi";
 import { nutritionistColor, getInitials } from "@/utils/nutritionistAvatar";
 
 interface CalendarComponentProps {
@@ -40,6 +40,7 @@ export default function CalendarComponent({
 }: CalendarComponentProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [sessions, setSessions] = useState<ConsultationSession[]>([]);
+  const [nutritionistSchedules, setNutritionistSchedules] = useState<NutritionistScheduleSession[]>([]);
   const [loading, setLoading] = useState(false);
   const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
 
@@ -65,8 +66,32 @@ export default function CalendarComponent({
 
       const days: DayData[] = [];
 
-      const matchDay = (fullDate: Date) =>
-        sessions.filter((s) => s.date_of_consult === fullDate.toLocaleDateString("en-CA"));
+      // const matchDay = (fullDate: Date) =>
+      //   sessions.filter((s) => s.date_of_consult === fullDate.toLocaleDateString("en-CA"));
+      const matchConsultations = (fullDate: Date) =>
+        sessions.filter(
+          (s) => s.date_of_consult === fullDate.toLocaleDateString("en-CA")
+        );
+
+      const matchSchedules = (fullDate: Date) =>
+        nutritionistSchedules.filter(
+          (s) => s.schedule_date === fullDate.toLocaleDateString("en-CA")
+        );
+
+      const getCombinedSessions = (
+        fullDate: Date
+      ): ConsultationSession[] => [
+        ...matchConsultations(fullDate),
+        ...matchSchedules(fullDate).map(
+          (s) =>
+            ({
+              id: s.id,
+              nutritionist_id: s.nutritionist_id,
+              nutritionist_name: s.nutritionist_name,
+              date_of_consult: s.schedule_date,
+            }) as ConsultationSession
+        ),
+      ];
 
       // Previous month padding
       for (let i = startingDayOfWeek - 1; i >= 0; i--) {
@@ -78,7 +103,9 @@ export default function CalendarComponent({
           isCurrentMonth: false,
           isToday: false,
           isSelected: selectedDate ? fullDate.toDateString() === selectedDate.toDateString() : false,
-          sessions: matchDay(fullDate),
+          // sessions: matchDay(fullDate),
+          sessions: getCombinedSessions(fullDate),
+          
         });
       }
 
@@ -91,7 +118,8 @@ export default function CalendarComponent({
           isCurrentMonth: true,
           isToday: fullDate.toDateString() === today.toDateString(),
           isSelected: selectedDate ? fullDate.toDateString() === selectedDate.toDateString() : false,
-          sessions: matchDay(fullDate),
+          // sessions: matchDay(fullDate),
+          sessions: getCombinedSessions(fullDate),
         });
       }
 
@@ -105,7 +133,8 @@ export default function CalendarComponent({
           isCurrentMonth: false,
           isToday: false,
           isSelected: selectedDate ? fullDate.toDateString() === selectedDate.toDateString() : false,
-          sessions: matchDay(fullDate),
+          // sessions: matchDay(fullDate),
+          sessions: getCombinedSessions(fullDate),
         });
       }
 
@@ -124,11 +153,19 @@ export default function CalendarComponent({
       const lastDayDate = new Date(year, month + 1, 0);
       const lastDay = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDayDate.getDate()).padStart(2, "0")}`;
 
-      const response = await dashboardApi.getConsultationSessions(firstDay, lastDay);
-      setSessions(response.data || []);
+      // const response = await dashboardApi.getConsultationSessions(firstDay, lastDay);
+      // setSessions(response.data || []);
+      const [consultRes, scheduleRes] = await Promise.all([
+        dashboardApi.getConsultationSessions(firstDay, lastDay),
+        dashboardApi.getNutritionistSchedules(firstDay, lastDay),
+      ]);
+
+      setSessions(consultRes.data || []);
+      setNutritionistSchedules(scheduleRes.data || []);
     } catch (error) {
       console.error("Error fetching month sessions:", error);
       setSessions([]);
+      setNutritionistSchedules([]);
     } finally {
       setLoading(false);
     }

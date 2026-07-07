@@ -286,6 +286,7 @@ export default function ConsultationView({
           ? data.time_of_next_follow_up.substring(0, 5)
           : "",
         consultation_objective_id: data.consultation_objective_id || "",
+        ssp: data.ssp ?? false,
       });
       setLastSavedUpdateForm(mappedForm);
       setIsUpdateCardSaved(hasUpdateFormData(mappedForm));
@@ -327,6 +328,7 @@ export default function ConsultationView({
           ? data.time_of_next_follow_up.substring(0, 5)
           : "",
         consultation_objective_id: data.consultation_objective_id || "",
+        ssp: data.ssp ?? false,
       });
       setLastSavedUpdateForm(mappedForm);
       setIsUpdateCardSaved(hasUpdateFormData(mappedForm));
@@ -383,6 +385,7 @@ export default function ConsultationView({
       date_of_next_follow_up: session.date_of_next_follow_up ?? "",
       time_of_next_follow_up: session.time_of_next_follow_up ?? "",
       consultation_objective_id: session.consultation_objective_id ?? "",
+      ssp: session.ssp ?? false,
     });
     setLastSavedUpdateForm(EMPTY_UPDATE_FORM);
     setIsUpdateCardSaved(false);
@@ -492,6 +495,7 @@ export default function ConsultationView({
         : "",
       time_of_next_follow_up: d.time_of_next_follow_up ? d.time_of_next_follow_up.substring(0, 5) : "",
       consultation_objective_id: d.consultation_objective_id || "",
+      ssp: d.ssp ?? false,
     });
     setIsEditMode(true);
   };

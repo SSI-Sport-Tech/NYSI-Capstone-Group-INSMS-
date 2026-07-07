@@ -81,6 +81,9 @@ const router = express.Router();
  *                     consultation_objective:
  *                       type: string
  *                       nullable: true
+ *                     ssp:
+ *                       type: boolean
+ *                       nullable: true
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       404:
@@ -166,6 +169,9 @@ router.get('/consultation-session/:id/previous', controller.getPreviousConsultat
  *                       type: string
  *                       nullable: true
  *                       description: Objective from session_note table
+ *                     ssp:
+ *                       type: boolean
+ *                       nullable: true
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       404:
@@ -237,6 +243,9 @@ router.get('/consultation-session/:id', controller.getConsultationSession);
  *               consultation_objective:
  *                 type: string
  *                 description: Consultation objective (optional, stored in session_note)
+ *               ssp:
+ *                 type: boolean
+ *                 description: Whether this session is an SSP session
  *           example:
  *             athlete_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
  *             nutritionist_id: "c3d4e5f6-a7b8-9012-cdef-123456789012"
@@ -295,6 +304,9 @@ router.get('/consultation-session/:id', controller.getConsultationSession);
  *                       nullable: true
  *                     consultation_objective:
  *                       type: string
+ *                       nullable: true
+ *                     ssp:
+ *                       type: boolean
  *                       nullable: true
  *       400:
  *         $ref: '#/components/responses/BadRequest'
@@ -358,6 +370,9 @@ router.post('/consultation-session', authenticateToken, controller.createConsult
  *               consultation_objective:
  *                 type: string
  *                 description: Consultation objective (upserts into session_note)
+ *               ssp:
+ *                 type: boolean
+ *                 description: Whether this session is an SSP session
  *           example:
  *             title_description: "Follow-up Session"
  *             venue: "Room 3, NYSI"
