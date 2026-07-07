@@ -102,6 +102,12 @@ export const createCompleteAthleteSchema = z
     // --- Reject system-managed fields ---
     id: z.never().optional(),
     athlete_id: z.never().optional(),
+
+    // --- AEMS integration fields ---
+    initials: z.string().trim().min(1).max(10),
+    initial_budget: z.number().positive().optional().default(1000),
+    email: z.string().email().optional(),
+    pin: z.string().regex(/^\d{6}$/).optional(),
   })
   .strict();
 
@@ -155,6 +161,12 @@ export const adminCreateCompleteAthleteSchema = z
     // --- Reject system-managed fields ---
     id: z.never().optional(),
     athlete_id: z.never().optional(),
+
+    // --- AEMS integration fields ---
+    initials: z.string().trim().min(1).max(10),
+    initial_budget: z.number().positive().optional().default(1000),
+    email: z.string().email().optional(),
+    pin: z.string().regex(/^\d{6}$/).optional(),
   })
   .strict();
 

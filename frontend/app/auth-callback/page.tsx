@@ -9,27 +9,25 @@ function AuthCallbackContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { login } = useAuth();
-
     useEffect(() => {
         const token = searchParams.get('token');
-
         if (!token) {
             router.push('/login');
             return;
         }
-
         axios.get('/noms/api/auth/me', {
             headers: { Authorization: `Bearer ${token}` }
         })
             .then((res) => {
                 login(token, res.data.user);
-                router.push('/');
+                const redirect = sessionStorage.getItem('noms_redirect');
+                sessionStorage.removeItem('noms_redirect');
+                router.push(redirect || '/');
             })
             .catch(() => {
                 router.push('/login');
             });
     }, []);
-
     return (
         <div className="flex h-screen items-center justify-center bg-white">
             <div className="text-center">

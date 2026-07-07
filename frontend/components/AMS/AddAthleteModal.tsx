@@ -63,6 +63,12 @@ interface AthleteFormData {
 
   // Coach assignment
   coach_ids: string[];
+
+  //AEMS
+  initials: string;
+  initial_budget: string;
+  email: string;
+  pin: string;
 }
 
 const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
@@ -116,6 +122,10 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
     target_event: "",
     nutritionist_id: "",
     coach_ids: [],
+    initials: "",
+    initial_budget: "",
+    email: "",
+    pin: "",
   });
 
   // Load sports and coaches when modal opens
@@ -338,6 +348,12 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
         // Coach assignments
         coach_ids: formData.coach_ids,
 
+        // AEMS
+        initials: formData.initials,
+        initial_budget: formData.initial_budget ? parseFloat(formData.initial_budget) : 1000,
+        ...(formData.email && { email: formData.email }),
+        ...(formData.pin && { pin: formData.pin }),
+
         // Nutritionist assignment (for admin users only)
         ...(isAdmin &&
           formData.nutritionist_id && {
@@ -416,6 +432,10 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
       target_event: "",
       nutritionist_id: "",
       coach_ids: [],
+      initials: "",
+      initial_budget: "",
+      email: "",
+      pin: "",
     });
     setValidationErrors([]);
   };
@@ -489,6 +509,23 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                     className="w-full px-3 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-black mb-2">
+                    Initials / Abbr. Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="initials"
+                    value={formData.initials}
+                    onChange={handleInputChange}
+                    placeholder="e.g. JD"
+                    maxLength={10}
+                    className="w-full px-3 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Used as the athlete identifier in AEMS</p>
                 </div>
 
                 <div>
@@ -745,6 +782,62 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                       </div>
                     </div>
                   )}
+                </div>
+
+                <div className="md:col-span-2 border-t border-gray-200 pt-4 mt-2">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">AEMS Integration</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-2">
+                        Initial Budget (SGD) <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        name="initial_budget"
+                        value={formData.initial_budget}
+                        onChange={handleInputChange}
+                        placeholder="1000.00"
+                        step="0.01"
+                        min="0"
+                        className="w-full px-3 py-2 placeholder:text-gray-400 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div />
+
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-2">
+                        Athlete Email <span className="text-gray-400 font-normal">(optional — creates login account)</span>
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        placeholder="athlete@email.com"
+                        className="w-full px-3 py-2 placeholder:text-gray-400 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-2">
+                        Login PIN (6 digits){formData.email && <span className="text-red-500"> *</span>}
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        name="pin"
+                        value={formData.pin}
+                        onChange={(e) => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '') })}
+                        placeholder="123456"
+                        maxLength={6}
+                        disabled={!formData.email}
+                        className="w-full px-3 py-2 placeholder:text-gray-400 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 font-mono"
+                      />
+                      {formData.email && (
+                        <p className="text-xs text-gray-400 mt-1">Used for ICS and AEMS login</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

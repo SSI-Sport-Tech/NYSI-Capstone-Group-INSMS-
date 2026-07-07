@@ -180,43 +180,31 @@ export async function createBasicAthlete(req, res) {
 
 export async function createCompleteAthlete(req, res) {
   try {
-    // Step 1: Validate request body
     console.log("Step 1: Validating request body");
     const validated = createCompleteAthleteSchema.parse(req.body);
 
-    // Step 2: Validate sport_id exists in Sport_Lookup
     console.log("Step 2: Validating sport_id");
     const sportCheck = await pool.query(
-      "SELECT id FROM AMS.Sport_Lookup WHERE id = $1 AND is_active = true",
+      "SELECT id, sport FROM AMS.Sport_Lookup WHERE id = $1 AND is_active = true",
       [validated.sport_id],
     );
     if (sportCheck.rows.length === 0) {
       return res.status(400).json({
         error: "Invalid sport_id",
-        details: [
-          { field: "sport_id", message: "Sport not found or inactive" },
-        ],
+        details: [{ field: "sport_id", message: "Sport not found or inactive" }],
       });
     }
+    const nomsSportName = sportCheck.rows[0].sport;
 
-    // Step 3: Check for duplicate sportsync_id
     console.log("Step 3: Checking for duplicate sportsync_id");
-    const isDuplicate = await services.checkDuplicateAthlete(
-      validated.sportsync_id,
-    );
+    const isDuplicate = await services.checkDuplicateAthlete(validated.sportsync_id);
     if (isDuplicate) {
       return res.status(409).json({
         error: "Duplicate athlete",
-        details: [
-          {
-            field: "sportsync_id",
-            message: `Athlete with sportsync_id "${validated.sportsync_id}" already exists`,
-          },
-        ],
+        details: [{ field: "sportsync_id", message: `Athlete with sportsync_id "${validated.sportsync_id}" already exists` }],
       });
     }
 
-    // Step 4: Validate coach IDs exist
     if (validated.coach_ids.length > 0) {
       console.log("Step 4a: Validating coach IDs");
       const coachCheck = await pool.query(
@@ -225,32 +213,26 @@ export async function createCompleteAthlete(req, res) {
       );
       if (coachCheck.rows.length !== validated.coach_ids.length) {
         const foundIds = coachCheck.rows.map((r) => r.id);
-        const invalidIds = validated.coach_ids.filter(
-          (id) => !foundIds.includes(id),
-        );
+        const invalidIds = validated.coach_ids.filter((id) => !foundIds.includes(id));
         return res.status(400).json({
           error: "Invalid coach_ids",
-          details: [
-            {
-              field: "coach_ids",
-              message: `Coach(es) not found: ${invalidIds.join(", ")}`,
-            },
-          ],
+          details: [{ field: "coach_ids", message: `Coach(es) not found: ${invalidIds.join(", ")}` }],
         });
       }
     }
 
-    // Step 5: Look up nutritionist from logged-in user for auto-assignment (optional)
-    console.log("Step 5: Looking up nutritionist for logged-in user");
-    const nutritionistId = await services.getNutritionistIdByUserId(
-      req.user.userId,
-    );
+    // Validate AEMS fields
+    if (!validated.initials) {
+      return res.status(400).json({ error: 'Initials are required for AEMS record' });
+    }
+    if (validated.email && (!validated.pin || !/^\d{6}$/.test(validated.pin))) {
+      return res.status(400).json({ error: 'A 6-digit PIN is required when providing an email' });
+    }
 
-    // Make nutritionist assignment optional - if user doesn't have a nutritionist profile,
-    // we'll still allow athlete creation but without nutritionist assignment
+    console.log("Step 5: Looking up nutritionist for logged-in user");
+    const nutritionistId = await services.getNutritionistIdByUserId(req.user.userId);
     const nutritionistIds = nutritionistId ? [nutritionistId] : [];
 
-    // Step 6: Separate data
     console.log("Step 6: Creating complete athlete with relations");
     const athleteData = {
       sport_id: validated.sport_id,
@@ -262,7 +244,6 @@ export async function createCompleteAthlete(req, res) {
       target_event: validated.target_event,
       sport_start_date: validated.sport_start_date,
     };
-
     const registryData = {
       carding_status: validated.carding_status,
       athlete_notified_on: validated.athlete_notified_on,
@@ -272,7 +253,6 @@ export async function createCompleteAthlete(req, res) {
       approved_start_date: validated.approved_start_date,
       approved_end_date: validated.approved_end_date,
     };
-
     const medicalData = {
       medical_condition: validated.medical_condition,
       food_allergy: validated.food_allergy,
@@ -282,38 +262,44 @@ export async function createCompleteAthlete(req, res) {
       dietary_restriction: validated.dietary_restriction,
     };
 
-    // Step 7: Create in transaction
     const result = await services.createCompleteAthlete(
-      athleteData,
-      registryData,
-      medicalData,
-      validated.coach_ids,
-      nutritionistIds,
+      athleteData, registryData, medicalData,
+      validated.coach_ids, nutritionistIds,
       req.user?.userId,
     );
+    console.log(`Step 7: Athlete ${result.athlete.id} created successfully`);
 
-    console.log(
-      `Step 7: Athlete ${result.athlete.id} created successfully with all relations`,
-    );
+    // ── AEMS Integration ──────────────────────────────────────────────────────
+    let aemsResult = null;
+    try {
+      aemsResult = await services.createAEMSAthleteRecords({
+        nomsAthleteId: result.athlete.id,
+        nomsSportId: validated.sport_id,
+        initials: validated.initials,
+        nomsSportName,
+        cardingStatus: validated.carding_status,
+        initialBudget: validated.initial_budget || 1000.00,
+        email: validated.email || null,
+        pin: validated.pin || null,
+        performedBy: req.user?.userId,
+      });
+    } catch (aemsError) {
+      console.error('⚠️  AEMS record creation failed (NOMS athlete still created):', aemsError.message);
+    }
 
     res.status(201).json({
       message: "Athlete created successfully with all relations",
-      data: result,
+      data: { ...result, aems: aemsResult },
     });
   } catch (error) {
     if (error.name === "ZodError") {
       return res.status(400).json({
         error: "Validation failed",
-        details: error.issues.map((e) => ({
-          field: e.path.join("."),
-          message: e.message,
-        })),
+        details: error.issues.map((e) => ({ field: e.path.join("."), message: e.message })),
       });
     }
     console.error("Error creating complete athlete:", error);
-    res
-      .status(500)
-      .json({ error: "Failed to create athlete", message: error.message });
+    res.status(500).json({ error: "Failed to create athlete", message: error.message });
   }
 }
 
@@ -323,43 +309,31 @@ export async function createCompleteAthlete(req, res) {
 
 export async function adminCreateCompleteAthlete(req, res) {
   try {
-    // Step 1: Validate request body
     console.log("Step 1: Validating request body");
     const validated = adminCreateCompleteAthleteSchema.parse(req.body);
 
-    // Step 2: Validate sport_id exists in Sport_Lookup
     console.log("Step 2: Validating sport_id");
     const sportCheck = await pool.query(
-      "SELECT id FROM AMS.Sport_Lookup WHERE id = $1 AND is_active = true",
+      "SELECT id, sport FROM AMS.Sport_Lookup WHERE id = $1 AND is_active = true",
       [validated.sport_id],
     );
     if (sportCheck.rows.length === 0) {
       return res.status(400).json({
         error: "Invalid sport_id",
-        details: [
-          { field: "sport_id", message: "Sport not found or inactive" },
-        ],
+        details: [{ field: "sport_id", message: "Sport not found or inactive" }],
       });
     }
+    const nomsSportName = sportCheck.rows[0].sport;
 
-    // Step 3: Check for duplicate sportsync_id
     console.log("Step 3: Checking for duplicate sportsync_id");
-    const isDuplicate = await services.checkDuplicateAthlete(
-      validated.sportsync_id,
-    );
+    const isDuplicate = await services.checkDuplicateAthlete(validated.sportsync_id);
     if (isDuplicate) {
       return res.status(409).json({
         error: "Duplicate athlete",
-        details: [
-          {
-            field: "sportsync_id",
-            message: `Athlete with sportsync_id "${validated.sportsync_id}" already exists`,
-          },
-        ],
+        details: [{ field: "sportsync_id", message: `Athlete with sportsync_id "${validated.sportsync_id}" already exists` }],
       });
     }
 
-    // Step 4: Validate coach IDs exist
     if (validated.coach_ids.length > 0) {
       console.log("Step 4: Validating coach IDs");
       const coachCheck = await pool.query(
@@ -368,22 +342,14 @@ export async function adminCreateCompleteAthlete(req, res) {
       );
       if (coachCheck.rows.length !== validated.coach_ids.length) {
         const foundIds = coachCheck.rows.map((r) => r.id);
-        const invalidIds = validated.coach_ids.filter(
-          (id) => !foundIds.includes(id),
-        );
+        const invalidIds = validated.coach_ids.filter((id) => !foundIds.includes(id));
         return res.status(400).json({
           error: "Invalid coach_ids",
-          details: [
-            {
-              field: "coach_ids",
-              message: `Coach(es) not found: ${invalidIds.join(", ")}`,
-            },
-          ],
+          details: [{ field: "coach_ids", message: `Coach(es) not found: ${invalidIds.join(", ")}` }],
         });
       }
     }
 
-    // Step 5: Validate nutritionist_id exists (if provided)
     console.log("Step 5: Validating nutritionist_id");
     if (validated.nutritionist_id) {
       const nutritionistCheck = await pool.query(
@@ -393,14 +359,19 @@ export async function adminCreateCompleteAthlete(req, res) {
       if (nutritionistCheck.rows.length === 0) {
         return res.status(400).json({
           error: "Invalid nutritionist_id",
-          details: [
-            { field: "nutritionist_id", message: "Nutritionist not found" },
-          ],
+          details: [{ field: "nutritionist_id", message: "Nutritionist not found" }],
         });
       }
     }
 
-    // Step 6: Separate data
+    // Validate AEMS fields
+    if (!validated.initials) {
+      return res.status(400).json({ error: 'Initials are required for AEMS record' });
+    }
+    if (validated.email && (!validated.pin || !/^\d{6}$/.test(validated.pin))) {
+      return res.status(400).json({ error: 'A 6-digit PIN is required when providing an email' });
+    }
+
     console.log("Step 6: Creating complete athlete with relations");
     const athleteData = {
       sport_id: validated.sport_id,
@@ -412,7 +383,6 @@ export async function adminCreateCompleteAthlete(req, res) {
       target_event: validated.target_event,
       sport_start_date: validated.sport_start_date,
     };
-
     const registryData = {
       carding_status: validated.carding_status,
       athlete_notified_on: validated.athlete_notified_on,
@@ -422,7 +392,6 @@ export async function adminCreateCompleteAthlete(req, res) {
       approved_start_date: validated.approved_start_date,
       approved_end_date: validated.approved_end_date,
     };
-
     const medicalData = {
       medical_condition: validated.medical_condition,
       food_allergy: validated.food_allergy,
@@ -432,41 +401,45 @@ export async function adminCreateCompleteAthlete(req, res) {
       dietary_restriction: validated.dietary_restriction,
     };
 
-    // Step 7: Create in transaction
-    const nutritionistIds = validated.nutritionist_id
-      ? [validated.nutritionist_id]
-      : [];
+    const nutritionistIds = validated.nutritionist_id ? [validated.nutritionist_id] : [];
     const result = await services.createCompleteAthlete(
-      athleteData,
-      registryData,
-      medicalData,
-      validated.coach_ids,
-      nutritionistIds,
+      athleteData, registryData, medicalData,
+      validated.coach_ids, nutritionistIds,
       req.user?.userId,
     );
+    console.log(`Step 7: Athlete ${result.athlete.id} created successfully (admin)`);
 
-    console.log(
-      `Step 7: Athlete ${result.athlete.id} created successfully with all relations (admin)`,
-    );
+    // ── AEMS Integration ──────────────────────────────────────────────────────
+    let aemsResult = null;
+    try {
+      aemsResult = await services.createAEMSAthleteRecords({
+        nomsAthleteId: result.athlete.id,
+        nomsSportId: validated.sport_id,
+        initials: validated.initials,
+        nomsSportName,
+        cardingStatus: validated.carding_status,
+        initialBudget: validated.initial_budget || 1000.00,
+        email: validated.email || null,
+        pin: validated.pin || null,
+        performedBy: req.user?.userId,
+      });
+    } catch (aemsError) {
+      console.error('⚠️  AEMS record creation failed (NOMS athlete still created):', aemsError.message);
+    }
 
     res.status(201).json({
       message: "Athlete created successfully with all relations",
-      data: result,
+      data: { ...result, aems: aemsResult },
     });
   } catch (error) {
     if (error.name === "ZodError") {
       return res.status(400).json({
         error: "Validation failed",
-        details: error.issues.map((e) => ({
-          field: e.path.join("."),
-          message: e.message,
-        })),
+        details: error.issues.map((e) => ({ field: e.path.join("."), message: e.message })),
       });
     }
     console.error("Error creating complete athlete (admin):", error);
-    res
-      .status(500)
-      .json({ error: "Failed to create athlete", message: error.message });
+    res.status(500).json({ error: "Failed to create athlete", message: error.message });
   }
 }
 

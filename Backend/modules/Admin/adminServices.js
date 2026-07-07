@@ -193,8 +193,9 @@ export async function createUser(userData, doneByUserId) {
                 role, is_admin, is_nutritionist, is_it_admin,
                 ics_role, ics_permissions,
                 is_active, is_email_verified,
+                password_hash,
                 updated_at
-            ) VALUES ($1,$2,$2,$3,$4,$5,$6,$7,$8,$9,$10,true,false,NOW())
+            ) VALUES ($1,$2,$2,$3,$4,$5,$6,$7,$8,$9,$10,true,false,'',NOW())
             RETURNING id, email, full_name, role, ics_role, is_active, created_at
         `, [
             email.toLowerCase(),

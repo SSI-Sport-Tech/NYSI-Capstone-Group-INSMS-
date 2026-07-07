@@ -1,4 +1,5 @@
 import pool, { withUserContext } from "../../../config/db.js";
+import bcrypt from 'bcrypt';
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -594,14 +595,21 @@ export async function updateAthlete(athleteId, updateData, userId) {
  * @returns {Promise<Array>} Array of deleted rows
  */
 export async function deleteAthletes(athleteIds, userId) {
-  const query = `
-        DELETE FROM AMS.Athlete
-        WHERE id = ANY($1::uuid[])
-        RETURNING id
-    `;
-
   return withUserContext(userId, async (client) => {
-    const result = await client.query(query, [athleteIds]);
+    // Delete related records first (cascade manually)
+    await client.query(`DELETE FROM AMS.athlete_medical WHERE athlete_id = ANY($1::uuid[])`, [athleteIds]);
+    await client.query(`DELETE FROM AMS.athlete_registry WHERE athlete_id = ANY($1::uuid[])`, [athleteIds]);
+    await client.query(`DELETE FROM AMS.coach_athlete_mapping WHERE athlete_id = ANY($1::uuid[])`, [athleteIds]);
+    await client.query(`DELETE FROM AMS.nutritionist_athlete_mapping WHERE athlete_id = ANY($1::uuid[])`, [athleteIds]);
+    await client.query(`DELETE FROM AMS.user_athlete_pins WHERE athlete_id = ANY($1::uuid[])`, [athleteIds]);
+
+    // Delete the athlete
+    const result = await client.query(`
+            DELETE FROM AMS.Athlete
+            WHERE id = ANY($1::uuid[])
+            RETURNING id
+        `, [athleteIds]);
+
     return result.rows;
   });
 }
@@ -1078,6 +1086,103 @@ export async function updateAthleteProfile(athleteId, data, options = {}, userId
       medical: medical || null,
       coachMappings: coachMappings || null,
       nutritionistMappings: nutritionistMappings || null,
+    };
+  });
+}
+
+export async function createAEMSAthleteRecords({
+  nomsAthleteId,
+  nomsSportId,
+  initials,
+  nomsSportName,
+  cardingStatus,
+  initialBudget,
+  email = null,
+  pin = null,
+  performedBy,
+}) {
+  return withUserContext(performedBy, async (client) => {
+
+    // ── 1. Create auth.users (ATHLETE role) if credentials provided ─────
+    let authUserId = null;
+    if (email && pin) {
+      const pinHash = await bcrypt.hash(pin, 10);
+      const ICS_PERMISSIONS = JSON.stringify([
+        'auth:login',
+        'auth:change_own_pin',
+        'system:view_dashboard',
+      ]);
+
+      const authResult = await client.query(`
+                INSERT INTO auth.users (
+                    email, pin_hash, ics_pin_code,
+                    role, is_admin, is_nutritionist, is_it_admin,
+                    ics_role, ics_permissions,
+                    is_active, is_email_verified,
+                    updated_at
+                ) VALUES ($1,$2,$2,'ATHLETE',false,false,false,'Staff',$3,true,false,NOW())
+                ON CONFLICT (email) DO NOTHING
+                RETURNING id
+            `, [email.toLowerCase(), pinHash, ICS_PERMISSIONS]);
+
+      if (authResult.rows.length > 0) {
+        authUserId = authResult.rows[0].id;
+        // Link auth user to ams.athlete
+        await client.query(
+          `UPDATE ams.athlete SET user_id = $1 WHERE id = $2`,
+          [authUserId, nomsAthleteId]
+        );
+      }
+    }
+
+    // ── 2. Resolve public.sports id by name match ────────────────────────
+    const sportResult = await client.query(
+      `SELECT aems_sport_id FROM ams.sport_lookup WHERE id = $1`,
+      [nomsSportId]
+    );
+    const aemsSportId = sportResult.rows[0]?.aems_sport_id || null;
+
+    // ── 3. Map carding status → carding_level_id ─────────────────────────
+    // Active → 1 (Carding), anything else → 2 (Non-Carding)
+    const cardingResult = await client.query(
+      `SELECT aems_carding_level_id FROM ams.carding_status_lookup 
+             WHERE LOWER(status) = LOWER($1) LIMIT 1`,
+      [cardingStatus || 'Inactive']
+    );
+    const cardingLevelId = cardingResult.rows[0]?.aems_carding_level_id || 2;
+
+    // ── 4. Create public.athletes ─────────────────────────────────────────
+    const aemsAthleteResult = await client.query(`
+            INSERT INTO public.athletes (
+                initials, sport_id, carding_level_id,
+                is_active, created_date, created_at, updated_at
+            ) VALUES ($1, $2, $3, true, CURRENT_DATE, NOW(), NOW())
+            RETURNING *
+        `, [initials, aemsSportId, cardingLevelId]);
+
+    const aemsAthlete = aemsAthleteResult.rows[0];
+
+    // ── 5. Create public.athlete_budgets for active FY ────────────────────
+    const fyResult = await client.query(
+      `SELECT id FROM public.financial_years WHERE is_active = true LIMIT 1`
+    );
+
+    let budget = null;
+    if (fyResult.rows.length > 0) {
+      const fyId = fyResult.rows[0].id;
+      const budgetResult = await client.query(`
+                INSERT INTO public.athlete_budgets (
+                    athlete_id, financial_year_id, initial_budget, created_at, updated_at
+                ) VALUES ($1, $2, $3, NOW(), NOW())
+                RETURNING *
+            `, [aemsAthlete.id, fyId, initialBudget || 1000.00]);
+      budget = budgetResult.rows[0];
+    }
+
+    return {
+      authUser: authUserId ? { id: authUserId, email } : null,
+      aemsAthlete,
+      budget,
     };
   });
 }
