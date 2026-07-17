@@ -187,6 +187,8 @@ export async function getLatestConsultationSession(athleteId) {
             s.consultation_duration,
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
+            s.consultation_objective_id,
+            col.consultation_objective,
             s.is_scheduled_booking,
             s.status,
             s.ssp
@@ -194,6 +196,7 @@ export async function getLatestConsultationSession(athleteId) {
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
         LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
+        LEFT JOIN consultation.consultation_objective_lookup col ON s.consultation_objective_id = col.id
         WHERE s.athlete_id = $1
         ORDER BY s.date_of_consult DESC NULLS LAST, s.id DESC
         LIMIT 1
@@ -250,6 +253,8 @@ export async function getAllConsultationSessions(athleteId) {
             s.consultation_duration,
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
+            s.consultation_objective_id,
+            col.consultation_objective,
             s.is_scheduled_booking,
             s.status,
             s.ssp,
@@ -262,6 +267,7 @@ export async function getAllConsultationSessions(athleteId) {
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
         LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
+        LEFT JOIN consultation.consultation_objective_lookup col ON s.consultation_objective_id = col.id
         LEFT JOIN LATERAL (
             SELECT sp2.dosage, sp2.dosage_unit, sp2.dosage_frequency, sp2.batch_id
             FROM consultation.session_prescription sp2
@@ -303,6 +309,8 @@ export async function getUpcomingConsultationSessions(limit = 20) {
             s.consultation_duration,
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
+            s.consultation_objective_id,
+            col.consultation_objective,
             s.is_scheduled_booking,
             s.status,
             s.ssp
@@ -310,6 +318,7 @@ export async function getUpcomingConsultationSessions(limit = 20) {
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
         LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
+        LEFT JOIN consultation.consultation_objective_lookup col ON s.consultation_objective_id = col.id
         WHERE s.status NOT IN ('completed', 'cancelled')
           AND (
               s.date_of_consult > CURRENT_DATE
@@ -349,6 +358,8 @@ export async function getSessionsByDateRange(from, to) {
             s.time_of_consult,
             s.end_time_of_consult,
             s.consultation_duration,
+            s.consultation_objective_id,
+            col.consultation_objective,
             s.is_scheduled_booking,
             s.status,
             s.ssp
@@ -356,6 +367,7 @@ export async function getSessionsByDateRange(from, to) {
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
         LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
+        LEFT JOIN consultation.consultation_objective_lookup col ON s.consultation_objective_id = col.id
         WHERE s.date_of_consult >= $1 AND s.date_of_consult <= $2
         ORDER BY s.date_of_consult, s.time_of_consult ASC NULLS LAST
     `;
@@ -399,6 +411,8 @@ export async function getTodaySessionsForNutritionist(nutritionistId, date) {
             s.consultation_duration,
             s.date_of_next_follow_up,
             s.time_of_next_follow_up,
+            s.consultation_objective_id,
+            col.consultation_objective,
             s.is_scheduled_booking,
             s.status,
             s.ssp
@@ -406,6 +420,7 @@ export async function getTodaySessionsForNutritionist(nutritionistId, date) {
         LEFT JOIN ams.nutritionist n ON s.nutritionist_id = n.id
         LEFT JOIN ams.athlete a ON s.athlete_id = a.id
         LEFT JOIN consultation.type_of_consult_lookup tl ON s.type_of_consult_id = tl.id
+        LEFT JOIN consultation.consultation_objective_lookup col ON s.consultation_objective_id = col.id
         WHERE s.nutritionist_id = $1
           AND s.date_of_consult = $2::date
         ORDER BY s.time_of_consult ASC NULLS LAST
