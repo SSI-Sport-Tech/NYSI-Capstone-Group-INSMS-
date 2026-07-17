@@ -10,6 +10,8 @@ export interface ScheduledSession {
   athlete_name_abbr: string;
   date_of_consult: string | null;
   time_of_consult: string | null;
+  end_time_of_consult: string | null;
+  consultation_duration: number | null;
   type_of_consult_id: string | null;
   type_of_consult: string | null;
   title_description: string | null;

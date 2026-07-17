@@ -279,6 +279,7 @@ export default function ConsultationView({
         venue: data.venue || "",
         date_of_consult: data.date_of_consult ? data.date_of_consult.split("T")[0] : "",
         time_of_consult: data.time_of_consult ? data.time_of_consult.substring(0, 5) : "",
+        end_time_of_consult: data.end_time_of_consult ? data.end_time_of_consult.substring(0, 5) : "",
         date_of_next_follow_up: data.date_of_next_follow_up
           ? data.date_of_next_follow_up.split("T")[0]
           : "",
@@ -321,6 +322,7 @@ export default function ConsultationView({
         venue: data.venue || "",
         date_of_consult: data.date_of_consult ? data.date_of_consult.split("T")[0] : "",
         time_of_consult: data.time_of_consult ? data.time_of_consult.substring(0, 5) : "",
+        end_time_of_consult: data.end_time_of_consult ? data.end_time_of_consult.substring(0, 5) : "",
         date_of_next_follow_up: data.date_of_next_follow_up
           ? data.date_of_next_follow_up.split("T")[0]
           : "",
@@ -382,6 +384,7 @@ export default function ConsultationView({
       venue: session.venue ?? "",
       date_of_consult: session.date_of_consult ?? "",
       time_of_consult: session.time_of_consult ?? "",
+      end_time_of_consult: session.end_time_of_consult ?? "",
       date_of_next_follow_up: session.date_of_next_follow_up ?? "",
       time_of_next_follow_up: session.time_of_next_follow_up ?? "",
       consultation_objective_id: session.consultation_objective_id ?? "",
@@ -452,15 +455,17 @@ export default function ConsultationView({
         const id = sessionIdRef.current || (await ensureSessionForUpdateRef.current());
         if (!id) return;
         const token = localStorage.getItem("token");
-        const body: Record<string, string> = {};
+        const body: Record<string, string | number | boolean> = {};
         if (form.type_of_consult_id) body.type_of_consult_id = form.type_of_consult_id;
         if (form.title_description) body.title_description = form.title_description;
         if (form.venue) body.venue = form.venue;
         if (form.date_of_consult) body.date_of_consult = form.date_of_consult;
         if (form.time_of_consult) body.time_of_consult = form.time_of_consult;
+        if (form.end_time_of_consult) body.end_time_of_consult = form.end_time_of_consult;
         if (form.date_of_next_follow_up) body.date_of_next_follow_up = form.date_of_next_follow_up;
         if (form.time_of_next_follow_up) body.time_of_next_follow_up = form.time_of_next_follow_up;
         if (form.consultation_objective_id) body.consultation_objective_id = form.consultation_objective_id;
+        if (form.ssp) body.ssp = form.ssp;
         if (Object.keys(body).length === 0) return;
         await fetch(
           `${BACKEND_URL}/api/Consultation/consultation-session/${id}`,
@@ -490,6 +495,7 @@ export default function ConsultationView({
       venue: d.venue || "",
       date_of_consult: d.date_of_consult ? d.date_of_consult.split("T")[0] : "",
       time_of_consult: d.time_of_consult ? d.time_of_consult.substring(0, 5) : "",
+      end_time_of_consult: d.end_time_of_consult ? d.end_time_of_consult.substring(0, 5) : "",
       date_of_next_follow_up: d.date_of_next_follow_up
         ? d.date_of_next_follow_up.split("T")[0]
         : "",
@@ -531,15 +537,17 @@ export default function ConsultationView({
     setUpdateSaveError("");
     try {
       const token = localStorage.getItem("token");
-      const body: Record<string, string> = {};
+      const body: Record<string, string | number | boolean> = {};
       if (updateForm.type_of_consult_id) body.type_of_consult_id = updateForm.type_of_consult_id;
       if (updateForm.title_description) body.title_description = updateForm.title_description;
       if (updateForm.venue) body.venue = updateForm.venue;
       if (updateForm.date_of_consult) body.date_of_consult = updateForm.date_of_consult;
       if (updateForm.time_of_consult) body.time_of_consult = updateForm.time_of_consult;
+      if (updateForm.end_time_of_consult) body.end_time_of_consult = updateForm.end_time_of_consult;
       if (updateForm.date_of_next_follow_up) body.date_of_next_follow_up = updateForm.date_of_next_follow_up;
       if (updateForm.time_of_next_follow_up) body.time_of_next_follow_up = updateForm.time_of_next_follow_up;
       if (updateForm.consultation_objective_id) body.consultation_objective_id = updateForm.consultation_objective_id;
+      if (updateForm.ssp) body.ssp = updateForm.ssp;
       if (Object.keys(body).length === 0) return;
       const res = await fetch(
         `${BACKEND_URL}/api/Consultation/consultation-session/${currentSessionId}`,
@@ -577,15 +585,17 @@ export default function ConsultationView({
     try {
       const id = await ensureSession();
       const token = localStorage.getItem("token");
-      const body: Record<string, string> = {};
+      const body: Record<string, string | number | boolean> = {};
       if (updateForm.type_of_consult_id) body.type_of_consult_id = updateForm.type_of_consult_id;
       if (updateForm.title_description) body.title_description = updateForm.title_description;
       if (updateForm.venue) body.venue = updateForm.venue;
       if (updateForm.date_of_consult) body.date_of_consult = updateForm.date_of_consult;
       if (updateForm.time_of_consult) body.time_of_consult = updateForm.time_of_consult;
+      if (updateForm.end_time_of_consult) body.end_time_of_consult = updateForm.end_time_of_consult;
       if (updateForm.date_of_next_follow_up) body.date_of_next_follow_up = updateForm.date_of_next_follow_up;
       if (updateForm.time_of_next_follow_up) body.time_of_next_follow_up = updateForm.time_of_next_follow_up;
       if (updateForm.consultation_objective_id) body.consultation_objective_id = updateForm.consultation_objective_id;
+      if (updateForm.ssp) body.ssp = updateForm.ssp;
       if (Object.keys(body).length === 0) {
         setIsSavingUpdate(false);
         return;

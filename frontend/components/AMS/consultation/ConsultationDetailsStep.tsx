@@ -56,7 +56,26 @@ function ReadOnlyDetails({ latestConsultation }: { latestConsultation: LatestCon
         <span className="text-gray-500">Date of Consult:</span>
         <span className="ml-2 font-medium">
           {(d.date_of_consult ? new Date(d.date_of_consult) : new Date()).toLocaleDateString()}
-          {d.time_of_consult && <span className="ml-1 text-gray-600">{d.time_of_consult.substring(0, 5)}</span>}
+          {/* {d.time_of_consult && <span className="ml-1 text-gray-600">{d.time_of_consult.substring(0, 5)}</span>} */}
+          {d.time_of_consult && (
+            <>
+              <span className="ml-1 text-gray-600">{d.time_of_consult.substring(0, 5)}</span>
+
+              {d.end_time_of_consult && (
+                <span className="ml-1 text-gray-600"> - {d.end_time_of_consult.substring(0, 5)}</span>
+              )}
+            </>
+          )}
+        </span>
+      </div>
+      <div>
+        <span className="text-gray-500">Duration:</span>
+        <span className="ml-2 font-medium">
+          {d.consultation_duration != null
+            ? `${d.consultation_duration} hour${
+                d.consultation_duration === 1 ? "" : "s"
+              }`
+            : "—"}
         </span>
       </div>
       <div>
@@ -98,6 +117,18 @@ function ReadOnlyDetails({ latestConsultation }: { latestConsultation: LatestCon
   );
 }
 
+function calculateDuration(start: string, end: string) {
+  if (!start || !end) return "";
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  let minutes = (eh * 60 + em) - (sh * 60 + sm);
+  if (minutes < 0) {
+    minutes += 24 * 60;
+  }
+  const hours = minutes / 60;
+  return Number(hours.toFixed(2)).toString();
+}
+
 export default function ConsultationDetailsStep(props: ConsultationDetailsStepProps) {
   const {
     isNewConsultation,
@@ -119,6 +150,11 @@ export default function ConsultationDetailsStep(props: ConsultationDetailsStepPr
     onSaveUpdateCard,
     onUpdateFormChange,
   } = props;
+
+  const duration = calculateDuration(
+    updateForm.time_of_consult,
+    updateForm.end_time_of_consult
+  );
 
   const renderUpdateForm = () => (
     <div>
@@ -146,6 +182,20 @@ export default function ConsultationDetailsStep(props: ConsultationDetailsStepPr
         <div>
           <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Time of Consultation</label>
           <TimePicker value={updateForm.time_of_consult} onChange={(val) => onUpdateFormChange({ time_of_consult: val })} />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">End Time of Consultation</label>
+          <TimePicker value={updateForm.end_time_of_consult} onChange={(val) => onUpdateFormChange({ end_time_of_consult: val })} />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+            Duration
+          </label>
+          <input
+            value={duration ? `${duration} hours` : ""}
+            readOnly
+            className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 text-sm text-gray-700"
+          />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Date of Next Follow-Up</label>
