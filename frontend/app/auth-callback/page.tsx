@@ -12,7 +12,8 @@ function AuthCallbackContent() {
     useEffect(() => {
         const token = searchParams.get('token');
         if (!token) {
-            router.push('/login');
+            // router.push('/login');
+            window.location.href = `${process.env.NEXT_PUBLIC_ICS_URL}/login`;
             return;
         }
         axios.get('/noms/api/auth/me', {
@@ -25,7 +26,8 @@ function AuthCallbackContent() {
                 router.push(redirect || '/');
             })
             .catch(() => {
-                router.push('/login');
+                // router.push('/login');
+                window.location.href = `${process.env.NEXT_PUBLIC_ICS_URL}/login`;
             });
     }, []);
     return (

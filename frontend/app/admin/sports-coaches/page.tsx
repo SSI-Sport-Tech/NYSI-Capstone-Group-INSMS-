@@ -46,13 +46,15 @@ export default function SportsCoachesPage() {
     // Check authorization
     useEffect(() => {
         if (!isAuthenticated) {
-            router.push("/login");
+            // router.push("/login");
+            window.location.href = `${process.env.NEXT_PUBLIC_ICS_URL}/login`;
             return;
         }
 
         // Only ADMIN and IT_ADMIN can access this page
         if (!isITAdmin && !isAdmin) {
-            router.push("/unauthorized");
+            // router.push("/unauthorized");
+            window.location.href = `${process.env.NEXT_PUBLIC_ICS_URL}/unauthorized`;
             return;
         }
 

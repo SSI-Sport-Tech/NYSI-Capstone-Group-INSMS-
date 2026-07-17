@@ -22,7 +22,8 @@ function VerifyForm() {
   // Redirect if no email param
   useEffect(() => {
     if (!email) {
-      router.replace("/login");
+      // router.replace("/login");
+      window.location.replace(`${process.env.NEXT_PUBLIC_ICS_URL}/login`);
     }
   }, [email, router]);
 
@@ -82,9 +83,9 @@ function VerifyForm() {
     <div className="w-full max-w-md">
       <div className="flex justify-center mb-8">
         <img
-          src="/HPSI_LOGO.png"
+          src="/noms/HPSI_LOGO.png"
           alt="HPSI - High Performance Sport Institute"
-          className="h-20"
+          className="w-32 h-32 object-contain mx-auto"
         />
       </div>
 

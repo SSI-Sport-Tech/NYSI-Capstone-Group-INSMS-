@@ -109,7 +109,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.push("/login");
+      // router.push("/login");
+      window.location.href = `${process.env.NEXT_PUBLIC_ICS_URL}/login`;
     }
   }, [loading, isAuthenticated, router]);
 
@@ -141,9 +142,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="p-6">
           <div className="flex items-center justify-center">
             <img
-              src="/HPSI_LOGO.png"
+              src="/noms/HPSI_LOGO.png"
               alt="HPSI - High Performance Sport Institute"
-              className="w-full max-w-[100px] h-auto"
+              className="w-32 h-32 object-contain mx-auto"
             />
           </div>
         </div>
@@ -365,7 +366,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 // Clear the ICS/AEMS auth_token cookie
                 document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=strict';
                 // Redirect to ICS login
-                window.location.href = '/ics/login';
+                // window.location.href = '/ics/login';
+                window.location.href = `${process.env.NEXT_PUBLIC_ICS_URL}/login`;
               }}
               className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition"
               title="Log out"
