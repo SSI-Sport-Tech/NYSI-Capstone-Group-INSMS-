@@ -5,28 +5,25 @@ const MONDAY_GROUP_ID = process.env.MONDAY_GROUP_ID || "";
 
 export const MONDAY_COLUMNS = {
     nutritionist_name: "text_mm3qwvc2",
-    // nutritionist_id: "text_mm3qkyqy",
     team: "text_mm3t3z0e",
     athlete_name: "text_mm2fk0bw",
     sport: "text_mm3t4kt0",
-    // athlete_id: "text_mm2fr3zw",
-    // type_of_consult_id: "text_mm3qfk36",
     type_of_consult: "text_mm3q7bsn",
     date_of_consult: "date_mm3sxda1",
     ssp: "text_mm3ta3rt",
     session: "numeric_mm3tqh5j",
     consultation_objective_name: "text_mm3qyjda",
-    // consultation_objective_id: "text_mm3qj790",
-    status: "text_mm3qwnq0",
+    // status: "text_mm3qwnq0",
     // updated_by_name: "text_mm3qpdcf",
     // created_by_name: "text_mm3q3t39",
     updated_at: "text_mm3qjk69",
-    // created_at: "text_mm3q6k2w",
-    is_scheduled_booking: "text_mm3qff34",
+    // is_scheduled_booking: "text_mm3qff34",
     time_of_next_follow_up: "text_mm3qv1bq",
     time_of_consult: "text_mm3q1568",
+    end_time_of_consult: "text_mm5bv11w",
+    consultation_duration: "text_mm5bvjpb",
     venue: "text_mm3qx4cr",
-    title_description: "text_mm3qmhfe",
+    // title_description: "text_mm3qmhfe",
     date_of_next_follow_up: "date_mm3swt16",
 };
 
@@ -105,12 +102,9 @@ export async function createMondayItem(itemName, columnValues) {
 export function buildNOMSMondayColumnValues(record) {
     return {
         [MONDAY_COLUMNS.nutritionist_name]: String(record.nutritionist_name || "").trim(),
-        // [MONDAY_COLUMNS.nutritionist_id]: String(record.nutritionist_id || "").trim(),
         [MONDAY_COLUMNS.team]: String(record.team || "").trim(),
         [MONDAY_COLUMNS.athlete_name]: String(record.athlete_name || "").trim(),
         [MONDAY_COLUMNS.sport]: String(record.sport || "").trim(),
-        // [MONDAY_COLUMNS.athlete_id]: String(record.athlete_id || "").trim(),
-        // [MONDAY_COLUMNS.type_of_consult_id]: String(record.type_of_consult_id || "").trim(),
         [MONDAY_COLUMNS.type_of_consult]: String(record.type_of_consult || "").trim(),
         [MONDAY_COLUMNS.date_of_consult]: record.date_of_consult
             ? { date: record.date_of_consult }
@@ -118,17 +112,17 @@ export function buildNOMSMondayColumnValues(record) {
         [MONDAY_COLUMNS.ssp]: record.ssp === true ? "Yes" : "No",
         [MONDAY_COLUMNS.session]: String(record.session || "").trim(),
         [MONDAY_COLUMNS.consultation_objective_name]: String(record.consultation_objective_name || "").trim(),
-        // [MONDAY_COLUMNS.consultation_objective_id]: String(record.consultation_objective_id || "").trim(),
-        [MONDAY_COLUMNS.status]: String(record.status || "").trim(),
+        // [MONDAY_COLUMNS.status]: String(record.status || "").trim(),
         // [MONDAY_COLUMNS.updated_by_name]: String(record.updated_by_name || "").trim(),
         // [MONDAY_COLUMNS.created_by_name]: String(record.created_by_name || "").trim(),
         [MONDAY_COLUMNS.updated_at]: String(record.updated_at || "").trim(),
-        // [MONDAY_COLUMNS.created_at]: String(record.created_at || "").trim(),
-        [MONDAY_COLUMNS.is_scheduled_booking]: record.is_scheduled_booking === true ? "Yes" : "No",
+        // [MONDAY_COLUMNS.is_scheduled_booking]: record.is_scheduled_booking === true ? "Yes" : "No",
         [MONDAY_COLUMNS.time_of_next_follow_up]: String(record.time_of_next_follow_up || "").trim(),
         [MONDAY_COLUMNS.time_of_consult]: String(record.time_of_consult || "").trim(),
+        [MONDAY_COLUMNS.end_time_of_consult]: String(record.end_time_of_consult || "").trim(),
+        [MONDAY_COLUMNS.consultation_duration]: String(record.consultation_duration || "").trim(),
         [MONDAY_COLUMNS.venue]: String(record.venue || "").trim(),
-        [MONDAY_COLUMNS.title_description]: String(record.title_description || "").trim(),
+        // [MONDAY_COLUMNS.title_description]: String(record.title_description || "").trim(),
         [MONDAY_COLUMNS.date_of_next_follow_up]: record.date_of_next_follow_up
             ? { date: record.date_of_next_follow_up }
             : null,
@@ -136,7 +130,8 @@ export function buildNOMSMondayColumnValues(record) {
 }
 
 function buildNOMSMondayItemName(record) {
-    return `${record.athlete_name || "Unknown Athlete"} · ${record.title_description || "Session"} · ${record.date_of_consult || ""}`;
+    // return `${record.athlete_name || "Unknown Athlete"} · ${record.title_description || "Session"} · ${record.date_of_consult || ""}`;
+    return `${record.athlete_name || "Unknown Athlete"} · Session · ${record.date_of_consult || ""}`;
 }
 
 export async function createNOMSMondayItem(record) {

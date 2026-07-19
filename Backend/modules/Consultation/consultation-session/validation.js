@@ -37,6 +37,7 @@ export const createSessionSchema = z.object({
         .refine(val => !isNaN(Date.parse(val)), { message: 'Must be a valid date (YYYY-MM-DD)' })
         .optional(),
     time_of_consult: optionalTimeSchema,
+    end_time_of_consult: optionalTimeSchema,
     date_of_next_follow_up: optionalDateSchema,
     time_of_next_follow_up: optionalTimeSchema,
     consultation_objective_id: uuidFormatSchema.optional(),
@@ -62,6 +63,7 @@ export const updateSessionSchema = z.object({
     venue: z.string().trim().optional(),
     date_of_consult: optionalDateSchema,
     time_of_consult: optionalTimeSchema,
+    end_time_of_consult: optionalTimeSchema,
     date_of_next_follow_up: optionalDateSchema,
     time_of_next_follow_up: optionalTimeSchema,
     consultation_objective_id: uuidFormatSchema.optional(),

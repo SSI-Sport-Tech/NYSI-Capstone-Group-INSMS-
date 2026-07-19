@@ -23,6 +23,8 @@ interface SessionData {
   type_of_consult: string;
   venue: string;
   time_of_consult: string;
+  end_time_of_consult: string;
+  consultation_duration: string;
   title_description: string;
   ssp: boolean;
 }

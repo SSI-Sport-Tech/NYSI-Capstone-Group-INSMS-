@@ -233,6 +233,7 @@ export async function createConsultationSession(req, res) {
             venue: validated.venue,
             date_of_consult: validated.date_of_consult,
             time_of_consult: validated.time_of_consult,
+            end_time_of_consult: validated.end_time_of_consult,
             date_of_next_follow_up: validated.date_of_next_follow_up,
             time_of_next_follow_up: validated.time_of_next_follow_up,
             consultation_objective_id: validated.consultation_objective_id,
