@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Calendar, Clock, User, MapPin, FileText , School} from "lucide-react";
+import { X, Calendar, Clock, User, MapPin, FileText, School } from "lucide-react";
 import { dashboardApi, Athlete, ConsultationType, ConsultationSession } from "@/utils/dashboardApi";
 import { consultationLookupApi } from "@/utils/consultationApi";
 
@@ -25,7 +25,7 @@ export default function BookingModal({
   const [consultationTypes, setConsultationTypes] = useState<ConsultationType[]>([]);
   const [consultationObjectives, setConsultationObjectives] = useState<{ id: string; consultation_objective: string }[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   // Form state
   const [formData, setFormData] = useState({
     athlete_id: "",
@@ -40,7 +40,7 @@ export default function BookingModal({
 
   // Time slot options
   const timeSlots = [
-    "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", 
+    "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
     "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
     "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
     "17:00", "17:30", "18:00", "18:30", "19:00"
@@ -71,7 +71,7 @@ export default function BookingModal({
           date_of_consult: `${y}-${m}-${d}`,
         }));
       }
-      
+
       // Load reference data
       loadReferenceData();
     } else {
@@ -122,7 +122,7 @@ export default function BookingModal({
         newErrors.athlete_id = "Invalid athlete selection";
       }
     }
-    
+
     if (!formData.type_of_consult_id) {
       newErrors.type_of_consult_id = "Please select a consultation type";
     } else {
@@ -132,7 +132,7 @@ export default function BookingModal({
         newErrors.type_of_consult_id = "Invalid consultation type selection";
       }
     }
-    
+
     if (!formData.date_of_consult) {
       newErrors.date_of_consult = "Please select a date";
     }
@@ -155,7 +155,7 @@ export default function BookingModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -194,19 +194,19 @@ export default function BookingModal({
       onClose();
     } catch (error) {
       console.error("Error saving consultation:", error);
-      
+
       // Handle specific validation errors
       const err = error instanceof Error ? error : new Error(String(error));
       const axiosError = error as { response?: { status?: number; data?: { message?: string; error?: string } } };
-      
+
       if (axiosError.response?.status === 400) {
         const errorMessage = axiosError.response.data?.message || axiosError.response.data?.error || "Validation failed";
         setErrors({ general: `Validation error: ${errorMessage}` });
       } else if (err.message?.includes('DashboardApiError')) {
         setErrors({ general: `API Error: ${err.message}` });
       } else {
-        setErrors({ 
-          general: err.message || "Failed to save consultation. Please try again." 
+        setErrors({
+          general: err.message || "Failed to save consultation. Please try again."
         });
       }
     } finally {
@@ -262,15 +262,14 @@ export default function BookingModal({
             <select
               value={formData.athlete_id}
               onChange={(e) => handleInputChange("athlete_id", e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                errors.athlete_id ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.athlete_id ? "border-red-500" : "border-gray-300"
+                }`}
               disabled={loading}
             >
               <option value="">Select an athlete</option>
               {athletes.map((athlete) => (
                 <option key={athlete.id} value={athlete.id}>
-                  {athlete.athlete_name_abbr || `${athlete.first_name} ${athlete.last_name}`}
+                  {athlete.initials || `${athlete.first_name} ${athlete.last_name}`}
                   {athlete.sport_name && ` (${athlete.sport_name})`}
                 </option>
               ))}
@@ -289,9 +288,8 @@ export default function BookingModal({
             <select
               value={formData.type_of_consult_id}
               onChange={(e) => handleInputChange("type_of_consult_id", e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                errors.type_of_consult_id ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.type_of_consult_id ? "border-red-500" : "border-gray-300"
+                }`}
               disabled={loading}
             >
               <option value="">Select consultation type</option>
@@ -317,9 +315,8 @@ export default function BookingModal({
               <button
                 type="button"
                 onClick={() => handleInputChange("ssp", true)}
-                className={`flex-1 py-2 rounded-lg border ${
-                  formData.ssp ? "bg-green-600 text-white border-green-600" : "border-gray-300"
-                }`}
+                className={`flex-1 py-2 rounded-lg border ${formData.ssp ? "bg-green-600 text-white border-green-600" : "border-gray-300"
+                  }`}
               >
                 Yes
               </button>
@@ -327,9 +324,8 @@ export default function BookingModal({
               <button
                 type="button"
                 onClick={() => handleInputChange("ssp", false)}
-                className={`flex-1 py-2 rounded-lg border ${
-                  !formData.ssp ? "bg-gray-600 text-white border-gray-600" : "border-gray-300"
-                }`}
+                className={`flex-1 py-2 rounded-lg border ${!formData.ssp ? "bg-gray-600 text-white border-gray-600" : "border-gray-300"
+                  }`}
               >
                 No
               </button>
@@ -347,10 +343,9 @@ export default function BookingModal({
                 type="date"
                 value={formData.date_of_consult}
                 onChange={(e) => handleInputChange("date_of_consult", e.target.value)}
-                min={(() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })()}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.date_of_consult ? "border-red-500" : "border-gray-300"
-                }`}
+                min={(() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`; })()}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.date_of_consult ? "border-red-500" : "border-gray-300"
+                  }`}
                 disabled={loading}
               />
               {errors.date_of_consult && (
@@ -366,9 +361,8 @@ export default function BookingModal({
               <select
                 value={formData.time_of_consult}
                 onChange={(e) => handleInputChange("time_of_consult", e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.time_of_consult ? "border-red-500" : "border-gray-300"
-                }`}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.time_of_consult ? "border-red-500" : "border-gray-300"
+                  }`}
                 disabled={loading}
               >
                 <option value="">Select time</option>

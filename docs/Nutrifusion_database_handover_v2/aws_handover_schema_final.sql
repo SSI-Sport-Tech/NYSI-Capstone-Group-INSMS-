@@ -233,7 +233,7 @@ CREATE TABLE ams.athlete (
     sport_id uuid NOT NULL,
     gender text,
     sportsync_id text,
-    athlete_name_abbr text,
+    initials text,
     date_of_birth date,
     user_id uuid,
     ethnicity text,

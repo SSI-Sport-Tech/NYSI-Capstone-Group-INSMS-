@@ -3,7 +3,7 @@
 export interface LatestConsultation {
   id: string;
   athlete_id: string;
-  athlete_name_abbr: string;
+  initials: string;
   date_of_consult: string;
   date_of_next_follow_up: string;
   time_of_next_follow_up: string;

@@ -49,7 +49,7 @@ const router = express.Router();
  *                     athlete_id:
  *                       type: string
  *                       format: uuid
- *                     athlete_name_abbr:
+ *                     initials:
  *                       type: string
  *                     type_of_consult_id:
  *                       type: string
@@ -137,7 +137,7 @@ router.get('/consultation-session/:id/previous', controller.getPreviousConsultat
  *                     athlete_id:
  *                       type: string
  *                       format: uuid
- *                     athlete_name_abbr:
+ *                     initials:
  *                       type: string
  *                     type_of_consult_id:
  *                       type: string

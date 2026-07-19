@@ -32,7 +32,7 @@ interface AthleteFormData {
   // Athlete table fields
   sport_id: string;
   sportsync_id: string;
-  athlete_name_abbr: string;
+  initials: string;
   gender: string;
   date_of_birth: string;
 
@@ -101,7 +101,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
   const [formData, setFormData] = useState<AthleteFormData>({
     sport_id: "",
     sportsync_id: "",
-    athlete_name_abbr: "",
+    initials: "",
     gender: "",
     date_of_birth: "",
     carding_status: "",
@@ -319,7 +319,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
         // Athlete fields
         sport_id: formData.sport_id,
         sportsync_id: formData.sportsync_id,
-        athlete_name_abbr: formData.athlete_name_abbr,
+        initials: formData.initials,
         gender: formData.gender,
         date_of_birth: formData.date_of_birth,
 
@@ -411,7 +411,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
     setFormData({
       sport_id: "",
       sportsync_id: "",
-      athlete_name_abbr: "",
+      initials: "",
       gender: "",
       date_of_birth: "",
       carding_status: "",
@@ -502,8 +502,8 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    name="athlete_name_abbr"
-                    value={formData.athlete_name_abbr}
+                    name="initials"
+                    value={formData.initials}
                     onChange={handleInputChange}
                     placeholder="Athlete Abbr Name"
                     className="w-full px-3 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

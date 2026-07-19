@@ -17,7 +17,7 @@ import AddAthleteModal from "./AddAthleteModal";
 interface Athlete {
   id: string;
   sportsync_id: string;
-  athlete_name_abbr: string;
+  initials: string;
   sport_name: string;
   gender: string;
   date_of_birth: string;
@@ -181,7 +181,7 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
         [
           athlete.id,
           athlete.sportsync_id,
-          athlete.athlete_name_abbr,
+          athlete.initials,
           athlete.sport_name,
           athlete.gender,
           athlete.date_of_birth
@@ -295,7 +295,7 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                     </div>
                   </th>
                   <th
-                    onClick={() => handleSort("athlete_name_abbr")}
+                    onClick={() => handleSort("initials")}
                     className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700"
                   >
                     <div className="flex items-center gap-1">
@@ -386,16 +386,14 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                       <td className="px-3 py-4">
                         <button
                           onClick={() => handlePinToggle(athlete.id)}
-                          className={`p-1 rounded transition-colors ${
-                            athlete.is_pinned
+                          className={`p-1 rounded transition-colors ${athlete.is_pinned
                               ? "text-black hover:text-gray-800"
                               : "text-gray-400 hover:text-gray-600"
-                          }`}
+                            }`}
                         >
                           <Pin
-                            className={`w-4 h-4 ${
-                              athlete.is_pinned ? "fill-current" : ""
-                            }`}
+                            className={`w-4 h-4 ${athlete.is_pinned ? "fill-current" : ""
+                              }`}
                           />
                         </button>
                       </td>
@@ -407,7 +405,7 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                           onClick={() => handleViewAthlete(athlete.id)}
                           className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
                         >
-                          {athlete.athlete_name_abbr}
+                          {athlete.initials}
                         </button>
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-900">
@@ -416,11 +414,10 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                       <td className="px-3 py-4">
                         {athlete.carding_status ? (
                           <span
-                            className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              athlete.carding_status?.toLowerCase() === "active"
+                            className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${athlete.carding_status?.toLowerCase() === "active"
                                 ? "bg-green-100 text-green-800"
                                 : "bg-red-100 text-red-800"
-                            }`}
+                              }`}
                           >
                             {athlete.carding_status}
                           </span>
@@ -438,8 +435,8 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                       <td className="px-3 py-4 text-sm text-gray-900">
                         {athlete.date_of_birth
                           ? new Date(athlete.date_of_birth).toLocaleDateString(
-                              "en-US",
-                            )
+                            "en-US",
+                          )
                           : "-"}
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-900">

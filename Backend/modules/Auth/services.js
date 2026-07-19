@@ -214,7 +214,7 @@ export async function getAthleteByUserId(userId) {
   const query = `
         SELECT 
             id,
-            athlete_name_abbr,
+            initials,
             user_id,
         FROM ams.athlete
         WHERE user_id = $1

@@ -13,7 +13,7 @@ import { getBackendUrl } from "@/utils/backendUrl";
 interface Athlete {
   id: string;
   sportsync_id: string;
-  athlete_name_abbr: string;
+  initials: string;
   sport_name: string;
   gender: string;
   date_of_birth: string;

@@ -153,7 +153,7 @@ export async function getAssignedAthletes(nutritionistId) {
   const query = `
         SELECT 
             a.id, 
-            a.athlete_name_abbr, 
+            a.initials, 
             a.sportsync_id,
             sl.sport AS sport_name,
             nam.is_pinned,
@@ -163,7 +163,7 @@ export async function getAssignedAthletes(nutritionistId) {
         JOIN AMS.Athlete a ON nam.athlete_id = a.id
         LEFT JOIN AMS.Sport_Lookup sl ON a.sport_id = sl.id
         WHERE nam.nutritionist_id = $1 AND nam.is_active = TRUE
-        ORDER BY nam.is_pinned DESC, a.athlete_name_abbr ASC
+        ORDER BY nam.is_pinned DESC, a.initials ASC
     `;
   const result = await pool.query(query, [nutritionistId]);
   return result.rows;
@@ -213,7 +213,7 @@ export async function toggleAthletePin(userId, athleteId, isPinned) {
 export async function getAllMappings(isActive = null) {
   let query = `
         SELECT nam.id, nam.athlete_id, nam.nutritionist_id, nam.is_active,
-               n.name AS nutritionist_name, a.athlete_name_abbr AS athlete_name
+               n.name AS nutritionist_name, a.initials AS athlete_name
         FROM AMS.Nutritionist_Athlete_Mapping nam
         JOIN AMS.Nutritionist n ON nam.nutritionist_id = n.id
         JOIN AMS.Athlete a ON nam.athlete_id = a.id
@@ -225,7 +225,7 @@ export async function getAllMappings(isActive = null) {
     params.push(isActive);
   }
 
-  query += ` ORDER BY a.athlete_name_abbr ASC, n.name ASC`;
+  query += ` ORDER BY a.initials ASC, n.name ASC`;
 
   return await pool.query(query, params);
 }
@@ -239,7 +239,7 @@ export async function getAllMappings(isActive = null) {
 export async function getMappingsByAthleteId(athleteId, isActive = null) {
   let query = `
         SELECT nam.id, nam.athlete_id, nam.nutritionist_id, nam.is_active,
-               n.name AS nutritionist_name, a.athlete_name_abbr AS athlete_name
+               n.name AS nutritionist_name, a.initials AS athlete_name
         FROM AMS.Nutritionist_Athlete_Mapping nam
         JOIN AMS.Nutritionist n ON nam.nutritionist_id = n.id
         JOIN AMS.Athlete a ON nam.athlete_id = a.id
@@ -292,7 +292,7 @@ export async function createMapping(athleteId, nutritionistId, isActive, userId)
     const r = await client.query(query, [athleteId, nutritionistId, isActive]);
     return r;
   });
-  
+
   // Auto-pin the athlete for the nutritionist when assignment is created
   if (result.rows.length > 0 && isActive) {
     try {
@@ -301,13 +301,13 @@ export async function createMapping(athleteId, nutritionistId, isActive, userId)
         SELECT user_id FROM AMS.Nutritionist WHERE id = $1
       `;
       const userResult = await pool.query(nutritionistUserQuery, [nutritionistId]);
-      
+
       if (userResult.rows.length > 0 && userResult.rows[0].user_id) {
         const userId = userResult.rows[0].user_id;
-        
+
         // Auto-pin the athlete for this user
         await toggleAthletePin(userId, athleteId, true);
-        
+
         console.log(`Auto-pinned athlete ${athleteId} for nutritionist ${nutritionistId} (user ${userId})`);
       }
     } catch (error) {
@@ -315,7 +315,7 @@ export async function createMapping(athleteId, nutritionistId, isActive, userId)
       console.error('Error auto-pinning athlete during assignment creation:', error);
     }
   }
-  
+
   return result.rows[0];
 }
 
@@ -338,7 +338,7 @@ export async function updateMapping(athleteId, nutritionistId, isActive, userId)
     const r = await client.query(query, [athleteId, nutritionistId, isActive]);
     return r;
   });
-  
+
   // Auto-pin the athlete when assignment is reactivated
   if (result.rows.length > 0 && isActive) {
     try {
@@ -347,13 +347,13 @@ export async function updateMapping(athleteId, nutritionistId, isActive, userId)
         SELECT user_id FROM AMS.Nutritionist WHERE id = $1
       `;
       const userResult = await pool.query(nutritionistUserQuery, [nutritionistId]);
-      
+
       if (userResult.rows.length > 0 && userResult.rows[0].user_id) {
         const userId = userResult.rows[0].user_id;
-        
+
         // Auto-pin the athlete for this user
         await toggleAthletePin(userId, athleteId, true);
-        
+
         console.log(`Auto-pinned athlete ${athleteId} for nutritionist ${nutritionistId} (user ${userId}) on reactivation`);
       }
     } catch (error) {
@@ -361,7 +361,7 @@ export async function updateMapping(athleteId, nutritionistId, isActive, userId)
       console.error('Error auto-pinning athlete during assignment reactivation:', error);
     }
   }
-  
+
   return result.rows.length > 0 ? result.rows[0] : null;
 }
 

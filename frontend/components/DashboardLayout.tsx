@@ -81,8 +81,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       const response = await axios.get(
         `${backendUrl}/api/AMS/athletes/${id}/profile`,
       );
-      if (response.data?.athlete?.athlete_name_abbr) {
-        setAthleteName(response.data.athlete.athlete_name_abbr);
+      if (response.data?.athlete?.initials) {
+        setAthleteName(response.data.athlete.initials);
       }
     } catch (error) {
       console.error("Error fetching athlete name:", error);

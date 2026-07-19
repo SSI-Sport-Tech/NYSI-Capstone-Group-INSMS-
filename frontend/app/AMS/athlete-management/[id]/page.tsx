@@ -13,7 +13,7 @@ interface AthleteProfile {
     id: string;
     sport_id: string;
     sportsync_id: string;
-    athlete_name_abbr: string;
+    initials: string;
     gender: string;
     date_of_birth: string;
     sport_name: string;
@@ -55,7 +55,7 @@ interface AthleteProfile {
 }
 
 interface EditForm {
-  athlete_name_abbr: string;
+  initials: string;
   gender: string;
   date_of_birth: string;
   ethnicity: string;
@@ -241,7 +241,7 @@ export default function AthleteDetailPage() {
     if (!profile) return;
 
     setEditForm({
-      athlete_name_abbr: profile.athlete.athlete_name_abbr || "",
+      initials: profile.athlete.initials || "",
       gender: profile.athlete.gender || "",
       date_of_birth: toInputDate(profile.athlete.date_of_birth),
       ethnicity: profile.athlete.ethnicity || "",
@@ -308,7 +308,7 @@ export default function AthleteDetailPage() {
     const token = localStorage.getItem("token");
 
     const payload: Record<string, unknown> = {
-      athlete_name_abbr: editForm.athlete_name_abbr || undefined,
+      initials: editForm.initials || undefined,
       gender: editForm.gender || undefined,
       date_of_birth: editForm.date_of_birth || undefined,
       ethnicity: editForm.ethnicity || undefined,
@@ -443,22 +443,22 @@ export default function AthleteDetailPage() {
                 {isEditing && editForm ? (
                   <input
                     type="text"
-                    value={editForm.athlete_name_abbr}
+                    value={editForm.initials}
                     onChange={(e) =>
-                      setEditForm({ ...editForm, athlete_name_abbr: e.target.value })
+                      setEditForm({ ...editForm, initials: e.target.value })
                     }
                     className="text-3xl font-bold text-gray-900 mb-2 border-b-2 border-blue-400 bg-transparent focus:outline-none w-full uppercase"
                   />
                 ) : (
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                    {profile.athlete.athlete_name_abbr.toUpperCase()}
+                    {profile.athlete.initials.toUpperCase()}
                   </h1>
                 )}
                 <p className="text-lg text-gray-600 mb-1">
                   {profile.athlete.sportsync_id} [
                   {isEditing && editForm
                     ? sports.find((s) => s.id === editForm.sport_id)?.sport?.toUpperCase() ||
-                      profile.athlete.sport_name?.toUpperCase()
+                    profile.athlete.sport_name?.toUpperCase()
                     : profile.athlete.sport_name?.toUpperCase()}
                   ]
                 </p>
@@ -526,11 +526,10 @@ export default function AthleteDetailPage() {
               <nav className="flex">
                 <button
                   onClick={() => handleTabChange("profile")}
-                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === "profile"
+                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === "profile"
                       ? "border-blue-600 text-blue-600"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-2">
                     <svg
@@ -551,11 +550,10 @@ export default function AthleteDetailPage() {
                 </button>
                 <button
                   onClick={() => handleTabChange("consultation")}
-                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === "consultation"
+                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === "consultation"
                       ? "border-blue-600 text-blue-600"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-2">
                     <svg
@@ -576,11 +574,10 @@ export default function AthleteDetailPage() {
                 </button>
                 <button
                   onClick={() => handleTabChange("history")}
-                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === "history"
+                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === "history"
                       ? "border-blue-600 text-blue-600"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-2">
                     <svg
@@ -725,11 +722,10 @@ export default function AthleteDetailPage() {
                           </select>
                         ) : (
                           profile.registry?.carding_status ? (
-                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              profile.registry.carding_status.toLowerCase() === "active"
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${profile.registry.carding_status.toLowerCase() === "active"
                                 ? "bg-green-100 text-green-800"
                                 : "bg-red-100 text-red-800"
-                            }`}>
+                              }`}>
                               {profile.registry.carding_status}
                             </span>
                           ) : (
@@ -1121,7 +1117,7 @@ export default function AthleteDetailPage() {
               {activeTab === "consultation" && (
                 <ConsultationView
                   athleteId={athleteId}
-                  athleteName={profile.athlete.athlete_name_abbr}
+                  athleteName={profile.athlete.initials}
                   initialSessionId={searchParams.get("sessionId") ?? undefined}
                 />
               )}

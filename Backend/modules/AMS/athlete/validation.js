@@ -34,7 +34,7 @@ export const createBasicAthleteSchema = z
   .object({
     sport_id: uuidSchema.describe("Reference to AMS.Sport_Lookup"),
     sportsync_id: z.string().trim().min(1, "sportsync_id is required"),
-    athlete_name_abbr: z
+    initials: z
       .string()
       .trim()
       .min(1, "Athlete name abbreviation is required"),
@@ -61,7 +61,7 @@ export const createCompleteAthleteSchema = z
     // --- Athlete base fields ---
     sport_id: uuidSchema.describe("Reference to AMS.Sport_Lookup"),
     sportsync_id: z.string().trim().min(1, "sportsync_id is required"),
-    athlete_name_abbr: z
+    initials: z
       .string()
       .trim()
       .min(1, "Athlete name abbreviation is required"),
@@ -120,7 +120,7 @@ export const adminCreateCompleteAthleteSchema = z
     // --- Athlete base fields ---
     sport_id: uuidSchema.describe("Reference to AMS.Sport_Lookup"),
     sportsync_id: z.string().trim().min(1, "sportsync_id is required"),
-    athlete_name_abbr: z
+    initials: z
       .string()
       .trim()
       .min(1, "Athlete name abbreviation is required"),
@@ -182,7 +182,7 @@ export const updateAthleteSchema = z
       .trim()
       .min(1, "sportsync_id cannot be empty")
       .optional(),
-    athlete_name_abbr: z
+    initials: z
       .string()
       .trim()
       .min(1, "Name cannot be empty")
@@ -255,7 +255,7 @@ export const updateProfileSchema = z
       .trim()
       .min(1, "sportsync_id cannot be empty")
       .optional(),
-    athlete_name_abbr: z
+    initials: z
       .string()
       .trim()
       .min(1, "Name cannot be empty")
@@ -316,7 +316,7 @@ export const adminUpdateProfileSchema = z
       .trim()
       .min(1, "sportsync_id cannot be empty")
       .optional(),
-    athlete_name_abbr: z
+    initials: z
       .string()
       .trim()
       .min(1, "Name cannot be empty")

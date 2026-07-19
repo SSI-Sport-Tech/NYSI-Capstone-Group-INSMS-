@@ -7,7 +7,7 @@ import { consultationApi } from "../../../utils/consultationApi";
 export interface ScheduledSession {
   id: string;
   athlete_id: string;
-  athlete_name_abbr: string;
+  initials: string;
   date_of_consult: string | null;
   time_of_consult: string | null;
   type_of_consult_id: string | null;

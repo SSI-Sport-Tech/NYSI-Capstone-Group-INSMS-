@@ -237,7 +237,7 @@ export async function createCompleteAthlete(req, res) {
     const athleteData = {
       sport_id: validated.sport_id,
       sportsync_id: validated.sportsync_id,
-      athlete_name_abbr: validated.athlete_name_abbr,
+      initials: validated.initials,
       gender: validated.gender,
       date_of_birth: validated.date_of_birth,
       ethnicity: validated.ethnicity,
@@ -376,7 +376,7 @@ export async function adminCreateCompleteAthlete(req, res) {
     const athleteData = {
       sport_id: validated.sport_id,
       sportsync_id: validated.sportsync_id,
-      athlete_name_abbr: validated.athlete_name_abbr,
+      initials: validated.initials,
       gender: validated.gender,
       date_of_birth: validated.date_of_birth,
       ethnicity: validated.ethnicity,

@@ -127,7 +127,7 @@ export default function SessionCard({
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <h3 className={`font-semibold ${isCompleted || isExpired ? "text-gray-400" : "text-gray-900"}`}>
-            {session.athlete_name_abbr}
+            {session.initials}
           </h3>
           <p className="text-sm text-gray-500">{formatDate(session.date_of_consult)}</p>
           {(session.time_of_consult || session.time_slot) && (
@@ -185,7 +185,7 @@ export default function SessionCard({
             <span>{session.venue ?? session.location}</span>
           </div>
         )}
-        
+
         {session.duration && (
           <div className="flex items-center space-x-2 text-sm text-gray-600">
             <Clock className="w-3 h-3" />

@@ -17,7 +17,7 @@ const router = express.Router();
  *       Get a paginated list of athletes with optional search.
  *       Search matches across athlete name, sportsync_id, sport, and gender.
  *
- *       **List columns:** sportsync_id, athlete_name_abbr, sport, gender, date_of_birth
+ *       **List columns:** sportsync_id, initials, sport, gender, date_of_birth
  *     tags: [AMS - Athletes]
  *     security:
  *       - bearerAuth: []
@@ -42,7 +42,7 @@ const router = express.Router();
  *                         format: uuid
  *                       sportsync_id:
  *                         type: string
- *                       athlete_name_abbr:
+ *                       initials:
  *                         type: string
  *                       sport_name:
  *                         type: string
@@ -106,7 +106,7 @@ router.get("/athletes", authenticateToken, controller.listAthletes);
  *                       format: uuid
  *                     sportsync_id:
  *                       type: string
- *                     athlete_name_abbr:
+ *                     initials:
  *                       type: string
  *                     gender:
  *                       type: string
@@ -220,7 +220,7 @@ router.get("/athletes/:id/profile", controller.getAthleteProfile);
  *                 format: uuid
  *               sportsync_id:
  *                 type: string
- *               athlete_name_abbr:
+ *               initials:
  *                 type: string
  *               gender:
  *                 type: string
@@ -274,7 +274,7 @@ router.get("/athletes/:id/profile", controller.getAthleteProfile);
  *                   format: uuid
  *                 description: Replace active coach mappings with these coaches
  *           example:
- *             athlete_name_abbr: "J. Smith Jr."
+ *             initials: "J. Smith Jr."
  *             ethnicity: "Chinese"
  *             sport_start_date: "2015-01-01"
  *             carding_status: "Active"
@@ -356,7 +356,7 @@ router.patch(
  *                 format: uuid
  *               sportsync_id:
  *                 type: string
- *               athlete_name_abbr:
+ *               initials:
  *                 type: string
  *               gender:
  *                 type: string
@@ -416,7 +416,7 @@ router.patch(
  *                   format: uuid
  *                 description: Replace active nutritionist mappings with these nutritionists
  *           example:
- *             athlete_name_abbr: "J. Smith Jr."
+ *             initials: "J. Smith Jr."
  *             ethnicity: "Chinese"
  *             sport_start_date: "2015-01-01"
  *             nutritionist_ids: ["c3d4e5f6-a7b8-9012-cdef-123456789012"]
@@ -494,7 +494,7 @@ router.patch(
  *             required:
  *               - sport_id
  *               - sportsync_id
- *               - athlete_name_abbr
+ *               - initials
  *               - gender
  *               - date_of_birth
  *               - carding_status
@@ -512,7 +512,7 @@ router.patch(
  *               sportsync_id:
  *                 type: string
  *                 description: External system ID (must be unique)
- *               athlete_name_abbr:
+ *               initials:
  *                 type: string
  *                 description: Athlete abbreviated name
  *               gender:
@@ -574,7 +574,7 @@ router.patch(
  *           example:
  *             sport_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
  *             sportsync_id: "SS-12345"
- *             athlete_name_abbr: "J. Smith"
+ *             initials: "J. Smith"
  *             gender: "Male"
  *             date_of_birth: "1998-03-15"
  *             ethnicity: "Chinese"
@@ -656,7 +656,7 @@ router.post(
  *             required:
  *               - sport_id
  *               - sportsync_id
- *               - athlete_name_abbr
+ *               - initials
  *               - gender
  *               - date_of_birth
  *               - carding_status
@@ -675,7 +675,7 @@ router.post(
  *               sportsync_id:
  *                 type: string
  *                 description: External system ID (must be unique)
- *               athlete_name_abbr:
+ *               initials:
  *                 type: string
  *                 description: Athlete abbreviated name
  *               gender:
@@ -741,7 +741,7 @@ router.post(
  *           example:
  *             sport_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
  *             sportsync_id: "SS-12345"
- *             athlete_name_abbr: "J. Smith"
+ *             initials: "J. Smith"
  *             gender: "Male"
  *             date_of_birth: "1998-03-15"
  *             ethnicity: "Chinese"
@@ -819,7 +819,7 @@ router.post(
  *             required:
  *               - sport_id
  *               - sportsync_id
- *               - athlete_name_abbr
+ *               - initials
  *               - gender
  *               - date_of_birth
  *             properties:
@@ -830,7 +830,7 @@ router.post(
  *               sportsync_id:
  *                 type: string
  *                 description: External system ID (must be unique)
- *               athlete_name_abbr:
+ *               initials:
  *                 type: string
  *                 description: Athlete abbreviated name
  *               gender:
@@ -853,7 +853,7 @@ router.post(
  *           example:
  *             sport_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
  *             sportsync_id: "SS-12345"
- *             athlete_name_abbr: "J. Smith"
+ *             initials: "J. Smith"
  *             gender: "Male"
  *             date_of_birth: "1998-03-15"
  *             ethnicity: "Chinese"

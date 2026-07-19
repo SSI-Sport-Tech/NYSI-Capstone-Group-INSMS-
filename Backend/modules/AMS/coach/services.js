@@ -200,11 +200,11 @@ export async function checkAthleteExists(athleteId) {
 export async function getAllMappings() {
     const query = `
         SELECT cam.id, cam.athlete_id, cam.coach_id, cam.is_active,
-               c.name AS coach_name, a.athlete_name_abbr AS athlete_name
+               c.name AS coach_name, a.initials AS athlete_name
         FROM AMS.Coach_Athlete_Mapping cam
         JOIN AMS.Coach c ON cam.coach_id = c.id
         JOIN AMS.Athlete a ON cam.athlete_id = a.id
-        ORDER BY a.athlete_name_abbr ASC, c.name ASC
+        ORDER BY a.initials ASC, c.name ASC
     `;
 
     return await pool.query(query);
@@ -218,7 +218,7 @@ export async function getAllMappings() {
 export async function getMappingsByAthleteId(athleteId) {
     const query = `
         SELECT cam.id, cam.athlete_id, cam.coach_id, cam.is_active,
-               c.name AS coach_name, a.athlete_name_abbr AS athlete_name
+               c.name AS coach_name, a.initials AS athlete_name
         FROM AMS.Coach_Athlete_Mapping cam
         JOIN AMS.Coach c ON cam.coach_id = c.id
         JOIN AMS.Athlete a ON cam.athlete_id = a.id

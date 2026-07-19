@@ -44,7 +44,7 @@ const router = express.Router();
  *                       id:
  *                         type: string
  *                         format: uuid
- *                       athlete_name_abbr:
+ *                       initials:
  *                         type: string
  *                       sportsync_id:
  *                         type: string

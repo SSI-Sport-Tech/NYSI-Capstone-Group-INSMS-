@@ -161,7 +161,7 @@ export default function TodaySchedule({ date, refreshKey }: { date?: Date; refre
   const baseEvents: CalendarEvent[] = [
     ...sessions.map((s) => ({
       id: s.id,
-      title: s.athlete_name_abbr,
+      title: s.initials,
       startTime: s.time_of_consult ?? s.time_slot ?? "",
       duration: (s.duration ?? 60) / 60,
       type: "consultation" as const,
@@ -277,10 +277,9 @@ export default function TodaySchedule({ date, refreshKey }: { date?: Date; refre
                     );
                   }
                 }}
-                className={`group absolute left-16 right-2 rounded-md px-2 py-1 text-xs text-white ${
-                  isNutritionist ? "bg-purple-500" : "bg-teal-500"
-                } z-10 hover:z-50`}
-                style={{ top, height, left: `calc(64px + ${leftPercent}%)`, width: `calc(${laneWidth}% - 6px)`}}
+                className={`group absolute left-16 right-2 rounded-md px-2 py-1 text-xs text-white ${isNutritionist ? "bg-purple-500" : "bg-teal-500"
+                  } z-10 hover:z-50`}
+                style={{ top, height, left: `calc(64px + ${leftPercent}%)`, width: `calc(${laneWidth}% - 6px)` }}
               >
                 <div className="font-semibold truncate">{e.title}</div>
                 <div className="text-xs opacity-80">
@@ -290,7 +289,7 @@ export default function TodaySchedule({ date, refreshKey }: { date?: Date; refre
                 {/* Hover popup */}
                 <div className="hidden group-hover:block absolute left-full ml-2 top-0 bg-gray-900 text-white text-xs rounded-md px-3 py-2 shadow-lg z-50 whitespace-nowrap z-[9999] pointer-events-none">
                   <div className="font-semibold">
-                    {isNutritionist ? e.meta.nutritionist_name : e.meta.athlete_name_abbr}
+                    {isNutritionist ? e.meta.nutritionist_name : e.meta.initials}
                   </div>
 
                   <div className="opacity-80 mt-1">

@@ -21,7 +21,7 @@ export class DashboardApiError extends Error {
 export interface ConsultationSession {
   id: string;
   athlete_id: string;
-  athlete_name_abbr: string;
+  initials: string;
   nutritionist_id?: string;
   nutritionist_name: string;
   date_of_consult: string;
@@ -39,7 +39,7 @@ export interface ConsultationSession {
 
 export interface Athlete {
   id: string;
-  athlete_name_abbr: string;
+  initials: string;
   first_name: string;
   last_name: string;
   sport_name?: string;
@@ -47,7 +47,7 @@ export interface Athlete {
 
 export interface AssignedAthlete {
   id: string;
-  athlete_name_abbr: string;
+  initials: string;
   sportsync_id: string;
   sport_name?: string;
   is_pinned?: boolean;
