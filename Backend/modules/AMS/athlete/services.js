@@ -377,6 +377,19 @@ export async function createCompleteAthlete(
         console.error("Error auto-pinning during athlete creation:", pinError);
       }
     }
+
+    // 6. create budget
+    const fyResult = await client.query(
+      `SELECT id FROM public.financial_years WHERE is_active = true LIMIT 1`
+    );
+    if (fyResult.rows.length > 0) {
+      await client.query(`
+        INSERT INTO public.athlete_budgets (
+            athlete_id, financial_year_id, initial_budget, created_at, updated_at
+        ) VALUES ($1, $2, $3, NOW(), NOW())
+        ON CONFLICT (athlete_id, financial_year_id) DO NOTHING
+    `, [athlete.id, fyResult.rows[0].id, registryData.initial_budget || 1000.00]);
+    }
     return { athlete, registry, medical, coachMappings, nutritionistMappings };
   });
 }
@@ -418,9 +431,14 @@ export async function deleteAthletes(athleteIds, userId) {
     await client.query(`DELETE FROM AMS.coach_athlete_mapping WHERE athlete_id = ANY($1::uuid[])`, [athleteIds]);
     await client.query(`DELETE FROM AMS.nutritionist_athlete_mapping WHERE athlete_id = ANY($1::uuid[])`, [athleteIds]);
     await client.query(`DELETE FROM AMS.user_athlete_pins WHERE athlete_id = ANY($1::uuid[])`, [athleteIds]);
+    await client.query(`DELETE FROM public.athlete_budgets WHERE athlete_id = ANY($1::uuid[])`, [athleteIds]);  // ← add this
+    await client.query(`DELETE FROM public.expenses WHERE athlete_id = ANY($1::uuid[])`, [athleteIds]);        // ← add this too
+    await client.query(`DELETE FROM public.athlete_assignments WHERE athlete_id = ANY($1::uuid[])`, [athleteIds]); // ← and this
+    await client.query(`DELETE FROM public.athlete_group_members WHERE athlete_id = ANY($1::uuid[])`, [athleteIds]); // ← and this
+
     const result = await client.query(`
-            DELETE FROM AMS.Athlete WHERE id = ANY($1::uuid[]) RETURNING id
-        `, [athleteIds]);
+      DELETE FROM AMS.Athlete WHERE id = ANY($1::uuid[]) RETURNING id
+    `, [athleteIds]);
     return result.rows;
   });
 }
@@ -767,14 +785,8 @@ export async function updateAthleteProfile(athleteId, data, options = {}, userId
 // AEMS INTEGRATION
 // ============================================================================
 export async function createAEMSAthleteRecords({
-  nomsAthleteId,
-  nomsSportId,
-  initials,
-  cardingStatus,
-  initialBudget,
-  email = null,
-  pin = null,
-  performedBy,
+  nomsAthleteId, nomsSportId, initials, cardingStatus,
+  initialBudget, email = null, pin = null, performedBy,
 }) {
   return withUserContext(performedBy, async (client) => {
     // 1. Create auth.users if credentials provided
@@ -785,15 +797,14 @@ export async function createAEMSAthleteRecords({
         'auth:login', 'auth:change_own_pin', 'system:view_dashboard',
       ]);
       const authResult = await client.query(`
-                INSERT INTO auth.users (
-                    email, pin_hash, ics_pin_code,
-                    role, is_admin, is_nutritionist, is_it_admin,
-                    ics_role, ics_permissions,
-                    is_active, is_email_verified, updated_at
-                ) VALUES ($1,$2,$2,'ATHLETE',false,false,false,'Staff',$3,true,false,NOW())
-                ON CONFLICT (email) DO NOTHING
-                RETURNING id
-            `, [email.toLowerCase(), pinHash, ICS_PERMISSIONS]);
+        INSERT INTO auth.users (
+            email, pin_hash, ics_pin_code,
+            role, ics_permissions,
+            is_active, is_email_verified, updated_at
+        ) VALUES ($1,$2,$2,'ATHLETE',$3,true,false,NOW())
+        ON CONFLICT (email) DO NOTHING
+        RETURNING id
+      `, [email.toLowerCase(), pinHash, ICS_PERMISSIONS]);
       if (authResult.rows.length > 0) {
         authUserId = authResult.rows[0].id;
         await client.query(
@@ -803,28 +814,7 @@ export async function createAEMSAthleteRecords({
       }
     }
 
-    // ── CHANGE: sport_id is now UUID referencing ams.sport_lookup directly ──
-    // No conversion needed — nomsSportId IS the UUID for public.athletes.sport_id
-    const aemsSportId = nomsSportId || null;
-
-    // ── CHANGE: carding lookup via public.carding_levels text_label ──────────
-    const cardingResult = await client.query(
-      `SELECT id FROM public.carding_levels WHERE LOWER(text_label) = LOWER($1) LIMIT 1`,
-      [cardingStatus || 'Inactive']
-    );
-    const cardingLevelId = cardingResult.rows[0]?.id || 2;
-
-    // 4. Create public.athletes
-    const aemsAthleteResult = await client.query(`
-            INSERT INTO public.athletes (
-                initials, sport_id, carding_level_id,
-                is_active, created_date, created_at, updated_at
-            ) VALUES ($1, $2, $3, true, CURRENT_DATE, NOW(), NOW())
-            RETURNING *
-        `, [initials, aemsSportId, cardingLevelId]);
-    const aemsAthlete = aemsAthleteResult.rows[0];
-
-    // 5. Create public.athlete_budgets
+    // 2. Create budget for active financial year
     const fyResult = await client.query(
       `SELECT id FROM public.financial_years WHERE is_active = true LIMIT 1`
     );
@@ -832,17 +822,17 @@ export async function createAEMSAthleteRecords({
     if (fyResult.rows.length > 0) {
       const fyId = fyResult.rows[0].id;
       const budgetResult = await client.query(`
-                INSERT INTO public.athlete_budgets (
-                    athlete_id, financial_year_id, initial_budget, created_at, updated_at
-                ) VALUES ($1, $2, $3, NOW(), NOW())
-                RETURNING *
-            `, [aemsAthlete.id, fyId, initialBudget || 1000.00]);
+        INSERT INTO public.athlete_budgets (
+            athlete_id, financial_year_id, initial_budget, created_at, updated_at
+        ) VALUES ($1, $2, $3, NOW(), NOW())
+        ON CONFLICT (athlete_id, financial_year_id) DO NOTHING
+        RETURNING *
+      `, [nomsAthleteId, fyId, initialBudget || 1000.00]);
       budget = budgetResult.rows[0];
     }
 
     return {
       authUser: authUserId ? { id: authUserId, email } : null,
-      aemsAthlete,
       budget,
     };
   });

@@ -152,7 +152,7 @@ router.patch('/pin', authenticateToken, controller.togglePin);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/nutritionists', controller.listNutritionists);
+router.get('/', controller.listNutritionists);
 
 /**
  * @swagger
@@ -200,7 +200,7 @@ router.get('/nutritionists', controller.listNutritionists);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/nutritionists', authenticateToken, controller.createNutritionist);
+router.post('/', authenticateToken, controller.createNutritionist);
 
 /**
  * @swagger
@@ -247,7 +247,7 @@ router.post('/nutritionists', authenticateToken, controller.createNutritionist);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete('/nutritionists', authenticateToken, controller.deleteNutritionists);
+router.delete('/', authenticateToken, controller.deleteNutritionists);
 
 // ============================================================================
 // NUTRITIONIST-ATHLETE MAPPING ROUTES
@@ -300,7 +300,7 @@ router.delete('/nutritionists', authenticateToken, controller.deleteNutritionist
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/nutritionists/mappings', controller.listMappings);
+router.get('/mappings', controller.listMappings);
 
 /**
  * @swagger
@@ -356,7 +356,7 @@ router.get('/nutritionists/mappings', controller.listMappings);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get('/nutritionists/mappings/athlete/:athleteId', controller.listMappingsByAthlete);
+router.get('/mappings/athlete/:athleteId', controller.listMappingsByAthlete);
 
 /**
  * @swagger
@@ -419,7 +419,7 @@ router.get('/nutritionists/mappings/athlete/:athleteId', controller.listMappings
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/nutritionists/mappings', authenticateToken, controller.createMapping);
+router.post('/mappings', authenticateToken, controller.createMapping);
 
 /**
  * @swagger
@@ -478,6 +478,6 @@ router.post('/nutritionists/mappings', authenticateToken, controller.createMappi
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete('/nutritionists/mappings', authenticateToken, controller.deleteMappings);
+router.delete('/mappings', authenticateToken, controller.deleteMappings);
 
 export default router;

@@ -252,6 +252,7 @@ export async function createCompleteAthlete(req, res) {
       medical_clearance: validated.medical_clearance,
       approved_start_date: validated.approved_start_date,
       approved_end_date: validated.approved_end_date,
+      initial_budget: validated.initial_budget,
     };
     const medicalData = {
       medical_condition: validated.medical_condition,
@@ -276,7 +277,7 @@ export async function createCompleteAthlete(req, res) {
         nomsAthleteId: result.athlete.id,
         nomsSportId: validated.sport_id,
         initials: validated.initials,
-        nomsSportName,
+        // nomsSportName removed
         cardingStatus: validated.carding_status,
         initialBudget: validated.initial_budget || 1000.00,
         email: validated.email || null,
@@ -391,6 +392,7 @@ export async function adminCreateCompleteAthlete(req, res) {
       medical_clearance: validated.medical_clearance,
       approved_start_date: validated.approved_start_date,
       approved_end_date: validated.approved_end_date,
+      initial_budget: validated.initial_budget
     };
     const medicalData = {
       medical_condition: validated.medical_condition,
@@ -416,7 +418,7 @@ export async function adminCreateCompleteAthlete(req, res) {
         nomsAthleteId: result.athlete.id,
         nomsSportId: validated.sport_id,
         initials: validated.initials,
-        nomsSportName,
+        // nomsSportName removed
         cardingStatus: validated.carding_status,
         initialBudget: validated.initial_budget || 1000.00,
         email: validated.email || null,

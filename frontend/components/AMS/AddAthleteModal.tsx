@@ -65,7 +65,6 @@ interface AthleteFormData {
   coach_ids: string[];
 
   //AEMS
-  initials: string;
   initial_budget: string;
   email: string;
   pin: string;
@@ -122,7 +121,6 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
     target_event: "",
     nutritionist_id: "",
     coach_ids: [],
-    initials: "",
     initial_budget: "",
     email: "",
     pin: "",
@@ -211,7 +209,7 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get<{ data: Nutritionist[] }>(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/nutritionists/nutritionists`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/nutritionists`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -349,7 +347,6 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
         coach_ids: formData.coach_ids,
 
         // AEMS
-        initials: formData.initials,
         initial_budget: formData.initial_budget ? parseFloat(formData.initial_budget) : 1000,
         ...(formData.email && { email: formData.email }),
         ...(formData.pin && { pin: formData.pin }),
@@ -432,7 +429,6 @@ const AddAthleteModal: React.FC<AddAthleteModalProps> = ({
       target_event: "",
       nutritionist_id: "",
       coach_ids: [],
-      initials: "",
       initial_budget: "",
       email: "",
       pin: "",

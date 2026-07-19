@@ -39,33 +39,12 @@ export async function checkDuplicateSport(sportName) {
  */
 export async function createSport(sportName, userId) {
     return withUserContext(userId, async (client) => {
-        // 1. Insert into ams.sport_lookup
         const nomsResult = await client.query(`
-            INSERT INTO AMS.Sport_Lookup (sport)
+            INSERT INTO ams.sport_lookup (sport)
             VALUES ($1)
             RETURNING id, sport, is_active
         `, [sportName]);
-        const nomsSport = nomsResult.rows[0];
-
-        // 2. Insert into public.sports
-        const aemsResult = await client.query(`
-            INSERT INTO public.sports (name, created_at, updated_at)
-            VALUES ($1, NOW(), NOW())
-            ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
-            RETURNING id
-        `, [sportName]);
-        const aemsSportId = aemsResult.rows[0].id;
-
-        // 3. Update cross-references
-        await client.query(`
-            UPDATE ams.sport_lookup SET aems_sport_id = $1 WHERE id = $2
-        `, [aemsSportId, nomsSport.id]);
-
-        await client.query(`
-            UPDATE public.sports SET sport_lookup_id = $1 WHERE id = $2
-        `, [nomsSport.id, aemsSportId]);
-
-        return nomsSport;
+        return nomsResult.rows[0];
     });
 }
 /**

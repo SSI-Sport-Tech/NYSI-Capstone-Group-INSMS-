@@ -275,7 +275,7 @@ export default function AthleteDetailPage() {
       const [sportsRes, coachesRes, nutritionistsRes] = await Promise.all([
         fetch(`${backendUrl}/api/AMS/sports`, { headers }),
         fetch(`${backendUrl}/api/AMS/coaches`, { headers }),
-        fetch(`${backendUrl}/api/AMS/nutritionists/nutritionists`, { headers }),
+        fetch(`${backendUrl}/api/AMS/nutritionists`, { headers }),
       ]);
       const [sportsData, coachesData, nutritionistsData] = await Promise.all([
         sportsRes.json(),
@@ -527,8 +527,8 @@ export default function AthleteDetailPage() {
                 <button
                   onClick={() => handleTabChange("profile")}
                   className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === "profile"
-                      ? "border-blue-600 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                     }`}
                 >
                   <div className="flex items-center gap-2">
@@ -551,8 +551,8 @@ export default function AthleteDetailPage() {
                 <button
                   onClick={() => handleTabChange("consultation")}
                   className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === "consultation"
-                      ? "border-blue-600 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                     }`}
                 >
                   <div className="flex items-center gap-2">
@@ -575,8 +575,8 @@ export default function AthleteDetailPage() {
                 <button
                   onClick={() => handleTabChange("history")}
                   className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === "history"
-                      ? "border-blue-600 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                     }`}
                 >
                   <div className="flex items-center gap-2">
@@ -723,8 +723,8 @@ export default function AthleteDetailPage() {
                         ) : (
                           profile.registry?.carding_status ? (
                             <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${profile.registry.carding_status.toLowerCase() === "active"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
                               }`}>
                               {profile.registry.carding_status}
                             </span>
