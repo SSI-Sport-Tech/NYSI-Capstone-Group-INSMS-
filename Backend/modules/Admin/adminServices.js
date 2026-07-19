@@ -6,15 +6,6 @@
 import pool, { withUserContext } from '../../config/db.js';
 import bcrypt from 'bcrypt';
 
-// ── Role mapping (AEMS/ICS booleans ↔ NOMS role string) ─────────────────────
-const ROLE_MAP = {
-    IT_ADMIN: { is_it_admin: true, is_admin: true, is_nutritionist: true, ics_role: 'Administrator' },
-    ADMIN: { is_it_admin: false, is_admin: true, is_nutritionist: true, ics_role: 'Administrator' },
-    NUTRITIONIST: { is_it_admin: false, is_admin: false, is_nutritionist: true, ics_role: 'Scientist' },
-    COACH: { is_it_admin: false, is_admin: false, is_nutritionist: false, ics_role: 'Staff' },
-    ATHLETE: { is_it_admin: false, is_admin: false, is_nutritionist: false, ics_role: 'Staff' },
-    DASHBOARD: { is_it_admin: false, is_admin: false, is_nutritionist: false, ics_role: 'Staff' },
-};
 
 const ICS_PERMISSIONS_BY_ROLE = {
     Staff: [
@@ -64,9 +55,6 @@ const ICS_PERMISSIONS_BY_ROLE = {
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function getRoleFlags(nomsRole) {
-    return ROLE_MAP[nomsRole] || ROLE_MAP['DASHBOARD'];
-}
 
 function getIcsPermissions(icsRole) {
     return ICS_PERMISSIONS_BY_ROLE[icsRole] || [];
@@ -180,22 +168,20 @@ function formatUser(row) {
 export async function createUser(userData, doneByUserId) {
     const { email, pin, full_name, first_name, last_name, role } = userData;
 
-    const roleFlags = getRoleFlags(role || 'DASHBOARD');
     const pinHash = await hashPin(pin);
-    const icsPermissions = getIcsPermissions(roleFlags.ics_role);
-
+    const icsPermissions = getIcsPermissions(
+        role === 'NUTRITIONIST' ? 'Scientist' :
+            ['IT_ADMIN', 'ADMIN'].includes(role) ? 'Administrator' : 'Staff'
+    );
     return withUserContext(doneByUserId, async (client) => {
-        // Create user
         const userResult = await client.query(`
             INSERT INTO auth.users (
                 email, pin_hash, ics_pin_code,
                 first_name, last_name,
-                role, is_admin, is_nutritionist, is_it_admin,
-                ics_role, ics_permissions,
+                role, ics_permissions,
                 is_active, is_email_verified,
-                password_hash,
-                updated_at
-            ) VALUES ($1,$2,$2,$3,$4,$5,$6,$7,$8,$9,$10,true,false,'',NOW())
+                password_hash, updated_at
+            ) VALUES ($1,$2,$2,$3,$4,$5,$6,true,false,'',NOW())
             RETURNING id, email, full_name, role, ics_role, is_active, created_at
         `, [
             email.toLowerCase(),
@@ -203,10 +189,6 @@ export async function createUser(userData, doneByUserId) {
             first_name || null,
             last_name || null,
             role || 'DASHBOARD',
-            roleFlags.is_admin,
-            roleFlags.is_nutritionist,
-            roleFlags.is_it_admin,
-            roleFlags.ics_role,
             JSON.stringify(icsPermissions),
         ]);
 
@@ -245,17 +227,15 @@ export async function updateUser(userId, updates, doneByUserId) {
             }
         }
 
-        // Role change — updates all role-related columns atomically
+        // Role change — only update role + ics_permissions (others are generated)
         if (updates.role !== undefined) {
-            const roleFlags = getRoleFlags(updates.role);
-            const icsPermissions = getIcsPermissions(roleFlags.ics_role);
-
+            const icsPermissions = getIcsPermissions(
+                updates.role === 'NUTRITIONIST' ? 'Scientist' :
+                    ['IT_ADMIN', 'ADMIN'].includes(updates.role) ? 'Administrator' : 'Staff'
+            );
             paramCount++; fields.push(`role = $${paramCount}`); values.push(updates.role);
-            paramCount++; fields.push(`is_admin = $${paramCount}`); values.push(roleFlags.is_admin);
-            paramCount++; fields.push(`is_nutritionist = $${paramCount}`); values.push(roleFlags.is_nutritionist);
-            paramCount++; fields.push(`is_it_admin = $${paramCount}`); values.push(roleFlags.is_it_admin);
-            paramCount++; fields.push(`ics_role = $${paramCount}`); values.push(roleFlags.ics_role);
             paramCount++; fields.push(`ics_permissions = $${paramCount}`); values.push(JSON.stringify(icsPermissions));
+            // is_admin, is_nutritionist, is_it_admin, ics_role are now generated — don't set them
 
             // Sync ams.nutritionist profile
             if (['IT_ADMIN', 'ADMIN', 'NUTRITIONIST'].includes(updates.role)) {
@@ -266,11 +246,7 @@ export async function updateUser(userId, updates, doneByUserId) {
                     ON CONFLICT (user_id) DO UPDATE SET name = EXCLUDED.name
                 `, [userId, displayName]);
             } else {
-                // Remove nutritionist profile for non-nutritionist roles
-                await client.query(
-                    'DELETE FROM ams.nutritionist WHERE user_id = $1',
-                    [userId]
-                );
+                await client.query('DELETE FROM ams.nutritionist WHERE user_id = $1', [userId]);
             }
         }
 
