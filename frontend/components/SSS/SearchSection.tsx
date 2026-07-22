@@ -43,11 +43,11 @@ const SearchSection: React.FC<SearchSectionProps> = ({
             onKeyDown={handleKeyPress}
             placeholder="Type your search here..."
             className="w-full px-10 py-2.5 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            disabled={loading}
+            // disabled={loading}
           />
         </div>
 
-        <button
+        {/* <button
           onClick={onSearch}
           disabled={loading || !query.trim()}
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
@@ -63,7 +63,7 @@ const SearchSection: React.FC<SearchSectionProps> = ({
               <span>Search</span>
             </>
           )}
-        </button>
+        </button> */}
       </div>
     </div>
   );

@@ -1,37 +1,32 @@
 import React, { useState } from "react";
-import Link from "next/link";
 import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Trash2,
-  Settings,
   Upload,
   Camera,
-  Plus,
   MoreVertical,
 } from "lucide-react";
-import axios from "axios";
-import AddSupplementModal from "./AddSupplementModal";
 import BatchDetailModal from "./BatchDetailModal";
-import { useAuth } from "@/contexts/AuthContext";
+import axios from "axios";
 
 interface Batch {
-  id: number;
+  id: string;
+  product_id: string;
+  product_name: string;
+  brand: string | null;
   batch_number: string;
-  supplement_id: string;
-  supplement_name: string;
-  supplement_brand: string;
-  batch_status: string;
-  batch_initial_quantity: number;
-  booked: number;
-  available: number;
-  batch_expiration_date: string;
-  batch_price: number;
-  date_added: string;
-  inv_batch_testing_org: string | null;
-  inv_batch_testing_org_id?: string | null;
-  batch_unit?: string | null;
+  category: string,
+  description: string,
+  barcode_sku: string;
+  quantity_on_hand: number;
+  original_stock_amount: number;
+  expiry_date: string;
+  unit_cost: number;
+  supplier: string | null;
+  received_date: string | null;
+  notes: string | null;
+  batch_status: string; // always "-" for now
 }
 
 interface BatchTableProps {
@@ -44,6 +39,7 @@ interface BatchTableProps {
   totalPages?: number;
   onPageChange?: (page: number) => void;
   onOpenOCR?: () => void;
+  onSortChange?: (column: string, direction: "asc" | "desc") => void;
 }
 
 const getStatusBadgeClass = (status: string) => {
@@ -89,115 +85,94 @@ const BatchTable: React.FC<BatchTableProps> = ({
   totalPages = 1,
   onPageChange,
   onOpenOCR,
+  onSortChange,
 }) => {
-  const { token } = useAuth();
-  const [selectedBatches, setSelectedBatches] = useState<number[]>([]);
   const [detailBatch, setDetailBatch] = useState<Batch | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [showAddModal, setShowAddModal] = useState(false);
-
-  // Handle checkbox selection
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedBatches(batches.map((batch) => batch.id));
-    } else {
-      setSelectedBatches([]);
-    }
-  };
-
-  const handleSelectBatch = (batchId: number, checked: boolean) => {
-    if (checked) {
-      setSelectedBatches((prev) => [...prev, batchId]);
-    } else {
-      setSelectedBatches((prev) => prev.filter((id) => id !== batchId));
-    }
-  };
-
-  // Handle delete
-  const handleDelete = async () => {
-    if (selectedBatches.length === 0) {
-      alert("Please select batches to delete");
-      return;
-    }
-
-    if (
-      confirm(
-        `Are you sure you want to delete ${selectedBatches.length} batch(es)?`,
-      )
-    ) {
-      try {
-        await axios.delete("/api/SSS/batches", {
-          data: { ids: selectedBatches },
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setSelectedBatches([]);
-        if (onRefresh) onRefresh();
-      } catch (error) {
-        console.error("Error deleting batches:", error);
-        alert("Failed to delete batches");
-      }
-    }
-  };
 
   // Handle export
-  const handleExport = () => {
-    // Convert batches to CSV
-    const headers = [
-      "Batch #",
-      "Supplement Name",
-      "Brand",
-      "Status",
-      "Initial Quantity",
-      "Booked",
-      "Available",
-      "Expiration",
-      "Price",
-      "Date Added",
-      "Testing Org",
-    ];
-    const csvContent = [
-      headers.join(","),
-      ...batches.map((batch) =>
-        [
-          batch.batch_number,
-          batch.supplement_name,
-          batch.supplement_brand,
-          batch.batch_status,
-          batch.batch_initial_quantity,
-          batch.booked,
-          batch.available,
-          batch.batch_expiration_date
-            ? new Date(batch.batch_expiration_date).toLocaleDateString()
-            : "-",
-          batch.batch_price
-            ? `$${Number(batch.batch_price).toFixed(2)}`
-            : "N/A",
-          batch.date_added
-            ? new Date(batch.date_added).toLocaleDateString()
-            : "-",
-          batch.inv_batch_testing_org || "-",
-        ].join(","),
-      ),
-    ].join("\n");
+  const handleExport = async () => {
+    try {
+      const response = await axios.get("/api/SSS/batches/export", {
+        params: {
+          sortBy: sortColumn || "product_name",
+          sortDirection: sortDirection,
+        },
+      });
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `batches-${new Date().toISOString().split("T")[0]}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
+      const allBatches: Batch[] = response.data.data;
+
+      // Convert batches to CSV
+      const headers = [
+        "Product",
+        "Brand",
+        "Batch Number",
+        "Category",
+        "Description",
+        "Barcode SKU",
+        "Quantity On Hand",
+        "Original Quantity",
+        "Expiry Date",
+        "Unit Cost",
+        "Supplier",
+        "Received Date",
+        "Notes",
+      ];
+      const csvContent = [
+        headers.join(","),
+        ...allBatches.map((batch) =>
+          [
+            batch.product_name,
+            batch.brand ?? "",
+            batch.batch_number,
+            batch.category ?? "",
+            batch.description ?? "",
+            `="${batch.barcode_sku ?? ""}"`,
+            batch.quantity_on_hand,
+            batch.original_stock_amount,
+            batch.expiry_date
+              ? new Date(batch.expiry_date).toLocaleDateString("en-GB")
+              : "",
+            batch.unit_cost,
+            batch.supplier ?? "",
+            batch.received_date
+              ? new Date(batch.received_date).toLocaleDateString("en-GB")
+              : "",
+            batch.notes ?? "",
+          ].map((value) => `"${String(value).replace(/"/g, '""')}"`)
+          .join(",")
+        ),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;", });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `inventory-${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Export failed:", error);
+    alert("Failed to export inventory.");
+  }
+};
 
   const handleSort = (column: string) => {
+    let direction: "asc" | "desc";
+
     if (sortColumn === column) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+      direction = sortDirection === "asc" ? "desc" : "asc";
     } else {
-      setSortColumn(column);
-      setSortDirection("asc");
+      direction = "asc";
     }
+
+    setSortColumn(column);
+    setSortDirection(direction);
+    onSortChange?.(column, direction);
   };
 
   const SortIcon = ({ column }: { column: string }) => {
@@ -206,17 +181,6 @@ const BatchTable: React.FC<BatchTableProps> = ({
       ? <ArrowUp className="w-3 h-3 text-blue-600" />
       : <ArrowDown className="w-3 h-3 text-blue-600" />;
   };
-
-  const sortedBatches = [...batches].sort((a, b) => {
-    if (!sortColumn) return 0;
-    let aVal: string | number = (a[sortColumn as keyof Batch] ?? "") as string | number;
-    let bVal: string | number = (b[sortColumn as keyof Batch] ?? "") as string | number;
-    if (typeof aVal === "string") aVal = aVal.toLowerCase();
-    if (typeof bVal === "string") bVal = bVal.toLowerCase();
-    if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
-    if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
-    return 0;
-  });
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -227,23 +191,10 @@ const BatchTable: React.FC<BatchTableProps> = ({
             All Inventory Batches ({total})
           </h3>
           <p className="text-sm text-gray-500 mt-0.5">
-            Manage and view supplements
+            View inventory batches synced from ICS
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleDelete}
-            disabled={selectedBatches.length === 0}
-            className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-lg px-3.5 py-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span>Delete</span>
-            {selectedBatches.length > 0 && (
-              <span className="ml-1 bg-gray-100 text-gray-600 text-xs px-1.5 py-0.5 rounded">
-                {selectedBatches.length}
-              </span>
-            )}
-          </button>
           <button
             onClick={handleExport}
             className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-lg px-3.5 py-2 transition-colors hover:bg-gray-50"
@@ -258,13 +209,6 @@ const BatchTable: React.FC<BatchTableProps> = ({
             <Camera className="w-4 h-4" />
             <span>Label OCR</span>
           </button>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add to Inventory</span>
-          </button>
         </div>
       </div>
 
@@ -274,16 +218,14 @@ const BatchTable: React.FC<BatchTableProps> = ({
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-3 py-3 text-left w-12">
-                  <input
-                    type="checkbox"
-                    checked={
-                      selectedBatches.length === batches.length &&
-                      batches.length > 0
-                    }
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
+                <th
+                  onClick={() => handleSort("product_name")}
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                >
+                  <div className="flex items-center gap-1">
+                    <span className="whitespace-nowrap">Supplement Name</span>
+                    <SortIcon column="product_name" />
+                  </div>
                 </th>
                 <th
                   onClick={() => handleSort("batch_number")}
@@ -295,24 +237,33 @@ const BatchTable: React.FC<BatchTableProps> = ({
                   </div>
                 </th>
                 <th
-                  onClick={() => handleSort("supplement_name")}
-                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
-                >
-                  <div className="flex items-center gap-1">
-                    <span className="whitespace-nowrap">Supplement Name</span>
-                    <SortIcon column="supplement_name" />
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort("supplement_brand")}
+                  onClick={() => handleSort("brand")}
                   className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
                 >
                   <div className="flex items-center gap-1">
                     <span className="whitespace-nowrap">Brand</span>
-                    <SortIcon column="supplement_brand" />
+                    <SortIcon column="brand" />
                   </div>
                 </th>
                 <th
+                  onClick={() => handleSort("category")}
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                >
+                  <div className="flex items-center gap-1">
+                    <span className="whitespace-nowrap">Category</span>
+                    <SortIcon column="category" />
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort("description")}
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                >
+                  <div className="flex items-center gap-1">
+                    <span className="whitespace-nowrap">Description</span>
+                    <SortIcon column="description" />
+                  </div>
+                </th>
+                {/* <th
                   onClick={() => handleSort("batch_status")}
                   className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
                 >
@@ -320,23 +271,41 @@ const BatchTable: React.FC<BatchTableProps> = ({
                     <span className="whitespace-nowrap">Stock Status</span>
                     <SortIcon column="batch_status" />
                   </div>
-                </th>
+                </th> */}
                 <th
-                  onClick={() => handleSort("available")}
+                  onClick={() => handleSort("quantity_on_hand")}
                   className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
                 >
                   <div className="flex items-center gap-1">
                     <span className="whitespace-nowrap">Available</span>
-                    <SortIcon column="available" />
+                    <SortIcon column="quantity_on_hand" />
                   </div>
                 </th>
                 <th
-                  onClick={() => handleSort("batch_expiration_date")}
+                  onClick={() => handleSort("unit_cost")}
                   className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
                 >
                   <div className="flex items-center gap-1">
-                    <span className="whitespace-nowrap">Expiration</span>
-                    <SortIcon column="batch_expiration_date" />
+                    <span className="whitespace-nowrap">Unit Cost</span>
+                    <SortIcon column="unit_cost" />
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort("expiry_date")}
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                >
+                  <div className="flex items-center gap-1">
+                    <span className="whitespace-nowrap">Expiry Date</span>
+                    <SortIcon column="expiry_date" />
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort("barcode_sku")}
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                >
+                  <div className="flex items-center gap-1">
+                    <span className="whitespace-nowrap">SKU</span>
+                    <SortIcon column="barcode_sku" />
                   </div>
                 </th>
                 <th className="px-3 py-3 text-left w-16"></th>
@@ -346,62 +315,54 @@ const BatchTable: React.FC<BatchTableProps> = ({
               {loading ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-6 py-8 text-center text-gray-500"
                   >
                     Loading batches...
                   </td>
                 </tr>
-              ) : sortedBatches.length > 0 ? (
-                sortedBatches.map((batch, index) => (
+              ) : batches.length > 0 ? (
+                batches.map((batch, index) => (
                   <tr key={batch.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedBatches.includes(batch.id)}
-                        onChange={(e) =>
-                          handleSelectBatch(batch.id, e.target.checked)
-                        }
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
+                    <td className="px-3 py-4 text-sm text-gray-900">
+                      {batch.product_name}
                     </td>
                     <td className="px-3 py-4 text-sm font-medium text-gray-900">
                       {batch.batch_number}
                     </td>
                     <td className="px-3 py-4 text-sm text-gray-900">
-                      <Link
-                        href={`/SSS/supplements/${batch.supplement_id}`}
-                        className="font-medium text-blue-600 underline cursor-pointer hover:text-blue-800"
-                      >
-                        {batch.supplement_name || "Unknown Supplement"}
-                      </Link>
+                      {batch.brand || "-"}
                     </td>
                     <td className="px-3 py-4 text-sm text-gray-900">
-                      {batch.supplement_brand || "-"}
+                      {batch.category || "-"}
                     </td>
-                    <td className="px-3 py-4">
-                      <span className={getStatusBadgeClass(batch.batch_status || "")}>
-                        {batch.batch_status || "Unknown"}
-                      </span>
+                    <td className="px-3 py-4 text-sm text-gray-900">
+                      {batch.description || "-"}
                     </td>
                     <td className="px-3 py-4 text-sm text-gray-900 text-center">
-                      {batch.available}
+                      {batch.quantity_on_hand}
                     </td>
                     <td className="px-3 py-4 text-sm text-gray-900">
-                      {batch.batch_expiration_date ? (() => {
-                        const info = getExpiryInfo(batch.batch_expiration_date);
+                      ${Number(batch.unit_cost).toFixed(2)}
+                    </td>
+                    <td className="px-3 py-4 text-sm text-gray-900">
+                      {batch.expiry_date ? (() => {
+                        const info = getExpiryInfo(batch.expiry_date);
                         return (
                           <span className={info ? `px-1.5 py-0.5 rounded text-xs font-medium ${info.badge}` : ""}>
-                            {new Date(batch.batch_expiration_date).toLocaleDateString("en-US")}
+                            {new Date(batch.expiry_date).toLocaleDateString("en-GB")}
                           </span>
                         );
                       })() : "-"}
+                    </td>
+                    <td className="px-3 py-4 text-sm text-gray-900">
+                      {batch.barcode_sku || "-"}
                     </td>
                     <td className="px-3 py-4 text-center">
                       <button
                         onClick={() => setDetailBatch(batch)}
                         className="text-gray-400 hover:text-gray-600 p-1"
-                        title="View / Edit batch"
+                        title="View Details"
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
@@ -411,7 +372,7 @@ const BatchTable: React.FC<BatchTableProps> = ({
               ) : (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-6 py-8 text-center text-gray-500"
                   >
                     {searchQuery
@@ -470,17 +431,6 @@ const BatchTable: React.FC<BatchTableProps> = ({
           }}
         />
       )}
-
-      {/* Add Supplement Modal */}
-      <AddSupplementModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSuccess={() => {
-          setShowAddModal(false);
-          if (onRefresh) onRefresh();
-        }}
-        title="Add Batch to Inventory"
-      />
     </div>
   );
 };

@@ -4,101 +4,53 @@ import pool, { withUserContext } from "../../../config/db.js";
 // BATCH/INVENTORY FUNCTIONS
 // ============================================================================
 
-async function recalculateBatchStatus(client, batchId) {
-  const batchResult = await client.query(
-    `
-      SELECT batch_initial_quantity
-      FROM SSS.Inventory_Batch
-      WHERE id = $1
-    `,
-    [batchId],
-  );
-
-  if (batchResult.rows.length === 0) {
-    return;
-  }
-
-  const initial = Number(batchResult.rows[0].batch_initial_quantity);
-
-  const ticketSumResult = await client.query(
-    `
-      SELECT COALESCE(SUM(quantity), 0) AS booked
-      FROM SSS.Inventory_Ticket
-      WHERE inventory_batch_id = $1
-    `,
-    [batchId],
-  );
-
-  const booked = Number(ticketSumResult.rows[0].booked);
-  const available = initial - booked;
-
-  let statusName = "AVAILABLE";
-  if (available === 0) {
-    statusName = "OUT OF STOCK";
-  } else if (initial > 0 && available / initial < 0.2) {
-    statusName = "LOW STOCK";
-  }
-
-  const statusResult = await client.query(
-    `
-      SELECT id
-      FROM SSS.Batch_Stock_Status_Lookup
-      WHERE UPPER(batch_stock_status) = $1
-        AND is_active = true
-      LIMIT 1
-    `,
-    [statusName],
-  );
-
-  if (statusResult.rows.length === 0) {
-    return;
-  }
-
-  await client.query(
-    `
-      UPDATE SSS.Inventory_Batch
-      SET batch_stock_status_id = $1
-      WHERE id = $2
-    `,
-    [statusResult.rows[0].id, batchId],
-  );
-}
+// Columns that can be sorted
+const SORT_COLUMNS = {
+  product_name: "pm.product_name",
+  brand: "pm.brand",
+  category: "pm.category",
+  description: "pm.description",
+  batch_number: "ib.batch_number",
+  quantity_on_hand: "ib.quantity_on_hand",
+  unit_cost: "ib.unit_cost",
+  expiry_date: "ib.expiry_date",
+  barcode_sku: "ib.barcode_sku",
+  supplier: "ib.supplier",
+  created_on: "ib.created_on",
+};
 
 // Use case: Show Inventory Library
-export async function getBatchesByPage(pageNumber, pageSize = 10) {
+export async function getBatchesByPage(pageNumber, pageSize = 10, sortBy = "created_on", sortDirection = "desc") {
   const offset = (pageNumber - 1) * pageSize;
+  const orderBy = SORT_COLUMNS[sortBy] || "ib.created_on";
+  const direction = sortDirection.toLowerCase() === "asc" ? "ASC" : "DESC";
 
   const query = `
     SELECT
       ib.id,
+      ib.product_id,
+      pm.product_name,
+      pm.brand,
+      pm.unit,
+      pm.category,
+      pm.description,
       ib.batch_number,
-      ib.batch_initial_quantity,
-      ib.batch_expiration_date,
-      ib.batch_price,
-      ib.supplement_id,
-      btol.batch_testing_org AS inv_batch_testing_org,
-      ib.inv_batch_testing_org_id,
-      ib.inv_batch_testing_org_url,
-      ib.batch_unit,
-      s.supplement_name,
-      s.supplement_brand,
-      spf.supplement_packaging_form,
-      COALESCE(SUM(it.quantity), 0) AS booked,
-      ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available,
-      bssl.batch_stock_status AS batch_status,
-      ib.date_added
-    FROM SSS.Inventory_Batch ib
-    INNER JOIN SSS.Supplement s ON ib.supplement_id = s.id
-    LEFT JOIN SSS.Supplement_Packaging_Form_Lookup spf ON s.supplement_packaging_form_id = spf.id
-    LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.inventory_batch_id
-    LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl ON ib.batch_stock_status_id = bssl.id
-    LEFT JOIN SSS.batch_testing_org_lookup btol ON ib.inv_batch_testing_org_id = btol.id
-    WHERE bssl.is_active = true
-    GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity,
-             ib.batch_expiration_date, ib.batch_price, ib.supplement_id,
-             ib.inv_batch_testing_org_id, ib.inv_batch_testing_org_url, ib.batch_unit, s.supplement_name, s.supplement_brand,
-             spf.supplement_packaging_form, bssl.batch_stock_status, ib.date_added, btol.batch_testing_org
-    ORDER BY ib.id DESC
+      ib.barcode_sku,
+      ib.original_stock_amount,
+      ib.quantity_on_hand,
+      ib.unit_cost,
+      ib.expiry_date,
+      ib.supplier,
+      ib.received_date,
+      ib.notes,
+      ib.created_on,
+      ib.last_modified_on,
+      ib.is_active,
+      '-' AS batch_status
+    FROM ics.inventory_batch ib
+    INNER JOIN ics.product_master pm ON ib.product_id = pm.id
+    WHERE ib.is_active = true
+    ORDER BY ${orderBy} ${direction}
     LIMIT $1 OFFSET $2
   `;
 
@@ -108,26 +60,26 @@ export async function getBatchesByPage(pageNumber, pageSize = 10) {
 // Use case: Show Inventory Library (total count)
 export async function getTotalBatchCount() {
   const query = `
-    SELECT COUNT(*)
-    FROM SSS.Inventory_Batch ib
-    JOIN SSS.Batch_Stock_Status_Lookup bssl
-      ON ib.batch_stock_status_id = bssl.id
-    WHERE bssl.is_active = true
+    SELECT COUNT(*) AS count
+    FROM ics.inventory_batch
+    WHERE is_active = true
   `;
   const result = await pool.query(query);
   return parseInt(result.rows[0].count);
 }
 
 // Use case: Search Inventory
-export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
+export async function searchBatches(searchQuery, pageNumber, pageSize = 10, sortBy = "created_on", sortDirection = "desc") {
   const offset = (pageNumber - 1) * pageSize;
+  const orderBy = SORT_COLUMNS[sortBy] || "ib.created_on";
+  const direction = sortDirection.toLowerCase() === "asc" ? "ASC" : "DESC";
   const searchWords = searchQuery
     .trim()
     .split(/\s+/)
     .filter((word) => word.length > 0);
 
   if (searchWords.length === 0) {
-    return await getBatchesByPage(pageNumber, pageSize);
+    return await getBatchesByPage(pageNumber, pageSize, sortBy, sortDirection);
   }
 
   // Build WHERE conditions - each word must match in at least one field
@@ -135,10 +87,13 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
     .map((_, index) => {
       const paramIndex = index + 1;
       return `(
-      ib.batch_number ILIKE $${paramIndex} OR
-      s.supplement_name ILIKE $${paramIndex} OR
-      s.supplement_brand ILIKE $${paramIndex} OR
-      bssl.batch_stock_status ILIKE $${paramIndex}
+        pm.product_name ILIKE $${paramIndex}
+        OR pm.brand ILIKE $${paramIndex}
+        OR pm.category ILIKE $${paramIndex}
+        OR pm.description ILIKE $${paramIndex}
+        OR ib.batch_number ILIKE $${paramIndex}
+        OR ib.barcode_sku ILIKE $${paramIndex}
+        OR ib.supplier ILIKE $${paramIndex}
     )`;
     })
     .join(" AND ");
@@ -148,35 +103,34 @@ export async function searchBatches(searchQuery, pageNumber, pageSize = 10) {
   const query = `
     SELECT
       ib.id,
+      ib.product_id,
+      pm.product_name,
+      pm.brand,
+      pm.unit,
+      pm.category,
+      pm.description,
       ib.batch_number,
-      ib.batch_initial_quantity,
-      ib.batch_expiration_date,
-      ib.batch_price,
-      ib.supplement_id,
-      btol.batch_testing_org AS inv_batch_testing_org,
-      ib.inv_batch_testing_org_id,
-      ib.inv_batch_testing_org_url,
-      ib.batch_unit,
-      s.supplement_name,
-      s.supplement_brand,
-      spf.supplement_packaging_form,
-      COALESCE(SUM(it.quantity), 0) AS booked,
-      ib.batch_initial_quantity - COALESCE(SUM(it.quantity), 0) AS available,
-      bssl.batch_stock_status AS batch_status,
-      ib.date_added
-    FROM SSS.Inventory_Batch ib
-    INNER JOIN SSS.Supplement s ON ib.supplement_id = s.id
-    LEFT JOIN SSS.Supplement_Packaging_Form_Lookup spf ON s.supplement_packaging_form_id = spf.id
-    LEFT JOIN SSS.Inventory_Ticket it ON ib.id = it.inventory_batch_id
-    LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl ON ib.batch_stock_status_id = bssl.id
-    LEFT JOIN SSS.batch_testing_org_lookup btol ON ib.inv_batch_testing_org_id = btol.id
-    WHERE bssl.is_active = true AND (${whereConditions})
-    GROUP BY ib.id, ib.batch_number, ib.batch_initial_quantity,
-             ib.batch_expiration_date, ib.batch_price, ib.supplement_id,
-             ib.inv_batch_testing_org_id, ib.inv_batch_testing_org_url, ib.batch_unit, s.supplement_name, s.supplement_brand,
-             spf.supplement_packaging_form, bssl.batch_stock_status, ib.date_added, btol.batch_testing_org
-    ORDER BY ib.id DESC
-    LIMIT $${searchWords.length + 1} OFFSET $${searchWords.length + 2}
+      ib.barcode_sku,
+      ib.original_stock_amount,
+      ib.quantity_on_hand,
+      ib.unit_cost,
+      ib.expiry_date,
+      ib.supplier,
+      ib.received_date,
+      ib.notes,
+      ib.created_on,
+      ib.last_modified_on,
+      ib.is_active,
+      '-' AS batch_status
+    FROM ics.inventory_batch ib
+    INNER JOIN ics.product_master pm
+        ON ib.product_id = pm.id
+    WHERE
+        ib.is_active = true
+        AND (${whereConditions})
+    ORDER BY ${orderBy} ${direction}
+    LIMIT $${searchWords.length + 1}
+    OFFSET $${searchWords.length + 2}
   `;
 
   const params = [...searchParams, pageSize, offset];
@@ -198,10 +152,13 @@ export async function getSearchBatchCount(searchQuery) {
     .map((_, index) => {
       const paramIndex = index + 1;
       return `(
-      ib.batch_number ILIKE $${paramIndex} OR
-      s.supplement_name ILIKE $${paramIndex} OR
-      s.supplement_brand ILIKE $${paramIndex} OR
-      bssl.batch_stock_status ILIKE $${paramIndex}
+        pm.product_name ILIKE $${paramIndex}
+        OR pm.brand ILIKE $${paramIndex}
+        OR pm.category ILIKE $${paramIndex}
+        OR pm.description ILIKE $${paramIndex}
+        OR ib.batch_number ILIKE $${paramIndex}
+        OR ib.barcode_sku ILIKE $${paramIndex}
+        OR ib.supplier ILIKE $${paramIndex}
     )`;
     })
     .join(" AND ");
@@ -209,248 +166,85 @@ export async function getSearchBatchCount(searchQuery) {
   const searchParams = searchWords.map((word) => `%${word}%`);
 
   const query = `
-    SELECT COUNT(DISTINCT ib.id) as count
-    FROM SSS.Inventory_Batch ib
-    INNER JOIN SSS.Supplement s ON ib.supplement_id = s.id
-    LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl ON ib.batch_stock_status_id = bssl.id
-    WHERE ${whereConditions}
-      AND bssl.is_active = true
+    SELECT COUNT(*) as count
+    FROM ics.inventory_batch ib
+    INNER JOIN ics.product_master pm ON ib.product_id = pm.id
+    WHERE ib.is_active = true
+      AND (${whereConditions})
   `;
 
   const result = await pool.query(query, searchParams);
   return parseInt(result.rows[0].count);
 }
 
-/**
- * Get batch by ID with full details
- */
+// Get Inventory Batch by ID
 export async function getBatchById(batchId) {
   const query = `
-        SELECT
-            ib.id,
-            ib.supplement_id,
-            ib.batch_number,
-            ib.batch_initial_quantity,
-            ib.batch_price,
-            ib.batch_expiration_date,
-            ib.batch_manufacture_date,
-            ib.inv_batch_testing_org_id,
-            ib.inv_batch_testing_org_url,
-            btol.batch_testing_org AS inv_batch_testing_org,
-            ib.batch_unit,
-            ib.batch_stock_status_id,
-            ib.date_added,
-            bssl.batch_stock_status,
-            s.supplement_name,
-            s.supplement_brand
-        FROM SSS.Inventory_Batch ib
-        LEFT JOIN SSS.Batch_Stock_Status_Lookup bssl
-            ON ib.batch_stock_status_id = bssl.id
-        LEFT JOIN SSS.Supplement s
-            ON ib.supplement_id = s.id
-        LEFT JOIN SSS.batch_testing_org_lookup btol
-            ON ib.inv_batch_testing_org_id = btol.id
-        WHERE ib.id = $1
-    `;
+    SELECT
+        ib.id,
+        ib.product_id,
+        pm.product_name,
+        pm.brand,
+        pm.unit,
+        pm.category,
+        pm.description,
+        ib.batch_number,
+        ib.barcode_sku,
+        ib.original_stock_amount,
+        ib.quantity_on_hand,
+        ib.unit_cost,
+        ib.expiry_date,
+        ib.supplier,
+        ib.received_date,
+        ib.notes,
+        ib.created_on,
+        ib.last_modified_on,
+        ib.is_active,
+        '-' AS batch_status
+    FROM ics.inventory_batch ib
+    INNER JOIN ics.product_master pm
+        ON ib.product_id = pm.id
+    WHERE ib.id = $1
+      AND ib.is_active = true
+  `;
 
   const result = await pool.query(query, [batchId]);
   return result.rows.length > 0 ? result.rows[0] : null;
 }
 
-/**
- * Check if batch number already exists for the same supplement
- */
-export async function checkDuplicateBatchNumber(
-  supplementId,
-  batchNumber,
-  excludeId = null,
-) {
-  let query = `
-        SELECT id
-        FROM SSS.Inventory_Batch
-        WHERE supplement_id = $1
-          AND LOWER(batch_number) = LOWER($2)
-    `;
-
-  const params = [supplementId, batchNumber];
-
-  if (excludeId) {
-    query += ` AND id != $3`;
-    params.push(excludeId);
-  }
-
-  query += ` LIMIT 1`;
-
-  const result = await pool.query(query, params);
-  return result.rows.length > 0;
-}
-
-/**
- * Check if batch has any tickets (prevent deletion if tickets exist)
- */
-export async function checkBatchHasTickets(batchId) {
-  const query = `
-        SELECT COUNT(*) as ticket_count
-        FROM SSS.Inventory_Ticket
-        WHERE inventory_batch_id = $1
-    `;
-
-  const result = await pool.query(query, [batchId]);
-  return parseInt(result.rows[0].ticket_count) > 0;
-}
-
-/**
- * Add a new inventory batch to the database
- */
-export async function createBatch(batchData, userId) {
-  const query = `
-        INSERT INTO SSS.Inventory_Batch (
-            supplement_id,
-            batch_stock_status_id,
-            batch_number,
-            batch_initial_quantity,
-            batch_price,
-            batch_expiration_date,
-            batch_manufacture_date,
-            inv_batch_testing_org_id,
-            inv_batch_testing_org_url,
-            batch_unit
-        ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
-        )
-        RETURNING
-            id,
-            supplement_id,
-            batch_stock_status_id,
-            batch_number,
-            batch_initial_quantity,
-            batch_price,
-            batch_expiration_date,
-            batch_manufacture_date,
-            inv_batch_testing_org_id,
-            inv_batch_testing_org_url,
-            batch_unit,
-            date_added
-    `;
-
-  const values = [
-    batchData.supplement_id,
-    batchData.batch_stock_status_id,
-    batchData.batch_number,
-    batchData.batch_initial_quantity,
-    batchData.batch_price || null,
-    batchData.batch_expiration_date || null,
-    batchData.batch_manufacture_date || null,
-    batchData.inv_batch_testing_org_id || null,
-    batchData.inv_batch_testing_org_url || null,
-    batchData.batch_unit || null,
-  ];
-
-  return withUserContext(userId, async (client) => {
-    const result = await client.query(query, values);
-    return result.rows[0];
-  });
-}
-
-/**
- * Update one or more fields of an existing batch (partial update)
- */
-export async function updateBatch(batchId, updateData, userId) {
-  const fields = [];
-  const values = [];
-  let paramCounter = 1;
-
-  const fieldMapping = {
-    supplement_id: updateData.supplement_id,
-    batch_number: updateData.batch_number,
-    batch_initial_quantity: updateData.batch_initial_quantity,
-    batch_price: updateData.batch_price,
-    batch_expiration_date: updateData.batch_expiration_date,
-    batch_manufacture_date: updateData.batch_manufacture_date,
-    inv_batch_testing_org_id: updateData.inv_batch_testing_org_id,
-    inv_batch_testing_org_url: updateData.inv_batch_testing_org_url,
-    batch_unit: updateData.batch_unit,
-  };
-
-  for (const [field, value] of Object.entries(fieldMapping)) {
-    if (value !== undefined) {
-      fields.push(`${field} = $${paramCounter}`);
-      values.push(value);
-      paramCounter++;
-    }
-  }
-
-  if (fields.length === 0) {
-    return null;
-  }
-
-  values.push(batchId);
+// Export all inventory batches
+export async function getAllBatches(sortBy = "product_name", sortDirection = "asc") {
+  const orderBy = SORT_COLUMNS[sortBy] || "pm.product_name";
+  const direction = sortDirection.toLowerCase() === "desc" ? "DESC" : "ASC";
 
   const query = `
-        UPDATE SSS.Inventory_Batch
-        SET ${fields.join(", ")}
-        WHERE id = $${paramCounter}
-        RETURNING
-            id,
-            supplement_id,
-            batch_stock_status_id,
-            batch_number,
-            batch_initial_quantity,
-            batch_price,
-            batch_expiration_date,
-            batch_manufacture_date,
-            inv_batch_testing_org_id,
-            inv_batch_testing_org_url,
-            batch_unit
-    `;
+    SELECT
+      ib.id,
+      ib.product_id,
+      pm.product_name,
+      pm.brand,
+      pm.unit,
+      pm.category,
+      pm.description,
+      ib.batch_number,
+      ib.barcode_sku,
+      ib.original_stock_amount,
+      ib.quantity_on_hand,
+      ib.unit_cost,
+      ib.expiry_date,
+      ib.supplier,
+      ib.received_date,
+      ib.notes,
+      ib.created_on,
+      ib.last_modified_on,
+      ib.is_active,
+      '-' AS batch_status
+    FROM ics.inventory_batch ib
+    INNER JOIN ics.product_master pm
+      ON ib.product_id = pm.id
+    WHERE ib.is_active = true
+    ORDER BY ${orderBy} ${direction}
+  `;
 
-  return withUserContext(userId, async (client) => {
-    const result = await client.query(query, values);
-
-    if (result.rows.length === 0) {
-      return null;
-    }
-
-    if (updateData.batch_initial_quantity !== undefined) {
-      await recalculateBatchStatus(client, batchId);
-      const refreshed = await client.query(
-        `
-          SELECT
-              id,
-              supplement_id,
-              batch_stock_status_id,
-              batch_number,
-              batch_initial_quantity,
-              batch_price,
-              batch_expiration_date,
-              batch_manufacture_date,
-              inv_batch_testing_org_id,
-              inv_batch_testing_org_url,
-              batch_unit
-          FROM SSS.Inventory_Batch
-          WHERE id = $1
-        `,
-        [batchId],
-      );
-      return refreshed.rows[0] ?? null;
-    }
-
-    return result.rows[0];
-  });
-}
-
-/**
- * Permanently delete one or more batches from database (hard delete, bulk)
- */
-export async function deleteBatches(batchIds, userId) {
-  const query = `
-        DELETE FROM SSS.Inventory_Batch
-        WHERE id = ANY($1::uuid[])
-        RETURNING id
-    `;
-
-  return withUserContext(userId, async (client) => {
-    const result = await client.query(query, [batchIds]);
-    return result.rows;
-  });
+  return await pool.query(query);
 }

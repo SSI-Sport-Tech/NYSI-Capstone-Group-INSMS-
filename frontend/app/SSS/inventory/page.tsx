@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import DashboardLayout from "@/components/DashboardLayout";
 import SearchSection from "@/components/SSS/SearchSection";
@@ -9,17 +9,22 @@ import OCRModal from "@/components/SSS/OCRModal";
 import SupplementTabBar from "@/components/SSS/SupplementTabBar";
 
 interface Batch {
-  id: number;
+  id: string;
+  product_id: string;
+  product_name: string;
+  brand: string | null;
   batch_number: string;
-  supplement_id: string;
-  supplement_name: string;
-  supplement_brand: string;
-  batch_status: string;
-  batch_initial_quantity: number;
-  booked: number;
-  available: number;
-  batch_expiration_date: string;
-  batch_price: number;
+  category: string,
+  description: string,
+  barcode_sku: string;
+  quantity_on_hand: number;
+  original_stock_amount: number;
+  expiry_date: string;
+  unit_cost: number;
+  supplier: string | null;
+  received_date: string | null;
+  notes: string | null;
+  batch_status: string; // always "-" for now
 }
 
 export default function InventoryPage() {
@@ -31,17 +36,44 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [ocrModalOpen, setOcrModalOpen] = useState(false);
+  const [sortBy, setSortBy] = useState("product_name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // useEffect(() => {
+  //   loadBatches(query, currentPage, sortBy, sortOrder);
+  // }, [query, currentPage, sortBy, sortOrder]);
 
   useEffect(() => {
-    loadBatches();
-  }, []);
+    loadBatches(query, currentPage, sortBy, sortOrder);
+  }, [currentPage, sortBy, sortOrder]);
 
-  const loadBatches = async (searchQuery = "", page = 1) => {
+  // Search waits until user stops typing
+  useEffect(() => {
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+
+    searchTimeout.current = setTimeout(() => {
+      setCurrentPage(1);
+      loadBatches(query, 1, sortBy, sortOrder);
+    }, 400);
+
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, [query]);
+
+  const loadBatches = async (searchQuery = "", page = 1, sortColumn = sortBy, direction = sortOrder) => {
     setLoading(true);
     setError("");
 
     try {
-      const params: { page: number; search?: string } = { page };
+      const params: {page: number; search?: string; sortBy: string; sortDirection: "asc" | "desc";} = {
+        page, sortBy: sortColumn, sortDirection: direction,
+      };
       if (searchQuery.trim()) {
         params.search = searchQuery;
       }
@@ -73,17 +105,30 @@ export default function InventoryPage() {
     }
   };
 
-  const handleSearch = async () => {
-    await loadBatches(query, 1);
+  // Reset to first page whenever search changes
+  // useEffect(() => {
+  //   setCurrentPage(1);
+  // }, [query]);
+
+  // // Debounced search
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     loadBatches(query, currentPage, sortBy, sortOrder);
+  //   }, 400);
+
+  //   return () => clearTimeout(timer);
+  // }, [query, currentPage, sortBy, sortOrder]);
+
+  const handleSearch = () => {
+    loadBatches(query, 1, sortBy, sortOrder);
   };
 
   const handleClearSearch = async () => {
     setQuery("");
-    await loadBatches("", 1);
   };
 
-  const handlePageChange = async (page: number) => {
-    await loadBatches(query, page);
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   return (
@@ -131,11 +176,16 @@ export default function InventoryPage() {
             total={total}
             loading={loading}
             searchQuery={query}
-            onRefresh={() => loadBatches(query, currentPage)}
+            onRefresh={() => loadBatches(query, currentPage, sortBy, sortOrder)}
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={handlePageChange}
             onOpenOCR={() => setOcrModalOpen(true)}
+            onSortChange={(column, direction) => {
+              setSortBy(column);
+              setSortOrder(direction);
+              setCurrentPage(1);
+            }}
           />
 
           {/* OCR Modal */}

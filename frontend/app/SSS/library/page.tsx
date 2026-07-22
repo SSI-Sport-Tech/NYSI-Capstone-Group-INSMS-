@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import DashboardLayout from "@/components/DashboardLayout";
 import SupplementTable from "@/components/SSS/SupplementTable";
@@ -30,9 +30,10 @@ export default function LibraryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [ocrModalOpen, setOcrModalOpen] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    loadSupplements();
+    loadSupplements(searchQuery, currentPage);
     // Reopen OCR modal if user navigated away mid-session
     try {
       const saved = sessionStorage.getItem("ocr_modal_state");
@@ -45,7 +46,24 @@ export default function LibraryPage() {
     } catch {
       // ignore
     }
-  }, []);
+  }, [currentPage]);
+
+  useEffect(() => {
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+
+    searchTimeout.current = setTimeout(() => {
+      setCurrentPage(1);
+      loadSupplements(searchQuery, 1);
+    }, 400);
+
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, [searchQuery]);
 
   const loadSupplements = async (search = "", page = 1) => {
     setLoading(true);
@@ -88,11 +106,12 @@ export default function LibraryPage() {
 
   const handleClearSearch = () => {
     setSearchQuery("");
-    loadSupplements("", 1);
+    // loadSupplements("", 1);
   };
 
   const handlePageChange = (page: number) => {
-    loadSupplements(searchQuery, page);
+    // loadSupplements(searchQuery, page);
+    setCurrentPage(page);
   };
 
   return (
