@@ -126,6 +126,7 @@ pandas==2.3.3
 pillow==11.3.0
 platformdirs==4.5.1
 playwright==1.57.0
+playwright-stealth==2.0.3
 portalocker==3.2.0
 primp==0.15.0
 propcache==0.4.1
@@ -221,3 +222,6 @@ xxhash==3.6.0
 yarl==1.22.0
 zipp==3.23.0
 zstandard==0.25.0
+
+anthropic
+langchain-anthropic

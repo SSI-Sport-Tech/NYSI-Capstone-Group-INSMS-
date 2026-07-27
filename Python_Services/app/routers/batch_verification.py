@@ -608,3 +608,54 @@ async def health():
             "POST /verify-combined-images - Combined verification (2 images)"
         ]
     }
+
+@router.post("/debug-scrape")
+async def debug_scrape(org_name: str, search_term: str):
+    from app.services.certification_searcher import (
+        CERTIFICATION_DATABASES, _fetch_informed_api_html,
+        _run_scraper_sync, _build_search_prompt,
+        selenium_fetch_search_results
+    )
+
+    config = CERTIFICATION_DATABASES.get(org_name)
+    if not config:
+        raise HTTPException(404, f"Unknown org: {org_name}")
+
+    html = None
+    source_method = "selenium"
+
+    # Try API first for Informed Sport/Choice
+    if config.get("use_api"):
+        html = _fetch_informed_api_html(config["api_search_url"], search_term)
+        if html:
+            source_method = "api"
+
+    # Fall back to Selenium
+    if not html:
+        selenium_url = config.get("selenium_base_url", config["search_url"])
+        wait_fn = config.get("selenium_wait_fn")
+        if wait_fn:
+            try:
+                html = selenium_fetch_search_results(
+                    selenium_url, search_term, wait_fn,
+                    wait_time=2, post_search_wait=3
+                )
+            except Exception as e:
+                html = f"Selenium failed: {e}"
+
+    if not html:
+        html = ""
+
+    prompt = _build_search_prompt(org_name, config, search_term, search_term)
+    llm_result = _run_scraper_sync(prompt, html)
+
+    return {
+        "org_name": org_name,
+        "search_term": search_term,
+        "source_method": source_method,
+        "html_length": len(html),
+        "html_trimmed_length": min(len(html), 15000),
+        "html_contains_search_term": search_term.lower() in html.lower(),
+        "html_snippet_around_term": html[max(0, html.lower().find(search_term.lower())-100):html.lower().find(search_term.lower())+300] if search_term.lower() in html.lower() else "",
+        "llm_result": llm_result,
+    }

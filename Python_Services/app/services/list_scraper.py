@@ -114,10 +114,12 @@ async def scrape_product_list(
     # ScrapeGraphAI configuration
     config = {
         "llm": {
-            "model": "ollama/qwen3:8b",
-            "base_url": "http://localhost:11434",
+            "model": f"ollama/{os.environ.get('OLLAMA_MODEL', 'qwen3:8b')}",
+            "base_url": os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434"),
+            "model_tokens": 32000,
+            "temperature": 0,
         },
-        "headless": False,
+        "verbose": False,
     }
     
     # Extraction prompt

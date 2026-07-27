@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from scrapegraphai import graphs
 from app.config.settings import settings
 import asyncio
+import os
 # import sys
 # if 'win32' in sys.platform:
 #     # Windows specific event-loop policy & cmd
@@ -31,11 +32,12 @@ async def search_batch_testing(
 
     config = {
         "llm": {
-            "model": "ollama/qwen3:8b",
-            "base_url": "http://localhost:11434",
-            "format": "json",
-            "model_tokens": 8192,
+            "model": f"ollama/{os.environ.get('OLLAMA_MODEL', 'qwen3:8b')}",
+            "base_url": os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434"),
+            "model_tokens": 32000,
+            "temperature": 0,
         },
+        "verbose": False,
     }
 
     prompt = f"""Is the supplement "{brand_supplement}" batch tested?
@@ -117,12 +119,13 @@ async def search_batch_testing_with_consensus(
         Dict with batch testing results from the first searches to complete
     """
     config = {
-    "llm": {
-        "model": f"ollama/{settings.ollama_model}",
-        "base_url": settings.ollama_base_url,
-        "format": "json",
-        "model_tokens": 8192,
-    },
+        "llm": {
+            "model": f"ollama/{os.environ.get('OLLAMA_MODEL', 'qwen3:8b')}",
+            "base_url": os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434"),
+            "model_tokens": 32000,
+            "temperature": 0,
+        },
+        "verbose": False,
     }
 
     prompt = f"""Is the supplement "{brand_supplement}" batch tested?
@@ -282,13 +285,14 @@ async def search_batch_testing_url(
 
 
     config = {
-    "llm": {
-        "model": f"ollama/{settings.ollama_model}",
-        "base_url": settings.ollama_base_url,
-        "format": "json",
-        "model_tokens": 8192,
-    },
-    }
+        "llm": {
+            "model": f"ollama/{os.environ.get('OLLAMA_MODEL', 'qwen3:8b')}",
+            "base_url": os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434"),
+            "model_tokens": 32000,
+            "temperature": 0,
+        },
+        "verbose": False,
+}
 
 
     prompt = f"""Find the url (if any) of the product page for {brand_supplement} under the organisation:{organisation}

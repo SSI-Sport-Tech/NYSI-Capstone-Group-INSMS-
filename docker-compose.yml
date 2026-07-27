@@ -49,6 +49,9 @@ services:
       POSTGRES_PASSWORD: "${PGPASSWORD}"
       OLLAMA_BASE_URL: "${OLLAMA_BASE_URL}"
       OLLAMA_MODEL: "${OLLAMA_MODEL}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+      CF_ACCESS_CLIENT_ID: "${CF_ACCESS_CLIENT_ID}"
+      CF_ACCESS_CLIENT_SECRET: "${CF_ACCESS_CLIENT_SECRET}"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]

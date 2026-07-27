@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 import requests
 from scrapegraphai import graphs
 import json
+import os
+import re
 
 
 # ============================================================================
@@ -179,37 +181,49 @@ import time
 from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
 
-def selenium_fetch(
-    url: str, 
-    wait_time: int = 5, 
-) -> str:
-    """
-    Fetch page content using Selenium with infinite scroll handling.
-    
-    Args:
-        url: URL to fetch
-        wait_time: Initial page load wait time (seconds)
-        scroll_pause: Pause between scrolls (seconds)
-        max_scrolls: Maximum number of scroll attempts
-        
-    Returns:
-        str: Page HTML source
-    """
+def selenium_fetch(url: str, wait_time: int = 5) -> str:
     options = Options()
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
-
     driver = webdriver.Chrome(options=options)
-
     try:
         driver.get(url)
         time.sleep(wait_time)
 
-        return driver.page_source
+        # Expand collapsed nutrition/ingredient tabs
+        driver.execute_script("""
+            document.querySelectorAll(
+                '[aria-expanded="false"], .accordion__button, details summary, .tab__trigger'
+            ).forEach(el => {
+                if (/nutri|ingredient|info|fact/i.test(el.textContent)) {
+                    el.click();
+                }
+            });
+        """)
+        time.sleep(1)
 
+        # Scroll slowly to trigger lazy-loaded images
+        total_height = driver.execute_script("return document.body.scrollHeight")
+        for pos in range(0, total_height, 300):
+            driver.execute_script(f"window.scrollTo(0, {pos});")
+            time.sleep(0.1)
+
+        # Force all lazy images to load
+        driver.execute_script("""
+            document.querySelectorAll('img[data-src], img[data-lazy], img[loading="lazy"]').forEach(img => {
+                if (img.dataset.src) img.src = img.dataset.src;
+                if (img.dataset.lazy) img.src = img.dataset.lazy;
+            });
+        """)
+        time.sleep(1)
+
+        # Scroll back to top
+        driver.execute_script("window.scrollTo(0, 0);")
+
+        return driver.page_source
     finally:
         driver.quit()
 
@@ -232,13 +246,17 @@ async def scrape_product_details(
     # ScrapeGraphAI configuration
     config = {
         "llm": {
-            "model": "ollama/qwen3:8b",
-            "base_url": "http://localhost:11434",
+            "model": f"ollama/{os.environ.get('OLLAMA_MODEL', 'qwen3:8b')}",
+            "base_url": os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434"),
+            "format": "json",
+            "model_tokens": 32000,
+            "temperature": 0,
+            "think": False,
         },
     }
 
-    # source = selenium_fetch(product_url)
-    
+    source = selenium_fetch(product_url)
+        
     # Create scraper with schema validation
     scraper = graphs.SmartScraperGraph(
         prompt=PRODUCT_INFO_PROMPT,
@@ -248,8 +266,21 @@ async def scrape_product_details(
     )
     
     # Run extraction
-    result = scraper.run()
-    print(result)
+    try:
+        result = scraper.run()
+    except Exception as e:
+        # Model output valid JSON but with reasoning prefix — extract it
+        error_text = str(e)
+        # Find last JSON object in the error message
+        json_matches = list(re.finditer(r'\{.*\}', error_text, re.DOTALL))
+        if json_matches:
+            try:
+                result = json.loads(json_matches[-1].group(0))
+                print(f"⚠️ Recovered JSON from exception")
+            except json.JSONDecodeError:
+                raise
+        else:
+            raise
     # Normalize result (handle string response)
     if isinstance(result, str):
         result = json.loads(result)

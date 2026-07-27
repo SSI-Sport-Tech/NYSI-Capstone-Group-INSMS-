@@ -9,6 +9,8 @@ Provides endpoints for extracting nutrition data from supplement label images.
 Also keeps a convenience endpoint that runs the full pipeline in one call.
 """
 
+import os
+
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pydantic import BaseModel, Field
 from pathlib import Path
@@ -296,7 +298,7 @@ async def ocr_health_check():
     return {
         "status": "healthy",
         "model": "PaddleOCR PP-OCRv4",
-        "llm": "ollama/qwen3:8b",
+        "llm": f"ollama/{os.environ.get('OLLAMA_MODEL', 'qwen3:8b')}",
         "lazy_loading": {
             "ocr_engine_loaded": ocr_engine.is_loaded(),
             "llm_loaded": llm_structurer.is_loaded(),

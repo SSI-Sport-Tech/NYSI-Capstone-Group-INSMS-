@@ -177,11 +177,14 @@ async def scrape_single_product(request: ScrapeProductRequest):
                     product["Batch_tested"] = False
                     product["batch_testing_org"] = "Unknown"
         
+        # Filter out rejected (non-nutritional) products before returning
+        nutritional_products = [p for p in products if "Rejected" not in p]
+
         return ScrapeProductResponse(
             success=True,
             product_url=request.product_url,
-            products=products,
-            total_variants=len(products),
+            products=nutritional_products,
+            total_variants=len(nutritional_products),
             errors=errors if errors else None
         )
         

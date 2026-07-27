@@ -19,10 +19,10 @@ class Settings(BaseSettings):
     # ========================================================================
     # Ollama / Local LLM Configuration
     # ========================================================================
-    ollama_base_url: str = "http://localhost:11434"
+    ollama_base_url: str = "http://host.docker.internal:11434"
     """Base URL for local Ollama instance"""
 
-    ollama_model: str = "qwen3:8b"
+    ollama_model: str = "gpt-oss:20b"
     """Local model used for scraping/extraction (via Ollama)"""
 
     # ========================================================================
@@ -163,7 +163,7 @@ class Settings(BaseSettings):
         """
         return {
             "api_key": self.openai_api_key,
-            "model": "ollama/qwen3:8b"
+            "model": "gpt-oss:20b"
         }
     
     def get_ollama_config(self) -> dict:

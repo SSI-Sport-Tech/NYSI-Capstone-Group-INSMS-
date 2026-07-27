@@ -1,62 +1,58 @@
-"""
-LLM-powered text structuring with lazy-loaded Ollama qwen3:8b singleton.
-Converts raw text strings into structured dicts. No OCR, no vectorization.
-"""
-
+import os
+import re
 import json
 import logging
+import requests
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
-from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
-# Lazy singleton - only loads when first used
-_llm_instance = None
 
+def _call_ollama(system_prompt: str, user_prompt: str) -> str:
+    """Call Ollama chat API and return response text."""
+    ollama_base_url = os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
+    ollama_model = os.environ.get("OLLAMA_MODEL", "qwen3:8b")
 
-def get_llm_instance():
-    """
-    Lazy-load Ollama LLM instance.
+    response = requests.post(
+        f"{ollama_base_url}/api/chat",
+        json={
+            "model": ollama_model,
+            "stream": False,
+            "format": "json",
+            "options": {
+                "temperature": 0,
+                "num_ctx": 32768,
+                "num_predict": 4096,
+                "think": False,
+            },
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+        },
+        timeout=120
+    )
+    response.raise_for_status()
+    text = response.json().get("message", {}).get("content", "").strip()
 
-    Returns:
-        Ollama: Initialized LLM
-    """
-    global _llm_instance
+    # Strip thinking tags and markdown fences
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    if text.startswith("```"):
+        text = re.sub(r"```(?:json)?\n?", "", text).strip().rstrip("```").strip()
 
-    if _llm_instance is None:
-        logger.info("🔄 Initializing qwen3:8b LLM via Ollama (lazy load)...")
-        from llama_index.llms.ollama import Ollama
-
-        _llm_instance = Ollama(
-            model="qwen3:8b",
-            base_url="http://localhost:11434",
-            temperature=0,
-        )
-        logger.info("✅ LLM initialized")
-
-    return _llm_instance
+    return text
 
 
 def structure_nutrition_text(raw_text: str) -> Dict:
-    """
-    Parse raw OCR text into structured nutrition data.
-    
-    Args:
-        raw_text: Raw text from OCR or manual input
-        
-    Returns:
-        dict: Structured data matching SupplementStagingSchema
-    """
-    logger.info("🧠 Structuring nutrition text with LLM...")
-    
-    # Import here to avoid circular imports
+    logger.info("🧠 Structuring nutrition text with Ollama...")
     from app.schemas.supplement import SupplementStagingSchema
-    
-    llm = get_llm_instance()
-    sllm = llm.as_structured_llm(SupplementStagingSchema)
-    
-    prompt = f"""You are a Data Extraction Engine. Extract nutrition data from OCR text.
+
+    schema_fields = list(SupplementStagingSchema.model_fields.keys())
+
+    text = _call_ollama(
+        system_prompt="You are a JSON extraction API. Output ONLY raw JSON with no explanation, no reasoning, no markdown.",
+        user_prompt=f"""Extract nutrition data from this OCR text. Return ONLY valid JSON.
 
 Context: This is from a 'Nutrition Facts' or 'Supplement Facts' label.
 
@@ -90,17 +86,14 @@ EXTRACTION RULES:
 RAW OCR TEXT:
 {raw_text}
 """
-    
-    response = sllm.complete(prompt)
-    structured_data = json.loads(response.text)
-    
+    )
+
+    structured_data = json.loads(text)
     logger.info(f"✅ Structured: {structured_data.get('supplement_brand', 'Unknown')} - {structured_data.get('supplement_name', 'Unknown')}")
     return structured_data
 
 
-# Schema for supplement identification (simpler than full nutrition extraction)
 class SupplementIdentification(BaseModel):
-    """Schema for extracting supplement identity from text."""
     supplement_name: str = Field(..., description="Product name from label")
     supplement_brand: str = Field(..., description="Brand name from label")
     variant: Optional[str] = Field(None, description="Flavor/variant if visible")
@@ -109,22 +102,11 @@ class SupplementIdentification(BaseModel):
 
 
 def identify_supplement(raw_text: str) -> Dict:
-    """
-    Extract ONLY supplement name, brand, and variant from raw text.
-    Faster than full nutrition extraction - use for batch verification.
-    
-    Args:
-        raw_text: Raw text from OCR or manual input
-        
-    Returns:
-        dict: {"supplement_name", "supplement_brand", "variant", "product_type", "key_identifiers"}
-    """
-    logger.info("🏷️ Identifying supplement from text...")
-    
-    llm = get_llm_instance()
-    sllm = llm.as_structured_llm(SupplementIdentification)
-    
-    prompt = f"""Extract the supplement name and brand from this text.
+    logger.info("🏷️ Identifying supplement from text with Ollama...")
+
+    text = _call_ollama(
+        system_prompt="You are a JSON extraction API. Output ONLY raw JSON with no explanation, no reasoning, no markdown.",
+        user_prompt=f"""Extract supplement name and brand from this text. Return ONLY valid JSON.
 
 RULES:
 1. BRAND NAME: The company/manufacturer - this is CRITICAL for searching
@@ -142,14 +124,18 @@ RULES:
 TEXT:
 {raw_text}
 """
-    
-    response = sllm.complete(prompt)
-    result = json.loads(response.text)
-    
+    )
+
+    result = json.loads(text)
     logger.info(f"✅ Identified: {result.get('supplement_brand')} - {result.get('supplement_name')}")
     return result
 
 
 def is_loaded() -> bool:
-    """Check if LLM is currently loaded in memory."""
-    return _llm_instance is not None
+    """Check if Ollama is reachable."""
+    try:
+        ollama_base_url = os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
+        requests.get(f"{ollama_base_url}/api/tags", timeout=3)
+        return True
+    except Exception:
+        return False

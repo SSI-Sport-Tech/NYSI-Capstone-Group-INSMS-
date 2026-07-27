@@ -1,6 +1,8 @@
 # test_core.py
 print("Testing core packages...")
 
+import os
+
 # 1. NumPy
 import numpy as np
 print(f"✅ NumPy {np.__version__}")
@@ -67,8 +69,8 @@ print(f"✅ Embedding model working! Vector dimension: {len(test_vector)}")
 print("\n🦙 Testing Ollama connectivity...")
 import requests
 
-OLLAMA_BASE_URL = "http://localhost:11434"
-OLLAMA_MODEL = "qwen3:8b"
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
+OLLAMA_MODEL = "gpt-oss:20b"
 
 try:
     resp = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=5)
