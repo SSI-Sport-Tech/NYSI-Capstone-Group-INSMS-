@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import DashboardLayout from "@/components/DashboardLayout";
 import ViewTabs from "@/components/SSS/ViewTabs";
@@ -10,17 +10,22 @@ import { Globe } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 
 interface Batch {
-  id: number;
+  id: string;
+  product_id: string;
+  product_name: string;
+  brand: string | null;
   batch_number: string;
-  supplement_id: string;
-  supplement_name: string;
-  supplement_brand: string;
-  batch_status: string;
-  batch_initial_quantity: number;
-  booked: number;
-  available: number;
-  batch_expiration_date: string;
-  batch_price: number;
+  category: string,
+  description: string,
+  barcode_sku: string;
+  quantity_on_hand: number;
+  original_stock_amount: number;
+  expiry_date: string;
+  unit_cost: number;
+  supplier: string | null;
+  received_date: string | null;
+  notes: string | null;
+  batch_status: string; // always "-" for now
 }
 
 interface SearchResponse {
@@ -39,6 +44,7 @@ export default function InventoryPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const tabs = [
     {
@@ -69,8 +75,25 @@ export default function InventoryPage() {
 
   // Load all batches on component mount
   useEffect(() => {
-    loadBatches();
-  }, []);
+    loadBatches(query, currentPage);
+  }, [currentPage]);
+
+  useEffect(() => {
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+
+    searchTimeout.current = setTimeout(() => {
+      setCurrentPage(1);
+      loadBatches(query, 1);
+    }, 400);
+
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, [query]);
 
   const loadBatches = async (searchQuery = "", page = 1) => {
     setLoading(true);
@@ -111,17 +134,18 @@ export default function InventoryPage() {
 
   const handleSearch = async () => {
     await loadBatches(query, 1);
-    setCurrentPage(1);
+    // setCurrentPage(1);
   };
 
   const handleClearSearch = async () => {
     setQuery("");
-    await loadBatches("", 1);
-    setCurrentPage(1);
+    // await loadBatches("", 1);
+    // setCurrentPage(1);
   };
 
-  const handlePageChange = async (page: number) => {
-    await loadBatches(query, page);
+  const handlePageChange = (page: number) => {
+    // await loadBatches(query, page);
+    setCurrentPage(page);
   };
 
   return (

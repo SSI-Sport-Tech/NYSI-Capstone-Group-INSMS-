@@ -1,34 +1,33 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Edit2, Save, XCircle } from "lucide-react";
+import { X, Save, XCircle } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Batch {
-  id: number;
+  id: string;
+  product_id: string;
+  product_name: string;
+  brand: string | null;
   batch_number: string;
-  supplement_id: string;
-  supplement_name: string;
-  supplement_brand: string;
-  batch_status: string;
-  batch_initial_quantity: number;
-  booked: number;
-  available: number;
-  batch_expiration_date: string;
-  batch_price: number;
-  date_added: string;
-  inv_batch_testing_org: string | null;
-  inv_batch_testing_org_id?: string | null;
-  inv_batch_testing_org_url?: string | null;
-  batch_manufacture_date?: string | null;
-  batch_unit?: string | null;
+  category: string,
+  description: string,
+  barcode_sku: string;
+  quantity_on_hand: number;
+  original_stock_amount: number;
+  expiry_date: string;
+  unit_cost: number;
+  supplier: string | null;
+  received_date: string | null;
+  notes: string | null;
+  batch_status: string; // always "-" for now
 }
 
-interface LookupOption {
-  id: string;
-  label: string;
-}
+// interface LookupOption {
+//   id: string;
+//   label: string;
+// }
 
 interface BatchDetailModalProps {
   isOpen: boolean;
@@ -37,10 +36,10 @@ interface BatchDetailModalProps {
   onSaved: () => void;
 }
 
-const ensureHttps = (url: string | null | undefined) => {
-  if (!url || !url.trim()) return null;
-  return /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
-};
+// const ensureHttps = (url: string | null | undefined) => {
+//   if (!url || !url.trim()) return null;
+//   return /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
+// };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -53,7 +52,7 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
-function ReadonlyText({ value }: { value: string | null | undefined }) {
+function ReadonlyText({ value }: { value: string | number | null | undefined }) {
   return <p className="text-sm text-gray-900 break-words">{value || "-"}</p>;
 }
 
@@ -101,101 +100,67 @@ const getStatusBadgeClass = (status: string) => {
 
 export default function BatchDetailModal({ isOpen, batch, onClose, onSaved }: BatchDetailModalProps) {
   const { token } = useAuth();
-  const [isEditing, setIsEditing] = useState(false);
+  // const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [batchTestingOrgOptions, setBatchTestingOrgOptions] = useState<LookupOption[]>([]);
+  // const [batchTestingOrgOptions, setBatchTestingOrgOptions] = useState<LookupOption[]>([]);
 
-  useEffect(() => {
-    axios.get("/api/SSS/lookups/batch-testing-orgs").then((res) => {
-      setBatchTestingOrgOptions(
-        (res.data.data ?? []).map((r: { id: string; label: string }) => ({
-          id: r.id,
-          label: r.label,
-        })),
-      );
-    });
-  }, []);
+  // useEffect(() => {
+  //   axios.get("/api/SSS/lookups/batch-testing-orgs").then((res) => {
+  //     setBatchTestingOrgOptions(
+  //       (res.data.data ?? []).map((r: { id: string; label: string }) => ({
+  //         id: r.id,
+  //         label: r.label,
+  //       })),
+  //     );
+  //   });
+  // }, []);
 
-  const [form, setForm] = useState({
-    batch_number: batch.batch_number ?? "",
-    batch_initial_quantity: String(batch.batch_initial_quantity ?? ""),
-    batch_unit: batch.batch_unit ?? "",
-    batch_price: batch.batch_price != null ? String(batch.batch_price) : "",
-    batch_expiration_date: batch.batch_expiration_date
-      ? new Date(batch.batch_expiration_date).toISOString().split("T")[0]
-      : "",
-    inv_batch_testing_org_id: batch.inv_batch_testing_org_id ?? "",
-    inv_batch_testing_org_url: batch.inv_batch_testing_org_url ?? "",
-    batch_manufacture_date: batch.batch_manufacture_date
-      ? new Date(batch.batch_manufacture_date).toISOString().split("T")[0]
-      : "",
-  });
+  const [notes, setNotes] = useState(batch.notes ?? "");
 
   if (!isOpen) return null;
 
-  const setField = (field: string, value: string) =>
-    setForm((prev) => ({ ...prev, [field]: value }));
-
-  const cancelEdit = () => {
-    setForm({
-      batch_number: batch.batch_number ?? "",
-      batch_initial_quantity: String(batch.batch_initial_quantity ?? ""),
-      batch_unit: batch.batch_unit ?? "",
-      batch_price: batch.batch_price != null ? String(batch.batch_price) : "",
-      batch_expiration_date: batch.batch_expiration_date
-        ? new Date(batch.batch_expiration_date).toISOString().split("T")[0]
-        : "",
-      inv_batch_testing_org_id: batch.inv_batch_testing_org_id ?? "",
-      inv_batch_testing_org_url: batch.inv_batch_testing_org_url ?? "",
-      batch_manufacture_date: batch.batch_manufacture_date
-        ? new Date(batch.batch_manufacture_date).toISOString().split("T")[0]
-        : "",
-    });
-    setError("");
-    setIsEditing(false);
-  };
+  useEffect(() => {
+    setNotes(batch.notes ?? "");
+  }, [batch]);
 
   const handleSave = async () => {
-    if (!form.batch_number.trim()) {
-      setError("Batch number is required.");
-      return;
-    }
     setSaving(true);
     setError("");
+
     try {
       await axios.patch(
-        `/api/SSS/batches/${batch.id}`,
+        `/api/SSS/batches/${batch.id}/notes`,
         {
-          batch_number: form.batch_number.trim(),
-          batch_initial_quantity: Number(form.batch_initial_quantity),
-          batch_unit: form.batch_unit.trim() || null,
-          batch_price: form.batch_price !== "" ? Number(form.batch_price) : null,
-          batch_expiration_date: form.batch_expiration_date || null,
-          batch_manufacture_date: form.batch_manufacture_date || null,
-          inv_batch_testing_org_id: form.inv_batch_testing_org_id || null,
-          inv_batch_testing_org_url: ensureHttps(form.inv_batch_testing_org_url),
+          notes,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
-      setIsEditing(false);
+
       onSaved();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      setError(msg || "Failed to save changes.");
+      const msg =
+        (err as { response?: { data?: { error?: string } } })?.response?.data
+          ?.error;
+
+      setError(msg || "Failed to save notes.");
     } finally {
       setSaving(false);
     }
   };
 
-  const expiryBadge = getExpiryInfo(batch.batch_expiration_date);
+  const expiryBadge = getExpiryInfo(batch.expiry_date);
 
   return (
     <div className="fixed inset-0 z-[70] overflow-y-auto">
-      <div
+      {/* <div
         className="fixed inset-0 bg-black bg-opacity-50"
         onClick={isEditing ? undefined : onClose}
-      />
+      /> */}
 
       <div className="relative min-h-screen flex items-center justify-center p-4">
         <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
@@ -203,40 +168,20 @@ export default function BatchDetailModal({ isOpen, batch, onClose, onSaved }: Ba
           {/* ── Header ─────────────────────────────────────────────────── */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white shrink-0">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Batch Details</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Inventory Batch Details</h2>
               <p className="text-sm text-gray-500 mt-0.5 truncate max-w-sm">
-                {batch.supplement_name}{batch.supplement_brand ? ` · ${batch.supplement_brand}` : ""}
+                {batch.product_name}{batch.brand ? ` · ${batch.brand}` : ""}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {!isEditing ? (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  <Edit2 className="w-4 h-4 mr-1.5" />
-                  Edit
-                </button>
-              ) : (
-                <>
-                  <button
-                    onClick={cancelEdit}
-                    disabled={saving}
-                    className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    <XCircle className="w-4 h-4 mr-1.5" />
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="flex items-center px-3 py-1.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    <Save className="w-4 h-4 mr-1.5" />
-                    {saving ? "Saving..." : "Save"}
-                  </button>
-                </>
-              )}
+              {/* <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex items-center px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                <Save className="w-4 h-4 mr-1.5" />
+                {saving ? "Saving..." : "Save Notes"}
+              </button> */}
               <button
                 onClick={onClose}
                 disabled={saving}
@@ -253,142 +198,82 @@ export default function BatchDetailModal({ isOpen, batch, onClose, onSaved }: Ba
               <p className="text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">{error}</p>
             )}
 
-            {/* ── Section: Batch Information ──────────────────────────── */}
+            {/* ── Section: Inventory Batch Information ──────────────────────────── */}
             <section>
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
-                Batch Information
+                Inventory Batch Information
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <FieldRow label="Batch Number">
-                    {isEditing ? (
-                      <TextInput value={form.batch_number} onChange={(v) => setField("batch_number", v)} />
-                    ) : (
-                      <ReadonlyText value={batch.batch_number} />
-                    )}
+                  <FieldRow label="Supplement Name">
+                    <ReadonlyText value={batch.product_name} />
                   </FieldRow>
                 </div>
 
-                <FieldRow label="Quantity">
-                  {isEditing ? (
-                    <TextInput
-                      type="number"
-                      value={form.batch_initial_quantity}
-                      onChange={(v) => setField("batch_initial_quantity", v)}
-                    />
-                  ) : (
-                    <ReadonlyText value={String(batch.batch_initial_quantity)} />
-                  )}
+                <FieldRow label="Brand">
+                  <ReadonlyText value={batch.brand} />
                 </FieldRow>
 
-                <FieldRow label="Unit">
-                  {isEditing ? (
-                    <TextInput
-                      value={form.batch_unit}
-                      onChange={(v) => setField("batch_unit", v)}
-                      placeholder="e.g. capsules, g"
-                    />
-                  ) : (
-                    <ReadonlyText value={batch.batch_unit} />
-                  )}
+                <FieldRow label="Category">
+                  <ReadonlyText value={batch.category} />
                 </FieldRow>
 
-                <FieldRow label="Price (SGD)">
-                  {isEditing ? (
-                    <TextInput
-                      type="number"
-                      value={form.batch_price}
-                      onChange={(v) => setField("batch_price", v)}
-                      placeholder="0.00"
-                    />
-                  ) : (
-                    <ReadonlyText
-                      value={batch.batch_price != null ? `$${Number(batch.batch_price).toFixed(2)}` : null}
-                    />
-                  )}
+                <FieldRow label="Description">
+                  <ReadonlyText value={batch.description} />
                 </FieldRow>
 
-                <FieldRow label="Expiration Date">
-                  {isEditing ? (
-                    <TextInput
-                      type="date"
-                      value={form.batch_expiration_date}
-                      onChange={(v) => setField("batch_expiration_date", v)}
-                    />
-                  ) : batch.batch_expiration_date ? (
-                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${expiryBadge ?? ""}`}>
-                      {new Date(batch.batch_expiration_date).toLocaleDateString("en-US")}
+                <FieldRow label="Batch Number">
+                  <ReadonlyText value={batch.batch_number} />
+                </FieldRow>
+
+                <FieldRow label="SKU">
+                  <ReadonlyText value={batch.barcode_sku} />
+                </FieldRow>
+
+                <FieldRow label="Quantity Available">
+                  <ReadonlyText value={batch.quantity_on_hand} />
+                </FieldRow>
+
+                <FieldRow label="Original Quantity">
+                  <ReadonlyText value={batch.original_stock_amount} />
+                </FieldRow>
+
+                <FieldRow label="Expiry Date">
+                  {batch.expiry_date ? (
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${expiryBadge}`}>
+                      {new Date(batch.expiry_date).toLocaleDateString("en-US")}
                     </span>
                   ) : (
                     <ReadonlyText value={null} />
                   )}
                 </FieldRow>
 
-                <FieldRow label="Manufacture Date">
-                  {isEditing ? (
-                    <TextInput
-                      type="date"
-                      value={form.batch_manufacture_date}
-                      onChange={(v) => setField("batch_manufacture_date", v)}
-                    />
-                  ) : (
-                    <ReadonlyText
-                      value={batch.batch_manufacture_date
-                        ? new Date(batch.batch_manufacture_date).toLocaleDateString("en-US")
-                        : null}
-                    />
-                  )}
+                <FieldRow label="Unit Cost">
+                  <ReadonlyText value={`$${Number(batch.unit_cost).toFixed(2)}`} />
                 </FieldRow>
 
-                <div className="col-span-2">
-                  <FieldRow label="Batch Testing Organisation">
-                    {isEditing ? (
-                      <select
-                        value={form.inv_batch_testing_org_id}
-                        onChange={(e) => setField("inv_batch_testing_org_id", e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-                      >
-                        <option value="">— Select testing organisation —</option>
-                        {batchTestingOrgOptions.map((o) => (
-                          <option key={o.id} value={o.id}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <ReadonlyText value={batch.inv_batch_testing_org} />
-                    )}
-                  </FieldRow>
-                </div>
+                <FieldRow label="Supplier">
+                  <ReadonlyText value={batch.supplier} />
+                </FieldRow>
 
-                <div className="col-span-2">
-                  <FieldRow label="Batch Certificate">
-                    {isEditing ? (
-                      <TextInput
-                        type="url"
-                        value={form.inv_batch_testing_org_url}
-                        onChange={(v) => setField("inv_batch_testing_org_url", v)}
-                        placeholder="https://example.com/certificate"
-                      />
-                    ) : batch.inv_batch_testing_org_url ? (
-                      <a
-                        href={batch.inv_batch_testing_org_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-blue-600 hover:underline break-all"
-                      >
-                        {batch.inv_batch_testing_org_url}
-                      </a>
-                    ) : (
-                      <ReadonlyText value={null} />
-                    )}
-                  </FieldRow>
-                </div>
+                <FieldRow label="Received Date">
+                  <ReadonlyText
+                    value={
+                      batch.received_date
+                        ? new Date(batch.received_date).toLocaleDateString("en-US")
+                        : null
+                    }
+                  />
+                </FieldRow>
+
+                <FieldRow label="Notes">
+                  <ReadonlyText value={batch.notes ? batch.notes : "-"} />
+                </FieldRow>
               </div>
             </section>
 
             {/* ── Section: Stock Information (read-only) ──────────────── */}
-            <section>
+            {/* <section>
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
                 Stock Information
               </h3>
@@ -413,7 +298,7 @@ export default function BatchDetailModal({ isOpen, batch, onClose, onSaved }: Ba
                   <ReadonlyText value={String(batch.available)} />
                 </FieldRow>
               </div>
-            </section>
+            </section> */}
           </div>
         </div>
       </div>
