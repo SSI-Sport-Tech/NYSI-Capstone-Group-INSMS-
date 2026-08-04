@@ -10,28 +10,41 @@ import { useAuth } from "@/contexts/AuthContext";
 
 interface AthleteProfile {
   athlete: {
-    id: string;
-    sport_id: string;
-    sportsync_id: string;
-    initials: string;
-    gender: string;
-    date_of_birth: string;
-    sport_name: string;
-    ethnicity?: string | null;
-    target_event?: string | null;
-    sport_start_date?: number | null;
+      id: string;
+      anonymized_display_name: string;
+      sport_name: string;
+      gender: string;
+      date_of_birth: string;
+      carding_status: string | null;
+      carding_start_date: string,
+      carding_end_date: string,
+      is_active: boolean;
+      email: string;
+      position: string;
+      race: string | null;
+      ethnicity: string | null;
+      nationality: string | null;
+      fk_sport_uuid: string;
+      team_uuid: string;
+      is_pinned: boolean;
   };
-  registry: {
+  athlete_profile: {
     id: string;
     athlete_id: string;
-    carding_status: string;
-    athlete_notified_on: string;
-    carding_start_date: string;
-    carding_end_date: string;
-    medical_clearance: boolean;
-    approved_start_date: string;
-    approved_end_date: string;
+    target_event?: string | null;
+    sport_start_date?: number | null;
   } | null;
+  // registry: {
+  //   id: string;
+  //   athlete_id: string;
+  //   carding_status: string;
+  //   athlete_notified_on: string;
+  //   carding_start_date: string;
+  //   carding_end_date: string;
+  //   medical_clearance: boolean;
+  //   approved_start_date: string;
+  //   approved_end_date: string;
+  // } | null;
   medical: {
     id: string;
     athlete_id: string;
@@ -55,20 +68,21 @@ interface AthleteProfile {
 }
 
 interface EditForm {
-  initials: string;
+  // Read only
+  anonymized_display_name: string;
   gender: string;
   date_of_birth: string;
   ethnicity: string;
-  sport_id: string;
-  target_event: string;
-  sport_start_date: string;
+  fk_sport_uuid: string;
+  sport_name: string;
   carding_status: string;
-  medical_clearance: boolean;
-  approved_start_date: string;
-  approved_end_date: string;
   carding_start_date: string;
   carding_end_date: string;
-  athlete_notified_on: string;
+  is_active: boolean;
+
+  // Editable
+  target_event: string;
+  sport_start_date: string;
   coach_ids: string[];
   nutritionist_ids: string[];
   medical_condition: string;
@@ -77,12 +91,13 @@ interface EditForm {
   past_injury: string;
   medical_remarks: string;
   dietary_restriction: string;
+  // medical_clearance: boolean;
 }
 
-interface SportOption {
-  id: string;
-  sport: string;
-}
+// interface SportOption {
+//   id: string;
+//   sport: string;
+// }
 
 interface CoachOption {
   id: string;
@@ -116,7 +131,7 @@ export default function AthleteDetailPage() {
   const [editForm, setEditForm] = useState<EditForm | null>(null);
 
   // Dropdown data for edit mode
-  const [sports, setSports] = useState<SportOption[]>([]);
+  // const [sports, setSports] = useState<SportOption[]>([]);
   const [coaches, setCoaches] = useState<CoachOption[]>([]);
   const [nutritionists, setNutritionists] = useState<NutritionistOption[]>([]);
 
@@ -241,20 +256,19 @@ export default function AthleteDetailPage() {
     if (!profile) return;
 
     setEditForm({
-      initials: profile.athlete.initials || "",
+      anonymized_display_name: profile.athlete.anonymized_display_name || "",
       gender: profile.athlete.gender || "",
       date_of_birth: toInputDate(profile.athlete.date_of_birth),
       ethnicity: profile.athlete.ethnicity || "",
-      sport_id: profile.athlete.sport_id || "",
-      target_event: profile.athlete.target_event || "",
-      sport_start_date: profile.athlete.sport_start_date?.toString() ?? "",
-      carding_status: profile.registry?.carding_status || "",
-      medical_clearance: profile.registry?.medical_clearance ?? false,
-      approved_start_date: toInputDate(profile.registry?.approved_start_date),
-      approved_end_date: toInputDate(profile.registry?.approved_end_date),
-      carding_start_date: toInputDate(profile.registry?.carding_start_date),
-      carding_end_date: toInputDate(profile.registry?.carding_end_date),
-      athlete_notified_on: toInputDate(profile.registry?.athlete_notified_on),
+      fk_sport_uuid: profile.athlete.fk_sport_uuid || "",
+      sport_name: profile.athlete.sport_name || "",
+      carding_status: profile.athlete.carding_status || "",
+      carding_start_date: profile.athlete.carding_start_date || "",
+      carding_end_date: profile.athlete.carding_end_date || "",
+      is_active: profile.athlete.is_active || false,
+      target_event: profile.athlete_profile?.target_event || "",
+      sport_start_date: profile.athlete_profile?.sport_start_date?.toString() ?? "",
+      // medical_clearance: profile.registry?.medical_clearance ?? false,
       coach_ids: profile.coaches.filter((c) => c.is_active).map((c) => c.coach_id),
       nutritionist_ids: profile.nutritionists
         .filter((n) => n.is_active)
@@ -282,7 +296,7 @@ export default function AthleteDetailPage() {
         coachesRes.json(),
         nutritionistsRes.json(),
       ]);
-      setSports(sportsData.data || []);
+      // setSports(sportsData.data || []);
       setCoaches(coachesData.data || []);
       setNutritionists(nutritionistsData.data || []);
     } catch {
@@ -308,20 +322,17 @@ export default function AthleteDetailPage() {
     const token = localStorage.getItem("token");
 
     const payload: Record<string, unknown> = {
-      initials: editForm.initials || undefined,
+      anonymized_display_name: editForm.anonymized_display_name || undefined,
       gender: editForm.gender || undefined,
       date_of_birth: editForm.date_of_birth || undefined,
       ethnicity: editForm.ethnicity || undefined,
-      sport_id: editForm.sport_id || undefined,
+      fk_sport_uuid: editForm.fk_sport_uuid || undefined,
       target_event: editForm.target_event || undefined,
       sport_start_date: editForm.sport_start_date ? Number(editForm.sport_start_date) : undefined,
       carding_status: editForm.carding_status || undefined,
-      medical_clearance: editForm.medical_clearance,
-      approved_start_date: editForm.approved_start_date || undefined,
-      approved_end_date: editForm.approved_end_date || undefined,
+      // medical_clearance: editForm.medical_clearance,
       carding_start_date: editForm.carding_start_date || undefined,
       carding_end_date: editForm.carding_end_date || undefined,
-      athlete_notified_on: editForm.athlete_notified_on || undefined,
       coach_ids: editForm.coach_ids,
       medical_condition: editForm.medical_condition || undefined,
       food_allergy: editForm.food_allergy || undefined,
@@ -443,24 +454,16 @@ export default function AthleteDetailPage() {
                 {isEditing && editForm ? (
                   <input
                     type="text"
-                    value={editForm.initials}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, initials: e.target.value })
-                    }
+                    value={editForm.anonymized_display_name}
                     className="text-3xl font-bold text-gray-900 mb-2 border-b-2 border-blue-400 bg-transparent focus:outline-none w-full uppercase"
                   />
                 ) : (
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                    {profile.athlete.initials.toUpperCase()}
+                    {profile.athlete.anonymized_display_name.toUpperCase()}
                   </h1>
                 )}
                 <p className="text-lg text-gray-600 mb-1">
-                  {profile.athlete.sportsync_id} [
-                  {isEditing && editForm
-                    ? sports.find((s) => s.id === editForm.sport_id)?.sport?.toUpperCase() ||
-                    profile.athlete.sport_name?.toUpperCase()
-                    : profile.athlete.sport_name?.toUpperCase()}
-                  ]
+                  {profile.athlete.sport_name}
                 </p>
               </div>
 
@@ -618,9 +621,7 @@ export default function AthleteDetailPage() {
                           <input
                             type="date"
                             value={editForm.date_of_birth}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, date_of_birth: e.target.value })
-                            }
+                            readOnly
                             className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         ) : (
@@ -636,18 +637,12 @@ export default function AthleteDetailPage() {
                           Sex
                         </label>
                         {isEditing && editForm ? (
-                          <select
+                          <input
+                            type="date"
                             value={editForm.gender}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, gender: e.target.value })
-                            }
+                            readOnly
                             className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="">Select...</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Other">Other</option>
-                          </select>
+                          />
                         ) : (
                           <p className="text-sm text-gray-900">
                             {profile.athlete.gender}
@@ -664,10 +659,7 @@ export default function AthleteDetailPage() {
                           <input
                             type="text"
                             value={editForm.ethnicity}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, ethnicity: e.target.value })
-                            }
-                            placeholder="e.g. Chinese"
+                            readOnly
                             className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         ) : (
@@ -683,23 +675,72 @@ export default function AthleteDetailPage() {
                           Sport
                         </label>
                         {isEditing && editForm ? (
-                          <select
-                            value={editForm.sport_id}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, sport_id: e.target.value })
-                            }
+                          <input
+                            type="text"
+                            value={editForm.sport_name}
+                            readOnly
                             className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="">Select sport...</option>
-                            {sports.map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {s.sport}
-                              </option>
-                            ))}
-                          </select>
+                          />
                         ) : (
                           <p className="text-sm text-gray-900">
                             {profile.athlete.sport_name || "-"}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Carding Level */}
+                      <div>
+                        <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
+                          Carding Level
+                        </label>
+                        {isEditing && editForm ? (
+                          <input
+                            type="date"
+                            value={editForm.carding_status}
+                            readOnly
+                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-900">
+                            {formatDate(profile.athlete.carding_status)}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Carding Start Date */}
+                      <div>
+                        <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
+                          Carding Start Date
+                        </label>
+                        {isEditing && editForm ? (
+                          <input
+                            type="date"
+                            value={editForm.carding_start_date}
+                            readOnly
+                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-900">
+                            {formatDate(profile.athlete.carding_start_date)}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Carding End Date */}
+                      <div>
+                        <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
+                          Carding End Date
+                        </label>
+                        {isEditing && editForm ? (
+                          <input
+                            type="date"
+                            value={editForm.carding_end_date}
+                            readOnly
+                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-900">
+                            {formatDate(profile.athlete.carding_end_date)}
                           </p>
                         )}
                       </div>
@@ -709,35 +750,42 @@ export default function AthleteDetailPage() {
                         <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                           Athlete Status
                         </label>
-                        {isEditing && editForm ? (
-                          <select
-                            value={editForm.carding_status}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, carding_status: e.target.value })
-                            }
+                          {profile.athlete.is_active ? (
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              profile.athlete.is_active
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                              }`}>
+                              {profile.athlete.is_active}
+                            </span>
+                          ) : (
+                            <p className="text-sm text-gray-400">-</p>
+                          )}
+                        {/* {isEditing && editForm ? (
+                          <input
+                            type="text"
+                            value={editForm.is_active}
+                            readOnly
                             className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="Active">Active</option>
-                            <option value="Inactive">Inactive</option>
-                          </select>
+                          />
                         ) : (
-                          profile.registry?.carding_status ? (
+                          profile.athlete.is_active ? (
                             <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${profile.registry.carding_status.toLowerCase() === "active"
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
                               }`}>
-                              {profile.registry.carding_status}
+                              {profile.athlete.is_active}
                             </span>
                           ) : (
                             <p className="text-sm text-gray-400">-</p>
                           )
-                        )}
+                        )} */}
                       </div>
                     </div>
                   </div>
 
                   {/* Registry Information */}
-                  {profile.registry && (
+                  {profile.athlete && (
                     <div>
                       <h3 className="text-xl font-semibold text-gray-900 mb-4 underline underline-offset-2">
                         Registry Information
@@ -813,7 +861,7 @@ export default function AthleteDetailPage() {
                         </div>
 
                         {/* Medical Clearance */}
-                        <div>
+                        {/* <div>
                           <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                             Medical Clearance
                           </label>
@@ -838,94 +886,11 @@ export default function AthleteDetailPage() {
                                 : "Not Required"}
                             </p>
                           )}
-                        </div>
-
-                        {/* Approved Start Date */}
-                        <div>
-                          <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
-                            Approved Start Date
-                          </label>
-                          {isEditing && editForm ? (
-                            <input
-                              type="date"
-                              value={editForm.approved_start_date}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, approved_start_date: e.target.value })
-                              }
-                              className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900">
-                              {formatDate(profile.registry.approved_start_date)}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Carding Start Date */}
-                        <div>
-                          <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
-                            Carding Start Date
-                          </label>
-                          {isEditing && editForm ? (
-                            <input
-                              type="date"
-                              value={editForm.carding_start_date}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, carding_start_date: e.target.value })
-                              }
-                              className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900">
-                              {formatDate(profile.registry.carding_start_date)}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Approved End Date */}
-                        <div>
-                          <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
-                            Approved End Date
-                          </label>
-                          {isEditing && editForm ? (
-                            <input
-                              type="date"
-                              value={editForm.approved_end_date}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, approved_end_date: e.target.value })
-                              }
-                              className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900">
-                              {formatDate(profile.registry.approved_end_date)}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Carding End Date */}
-                        <div>
-                          <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
-                            Carding End Date
-                          </label>
-                          {isEditing && editForm ? (
-                            <input
-                              type="date"
-                              value={editForm.carding_end_date}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, carding_end_date: e.target.value })
-                              }
-                              className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900">
-                              {formatDate(profile.registry.carding_end_date)}
-                            </p>
-                          )}
-                        </div>
+                        </div> */}
                       </div>
                     </div>
                   )}
+                        
 
                   {/* Medical Information */}
                   <div>
@@ -954,7 +919,7 @@ export default function AthleteDetailPage() {
                       {/* Food Allergy */}
                       <div>
                         <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
-                          Food Allergy
+                          Food Allergy / Intolerances
                         </label>
                         {isEditing && editForm ? (
                           <textarea
@@ -1066,7 +1031,7 @@ export default function AthleteDetailPage() {
                           />
                         ) : (
                           <p className="text-sm text-gray-900">
-                            {profile.athlete.target_event || "-"}
+                            {profile.athlete_profile?.target_event || "-"}
                           </p>
                         )}
                       </div>
@@ -1090,7 +1055,7 @@ export default function AthleteDetailPage() {
                           />
                         ) : (
                           <p className="text-sm text-gray-900">
-                            {profile.athlete.sport_start_date != null ? `Age ${profile.athlete.sport_start_date}` : "-"}
+                            {profile.athlete_profile?.sport_start_date != null ? `Age ${profile.athlete_profile.sport_start_date}` : "-"}
                           </p>
                         )}
                       </div>
@@ -1103,8 +1068,8 @@ export default function AthleteDetailPage() {
                         <p className="text-sm text-gray-900">
                           {getYearsInSport(
                             isEditing && editForm
-                              ? (editForm.sport_start_date ? Number(editForm.sport_start_date) : profile.athlete.sport_start_date)
-                              : profile.athlete.sport_start_date,
+                              ? (editForm.sport_start_date ? Number(editForm.sport_start_date) : profile.athlete_profile?.sport_start_date)
+                              : profile.athlete_profile?.sport_start_date,
                             profile.athlete.date_of_birth,
                           )}
                         </p>
@@ -1117,7 +1082,7 @@ export default function AthleteDetailPage() {
               {activeTab === "consultation" && (
                 <ConsultationView
                   athleteId={athleteId}
-                  athleteName={profile.athlete.initials}
+                  athleteName={profile.athlete.anonymized_display_name}
                   initialSessionId={searchParams.get("sessionId") ?? undefined}
                 />
               )}

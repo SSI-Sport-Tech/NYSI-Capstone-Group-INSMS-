@@ -10,25 +10,78 @@ import PageHeader from "@/components/PageHeader";
 import { getBackendUrl } from "@/utils/backendUrl";
 
 
+// interface Athlete {
+//   id: string;
+//   sportsync_id: string;
+//   initials: string;
+//   sport_name: string;
+//   gender: string;
+//   date_of_birth: string;
+//   carding_status?: string;
+//   target_event?: string;
+//   assigned_nutritionist?: string;
+//   is_pinned?: boolean;
+// }
+// interface Athlete {
+//   pk_athlete_uuid: string;
+//   first_name: string;
+//   last_name: string;
+//   anonymized_display_name: string;
+//   email: string;
+//   date_of_birth: string;
+//   gender: string;
+//   fk_sport_uuid: string;
+//   position: string;
+//   race: string | null;
+//   ethnicity: string | null;
+//   nationality: string | null;
+//   sport_sync_id: string | null;
+//   external_patient_id: string | null;
+//   pnco: string;
+//   is_active: boolean;
+//   created_at: string;
+//   updated_at: string;
+// }
 interface Athlete {
   id: string;
-  sportsync_id: string;
-  initials: string;
+  anonymized_display_name: string;
   sport_name: string;
   gender: string;
   date_of_birth: string;
-  carding_status?: string;
-  target_event?: string;
-  assigned_nutritionist?: string;
-  is_pinned?: boolean;
+  carding_status: string | null;
+  carding_start_date: Date,
+  carding_end_date: Date,
+  is_active: boolean;
+
+  email: string;
+  position: string;
+  race: string | null;
+  ethnicity: string | null;
+  nationality: string | null;
+  fk_sport_uuid: string;
+  team_uuid: string;
+
+  assigned_nutritionist: string;
+  is_pinned: boolean;
 }
 
+// interface SearchResponse {
+//   data: Athlete[];
+//   totalCount: number;
+//   currentPage: number;
+//   totalPages: number;
+//   searchQuery?: string;
+// }
 interface SearchResponse {
   data: Athlete[];
-  totalCount: number;
-  currentPage: number;
-  totalPages: number;
-  searchQuery?: string;
+  meta: {
+    totalItems: number;
+    totalPages: number;
+    currentPage: number;
+    pageSize: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
 }
 
 const inFlightAthleteRequests = new Map<string, Promise<SearchResponse>>();
@@ -61,7 +114,7 @@ export default function AthleteManagementPage() {
       let request = inFlightAthleteRequests.get(requestKey);
       if (!request) {
         request = axios
-          .get<SearchResponse>(`${backendUrl}/api/AMS/athletes`, {
+          .get<SearchResponse>(`${backendUrl}/api/AMS/athletes/adex`, {
             params: { page, search: searchQuery },
             headers,
           })
@@ -74,11 +127,16 @@ export default function AthleteManagementPage() {
       }
 
       const data = await request;
+      console.log("ADEX response:", data);
 
+      // setAthletes(data.data);
+      // setCurrentPage(data.currentPage);
+      // setTotalPages(data.totalPages);
+      // setTotalCount(data.totalCount);
       setAthletes(data.data);
-      setCurrentPage(data.currentPage);
-      setTotalPages(data.totalPages);
-      setTotalCount(data.totalCount);
+      setCurrentPage(data.meta.currentPage);
+      setTotalPages(data.meta.totalPages);
+      setTotalCount(data.meta.totalItems);
     } catch (err) {
       console.error("Error fetching athletes:", err);
       setError("Failed to load athletes. Please try again.");

@@ -10,6 +10,47 @@ import {
   bulkDeleteSchema,
 } from "./validation.js";
 import pool from "../../../config/db.js";
+import {
+  getAthletesFromADEX,
+  getAthleteByUuidFromADEX,
+} from "./adexService.js";
+
+// List ADEX Athletes
+export async function listADEXAthletes(req, res) {
+  try {
+    const page = Number(req.query.page || 1);
+    const pageSize = Number(req.query.pageSize || 50);
+
+    const result = await getAthletesFromADEX(page, pageSize);
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching ADEX athletes:", error);
+
+    res.status(500).json({
+      error: "Failed to fetch athletes from ADEX",
+      message: error.message,
+    });
+  }
+}
+
+// List 1 Athlete based on UUID
+export async function getADEXAthleteByUuid(req, res) {
+  try {
+    const { pk_athlete_uuid } = req.params;
+
+    const athlete = await getAthleteByUuidFromADEX(pk_athlete_uuid);
+
+    res.json(athlete);
+  } catch (error) {
+    console.error("Error fetching ADEX athlete:", error);
+
+    res.status(500).json({
+      error: "Failed to fetch athlete from ADEX",
+      message: error.message,
+    });
+  }
+}
 
 // ============================================================================
 // LIST ATHLETES

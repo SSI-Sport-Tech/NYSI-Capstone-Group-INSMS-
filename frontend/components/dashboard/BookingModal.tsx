@@ -305,11 +305,11 @@ export default function BookingModal({
             )}
           </div>
 
-          {/* SSP */}
+          {/* Support SSP */}
           <div>
             <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
               <School className="w-4 h-4" />
-              <span>SSP *</span>
+              <span>Support SSP *</span>
             </label>
             <div className="flex gap-3">
               <button

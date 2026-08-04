@@ -4,6 +4,204 @@ import { authenticateToken, requireAdmin } from "../../Auth/authMiddleware.js";
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * /api/AMS/athletes/adex:
+ *   get:
+ *     summary: List Athletes from ADEX
+ *     description: |
+ *       Retrieves athletes directly from the Athlete Data Exchange (ADEX).
+ *       This endpoint does not query the local AMS.Athlete table.
+ *
+ *       Used during the ADEX migration to verify athlete synchronization.
+ *     tags: [AMS - Athletes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *         description: Number of athletes per page
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved athletes from ADEX
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       pk_athlete_uuid:
+ *                         type: string
+ *                         format: uuid
+ *                       first_name:
+ *                         type: string
+ *                       last_name:
+ *                         type: string
+ *                       anonymized_display_name:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       date_of_birth:
+ *                         type: string
+ *                         format: date
+ *                       gender:
+ *                         type: string
+ *                       fk_sport_uuid:
+ *                         type: string
+ *                         format: uuid
+ *                       position:
+ *                         type: string
+ *                         nullable: true
+ *                       race:
+ *                         type: string
+ *                         nullable: true
+ *                       ethnicity:
+ *                         type: string
+ *                         nullable: true
+ *                       nationality:
+ *                         type: string
+ *                         nullable: true
+ *                       is_active:
+ *                         type: boolean
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                       updated_at:
+ *                         type: string
+ *                         format: date-time
+ *                 meta:
+ *                   type: object
+ *                   properties:
+ *                     totalItems:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     currentPage:
+ *                       type: integer
+ *                     pageSize:
+ *                       type: integer
+ *                     hasNextPage:
+ *                       type: boolean
+ *                     hasPrevPage:
+ *                       type: boolean
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get("/athletes/adex", authenticateToken, controller.listADEXAthletes);
+
+/**
+ * @swagger
+ * /api/AMS/athletes/adex/{pk_athlete_uuid}:
+ *   get:
+ *     summary: Get Athlete from ADEX by UUID
+ *     description: |
+ *       Retrieves a single athlete directly from the Athlete Data Exchange (ADEX)
+ *       using the athlete's primary UUID.
+ *
+ *       This endpoint does not query the local AMS.Athlete table.
+ *
+ *       Used during the ADEX migration to retrieve the master athlete profile.
+ *     tags: [AMS - Athletes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: pk_athlete_uuid
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Primary UUID of the athlete in ADEX
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved athlete from ADEX
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 pk_athlete_uuid:
+ *                   type: string
+ *                   format: uuid
+ *                 first_name:
+ *                   type: string
+ *                 last_name:
+ *                   type: string
+ *                 anonymized_display_name:
+ *                   type: string
+ *                 email:
+ *                   type: string
+ *                   format: email
+ *                 date_of_birth:
+ *                   type: string
+ *                   format: date
+ *                 gender:
+ *                   type: string
+ *                 fk_sport_uuid:
+ *                   type: string
+ *                   format: uuid
+ *                 sport_name:
+ *                   type: string
+ *                 position:
+ *                   type: string
+ *                   nullable: true
+ *                 race:
+ *                   type: string
+ *                   nullable: true
+ *                 ethnicity:
+ *                   type: string
+ *                   nullable: true
+ *                 nationality:
+ *                   type: string
+ *                   nullable: true
+ *                 sport_sync_id:
+ *                   type: string
+ *                   nullable: true
+ *                 external_patient_id:
+ *                   type: string
+ *                   nullable: true
+ *                 pnco:
+ *                   type: string
+ *                   nullable: true
+ *                 team_uuid:
+ *                   type: string
+ *                   format: uuid
+ *                   nullable: true
+ *                 carding_uuid:
+ *                   type: string
+ *                   nullable: true
+ *                 carding_name:
+ *                   type: string
+ *                   nullable: true
+ *                 is_active:
+ *                   type: boolean
+ *                 created_at:
+ *                   type: string
+ *                   format: date-time
+ *                 updated_at:
+ *                   type: string
+ *                   format: date-time
+ *       404:
+ *         description: Athlete not found in ADEX
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get("/athletes/adex/:pk_athlete_uuid", authenticateToken, controller.getADEXAthleteByUuid);
+
+
 // ============================================================================
 // ATHLETE CRUD ROUTES
 // ============================================================================
