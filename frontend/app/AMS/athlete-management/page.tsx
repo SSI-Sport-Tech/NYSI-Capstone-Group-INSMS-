@@ -45,6 +45,7 @@ import { getBackendUrl } from "@/utils/backendUrl";
 interface Athlete {
   id: string;
   anonymized_display_name: string;
+  fk_sport_uuid: string;
   sport_name: string;
   gender: string;
   date_of_birth: string;
@@ -52,19 +53,19 @@ interface Athlete {
   carding_start_date: Date,
   carding_end_date: Date,
   is_active: boolean;
-
   email: string;
   position: string;
   race: string | null;
   ethnicity: string | null;
   nationality: string | null;
-  fk_sport_uuid: string;
-  team_uuid: string;
-
-  assigned_nutritionist: string;
+  target_event: string | null;
+  sport_start_date: number | null;
+  athlete_group_id: number | null;
+  medical_clearance: boolean;
   is_pinned: boolean;
+  team_uuid: string;
+  assigned_nutritionist: string;
 }
-
 // interface SearchResponse {
 //   data: Athlete[];
 //   totalCount: number;

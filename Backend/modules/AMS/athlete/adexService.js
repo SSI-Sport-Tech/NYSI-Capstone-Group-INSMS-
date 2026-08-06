@@ -28,12 +28,12 @@ function mapAthlete(adexAthlete) {
 }
 
 // Get All Athletes
-export async function getAthletesFromADEX(page = 1, pageSize = 50) {
+export async function getAthletesFromADEX(page = 1, pageSize = 10, exportAll = false) {
     try {
         const token = await generateAdexToken();
 
         const response = await fetch(
-            `${process.env.ADEX_API_URL}/api/v1/athletes/all?page=${page}&limit=${pageSize}`,
+            `${process.env.ADEX_API_URL}/api/v1/athletes/all`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -46,13 +46,34 @@ export async function getAthletesFromADEX(page = 1, pageSize = 50) {
             const error = await response.text();
             throw new Error(`ADEX API error ${response.status}: ${error}`);
         }
-
-        // return await response.json();
+        
         const result = await response.json();
 
+        // Map ADEX response
+        const mappedAthletes = result.data.map(mapAthlete);
+
+        // Export all athletes (skip pagination)
+        if (exportAll) {
+            return mappedAthletes;
+        }
+
+        // Pagination
+        const totalItems = mappedAthletes.length;
+        const totalPages = Math.ceil(totalItems / pageSize);
+
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+
         return {
-            data: result.data.map(mapAthlete),
-            meta: result.meta,
+            data: mappedAthletes.slice(startIndex, endIndex),
+            meta: {
+                currentPage: page,
+                pageSize,
+                totalItems,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1,
+            },
         };
     } catch(err) {
         console.error(err);

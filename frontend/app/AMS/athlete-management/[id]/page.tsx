@@ -33,6 +33,7 @@ interface AthleteProfile {
     athlete_id: string;
     target_event?: string | null;
     sport_start_date?: number | null;
+    medical_clearance: boolean;
   } | null;
   // registry: {
   //   id: string;
@@ -83,6 +84,7 @@ interface EditForm {
   // Editable
   target_event: string;
   sport_start_date: string;
+  medical_clearance: boolean;
   coach_ids: string[];
   nutritionist_ids: string[];
   medical_condition: string;
@@ -91,7 +93,6 @@ interface EditForm {
   past_injury: string;
   medical_remarks: string;
   dietary_restriction: string;
-  // medical_clearance: boolean;
 }
 
 // interface SportOption {
@@ -268,7 +269,7 @@ export default function AthleteDetailPage() {
       is_active: profile.athlete.is_active || false,
       target_event: profile.athlete_profile?.target_event || "",
       sport_start_date: profile.athlete_profile?.sport_start_date?.toString() ?? "",
-      // medical_clearance: profile.registry?.medical_clearance ?? false,
+      medical_clearance: profile.athlete_profile?.medical_clearance ?? false,
       coach_ids: profile.coaches.filter((c) => c.is_active).map((c) => c.coach_id),
       nutritionist_ids: profile.nutritionists
         .filter((n) => n.is_active)
@@ -617,18 +618,9 @@ export default function AthleteDetailPage() {
                         <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                           Date of Birth
                         </label>
-                        {isEditing && editForm ? (
-                          <input
-                            type="date"
-                            value={editForm.date_of_birth}
-                            readOnly
-                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <p className="text-sm text-gray-900">
-                            {formatDate(profile.athlete.date_of_birth)}
-                          </p>
-                        )}
+                        <p className="text-sm text-gray-900">
+                          {formatDate(profile.athlete.date_of_birth)}
+                        </p>
                       </div>
 
                       {/* Gender */}
@@ -636,18 +628,9 @@ export default function AthleteDetailPage() {
                         <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                           Sex
                         </label>
-                        {isEditing && editForm ? (
-                          <input
-                            type="date"
-                            value={editForm.gender}
-                            readOnly
-                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <p className="text-sm text-gray-900">
-                            {profile.athlete.gender}
-                          </p>
-                        )}
+                        <p className="text-sm text-gray-900">
+                          {profile.athlete.gender}
+                        </p>
                       </div>
 
                       {/* Ethnicity */}
@@ -655,18 +638,9 @@ export default function AthleteDetailPage() {
                         <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                           Ethnicity
                         </label>
-                        {isEditing && editForm ? (
-                          <input
-                            type="text"
-                            value={editForm.ethnicity}
-                            readOnly
-                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <p className="text-sm text-gray-900">
-                            {profile.athlete.ethnicity || "-"}
-                          </p>
-                        )}
+                        <p className="text-sm text-gray-900">
+                          {profile.athlete.ethnicity || "-"}
+                        </p>
                       </div>
 
                       {/* Sport */}
@@ -674,18 +648,9 @@ export default function AthleteDetailPage() {
                         <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                           Sport
                         </label>
-                        {isEditing && editForm ? (
-                          <input
-                            type="text"
-                            value={editForm.sport_name}
-                            readOnly
-                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <p className="text-sm text-gray-900">
-                            {profile.athlete.sport_name || "-"}
-                          </p>
-                        )}
+                        <p className="text-sm text-gray-900">
+                          {profile.athlete.sport_name || "-"}
+                        </p>
                       </div>
 
                       {/* Carding Level */}
@@ -693,18 +658,9 @@ export default function AthleteDetailPage() {
                         <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                           Carding Level
                         </label>
-                        {isEditing && editForm ? (
-                          <input
-                            type="date"
-                            value={editForm.carding_status}
-                            readOnly
-                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <p className="text-sm text-gray-900">
-                            {formatDate(profile.athlete.carding_status)}
-                          </p>
-                        )}
+                        <p className="text-sm text-gray-900">
+                          {profile.athlete.carding_status || "-"}
+                        </p>
                       </div>
 
                       {/* Carding Start Date */}
@@ -712,18 +668,9 @@ export default function AthleteDetailPage() {
                         <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                           Carding Start Date
                         </label>
-                        {isEditing && editForm ? (
-                          <input
-                            type="date"
-                            value={editForm.carding_start_date}
-                            readOnly
-                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <p className="text-sm text-gray-900">
-                            {formatDate(profile.athlete.carding_start_date)}
-                          </p>
-                        )}
+                        <p className="text-sm text-gray-900">
+                          {formatDate(profile.athlete.carding_start_date)}
+                        </p>
                       </div>
 
                       {/* Carding End Date */}
@@ -731,18 +678,9 @@ export default function AthleteDetailPage() {
                         <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                           Carding End Date
                         </label>
-                        {isEditing && editForm ? (
-                          <input
-                            type="date"
-                            value={editForm.carding_end_date}
-                            readOnly
-                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <p className="text-sm text-gray-900">
-                            {formatDate(profile.athlete.carding_end_date)}
-                          </p>
-                        )}
+                        <p className="text-sm text-gray-900">
+                          {formatDate(profile.athlete.carding_end_date)}
+                        </p>
                       </div>
 
                       {/* Athlete Status */}
@@ -756,30 +694,11 @@ export default function AthleteDetailPage() {
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
                               }`}>
-                              {profile.athlete.is_active}
+                              {profile.athlete.is_active ? "Active" : "Inactive"}
                             </span>
                           ) : (
                             <p className="text-sm text-gray-400">-</p>
                           )}
-                        {/* {isEditing && editForm ? (
-                          <input
-                            type="text"
-                            value={editForm.is_active}
-                            readOnly
-                            className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        ) : (
-                          profile.athlete.is_active ? (
-                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${profile.registry.carding_status.toLowerCase() === "active"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                              }`}>
-                              {profile.athlete.is_active}
-                            </span>
-                          ) : (
-                            <p className="text-sm text-gray-400">-</p>
-                          )
-                        )} */}
                       </div>
                     </div>
                   </div>
@@ -861,7 +780,7 @@ export default function AthleteDetailPage() {
                         </div>
 
                         {/* Medical Clearance */}
-                        {/* <div>
+                        <div>
                           <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                             Medical Clearance
                           </label>
@@ -881,12 +800,12 @@ export default function AthleteDetailPage() {
                             </select>
                           ) : (
                             <p className="text-sm text-gray-900">
-                              {profile.registry.medical_clearance
+                              {profile.athlete_profile?.medical_clearance
                                 ? "Required"
                                 : "Not Required"}
                             </p>
                           )}
-                        </div> */}
+                        </div>
                       </div>
                     </div>
                   )}

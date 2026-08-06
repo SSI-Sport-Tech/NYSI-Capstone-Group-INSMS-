@@ -19,9 +19,11 @@ import {
 export async function listADEXAthletes(req, res) {
   try {
     const page = Number(req.query.page || 1);
-    const pageSize = Number(req.query.pageSize || 50);
+    const pageSize = Number(req.query.pageSize || 10);
 
-    const result = await getAthletesFromADEX(page, pageSize);
+    const exportAll = req.query.export === "true";
+
+    const result = await getAthletesFromADEX(page, pageSize, exportAll);
 
     res.json(result);
   } catch (error) {

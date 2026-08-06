@@ -71,7 +71,6 @@ export default function SportsCoachesPage() {
             const response = await axios.get<{ data: Sport[] }>(
                 `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/sports`,
                 {
-                    params: { includeInactive },
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
@@ -129,14 +128,6 @@ export default function SportsCoachesPage() {
     const showError = (message: string) => {
         setError(message);
         setTimeout(() => setError(""), 3000);
-    };
-
-    const handleRefresh = () => {
-        if (activeTab === "sports") {
-            loadSports();
-        } else {
-            loadCoaches();
-        }
     };
 
     return (
@@ -214,8 +205,6 @@ export default function SportsCoachesPage() {
                             sports={sports}
                             loading={loadingSports}
                             onRefresh={loadSports}
-                            onSuccess={showSuccess}
-                            onError={showError}
                         />
                     ) : (
                         <CoachesSection

@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
-import AddAthleteModal from "./AddAthleteModal";
 
 // interface Athlete {
 //   id: string;
@@ -54,6 +53,7 @@ import AddAthleteModal from "./AddAthleteModal";
 interface Athlete {
   id: string;
   anonymized_display_name: string;
+  fk_sport_uuid: string;
   sport_name: string;
   gender: string;
   date_of_birth: string;
@@ -61,17 +61,18 @@ interface Athlete {
   carding_start_date: Date,
   carding_end_date: Date,
   is_active: boolean;
-
   email: string;
   position: string;
   race: string | null;
   ethnicity: string | null;
   nationality: string | null;
-  fk_sport_uuid: string;
-  team_uuid: string;
-
-  assigned_nutritionist: string;
+  target_event: string | null;
+  sport_start_date: number | null;
+  athlete_group_id: number | null;
+  medical_clearance: boolean;
   is_pinned: boolean;
+  team_uuid: string;
+  assigned_nutritionist: string;
 }
 
 interface AthleteTableProps {
@@ -101,147 +102,111 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
 }) => {
   const router = useRouter();
   const { token } = useAuth();
-  const [selectedAthletes, setSelectedAthletes] = useState<string[]>([]);
+  // const [selectedAthletes, setSelectedAthletes] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [pinnedAthletes, setPinnedAthletes] = useState<string[]>([]);
-  const [showAddModal, setShowAddModal] = useState(false);
-
-  // Update pinned athletes when data changes
-  // useEffect(() => {
-  //   const pinned = athletes
-  //     .filter((athlete) => athlete.is_pinned)
-  //     .map((athlete) => athlete.id);
-  //   setPinnedAthletes(pinned);
-  // }, [athletes]);
 
   // Handle pin toggle
-  // const handlePinToggle = async (athleteId: string) => {
-  //   try {
-  //     const athlete = athletes.find((a) => a.id === athleteId);
-  //     if (!athlete) return;
+  const handlePinToggle = async (athleteId: string) => {
+    try {
+      const athlete = athletes.find((a) => a.id === athleteId);
+      if (!athlete) return;
 
-  //     const isPinned = athlete.is_pinned;
-  //     console.log(
-  //       `Toggling pin for athlete ${athleteId}, current state: ${isPinned} -> ${!isPinned}`,
-  //     );
+      const isPinned = athlete.is_pinned;
+      console.log(
+        `Toggling pin for athlete ${athleteId}, current state: ${isPinned} -> ${!isPinned}`,
+      );
 
-  //     const response = await axios.patch(
-  //       `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/nutritionists/pin`,
-  //       {
-  //         athlete_id: athleteId,
-  //         is_pinned: !isPinned,
-  //       },
-  //       {
-  //         headers: { Authorization: `Bearer ${token}` },
-  //       },
-  //     );
+      const response = await axios.patch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/AMS/nutritionists/pin`,
+        {
+          athlete_id: athleteId,
+          is_pinned: !isPinned,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
-  //     console.log("Pin toggle response:", response.data);
+      console.log("Pin toggle response:", response.data);
 
-  //     // Refresh the data to get updated pin status
-  //     if (onRefresh) {
-  //       console.log("Calling onRefresh to reload data");
-  //       onRefresh();
-  //     } else {
-  //       console.log("onRefresh is not available");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error toggling pin:", error);
-  //     if (onError) {
-  //       onError("Failed to toggle pin status");
-  //     }
-  //   }
-  // };
+      // Refresh the data to get updated pin status
+      if (onRefresh) {
+        console.log("Calling onRefresh to reload data");
+        onRefresh();
+      } else {
+        console.log("onRefresh is not available");
+      }
+    } catch (error) {
+      console.error("Error toggling pin:", error);
+      if (onError) {
+        onError("Failed to toggle pin status");
+      }
+    }
+  };
 
   // Handle navigation to athlete detail page
   const handleViewAthlete = (athleteId: string) => {
     router.push(`/AMS/athlete-management/${athleteId}`);
   };
 
-  // Handle checkbox selection
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedAthletes(athletes.map((athlete) => athlete.id));
-      // setSelectedAthletes(athletes.map((athlete) => athlete.pk_athlete_uuid));
-    } else {
-      setSelectedAthletes([]);
-    }
-  };
-
-  const handleSelectAthlete = (athleteId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedAthletes((prev) => [...prev, athleteId]);
-    } else {
-      setSelectedAthletes((prev) => prev.filter((id) => id !== athleteId));
-    }
-  };
-
-  // Handle delete
-  const handleDelete = async () => {
-    if (selectedAthletes.length === 0) {
-      alert("Please select athletes to delete");
-      return;
-    }
-
-    if (
-      confirm(
-        `Are you sure you want to delete ${selectedAthletes.length} athlete(s)?`,
-      )
-    ) {
-      try {
-        await axios.delete("/api/AMS/athletes", {
-          data: { ids: selectedAthletes },
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setSelectedAthletes([]);
-        if (onRefresh) onRefresh();
-      } catch (error) {
-        console.error("Error deleting athletes:", error);
-        if (axios.isAxiosError(error) && error.response?.status === 403) {
-          alert("Access denied: deleting athletes requires Admin privileges.");
-        } else {
-          alert("Failed to delete athletes. Please try again.");
-        }
-      }
-    }
-  };
-
   // Handle export
-  // const handleExport = () => {
-  //   const headers = [
-  //     "ID",
-  //     "SportSync ID",
-  //     "Athlete Name",
-  //     "Sport",
-  //     "Gender",
-  //     "Date of Birth",
-  //   ];
-  //   const csvContent = [
-  //     headers.join(","),
-  //     ...athletes.map((athlete) =>
-  //       [
-  //         athlete.id,
-  //         athlete.sportsync_id,
-  //         athlete.initials,
-  //         athlete.sport_name,
-  //         athlete.gender,
-  //         athlete.date_of_birth
-  //           ? new Date(athlete.date_of_birth).toLocaleDateString()
-  //           : "-",
-  //       ].join(","),
-  //     ),
-  //   ].join("\n");
+  const handleExport = async () => {
+    try {
+      const backendUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
 
-  //   const blob = new Blob([csvContent], { type: "text/csv" });
-  //   const url = URL.createObjectURL(blob);
-  //   const link = document.createElement("a");
-  //   link.href = url;
-  //   link.download = `athletes-${new Date().toISOString().split("T")[0]}.csv`;
-  //   link.click();
-  //   URL.revokeObjectURL(url);
-  // };
+      const response = await axios.get(`${backendUrl}/api/AMS/athletes/adex`, {
+        params: {
+          export: true,
+        },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const allAthletes = response.data;
+
+      const headers = [
+        "ID",
+        "Athlete Name",
+        "Sport",
+        "Carding Level",
+        "Gender",
+        "Date of Birth",
+      ];
+
+      const csvContent = [
+        headers.join(","),
+        ...allAthletes.map((athlete: Athlete) =>
+          [
+            athlete.id,
+            athlete.anonymized_display_name,
+            athlete.sport_name,
+            athlete.carding_status ?? "",
+            athlete.gender,
+            athlete.date_of_birth
+              ? new Date(athlete.date_of_birth).toLocaleDateString()
+              : "",
+          ].join(",")
+        ),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `athletes-${new Date().toISOString().split("T")[0]}.csv`;
+      link.click();
+
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export failed:", err);
+      onError?.("Failed to export athletes.");
+    }
+  };
 
   // Handle sorting
   const handleSort = (column: string) => {
@@ -253,16 +218,30 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
     }
   };
 
-  // Handle modal success and error
-  const handleModalSuccess = (message: string) => {
-    setShowAddModal(false);
-    if (onRefresh) onRefresh();
-    if (onSuccess) onSuccess(message);
-  };
+  const sortedAthletes = [...athletes].sort((a, b) => {
+    if (!sortColumn) return 0;
 
-  const handleModalError = (message: string) => {
-    if (onError) onError(message);
-  };
+    const aValue = (a as any)[sortColumn];
+    const bValue = (b as any)[sortColumn];
+
+    if (aValue == null) return 1;
+    if (bValue == null) return -1;
+
+    if (sortColumn === "date_of_birth") {
+      const aDate = new Date(aValue).getTime();
+      const bDate = new Date(bValue).getTime();
+
+      return sortDirection === "asc"
+        ? aDate - bDate
+        : bDate - aDate;
+    }
+
+    const comparison = String(aValue).localeCompare(String(bValue));
+
+    return sortDirection === "asc"
+      ? comparison
+      : -comparison;
+  });
 
   return (
     <>
@@ -279,31 +258,11 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={handleDelete}
-              disabled={selectedAthletes.length === 0}
-              className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-lg px-3.5 py-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>Delete</span>
-              {selectedAthletes.length > 0 && (
-                <span className="ml-1 bg-gray-100 text-gray-600 text-xs px-1.5 py-0.5 rounded">
-                  {selectedAthletes.length}
-                </span>
-              )}
-            </button>
-            {/* <button
               onClick={handleExport}
               className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-lg px-3.5 py-2 transition-colors hover:bg-gray-50"
             >
               <Upload className="w-4 h-4" />
               <span>Export</span>
-            </button> */}
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Athlete</span>
             </button>
           </div>
         </div>
@@ -314,22 +273,11 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  {/* <th className="px-3 py-3 text-left w-12">
-                    <input
-                      type="checkbox"
-                      checked={
-                        selectedAthletes.length === athletes.length &&
-                        athletes.length > 0
-                      }
-                      onChange={(e) => handleSelectAll(e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  </th> */}
                   <th className="px-3 py-3 text-left w-12">
                     {/* Pin column */}
                   </th>
                   <th
-                    onClick={() => handleSort("initials")}
+                    onClick={() => handleSort("anonymized_display_name")}
                     className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700"
                   >
                     <div className="flex items-center gap-1">
@@ -347,7 +295,7 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                     </div>
                   </th>
                   <th
-                    onClick={() => handleSort("carding_level")}
+                    onClick={() => handleSort("carding_status")}
                     className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700"
                   >
                     <div className="flex items-center gap-1">
@@ -356,7 +304,7 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                     </div>
                   </th>
                   <th
-                    onClick={() => handleSort("carding_status")}
+                    onClick={() => handleSort("is_active")}
                     className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700"
                   >
                     <div className="flex items-center gap-1">
@@ -414,25 +362,13 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                     </td>
                   </tr>
                 ) : athletes.length > 0 ? (
-                  athletes.map((athlete) => (
+                  sortedAthletes.map((athlete) => (
                     <tr key={athlete.id} className="hover:bg-gray-50">
                     {/* <tr key={athlete.pk_athlete_uuid} className="hover:bg-gray-50"> */}
                       <td className="px-3 py-4">
-                        <input
-                          type="checkbox"
-                          checked={selectedAthletes.includes(athlete.id)}
-                          // checked={selectedAthletes.includes(athlete.pk_athlete_uuid)}
-                          onChange={(e) =>
-                            handleSelectAthlete(athlete.id, e.target.checked)
-                            // handleSelectAthlete(athlete.pk_athlete_uuid, e.target.checked)
-                          }
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                      </td>
-                      {/* <td className="px-3 py-4">
                         <button
-                          // onClick={() => handlePinToggle(athlete.id)}
-                          onClick={() => handlePinToggle(athlete.pk_athlete_uuid)}
+                          onClick={() => handlePinToggle(athlete.id)}
+                          // onClick={() => handlePinToggle(athlete.pk_athlete_uuid)}
                           className={`p-1 rounded transition-colors ${athlete.is_pinned
                               ? "text-black hover:text-gray-800"
                               : "text-gray-400 hover:text-gray-600"
@@ -443,7 +379,7 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                               }`}
                           />
                         </button>
-                      </td> */}
+                      </td>
                       <td className="px-3 py-4 text-sm font-medium">
                         <button
                           onClick={() => handleViewAthlete(athlete.id)}
@@ -488,12 +424,12 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                           )
                           : "-"}
                       </td>
-                      {/* <td className="px-3 py-4 text-sm text-gray-900">
+                      <td className="px-3 py-4 text-sm text-gray-900">
                         {athlete.target_event || "-"}
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-900">
                         {athlete.assigned_nutritionist || "Amy Tan"}
-                      </td> */}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -549,14 +485,6 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Add Athlete Modal */}
-      <AddAthleteModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSuccess={handleModalSuccess}
-        onError={handleModalError}
-      />
     </>
   );
 };
