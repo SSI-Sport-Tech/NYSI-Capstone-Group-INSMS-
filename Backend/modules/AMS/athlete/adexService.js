@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { generateAdexToken } from "../../../services/adexAuth.js";
+import { getPinnedAthletes } from "./services.js";
 
 // Helper Function
 function mapAthlete(adexAthlete) {
@@ -23,7 +24,6 @@ function mapAthlete(adexAthlete) {
         nationality: adexAthlete.nationality,
         team_uuid: adexAthlete.team_uuid,
         assigned_nutritionist: "Not Assigned",
-        is_pinned: false,
     };
 }
 
@@ -62,6 +62,7 @@ async function fetchAllAthletes(token) {
 
 // Get All Athletes
 export async function getAthletesFromADEX(
+    userId,
     page = 1,
     pageSize = 10,
     exportAll = false,
@@ -77,31 +78,71 @@ export async function getAthletesFromADEX(
         }
 
         let athletes = await fetchAllAthletes(token);
+        const pinnedAthletes = await getPinnedAthletes(userId);
+        const pinnedSet = new Set(pinnedAthletes);
+
+        athletes = athletes.map(a => ({
+            ...a,
+            is_pinned: pinnedSet.has(a.id),
+        }));
         
-        if (sortColumn) {
-            athletes.sort((a, b) => {
-                const aValue = a?.[sortColumn];
-                const bValue = b?.[sortColumn];
+        // Always keep pinned athletes at the top
+        athletes.sort((a, b) => {
 
-                if (aValue == null) return 1;
-                if (bValue == null) return -1;
+            // Pinned first
+            if (a.is_pinned !== b.is_pinned) {
+                return Number(b.is_pinned) - Number(a.is_pinned);
+            }
 
-                if (sortColumn === "date_of_birth") {
-                    const aDate = new Date(aValue).getTime();
-                    const bDate = new Date(bValue).getTime();
+            // Default sort by name if no sort selected
+            if (!sortColumn) {
+                return a.anonymized_display_name.localeCompare(
+                    b.anonymized_display_name
+                );
+            }
 
-                    return sortDirection === "asc"
-                        ? aDate - bDate
-                        : bDate - aDate;
-                }
+            const aValue = a?.[sortColumn];
+            const bValue = b?.[sortColumn];
 
-                const comparison = String(aValue).localeCompare(String(bValue));
+            if (aValue == null && bValue == null) return 0;
+            if (aValue == null) return 1;
+            if (bValue == null) return -1;
+
+            // Date sorting
+            if (
+                sortColumn === "date_of_birth" ||
+                sortColumn === "carding_start_date" ||
+                sortColumn === "carding_end_date"
+            ) {
+                const aDate = new Date(aValue).getTime();
+                const bDate = new Date(bValue).getTime();
 
                 return sortDirection === "asc"
-                    ? comparison
-                    : -comparison;
-            });
-        }
+                    ? aDate - bDate
+                    : bDate - aDate;
+            }
+
+            // Boolean sorting
+            if (typeof aValue === "boolean") {
+                return sortDirection === "asc"
+                    ? Number(aValue) - Number(bValue)
+                    : Number(bValue) - Number(aValue);
+            }
+
+            // String sorting
+            const comparison = String(aValue).localeCompare(
+                String(bValue),
+                undefined,
+                {
+                    numeric: true,
+                    sensitivity: "base",
+                }
+            );
+
+            return sortDirection === "asc"
+                ? comparison
+                : -comparison;
+        });
 
         const totalItems = athletes.length;
         const totalPages = Math.ceil(totalItems / pageSize);

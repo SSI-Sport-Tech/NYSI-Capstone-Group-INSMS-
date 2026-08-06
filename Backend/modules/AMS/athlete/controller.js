@@ -24,7 +24,7 @@ export async function listADEXAthletes(req, res) {
     const sortColumn = req.query.sortColumn || "";
     const sortDirection = req.query.sortDirection || "asc";
 
-    const result = await getAthletesFromADEX(page, pageSize, exportAll, sortColumn, sortDirection);
+    const result = await getAthletesFromADEX(req.user.userId, page, pageSize, exportAll, sortColumn, sortDirection);
 
     res.json(result);
   } catch (error) {
