@@ -131,9 +131,16 @@ class NutritionWorkflow(Workflow):
         Returns:
             dict: Nutrition facts scaled to 100g or None if calculation fails
         """
+        # Handle list input — wrap it
+        if isinstance(per_serving, list):
+            per_serving = {"nutrients": per_serving}
+        if not per_serving or not isinstance(per_serving, dict):
+            return {"nutrients": []}
+        
         if not serving_size_grams or serving_size_grams <= 0:
             logger.warning("Cannot calculate per 100g: missing serving size")
             return None
+            
         
         multiplier = 100 / serving_size_grams
         logger.info(f"📊 Calculating per 100g ({multiplier:.2f}x from {serving_size_grams}g)")
@@ -260,9 +267,15 @@ class NutritionWorkflow(Workflow):
         
         # --- NUTRITION PER SERVING ---
         per_serving = data.get('nutritional_info_per_serving', {})
+        if isinstance(per_serving, list):
+            per_serving = {"nutrients": per_serving}
+        if not isinstance(per_serving, dict):
+            per_serving = {"nutrients": []}
         
         # --- NUTRITION PER 100G ---
         per_100g = data.get('nutritional_info_per_100g')
+        if isinstance(per_100g, list):
+            per_100g = {"nutrients": per_100g}
         serving_size_grams = data.get('serving_size_grams')
         
         # Calculate per 100g if not on label but serving size available
@@ -278,19 +291,19 @@ class NutritionWorkflow(Workflow):
         
         # --- VECTOR 1: Per Serving ---
         logger.info("🔷 Creating vector for PER SERVING...")
-        per_serving_str = json.dumps({
-            "nutrients": per_serving.get('nutrients', [])
-        })
-        vector_per_serving = self.vectorizer.embed_model.get_text_embedding(per_serving_str)
+        vector_per_serving = self.vectorizer.generate_vector(
+            ingredients=data.get('supplement_ingredient'),
+            nutritional_info=per_serving
+        )
         
         # --- VECTOR 2: Per 100g ---
         vector_per_100g = None
         if per_100g:
             logger.info("🔶 Creating vector for PER 100G...")
-            per_100g_str = json.dumps({
-                "nutrients": per_100g.get('nutrients', [])
-            })
-            vector_per_100g = self.vectorizer.embed_model.get_text_embedding(per_100g_str)
+            vector_per_100g = self.vectorizer.generate_vector(
+                ingredients=data.get('supplement_ingredient'),
+                nutritional_info=per_100g
+            )
         else:
             logger.warning("No per 100g data, skipping vector")
         

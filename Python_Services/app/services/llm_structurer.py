@@ -62,6 +62,9 @@ EXTRACTION RULES:
 
 2. NUTRIENTS: Map lines like 'Total Fat 8g' to 'nutritional_info_per_serving'.
    Format: {{"name": "Fats (g)", "amount": "8"}}
+   CRITICAL: The "amount" field MUST always include the unit (e.g. "8g", "160mg", "5000mg", "2.5kcal").
+   Never return a bare number — always append the unit: "5000mg" not "5000", "5g" not "5".
+   If the label shows milligrams, use "mg". If grams, use "g". If kcal, use "kcal".
 
 3. STANDARDIZED NUTRIENT NAMES: Use exact names from this list when applicable:
    Energy (kcal), Carbohydrates (g), Glucose (g), Fructose (g), Proteins (g),

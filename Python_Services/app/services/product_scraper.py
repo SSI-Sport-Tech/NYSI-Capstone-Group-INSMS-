@@ -12,6 +12,7 @@ from scrapegraphai import graphs
 import json
 import os
 import re
+from bs4 import BeautifulSoup
 
 
 # ============================================================================
@@ -80,11 +81,12 @@ Requirements:
 10. For any nutrient that matches the following standardized field names, use the exact field name as given below and convert units if neccessary:
 
 Standardized nutrients:
-Carbohydrates (g), Glucose (g), Fructose (g), Galactose (g), Ribose (g), Sucrose (g), Maltose (g), Lactose (g), Amylose (g), Amylopectin (g), Proteins (g), Histidine (g), Isoleucine (g), Leucine (g), Lysine (g), Methionine (g), Phenylalanine (g), Threonine (g), Tryptophan (g), Valine (g), Alanine (g), Arginine (g), Aspartic acid (g), Asparagine (g), Cysteine (g), Glutamic acid (g), Glutamine (g), Glycine (g), Proline (g), Serine (g), Tyrosine (g), Fats (g), Saturated Fats (g), Monounsaturated Fats (g), Polyunsaturated Fats (g), Fibre (g), Calcium (mg), Sulfur (mg), Phosphorus (mg), Magnesium (mg), Sodium (mg), Potassium (mg), Iron (mg), Zinc (mg), Boron (mg), Copper (mg), Chlorine (mg), Selenium (µg), Manganese (mg), Molybdenum (µg), Cobalt (µg), Fluorine (mg), Iodine (µg), Silicon (mg), Vitamin B1 (mg), Vitamin B2 (mg), Vitamin B3 (mg), Vitamin B5 (mg), Pyridoxine (mg), Pyridoxal-5-Phosphate (mg), Pyridoxamine (mg), Vitamin B7 (µg), Vitamin B9 (µg), Vitamin B12 (µg), Choline (mg), Vitamin A (µg), Vitamin C (mg), Vitamin D (µg), Vitamin E (mg), Vitamin K1 (µg), Vitamin K2 (µg), Vitamin K3 (mg), Alpha carotene (µg), Beta carotene (µg), Cryptoxanthin (µg), Lutein (µg), Lycopene (µg), Zeaxanthin (µg)
+Carbohydrates (g), Glucose (g), Fructose (g), Galactose (g), Ribose (g), Sucrose (g), Maltose (g), Lactose (g), Amylose (g), Amylopectin (g), Proteins (g), Histidine (g), Isoleucine (g), Leucine (g), Lysine (g), Methionine (g), Phenylalanine (g), Threonine (g), Tryptophan (g), Valine (g), Alanine (g), Arginine (g), Aspartic acid (g), Asparagine (g), Cysteine (g), Glutamic acid (g), Glutamine (g), Glycine (g), Proline (g), Serine (g), Tyrosine (g), Fats (g), Saturated Fats (g), Monounsaturated Fats (g), Polyunsaturated Fats (g), Fibre (g),    cium (mg), Sulfur (mg), Phosphorus (mg), Magnesium (mg), Sodium (mg), Potassium (mg), Iron (mg), Zinc (mg), Boron (mg), Copper (mg), Chlorine (mg), Selenium (µg), Manganese (mg), Molybdenum (µg), Cobalt (µg), Fluorine (mg), Iodine (µg), Silicon (mg), Vitamin B1 (mg), Vitamin B2 (mg), Vitamin B3 (mg), Vitamin B5 (mg), Pyridoxine (mg), Pyridoxal-5-Phosphate (mg), Pyridoxamine (mg), Vitamin B7 (µg), Vitamin B9 (µg), Vitamin B12 (µg), Choline (mg), Vitamin A (µg), Vitamin C (mg), Vitamin D (µg), Vitamin E (mg), Vitamin K1 (µg), Vitamin K2 (µg), Vitamin K3 (mg), Alpha carotene (µg), Beta carotene (µg), Cryptoxanthin (µg), Lutein (µg), Lycopene (µg), Zeaxanthin (µg)
 
 11. If a nutrient is not in the standardized list, use the given English name on the website and make sure it has its units
 12. Give all nutritient values as numerical values. Substitute non-numerical values with appropriate numerical ones. For example: "<0.1" to 0.1, "trace" to 0.0
-13. Example output for supplement page with supplement information text:
+13. Judge whether a product is nutritional or not based on the name and description. No nutritional products mean that it is not a supplement or food product, for example merchandise, clothing, or accessories.
+14. Example output for supplement page with supplement information text:
 
 [
   {
@@ -227,9 +229,114 @@ def selenium_fetch(url: str, wait_time: int = 5) -> str:
     finally:
         driver.quit()
 
+
+def _sanitize_nutrient_dict(d: dict) -> dict:
+    """Convert all nutrient values to floats, stripping units."""
+    if not isinstance(d, dict):
+        return {}
+    result = {}
+    for k, v in d.items():
+        if isinstance(v, (int, float)):
+            result[k] = float(v)
+        elif isinstance(v, str):
+            # Extract numeric part from strings like "3.4 g", "<0.1mg", "trace"
+            v = v.strip().lower()
+            if v in ("trace", "nil", "none", "-", "n/a", "na"):
+                result[k] = 0.0
+            else:
+                match = re.search(r'(\d+(?:\.\d+)?)', v)
+                if match:
+                    result[k] = float(match.group(1))
+                # Skip if no number found
+    return result   
 # ============================================================================
 # SCRAPER FUNCTION
 # ============================================================================
+
+def _extract_nutrition_image_url(html: str) -> Optional[str]:
+    """Extract nutrition image URL directly from accordion details element."""
+    soup = BeautifulSoup(html, "html.parser")
+    for details in soup.find_all("details"):
+        summary = details.find("summary")
+        if summary and "nutri" in summary.get_text(strip=True).lower():
+            img = details.find("img")
+            if img:
+                src = img.get("src", "")
+                if src.startswith("//"):
+                    src = "https:" + src
+                if src:
+                    return src
+    # Also check any img with alt text containing nutrition
+    soup2 = BeautifulSoup(html, "html.parser")
+    for img in soup2.find_all("img", alt=True):
+        if "nutri" in img["alt"].lower():
+            src = img.get("src", "")
+            if src.startswith("//"):
+                src = "https:" + src
+            if src:
+                return src
+    return None
+    
+
+def _extract_nutrition_image_with_llm(html: str) -> Optional[str]:
+    """Use a focused LLM call to find the nutrition image URL."""
+    import requests as _requests
+
+    ollama_base_url = os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
+    ollama_model = os.environ.get("OLLAMA_MODEL", "qwen3:8b")
+
+    # Only send relevant portion of HTML
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    # Focus on details/accordion elements and img tags only
+    relevant = []
+    for el in soup.find_all(["details", "img", "figure", "picture"]):
+        relevant.append(str(el)[:500])
+    focused_html = "\n".join(relevant[:50])  # cap at 50 elements
+
+    try:
+        response = _requests.post(
+            f"{ollama_base_url}/api/chat",
+            json={
+                "model": ollama_model,
+                "stream": False,
+                "format": "json",
+                "options": {"temperature": 0, "num_ctx": 8192, "num_predict": 256, "think": False},
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are a JSON API. Output only raw JSON. No explanation."
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            "Find the nutrition facts or nutritional information IMAGE URL in this HTML.\n\n"
+                            "Look for:\n"
+                            "- <img> tags inside elements with 'nutri' in their text or id/class\n"
+                            "- <img> tags with alt text containing 'nutri', 'fact', 'label'\n"
+                            "- Images inside <details> or accordion sections about nutrition\n\n"
+                            "Return JSON:\n"
+                            '{"nutrition_image_url": "https://..." or null}\n\n'
+                            f"HTML:\n{focused_html}"
+                        )
+                    }
+                ]
+            },
+            timeout=30
+        )
+        response.raise_for_status()
+        text = response.json().get("message", {}).get("content", "").strip()
+        print(f"LLM response: {text[:200]}...")  # print first 200 chars
+        text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+        data = json.loads(text)
+        url = data.get("nutrition_image_url")
+        if url and url != "null" and url.startswith("http"):
+            print(f"🤖 LLM found nutrition image: {url}")
+            return url
+    except Exception as e:
+        print(f"   LLM image extraction failed: {e}")
+
+    return None
 
 async def scrape_product_details(
     product_url: str,
@@ -249,18 +356,25 @@ async def scrape_product_details(
             "model": f"ollama/{os.environ.get('OLLAMA_MODEL', 'qwen3:8b')}",
             "base_url": os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434"),
             "format": "json",
-            "model_tokens": 32000,
+            "model_tokens": 128000,
             "temperature": 0,
             "think": False,
         },
     }
 
     source = selenium_fetch(product_url)
+    nutrition_image = _extract_nutrition_image_url(source)
+    if not nutrition_image:
+        nutrition_image = _extract_nutrition_image_with_llm(source)
+
+    if nutrition_image:
+        print(f"🖼️ Found nutrition image: {nutrition_image}")
+
         
     # Create scraper with schema validation
     scraper = graphs.SmartScraperGraph(
         prompt=PRODUCT_INFO_PROMPT,
-        source=product_url,
+        source=source,
         config=config,
         schema=ProductInfoResponse
     )
@@ -296,11 +410,28 @@ async def scrape_product_details(
         per_100g = product.get("Per 100g")
         if not isinstance(per_100g, dict):
             product["Per 100g"] = {}
+        else:
+            product["Per 100g"] = _sanitize_nutrient_dict(per_100g)
 
         per_serving = product.get("Per Serving Size")
         if not isinstance(per_serving, dict):
             product["Per Serving Size"] = {}
+        else:
+            product["Per Serving Size"] = _sanitize_nutrient_dict(per_serving)
         product["URL"] = product_url
+        # If rejected but nutrition image found — promote to nutritional
+        if product.get("Rejected") == "Not nutritional" and nutrition_image:
+            print("⚠️ Promoting rejected product — nutrition image found")
+            product.pop("Rejected", None)
+            product["Nutritional Information Image"] = nutrition_image
+        # Default Minimum Unit if missing
+        if "Rejected" not in product and not product.get("Minimum Unit"):
+            product["Minimum Unit"] = "Pack"
+
+        # Inject nutrition image if model missed it
+        existing_img = product.get("Nutritional Information Image")
+        if nutrition_image and (not existing_img or existing_img == "NA"):
+            product["Nutritional Information Image"] = nutrition_image
     
     print(result)
     return result

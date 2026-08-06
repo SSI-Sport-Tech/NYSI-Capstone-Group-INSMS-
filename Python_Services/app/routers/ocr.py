@@ -84,8 +84,8 @@ class AnalyzeDataSubset(BaseModel):
     supplement_ingredient: Optional[Any] = None
     serving_size_text: Optional[str] = None
     serving_size_grams: Optional[float] = None
-    nutritional_info_per_serving: Optional[Dict[str, Any]] = None
-    nutritional_info_per_100g: Optional[Dict[str, Any]] = None
+    nutritional_info_per_serving: Optional[Any] = None   # ← was Dict[str, Any]
+    nutritional_info_per_100g: Optional[Any] = None      # ← was Dict[str, Any]
     nutritional_info_per_serving_definition: Optional[str] = None
     supplement_warning_label: Optional[str] = None
     supplement_certifications: Optional[str] = None
@@ -326,7 +326,11 @@ def _generate_vectors_from_structured(structured_data: dict, include_ingredients
         ingredients = []
 
     per_serving = structured_data.get("nutritional_info_per_serving") or {}
+    if isinstance(per_serving, list):
+        per_serving = {"nutrients": per_serving}
     per_100g = structured_data.get("nutritional_info_per_100g")
+    if isinstance(per_100g, list):
+        per_100g = {"nutrients": per_100g}
     serving_size_grams = structured_data.get("serving_size_grams")
 
     vector_per_serving = vectorizer.generate_vector(ingredients=ingredients, nutritional_info=per_serving)
@@ -357,7 +361,7 @@ def _calculate_per_100g(per_serving: dict, serving_size_grams: float) -> Optiona
     multiplier = 100 / serving_size_grams
     per_100g = {"nutrients": []}
 
-    nutrients = per_serving.get("nutrients", []) if isinstance(per_serving, dict) else []
+    nutrients = per_serving.get("nutrients", []) if isinstance(per_serving, dict) else (per_serving if isinstance(per_serving, list) else [])
     for nutrient in nutrients:
         amount_str = (nutrient or {}).get("amount", "")
         match = re.match(

@@ -17,36 +17,47 @@ ocr_workflow = NutritionWorkflow(timeout=200, verbose=False)
 
 
 def flatten_nutrients(nutrients_block: dict) -> dict:
-    """
-    Flatten nutrients from OCR format to simple key-value dict.
-    
-    Input: {"nutrients": [{"name": "Protein (g)", "amount": "24"}, ...]}
-    Output: {"Protein (g)": 24.0, ...}
-    """
+    import re
     output = {}
-    
+
     if not nutrients_block or not isinstance(nutrients_block, dict):
         return {}
-    
+
     nutrients = nutrients_block.get("nutrients") or []
     if not isinstance(nutrients, list):
         return {}
-    
+
     for item in nutrients:
         if not isinstance(item, dict):
             continue
-        
+
         name = item.get("name")
         amount = item.get("amount")
-        
+
         if not name or amount is None:
             continue
-        
-        try:
-            output[name] = float(amount)
-        except ValueError:
-            continue
-    
+
+        amount_str = str(amount).strip()
+
+        # Parse value and unit from strings like "5000mg", "3.4g", "5000"
+        match = re.match(
+            r'^[<]?\s*(\d+(?:\.\d+)?)\s*(mg|g|mcg|ug|µg|μg|kcal|cal|ml|l)?',
+            amount_str.lower()
+        )
+        if match:
+            value = float(match.group(1))
+            unit = match.group(2) or ''
+            # Append unit to name if unit found and name doesn't already have one
+            if unit and '(' not in name:
+                name = f"{name} ({unit})"
+        else:
+            try:
+                value = float(amount_str)
+            except (ValueError, TypeError):
+                continue
+
+        output[name] = value
+
     return output
 
 
@@ -146,10 +157,22 @@ async def enrich_product_with_ocr(product: Dict) -> bool:
             f.write(content)
         
         # Run OCR workflow
-        result = await ocr_workflow.run(image_path=image_path)
-        
-        if not result or "error" in result:
+        result = await ocr_workflow.run(image_path=image_path)  
+
+        # Unwrap nested lists
+        while isinstance(result, list):
+            result = result[0] if result else {}
+
+        if not result or not isinstance(result, dict):
             return False
+
+        if result.get("error"):
+            return False
+
+         # DEBUG — see what OCR actually returned
+        import json
+        print(f"   OCR raw per_serving: {json.dumps(result.get('nutritional_info_per_serving'), ensure_ascii=False)[:300]}")
+        print(f"   OCR raw per_100g: {json.dumps(result.get('nutritional_info_per_100g'), ensure_ascii=False)[:300]}")
         
         # Merge OCR data into product
         product["Per 100g"] = flatten_nutrients(
@@ -168,7 +191,9 @@ async def enrich_product_with_ocr(product: Dict) -> bool:
         return True
         
     except Exception as e:
+        import traceback
         print(f"⚠️ OCR failed for {product.get('Name')}: {e}")
+        traceback.print_exc()  # ← add this
         return False
         
     finally:
