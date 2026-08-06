@@ -20,10 +20,11 @@ export async function listADEXAthletes(req, res) {
   try {
     const page = Number(req.query.page || 1);
     const pageSize = Number(req.query.pageSize || 10);
-
     const exportAll = req.query.export === "true";
+    const sortColumn = req.query.sortColumn || "";
+    const sortDirection = req.query.sortDirection || "asc";
 
-    const result = await getAthletesFromADEX(page, pageSize, exportAll);
+    const result = await getAthletesFromADEX(page, pageSize, exportAll, sortColumn, sortDirection);
 
     res.json(result);
   } catch (error) {

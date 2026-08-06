@@ -27,13 +27,15 @@ function mapAthlete(adexAthlete) {
     };
 }
 
-// Get All Athletes
-export async function getAthletesFromADEX(page = 1, pageSize = 10, exportAll = false) {
-    try {
-        const token = await generateAdexToken();
+async function fetchAllAthletes(token) {
+    let currentPage = 1;
+    const limit = 100; // or the maximum ADEX supports
+    let athletes = [];
+    let hasNextPage = true;
 
+    while (hasNextPage) {
         const response = await fetch(
-            `${process.env.ADEX_API_URL}/api/v1/athletes/all`,
+            `${process.env.ADEX_API_URL}/api/v1/athletes/all/?page=${currentPage}&limit=${limit}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -46,26 +48,69 @@ export async function getAthletesFromADEX(page = 1, pageSize = 10, exportAll = f
             const error = await response.text();
             throw new Error(`ADEX API error ${response.status}: ${error}`);
         }
-        
+
         const result = await response.json();
 
-        // Map ADEX response
-        const mappedAthletes = result.data.map(mapAthlete);
+        athletes.push(...result.data.map(mapAthlete));
 
-        // Export all athletes (skip pagination)
+        hasNextPage = result.meta.hasNextPage;
+        currentPage++;
+    }
+
+    return athletes;
+}
+
+// Get All Athletes
+export async function getAthletesFromADEX(
+    page = 1,
+    pageSize = 10,
+    exportAll = false,
+    sortColumn = "",
+    sortDirection = "asc"
+){
+    try {
+        const token = await generateAdexToken();
+
+        // Export athletes into CSV
         if (exportAll) {
-            return mappedAthletes;
+            return await fetchAllAthletes(token);
         }
 
-        // Pagination
-        const totalItems = mappedAthletes.length;
+        let athletes = await fetchAllAthletes(token);
+        
+        if (sortColumn) {
+            athletes.sort((a, b) => {
+                const aValue = a?.[sortColumn];
+                const bValue = b?.[sortColumn];
+
+                if (aValue == null) return 1;
+                if (bValue == null) return -1;
+
+                if (sortColumn === "date_of_birth") {
+                    const aDate = new Date(aValue).getTime();
+                    const bDate = new Date(bValue).getTime();
+
+                    return sortDirection === "asc"
+                        ? aDate - bDate
+                        : bDate - aDate;
+                }
+
+                const comparison = String(aValue).localeCompare(String(bValue));
+
+                return sortDirection === "asc"
+                    ? comparison
+                    : -comparison;
+            });
+        }
+
+        const totalItems = athletes.length;
         const totalPages = Math.ceil(totalItems / pageSize);
 
         const startIndex = (page - 1) * pageSize;
         const endIndex = startIndex + pageSize;
 
         return {
-            data: mappedAthletes.slice(startIndex, endIndex),
+            data: athletes.slice(startIndex, endIndex),
             meta: {
                 currentPage: page,
                 pageSize,

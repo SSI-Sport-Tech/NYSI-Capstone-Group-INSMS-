@@ -96,10 +96,12 @@ export default function AthleteManagementPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [query, setQuery] = useState("");
+  const [sortColumn, setSortColumn] = useState("");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const fetchAthletes = useCallback(async (page = 1, searchQuery = "") => {
+  const fetchAthletes = useCallback(async (page = 1, searchQuery = "", column = sortColumn, direction = sortDirection) => {
     setLoading(true);
     setError(null);
     try {
@@ -109,6 +111,8 @@ export default function AthleteManagementPage() {
       const requestKey = JSON.stringify({
         page,
         searchQuery,
+        column, 
+        direction,
         token: token ?? "",
       });
 
@@ -116,7 +120,7 @@ export default function AthleteManagementPage() {
       if (!request) {
         request = axios
           .get<SearchResponse>(`${backendUrl}/api/AMS/athletes/adex`, {
-            params: { page, search: searchQuery },
+            params: { page, pageSize: 10, search: searchQuery, sortColumn: column, sortDirection: direction },
             headers,
           })
           .then((response) => response.data)
@@ -145,7 +149,7 @@ export default function AthleteManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, sortColumn, sortDirection]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -234,6 +238,13 @@ export default function AthleteManagementPage() {
             total={totalCount}
             loading={loading}
             searchQuery={query}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={(column, direction) => {
+              setSortColumn(column);
+              setSortDirection(direction);
+              fetchAthletes(1, query, column, direction);
+            }}
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={handlePageChange}

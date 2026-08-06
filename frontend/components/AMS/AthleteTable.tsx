@@ -80,6 +80,12 @@ interface AthleteTableProps {
   total: number;
   loading: boolean;
   searchQuery?: string;
+  sortColumn: string;
+  sortDirection: "asc" | "desc";
+  onSort: (
+    column: string,
+    direction: "asc" | "desc"
+  ) => void;
   onRefresh?: () => void;
   currentPage?: number;
   totalPages?: number;
@@ -93,6 +99,9 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
   total,
   loading,
   searchQuery,
+  sortColumn,
+  sortDirection,
+  onSort,
   onRefresh,
   currentPage = 1,
   totalPages = 1,
@@ -104,8 +113,6 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
   const { token } = useAuth();
   // const [selectedAthletes, setSelectedAthletes] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-  const [sortColumn, setSortColumn] = useState<string>("");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   // Handle pin toggle
   const handlePinToggle = async (athleteId: string) => {
@@ -210,38 +217,13 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
 
   // Handle sorting
   const handleSort = (column: string) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortColumn(column);
-      setSortDirection("asc");
-    }
+    const direction =
+      sortColumn === column && sortDirection === "asc"
+        ? "desc"
+        : "asc";
+
+    onSort(column, direction);
   };
-
-  const sortedAthletes = [...athletes].sort((a, b) => {
-    if (!sortColumn) return 0;
-
-    const aValue = (a as any)[sortColumn];
-    const bValue = (b as any)[sortColumn];
-
-    if (aValue == null) return 1;
-    if (bValue == null) return -1;
-
-    if (sortColumn === "date_of_birth") {
-      const aDate = new Date(aValue).getTime();
-      const bDate = new Date(bValue).getTime();
-
-      return sortDirection === "asc"
-        ? aDate - bDate
-        : bDate - aDate;
-    }
-
-    const comparison = String(aValue).localeCompare(String(bValue));
-
-    return sortDirection === "asc"
-      ? comparison
-      : -comparison;
-  });
 
   return (
     <>
@@ -362,7 +344,7 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                     </td>
                   </tr>
                 ) : athletes.length > 0 ? (
-                  sortedAthletes.map((athlete) => (
+                  athletes.map((athlete) => (
                     <tr key={athlete.id} className="hover:bg-gray-50">
                     {/* <tr key={athlete.pk_athlete_uuid} className="hover:bg-gray-50"> */}
                       <td className="px-3 py-4">
@@ -396,7 +378,9 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                         {athlete.carding_status}
                       </td>
                       <td className="px-3 py-4">
-                        {athlete.is_active ? (
+                        {athlete.is_active === undefined || athlete.is_active === null ? (
+                          <span className="text-gray-400">-</span>
+                        ) : (
                           <span
                             className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               athlete.is_active
@@ -406,8 +390,6 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                           >
                             {athlete.is_active ? "Active" : "Inactive"}
                           </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
                         )}
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-900">
