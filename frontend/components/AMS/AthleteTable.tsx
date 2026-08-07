@@ -410,7 +410,7 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                         {athlete.target_event || "-"}
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-900">
-                        {athlete.assigned_nutritionist || "Amy Tan"}
+                        {athlete.assigned_nutritionist || "-"}
                       </td>
                     </tr>
                   ))

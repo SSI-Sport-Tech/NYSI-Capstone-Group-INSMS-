@@ -4,7 +4,8 @@ dotenv.config();
 import { generateAdexToken } from "../../../services/adexAuth.js";
 import {
     getPinnedAthletes,
-    getAthleteProfiles
+    getAthleteProfiles,
+    getAllAthleteNutritionists,
 } from "./services.js";
 
 // Helper Function
@@ -80,13 +81,45 @@ export async function getAthletesFromADEX(
         }
 
         let athletes = await fetchAllAthletes(token);
-        const pinnedAthletes = await getPinnedAthletes(userId);
+
+        const [pinnedAthletes, athleteProfiles, nutritionists,] = await Promise.all([
+            getPinnedAthletes(userId),
+            getAthleteProfiles(),
+            getAllAthleteNutritionists(),
+        ]);
+
         const pinnedSet = new Set(pinnedAthletes);
 
-        athletes = athletes.map(a => ({
+        const profileMap = new Map(
+            athleteProfiles.map(profile => [
+                profile.athlete_uuid,
+                profile,
+            ])
+        );
+
+        const nutritionistMap = new Map(
+        nutritionists.map(n => [
+            n.athlete_id,
+            n.assigned_nutritionist,
+        ])
+        );
+
+        athletes = athletes.map(a => {
+        const profile = profileMap.get(a.id);
+
+        return {
             ...a,
+            target_event: profile?.target_event ?? null,
+            sport_start_date: profile?.sport_start_date ?? null,
+            athlete_group_id: profile?.athlete_group_id ?? null,
+            medical_clearance: profile?.medical_clearance ?? false,
+
+            assigned_nutritionist:
+            nutritionistMap.get(a.id) ?? null,
+
             is_pinned: pinnedSet.has(a.id),
-        }));
+        };
+        });
         
         // Always keep pinned athletes at the top
         athletes.sort((a, b) => {

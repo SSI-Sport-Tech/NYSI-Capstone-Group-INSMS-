@@ -305,6 +305,21 @@ export async function upsertNutritionistAthleteMapping(
   });
 }
 
+export async function getAllAthleteNutritionists() {
+  const result = await pool.query(`
+    SELECT
+      nam.athlete_id,
+      STRING_AGG(n.name, ', ' ORDER BY n.name) AS assigned_nutritionist
+    FROM ams.nutritionist_athlete_mapping nam
+    JOIN ams.nutritionist n
+      ON n.id = nam.nutritionist_id
+    WHERE nam.is_active = true
+    GROUP BY nam.athlete_id
+  `);
+
+  return result.rows;
+}
+
 // ams.coach_athlete_mapping
 export async function getAthleteCoaches(athleteUuid) {
   const result = await pool.query(
