@@ -273,9 +273,7 @@ export default function AthleteDetailPage() {
       sport_start_date: profile.athlete_profile?.sport_start_date?.toString() ?? "",
       medical_clearance: profile.athlete_profile?.medical_clearance ?? false,
       coach_ids: profile.coaches.filter((c) => c.is_active).map((c) => c.coach_id),
-      nutritionist_ids: profile.nutritionists
-        .filter((n) => n.is_active)
-        .map((n) => n.nutritionist_id),
+      nutritionist_ids: profile.nutritionists.filter((n) => n.is_active).map((n) => n.nutritionist_id),
       medical_condition: profile.medical?.medical_condition || "",
       food_allergy: profile.medical?.food_allergy || "",
       drug_allergy: profile.medical?.drug_allergy || "",
@@ -325,24 +323,16 @@ export default function AthleteDetailPage() {
     const token = localStorage.getItem("token");
 
     const payload: Record<string, unknown> = {
-      // anonymized_display_name: editForm.anonymized_display_name || undefined,
-      // gender: editForm.gender || undefined,
-      // date_of_birth: editForm.date_of_birth || undefined,
-      // ethnicity: editForm.ethnicity || undefined,
-      // fk_sport_uuid: editForm.fk_sport_uuid || undefined,
       target_event: editForm.target_event || undefined,
       sport_start_date: editForm.sport_start_date ? Number(editForm.sport_start_date) : undefined,
-      // carding_status: editForm.carding_status || undefined,
       medical_clearance: editForm.medical_clearance,
-      // carding_start_date: editForm.carding_start_date || undefined,
-      // carding_end_date: editForm.carding_end_date || undefined,
-      // coach_ids: editForm.coach_ids,
-      // medical_condition: editForm.medical_condition || undefined,
-      // food_allergy: editForm.food_allergy || undefined,
-      // drug_allergy: editForm.drug_allergy || undefined,
-      // past_injury: editForm.past_injury || undefined,
-      // medical_remarks: editForm.medical_remarks || undefined,
-      // dietary_restriction: editForm.dietary_restriction || undefined,
+      coach_ids: editForm.coach_ids,
+      medical_condition: editForm.medical_condition || undefined,
+      food_allergy: editForm.food_allergy || undefined,
+      drug_allergy: editForm.drug_allergy || undefined,
+      past_injury: editForm.past_injury || undefined,
+      medical_remarks: editForm.medical_remarks || undefined,
+      dietary_restriction: editForm.dietary_restriction || undefined,
     };
 
     if (isAdmin) {
@@ -690,16 +680,18 @@ export default function AthleteDetailPage() {
                         <label className="block text-base font-medium text-gray-700 mb-1 underline underline-offset-2">
                           Athlete Status
                         </label>
-                          {profile.athlete.is_active ? (
-                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              profile.athlete.is_active
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                              }`}>
+                          {profile.athlete.is_active === undefined || profile.athlete.is_active === null ? (
+                            <span className="text-gray-400">-</span>
+                          ) : (
+                            <span
+                              className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                profile.athlete.is_active
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
                               {profile.athlete.is_active ? "Active" : "Inactive"}
                             </span>
-                          ) : (
-                            <p className="text-sm text-gray-400">-</p>
                           )}
                       </div>
                     </div>

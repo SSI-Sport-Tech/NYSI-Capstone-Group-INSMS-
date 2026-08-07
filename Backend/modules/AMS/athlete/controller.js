@@ -137,17 +137,19 @@ export async function getAthleteProfile(req, res) {
   try {
     const { id } = uuidParamSchema.parse(req.params);
 
-    const [athlete, profile, nutritionists] = await Promise.all([
+    const [athlete, profile, medical, coaches, nutritionists] = await Promise.all([
       getAthleteByUuidFromADEX(id),
       services.getAthleteProfile(id),
+      services.getAthleteMedical(id),
+      services.getAthleteCoaches(id),
       services.getAthleteNutritionists(id),
     ]);
 
     res.json({
       athlete,
       athlete_profile: profile,
-      medical: null,
-      coaches: [],
+      medical,
+      coaches,
       nutritionists,
     });
   } catch (error) {
@@ -546,6 +548,19 @@ export async function updateAthleteProfile(req, res) {
       req.user?.userId
     );
 
+    console.log("Updating athlete as:", req.user?.userId);
+    await services.upsertAthleteMedical(
+      id,
+      validated,
+      req.user?.userId
+    )
+
+    await services.upsertCoachAthleteMapping(
+      id,
+      validated.coach_ids,
+      req.user?.userId
+    );
+
     res.json({
       message: "Athlete profile updated successfully",
       data: profile,
@@ -628,10 +643,22 @@ export async function adminUpdateAthleteProfile(req, res) {
       validated,
       req.user?.userId,
     );
+    
+    await services.upsertAthleteMedical(
+      id,
+      validated,
+      req.user?.userId
+    )
 
     await services.upsertNutritionistAthleteMapping(
       id,
       validated.nutritionist_ids,
+      req.user?.userId
+    );
+
+    await services.upsertCoachAthleteMapping(
+      id,
+      validated.coach_ids,
       req.user?.userId
     );
 
