@@ -215,6 +215,8 @@ export default function AthleteDetailPage() {
       const response = await axios.get<AthleteProfile>(
         `${backendUrl}/api/AMS/athletes/${athleteId}/profile`,
       );
+
+      console.log("API response:", response.data);
       setProfile(response.data);
     } catch (err) {
       console.error("Error fetching athlete profile:", err);
@@ -323,24 +325,24 @@ export default function AthleteDetailPage() {
     const token = localStorage.getItem("token");
 
     const payload: Record<string, unknown> = {
-      anonymized_display_name: editForm.anonymized_display_name || undefined,
-      gender: editForm.gender || undefined,
-      date_of_birth: editForm.date_of_birth || undefined,
-      ethnicity: editForm.ethnicity || undefined,
-      fk_sport_uuid: editForm.fk_sport_uuid || undefined,
+      // anonymized_display_name: editForm.anonymized_display_name || undefined,
+      // gender: editForm.gender || undefined,
+      // date_of_birth: editForm.date_of_birth || undefined,
+      // ethnicity: editForm.ethnicity || undefined,
+      // fk_sport_uuid: editForm.fk_sport_uuid || undefined,
       target_event: editForm.target_event || undefined,
       sport_start_date: editForm.sport_start_date ? Number(editForm.sport_start_date) : undefined,
-      carding_status: editForm.carding_status || undefined,
-      // medical_clearance: editForm.medical_clearance,
-      carding_start_date: editForm.carding_start_date || undefined,
-      carding_end_date: editForm.carding_end_date || undefined,
-      coach_ids: editForm.coach_ids,
-      medical_condition: editForm.medical_condition || undefined,
-      food_allergy: editForm.food_allergy || undefined,
-      drug_allergy: editForm.drug_allergy || undefined,
-      past_injury: editForm.past_injury || undefined,
-      medical_remarks: editForm.medical_remarks || undefined,
-      dietary_restriction: editForm.dietary_restriction || undefined,
+      // carding_status: editForm.carding_status || undefined,
+      medical_clearance: editForm.medical_clearance,
+      // carding_start_date: editForm.carding_start_date || undefined,
+      // carding_end_date: editForm.carding_end_date || undefined,
+      // coach_ids: editForm.coach_ids,
+      // medical_condition: editForm.medical_condition || undefined,
+      // food_allergy: editForm.food_allergy || undefined,
+      // drug_allergy: editForm.drug_allergy || undefined,
+      // past_injury: editForm.past_injury || undefined,
+      // medical_remarks: editForm.medical_remarks || undefined,
+      // dietary_restriction: editForm.dietary_restriction || undefined,
     };
 
     if (isAdmin) {

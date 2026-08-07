@@ -825,11 +825,11 @@ router.patch(
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post(
-  "/athletes/complete",
-  authenticateToken,
-  controller.createCompleteAthlete,
-);
+// router.post(
+//   "/athletes/complete",
+//   authenticateToken,
+//   controller.createCompleteAthlete,
+// );
 
 /**
  * @swagger
@@ -991,12 +991,12 @@ router.post(
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post(
-  "/athletes/complete/admin",
-  authenticateToken,
-  requireAdmin,
-  controller.adminCreateCompleteAthlete,
-);
+// router.post(
+//   "/athletes/complete/admin",
+//   authenticateToken,
+//   requireAdmin,
+//   controller.adminCreateCompleteAthlete,
+// );
 
 /**
  * @swagger
@@ -1077,56 +1077,6 @@ router.post(
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/athletes", authenticateToken, controller.createBasicAthlete);
-
-/**
- * @swagger
- * /api/AMS/athletes:
- *   delete:
- *     summary: Delete Athletes (Bulk) [ADMIN ONLY]
- *     description: |
- *       Permanently delete one or more athletes.
- *       Registry and medical records are automatically deleted via CASCADE.
- *     tags: [AMS - Athletes]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [ids]
- *             properties:
- *               ids:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: uuid
- *                 minItems: 1
- *                 description: Array of athlete UUIDs to delete
- *           example:
- *             ids: ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]
- *     responses:
- *       200:
- *         description: Athletes deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 deletedCount:
- *                   type: integer
- *                 deletedIds:
- *                   type: array
- *                   items:
- *                     type: string
- *                     format: uuid
- *       400:
- *         $ref: '#/components/responses/BadRequest'
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
- */
-router.delete("/athletes", authenticateToken, requireAdmin, controller.deleteAthletes);
+// router.post("/athletes", authenticateToken, controller.createBasicAthlete);
 
 export default router;

@@ -11,7 +11,9 @@ async function main() {
         console.log(token);
 
         const response = await fetch(
-            `${process.env.ADEX_API_URL}/api/v1/athletes/all`,
+            // `${process.env.ADEX_API_URL}/api/v1/athletes/all`,
+            // `${process.env.ADEX_API_URL}/api/v1/athletes/81409386-1ec4-4e1b-a4ff-51e452a18cb3`,
+            `${process.env.ADEX_API_URL}/api/v1/sports`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,

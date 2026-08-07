@@ -2,7 +2,10 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { generateAdexToken } from "../../../services/adexAuth.js";
-import { getPinnedAthletes } from "./services.js";
+import {
+    getPinnedAthletes,
+    getAthleteProfiles
+} from "./services.js";
 
 // Helper Function
 function mapAthlete(adexAthlete) {
@@ -23,7 +26,6 @@ function mapAthlete(adexAthlete) {
         ethnicity: adexAthlete.ethnicity,
         nationality: adexAthlete.nationality,
         team_uuid: adexAthlete.team_uuid,
-        assigned_nutritionist: "Not Assigned",
     };
 }
 
