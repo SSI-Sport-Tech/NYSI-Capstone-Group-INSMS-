@@ -13,43 +13,6 @@ import {
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 
-// interface Athlete {
-//   id: string;
-//   sportsync_id: string;
-//   initials: string;
-//   sport_name: string;
-//   gender: string;
-//   date_of_birth: string;
-//   carding_status?: string;
-//   target_event?: string;
-//   assigned_nutritionist?: string;
-//   is_pinned?: boolean;
-//   coaches?: Array<{
-//     coach_id: string;
-//     coach_name: string;
-//     is_active: boolean;
-//   }>;
-// }
-// interface Athlete {
-//   pk_athlete_uuid: string;
-//   first_name: string;
-//   last_name: string;
-//   anonymized_display_name: string;
-//   email: string;
-//   date_of_birth: string;
-//   gender: string;
-//   fk_sport_uuid: string;
-//   position: string;
-//   race: string | null;
-//   ethnicity: string |null;
-//   nationality: string | null;
-//   sport_sync_id: string | null;
-//   external_patient_id: string | null;
-//   pnco: string;
-//   is_active: boolean;
-//   created_at: string;
-//   updated_at: string;
-// }
 interface Athlete {
   id: string;
   anonymized_display_name: string;
@@ -58,8 +21,8 @@ interface Athlete {
   gender: string;
   date_of_birth: string;
   carding_status: string | null;
-  carding_start_date: Date,
-  carding_end_date: Date,
+  carding_start_date: string | null;
+  carding_end_date: string | null;
   is_active: boolean;
   email: string;
   position: string;
@@ -72,7 +35,7 @@ interface Athlete {
   medical_clearance: boolean;
   is_pinned: boolean;
   team_uuid: string;
-  assigned_nutritionist: string;
+  assigned_nutritionist: string | null;
 }
 
 interface AthleteTableProps {

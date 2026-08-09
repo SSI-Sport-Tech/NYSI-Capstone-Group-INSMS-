@@ -104,6 +104,81 @@ router.get("/athletes/adex", authenticateToken, controller.listADEXAthletes);
 
 /**
  * @swagger
+ * /api/AMS/athletes/adex/lookup:
+ *   get:
+ *     summary: Get Athlete Lookup List from ADEX
+ *     description: |
+ *       Retrieves a simplified list of athletes directly from the
+ *       Athlete Data Exchange (ADEX) for lookup and selection purposes.
+ *
+ *       This endpoint does not query the local AMS.Athlete table.
+ *     tags: [AMS - Athletes]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved athlete lookup list from ADEX
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       pk_athlete_uuid:
+ *                         type: string
+ *                         format: uuid
+ *                       first_name:
+ *                         type: string
+ *                       last_name:
+ *                         type: string
+ *                       anonymized_display_name:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       date_of_birth:
+ *                         type: string
+ *                         format: date
+ *                       gender:
+ *                         type: string
+ *                       fk_sport_uuid:
+ *                         type: string
+ *                         format: uuid
+ *                       position:
+ *                         type: string
+ *                         nullable: true
+ *                       race:
+ *                         type: string
+ *                         nullable: true
+ *                       ethnicity:
+ *                         type: string
+ *                         nullable: true
+ *                       nationality:
+ *                         type: string
+ *                         nullable: true
+ *                       is_active:
+ *                         type: boolean
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                       updated_at:
+ *                         type: string
+ *                         format: date-time
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get("/athletes/adex/lookup", authenticateToken, controller.listADEXAthleteLookup);
+
+/**
+ * @swagger
  * /api/AMS/athletes/adex/{pk_athlete_uuid}:
  *   get:
  *     summary: Get Athlete from ADEX by UUID

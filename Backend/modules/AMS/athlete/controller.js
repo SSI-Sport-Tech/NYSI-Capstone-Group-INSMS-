@@ -12,10 +12,11 @@ import {
 import pool from "../../../config/db.js";
 import {
   getAthletesFromADEX,
+  getAthleteLookupFromADEX,
   getAthleteByUuidFromADEX,
 } from "./adexService.js";
 
-// List ADEX Athletes
+// List ADEX Athletes with Pagination, Sorting, and Exporting
 export async function listADEXAthletes(req, res) {
   try {
     const page = Number(req.query.page || 1);
@@ -35,6 +36,22 @@ export async function listADEXAthletes(req, res) {
       message: error.message,
     });
   }
+}
+
+// List ADEX Athletes for Lookup with Sorting
+export async function listADEXAthleteLookup(req, res) {
+    try {
+        const results = await getAthleteLookupFromADEX();
+
+        res.json({data: results,});
+    } catch (error) {
+        console.error("Error fetching ADEX athlete lookup:", error);
+
+        res.status(500).json({
+            error: "Failed to fetch athlete lookup",
+            message: error.message,
+        });
+    }
 }
 
 // List 1 Athlete based on UUID

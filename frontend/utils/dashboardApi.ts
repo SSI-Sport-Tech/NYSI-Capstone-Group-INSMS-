@@ -39,10 +39,27 @@ export interface ConsultationSession {
 
 export interface Athlete {
   id: string;
-  initials: string;
-  first_name: string;
-  last_name: string;
-  sport_name?: string;
+  anonymized_display_name: string;
+  fk_sport_uuid: string;
+  sport_name: string;
+  gender: string;
+  date_of_birth: string;
+  carding_status: string | null;
+  carding_start_date: string | null;
+  carding_end_date: string | null;
+  is_active: boolean;
+  email: string;
+  position: string;
+  race: string | null;
+  ethnicity: string | null;
+  nationality: string | null;
+  target_event: string | null;
+  sport_start_date: number | null;
+  athlete_group_id: number | null;
+  medical_clearance: boolean;
+  is_pinned: boolean;
+  team_uuid: string;
+  assigned_nutritionist: string | null;
 }
 
 export interface AssignedAthlete {
@@ -132,7 +149,7 @@ export async function apiCall<T>(
 export const dashboardApi = {
   // Get all athletes for booking (this endpoint exists)
   getAthletes: async (): Promise<{ data: Athlete[] }> => {
-    return apiCall("/api/AMS/athletes");
+    return apiCall<{ data: Athlete[] }>("/api/AMS/athletes/adex/lookup");
   },
 
   // Get nutritionists (this endpoint exists)
@@ -155,10 +172,16 @@ export const dashboardApi = {
   createConsultationSession: async (sessionData: {
     athlete_id: string;
     type_of_consult_id: string;
-    date_of_consult?: string;
-    consultation_objective?: string;
-    time_of_consult?: string;
+    title_description?: string;
     venue?: string;
+    date_of_consult?: string;
+    time_of_consult?: string;
+    end_time_of_consult?: string;
+    date_of_next_follow_up?: string;
+    time_of_next_follow_up?: string;
+    consultation_objective?: string;
+    ssp?: boolean;
+    nutritionist_id?: string;
     is_scheduled_booking?: boolean;
   }): Promise<{ data: ConsultationSession }> => {
     return apiCall("/api/Consultation/consultation-session", {
@@ -170,7 +193,19 @@ export const dashboardApi = {
   // Update consultation session (this endpoint exists)
   updateConsultationSession: async (
     sessionId: string,
-    updates: Partial<ConsultationSession>
+    updates: {
+      type_of_consult_id?: string;
+      title_description?: string;
+      venue?: string;
+      date_of_consult?: string;
+      time_of_consult?: string;
+      end_time_of_consult?: string;
+      date_of_next_follow_up?: string;
+      time_of_next_follow_up?: string;
+      consultation_objective_id?: string;
+      is_scheduled_booking?: boolean;
+      ssp?: boolean;
+    }
   ): Promise<{ data: ConsultationSession }> => {
     return apiCall(`/api/Consultation/consultation-session/${sessionId}`, {
       method: "PATCH",
@@ -227,15 +262,15 @@ export const dashboardApi = {
     const today = toDateStr(new Date());
     const [todayRes, athletesRes] = await Promise.allSettled([
       apiCall<{ data: ConsultationSession[] }>(`/api/Consultation/consultation-session/today?date=${today}`),
-      apiCall<{ activeCount?: number }>("/api/AMS/athletes"),
+      apiCall<{ data: Athlete[] }>("/api/AMS/athletes/adex/lookup"),
     ]);
 
     const sessions = todayRes.status === "fulfilled" ? todayRes.value.data : [];
     const todayTotal = sessions.length;
     const todayCompleted = sessions.filter((s) => s.status === "completed").length;
 
-    const activeAthletes =
-      athletesRes.status === "fulfilled" ? (athletesRes.value.activeCount ?? 0) : 0;
+    const athletes = athletesRes.status === "fulfilled" ? athletesRes.value.data : [];
+    const activeAthletes = athletes.filter((athlete) => athlete.is_active).length;
 
     return {
       data: {

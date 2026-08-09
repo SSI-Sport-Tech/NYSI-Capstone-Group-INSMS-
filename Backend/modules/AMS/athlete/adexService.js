@@ -63,7 +63,7 @@ async function fetchAllAthletes(token) {
     return athletes;
 }
 
-// Get All Athletes
+// Get All Athletes with Pagination, Sorting, and Exporting
 export async function getAthletesFromADEX(
     userId,
     page = 1,
@@ -202,6 +202,28 @@ export async function getAthletesFromADEX(
     }
 }
 
+// Get All Athletes with Sorting
+export async function getAthleteLookupFromADEX() {
+    try {
+        const token = await generateAdexToken();
+        const athletes = await fetchAllAthletes(token);
+
+        return athletes.sort((a, b) =>
+            a.anonymized_display_name.localeCompare(
+                b.anonymized_display_name,
+                undefined,
+                {
+                    numeric: true,
+                    sensitivity: "base",
+                }
+            )
+        );
+    } catch (err) {
+        console.error(err);
+        throw err;
+    }
+}
+
 // Get 1 Athlete by pk_athlete_uuid
 export async function getAthleteByUuidFromADEX(pkAthleteUuid) {
     try {
@@ -217,6 +239,10 @@ export async function getAthleteByUuidFromADEX(pkAthleteUuid) {
             }
         );
 
+        if (response.status === 404) {
+            return null;
+        }
+
         if (!response.ok) {
             const error = await response.text();
             throw new Error(`ADEX API error ${response.status}: ${error}`);
@@ -230,4 +256,10 @@ export async function getAthleteByUuidFromADEX(pkAthleteUuid) {
         console.error(err);
         throw err;
     }
+}
+
+// Check if an athlete exists in ADEX
+export async function checkAthleteExistsInADEX(athleteUuid) {
+    const athlete = await getAthleteByUuidFromADEX(athleteUuid);
+    return !!athlete;
 }
