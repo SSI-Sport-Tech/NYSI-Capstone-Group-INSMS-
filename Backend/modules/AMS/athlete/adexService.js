@@ -70,12 +70,13 @@ export async function getAthletesFromADEX(
     pageSize = 10,
     exportAll = false,
     sortColumn = "",
-    sortDirection = "asc"
+    sortDirection = "asc",
+    search = ""
 ){
     try {
         const token = await generateAdexToken();
 
-        // Export athletes into CSV
+        // Export all athletes into CSV
         if (exportAll) {
             return await fetchAllAthletes(token);
         }
@@ -105,21 +106,35 @@ export async function getAthletesFromADEX(
         );
 
         athletes = athletes.map(a => {
-        const profile = profileMap.get(a.id);
+            const profile = profileMap.get(a.id);
 
-        return {
-            ...a,
-            target_event: profile?.target_event ?? null,
-            sport_start_date: profile?.sport_start_date ?? null,
-            athlete_group_id: profile?.athlete_group_id ?? null,
-            medical_clearance: profile?.medical_clearance ?? false,
-
-            assigned_nutritionist:
-            nutritionistMap.get(a.id) ?? null,
-
-            is_pinned: pinnedSet.has(a.id),
-        };
+            return {
+                ...a,
+                target_event: profile?.target_event ?? null,
+                sport_start_date: profile?.sport_start_date ?? null,
+                athlete_group_id: profile?.athlete_group_id ?? null,
+                medical_clearance: profile?.medical_clearance ?? false,
+                assigned_nutritionist: nutritionistMap.get(a.id) ?? null,
+                is_pinned: pinnedSet.has(a.id),
+            };
         });
+
+        // Search across all athlete fields
+        if (search && search.trim()) {
+            const searchTerm = search.trim().toLowerCase();
+
+            athletes = athletes.filter((athlete) => {
+                return Object.values(athlete).some((value) => {
+                    if (value === null || value === undefined) {
+                        return false;
+                    }
+
+                    return String(value)
+                        .toLowerCase()
+                        .includes(searchTerm);
+                });
+            });
+        }
         
         // Always keep pinned athletes at the top
         athletes.sort((a, b) => {

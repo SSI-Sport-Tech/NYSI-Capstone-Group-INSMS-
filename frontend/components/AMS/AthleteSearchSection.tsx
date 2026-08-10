@@ -24,7 +24,7 @@ const AthleteSearchSection: React.FC<AthleteSearchSectionProps> = ({
           Search Athletes
         </h3>
         <p className="text-sm text-gray-500 mt-0.5">
-          Search the athlete database by name, sport, or ID
+          Search the athlete database (from ADEX) by athlete anonymized display name, sport name or carding level
         </p>
       </div>
 
@@ -35,7 +35,7 @@ const AthleteSearchSection: React.FC<AthleteSearchSectionProps> = ({
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Type athlete name, sport, or ID..."
+              placeholder="Type athlete name, sport name, or carding level..."
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && onSearch()}
