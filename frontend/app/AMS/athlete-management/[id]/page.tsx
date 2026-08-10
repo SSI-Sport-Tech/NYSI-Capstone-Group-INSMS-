@@ -35,17 +35,6 @@ interface AthleteProfile {
     sport_start_date?: number | null;
     medical_clearance: boolean;
   } | null;
-  // registry: {
-  //   id: string;
-  //   athlete_id: string;
-  //   carding_status: string;
-  //   athlete_notified_on: string;
-  //   carding_start_date: string;
-  //   carding_end_date: string;
-  //   medical_clearance: boolean;
-  //   approved_start_date: string;
-  //   approved_end_date: string;
-  // } | null;
   medical: {
     id: string;
     athlete_id: string;
@@ -94,11 +83,6 @@ interface EditForm {
   medical_remarks: string;
   dietary_restriction: string;
 }
-
-// interface SportOption {
-//   id: string;
-//   sport: string;
-// }
 
 interface CoachOption {
   id: string;

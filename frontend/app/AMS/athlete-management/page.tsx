@@ -34,13 +34,6 @@ interface Athlete {
   team_uuid: string;
   assigned_nutritionist: string | null;
 }
-// interface SearchResponse {
-//   data: Athlete[];
-//   totalCount: number;
-//   currentPage: number;
-//   totalPages: number;
-//   searchQuery?: string;
-// }
 interface SearchResponse {
   data: Athlete[];
   meta: {
@@ -102,10 +95,6 @@ export default function AthleteManagementPage() {
       const data = await request;
       console.log("ADEX response:", data);
 
-      // setAthletes(data.data);
-      // setCurrentPage(data.currentPage);
-      // setTotalPages(data.totalPages);
-      // setTotalCount(data.totalCount);
       setAthletes(data.data);
       setCurrentPage(data.meta.currentPage);
       setTotalPages(data.meta.totalPages);

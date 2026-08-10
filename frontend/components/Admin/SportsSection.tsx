@@ -37,7 +37,7 @@ const SportsSection: React.FC<SportsSectionProps> = ({
                             Sports List
                         </h3>
                         <p className="text-sm text-gray-500 mt-0.5">
-                            {sports.length} sports in database
+                            {sports.length} sports in database (ADEX)
                         </p>
                     </div>
                     <div className="flex gap-2">
@@ -54,7 +54,7 @@ const SportsSection: React.FC<SportsSectionProps> = ({
                 {/* Table */}
                 {sports.length === 0 ? (
                     <div className="px-6 py-12 text-center">
-                        <p className="text-gray-500">No sports found</p>
+                        <p className="text-gray-500">No sports found in ADEX</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">

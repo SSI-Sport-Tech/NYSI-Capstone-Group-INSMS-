@@ -74,7 +74,6 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
 }) => {
   const router = useRouter();
   const { token } = useAuth();
-  // const [selectedAthletes, setSelectedAthletes] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
 
   // Handle pin toggle
@@ -309,11 +308,9 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                 ) : athletes.length > 0 ? (
                   athletes.map((athlete) => (
                     <tr key={athlete.id} className="hover:bg-gray-50">
-                    {/* <tr key={athlete.pk_athlete_uuid} className="hover:bg-gray-50"> */}
                       <td className="px-3 py-4">
                         <button
                           onClick={() => handlePinToggle(athlete.id)}
-                          // onClick={() => handlePinToggle(athlete.pk_athlete_uuid)}
                           className={`p-1 rounded transition-colors ${athlete.is_pinned
                               ? "text-black hover:text-gray-800"
                               : "text-gray-400 hover:text-gray-600"
@@ -328,7 +325,6 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                       <td className="px-3 py-4 text-sm font-medium">
                         <button
                           onClick={() => handleViewAthlete(athlete.id)}
-                          // onClick={() => handleViewAthlete(athlete.pk_athlete_uuid)}
                           className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
                         >
                           {athlete.anonymized_display_name}
