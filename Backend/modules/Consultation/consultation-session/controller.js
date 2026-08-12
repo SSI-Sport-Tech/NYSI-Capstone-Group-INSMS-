@@ -2,6 +2,7 @@ import * as services from './services.js';
 import { createSessionSchema, updateSessionSchema, updateStatusSchema, uuidParamSchema, athleteIdParamSchema } from './validation.js';
 import pool from '../../../config/db.js';
 import { createNOMSMondayItem, buildNOMSMondayColumnValues, updateMondayItem, MONDAY_COLUMNS } from "../../../utils/monday.js";
+import { checkAthleteExistsInADEX, getAthleteByUuidFromADEX } from '../../AMS/athlete/adexService.js';
 
 // ============================================================================
 // GET CONSULTATION SESSION
@@ -44,13 +45,16 @@ export async function getLatestConsultationSession(req, res) {
         const { athleteId } = athleteIdParamSchema.parse(req.params);
         await services.expireOverdueScheduledSessions();
 
-        // Verify athlete exists
-        const athleteCheck = await pool.query(
-            'SELECT id FROM ams.athlete WHERE id = $1',
-            [athleteId]
+        // Validate athlete_id exists in ADEX
+        const athleteExists = await checkAthleteExistsInADEX(
+            athleteId
         );
-        if (athleteCheck.rows.length === 0) {
-            return res.status(404).json({ error: 'Athlete not found' });
+
+        if (!athleteExists) {
+            return res.status(400).json({
+                error: 'Invalid athlete_id',
+                details: [{ field: 'athlete_id', message: 'Athlete not found in ADEX' }],
+            });
         }
 
         const session = await services.getLatestConsultationSession(athleteId);
@@ -85,13 +89,16 @@ export async function getAllConsultationSessions(req, res) {
         const { athleteId } = athleteIdParamSchema.parse(req.params);
         await services.expireOverdueScheduledSessions();
 
-        // Verify athlete exists
-        const athleteCheck = await pool.query(
-            'SELECT id FROM ams.athlete WHERE id = $1',
-            [athleteId]
+        // Validate athlete_id exists in ADEX
+        const athleteExists = await checkAthleteExistsInADEX(
+            athleteId
         );
-        if (athleteCheck.rows.length === 0) {
-            return res.status(404).json({ error: 'Athlete not found' });
+
+        if (!athleteExists) {
+            return res.status(400).json({
+                error: 'Invalid athlete_id',
+                details: [{ field: 'athlete_id', message: 'Athlete not found in ADEX' }],
+            });
         }
 
         const sessions = await services.getAllConsultationSessions(athleteId);
@@ -201,15 +208,14 @@ export async function createConsultationSession(req, res) {
             }
         }
 
-        // Validate athlete_id exists
-        const athleteCheck = await pool.query(
-            'SELECT id FROM AMS.Athlete WHERE id = $1',
-            [validated.athlete_id]
+        // Validate athlete_id exists in ADEX
+        const athleteExists = await checkAthleteExistsInADEX(
+            validated.athlete_id
         );
-        if (athleteCheck.rows.length === 0) {
+        if (!athleteExists) {
             return res.status(400).json({
                 error: 'Invalid athlete_id',
-                details: [{ field: 'athlete_id', message: 'Athlete not found' }],
+                details: [{ field: 'athlete_id', message: 'Athlete not found in ADEX' }],
             });
         }
 
@@ -250,7 +256,17 @@ export async function createConsultationSession(req, res) {
 
             const fullSession = sessionRow.rows[0];
 
-            const mondayResult = await createNOMSMondayItem(fullSession);
+            const athlete = await getAthleteByUuidFromADEX(
+                fullSession.athlete_id
+            );
+
+            const mondaySession = {
+                ...fullSession,
+                athlete_name: athlete?.anonymized_display_name || "",
+                sport: athlete?.sport_name || "",
+            };
+
+            const mondayResult = await createNOMSMondayItem(mondaySession);
             console.log("Saved monday_item_id:", mondayResult?.monday_item_id);
 
             if (mondayResult?.monday_item_id) {
@@ -331,7 +347,17 @@ export async function updateConsultationSession(req, res) {
             const session = sessionRow.rows[0];
 
             if (session?.monday_item_id) {
-                const mondayPayload = buildNOMSMondayColumnValues(session);
+                const athlete = await getAthleteByUuidFromADEX(
+                    session.athlete_id
+                );
+
+                const mondaySession = {
+                    ...session,
+                    athlete_name: athlete?.anonymized_display_name || "",
+                    sport: athlete?.sport_name || "",
+                };
+
+                const mondayPayload = buildNOMSMondayColumnValues(mondaySession);
 
                 console.log("FULL Monday sync payload:", mondayPayload);
 

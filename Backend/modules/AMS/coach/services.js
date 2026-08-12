@@ -1,4 +1,5 @@
 import pool, { withUserContext } from "../../../config/db.js";
+import { getAllSports } from "../sport/services.js";
 
 // ============================================================================
 // COACH CRUD SERVICES
@@ -10,10 +11,9 @@ import pool, { withUserContext } from "../../../config/db.js";
  */
 export async function getAllCoaches() {
     const query = `
-        SELECT c.id, c.sport_id, c.name, sl.sport AS sport_name
-        FROM AMS.Coach c
-        LEFT JOIN AMS.Sport_Lookup sl ON c.sport_id = sl.id
-        ORDER BY c.name ASC
+        SELECT id, sport_id, name
+        FROM AMS.Coach
+        ORDER BY name ASC
     `;
 
     return await pool.query(query);
@@ -26,10 +26,9 @@ export async function getAllCoaches() {
  */
 export async function getCoachById(coachId) {
     const query = `
-        SELECT c.id, c.sport_id, c.name, sl.sport AS sport_name
-        FROM AMS.Coach c
-        LEFT JOIN AMS.Sport_Lookup sl ON c.sport_id = sl.id
-        WHERE c.id = $1
+        SELECT id, sport_id, name
+        FROM AMS.Coach
+        WHERE id = $1
     `;
 
     const result = await pool.query(query, [coachId]);
@@ -62,19 +61,12 @@ export async function checkDuplicateCoach(name, sportId, excludeId = null) {
 }
 
 /**
- * Check if a sport_id exists and is active in Sport_Lookup
- * @param {string} sportId - Sport UUID
- * @returns {Promise<boolean>} True if sport exists and is active
+ * Check if a sport exists in ADEX Sport
  */
-export async function checkSportExists(sportId) {
-    const query = `
-        SELECT id FROM AMS.Sport_Lookup
-        WHERE id = $1 AND is_active = true
-        LIMIT 1
-    `;
+export async function checkSportExistsInADEX(sportId) {
+    const result = await getAllSports();
 
-    const result = await pool.query(query, [sportId]);
-    return result.rows.length > 0;
+    return result.rows.some(s => s.id === sportId);
 }
 
 /**

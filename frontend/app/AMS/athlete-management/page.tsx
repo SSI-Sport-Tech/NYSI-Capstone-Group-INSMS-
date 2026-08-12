@@ -12,23 +12,38 @@ import { getBackendUrl } from "@/utils/backendUrl";
 
 interface Athlete {
   id: string;
-  sportsync_id: string;
-  initials: string;
+  anonymized_display_name: string;
+  fk_sport_uuid: string;
   sport_name: string;
   gender: string;
   date_of_birth: string;
-  carding_status?: string;
-  target_event?: string;
-  assigned_nutritionist?: string;
-  is_pinned?: boolean;
+  carding_status: string | null;
+  carding_start_date: string | null;
+  carding_end_date: string | null;
+  is_active: boolean;
+  email: string;
+  position: string;
+  race: string | null;
+  ethnicity: string | null;
+  nationality: string | null;
+  target_event: string | null;
+  sport_start_date: number | null;
+  athlete_group_id: number | null;
+  medical_clearance: boolean;
+  is_pinned: boolean;
+  team_uuid: string;
+  assigned_nutritionist: string | null;
 }
-
 interface SearchResponse {
   data: Athlete[];
-  totalCount: number;
-  currentPage: number;
-  totalPages: number;
-  searchQuery?: string;
+  meta: {
+    totalItems: number;
+    totalPages: number;
+    currentPage: number;
+    pageSize: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
 }
 
 const inFlightAthleteRequests = new Map<string, Promise<SearchResponse>>();
@@ -42,10 +57,12 @@ export default function AthleteManagementPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [query, setQuery] = useState("");
+  const [sortColumn, setSortColumn] = useState("");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const fetchAthletes = useCallback(async (page = 1, searchQuery = "") => {
+  const fetchAthletes = useCallback(async (page = 1, searchQuery = "", column = sortColumn, direction = sortDirection) => {
     setLoading(true);
     setError(null);
     try {
@@ -55,14 +72,16 @@ export default function AthleteManagementPage() {
       const requestKey = JSON.stringify({
         page,
         searchQuery,
+        column, 
+        direction,
         token: token ?? "",
       });
 
       let request = inFlightAthleteRequests.get(requestKey);
       if (!request) {
         request = axios
-          .get<SearchResponse>(`${backendUrl}/api/AMS/athletes`, {
-            params: { page, search: searchQuery },
+          .get<SearchResponse>(`${backendUrl}/api/AMS/athletes/adex`, {
+            params: { page, pageSize: 10, search: searchQuery, sortColumn: column, sortDirection: direction },
             headers,
           })
           .then((response) => response.data)
@@ -74,11 +93,12 @@ export default function AthleteManagementPage() {
       }
 
       const data = await request;
+      console.log("ADEX response:", data);
 
       setAthletes(data.data);
-      setCurrentPage(data.currentPage);
-      setTotalPages(data.totalPages);
-      setTotalCount(data.totalCount);
+      setCurrentPage(data.meta.currentPage);
+      setTotalPages(data.meta.totalPages);
+      setTotalCount(data.meta.totalItems);
     } catch (err) {
       console.error("Error fetching athletes:", err);
       setError("Failed to load athletes. Please try again.");
@@ -86,7 +106,7 @@ export default function AthleteManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, sortColumn, sortDirection]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -175,6 +195,13 @@ export default function AthleteManagementPage() {
             total={totalCount}
             loading={loading}
             searchQuery={query}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={(column, direction) => {
+              setSortColumn(column);
+              setSortDirection(direction);
+              fetchAthletes(1, query, column, direction);
+            }}
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={handlePageChange}

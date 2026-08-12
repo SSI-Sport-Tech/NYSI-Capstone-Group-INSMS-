@@ -23,12 +23,12 @@ export async function createCoach(req, res) {
     try {
         const validated = createCoachSchema.parse(req.body);
 
-        // Validate sport_id exists and is active
-        const sportExists = await services.checkSportExists(validated.sport_id);
+        // Validate sport exists in ADEX
+        const sportExists = await services.checkSportExistsInADEX(validated.sport_id);
         if (!sportExists) {
             return res.status(400).json({
                 error: 'Validation failed',
-                details: [{ field: 'sport_id', message: 'Sport not found or inactive' }],
+                details: [{ field: 'sport_id', message: 'Sport not found in ADEX' }],
             });
         }
 
@@ -291,13 +291,13 @@ export async function updateCoach(req, res) {
             return res.status(404).json({ error: 'Coach not found' });
         }
 
-        // If sport_id is being changed, validate it exists and is active
+        // Check sport exists in ADEX
         if (validated.sport_id) {
-            const sportExists = await services.checkSportExists(validated.sport_id);
+            const sportExists = await services.checkSportExistsInADEX(validated.sport_id);
             if (!sportExists) {
                 return res.status(400).json({
                     error: 'Validation failed',
-                    details: [{ field: 'sport_id', message: 'Sport not found or inactive' }],
+                    details: [{ field: 'sport_id', message: 'Sport not found in ADEX' }],
                 });
             }
         }

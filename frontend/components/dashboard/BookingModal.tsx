@@ -163,31 +163,48 @@ export default function BookingModal({
     try {
       setLoading(true);
       setErrors({});
-
-      const sessionData = {
-        athlete_id: formData.athlete_id,
-        type_of_consult_id: formData.type_of_consult_id,
-        ...(formData.date_of_consult && { date_of_consult: formData.date_of_consult }),
-        ...(formData.time_of_consult && { time_of_consult: formData.time_of_consult }),
-        ...(formData.venue?.trim() && { venue: formData.venue.trim() }),
-        ...(formData.consultation_objective_id && { consultation_objective_id: formData.consultation_objective_id }),
-        ssp: formData.ssp,
-        // Mark sessions created from the dashboard so ConsultationView can detect them
-        ...(!existingSession && { is_scheduled_booking: true }),
-      };
-
-      console.log('Submitting session data:', sessionData);
-
       let response;
       if (existingSession) {
-        // Update existing session
-        response = await dashboardApi.updateConsultationSession(
-          existingSession.id,
-          sessionData
-        );
+        // Update, athlete_id is NOT allowed in PATCH request
+        const updateData = {
+          type_of_consult_id: formData.type_of_consult_id,
+          ...(formData.date_of_consult && {
+            date_of_consult: formData.date_of_consult,
+          }),
+          ...(formData.time_of_consult && {
+            time_of_consult: formData.time_of_consult,
+          }),
+          ...(formData.venue?.trim() && {
+            venue: formData.venue.trim(),
+          }),
+          ...(formData.consultation_objective_id && {
+            consultation_objective_id: formData.consultation_objective_id,
+          }),
+          ssp: formData.ssp,
+        };
+
+        response = await dashboardApi.updateConsultationSession(existingSession.id, updateData);
       } else {
-        // Create new session
-        response = await dashboardApi.createConsultationSession(sessionData);
+        // Create, athlete_id is required
+        const createData = {
+          athlete_id: formData.athlete_id,
+          type_of_consult_id: formData.type_of_consult_id,
+          is_scheduled_booking: true,
+          ...(formData.date_of_consult && {
+            date_of_consult: formData.date_of_consult,
+          }),
+          ...(formData.time_of_consult && {
+            time_of_consult: formData.time_of_consult,
+          }),
+          ...(formData.venue?.trim() && {
+            venue: formData.venue.trim(),
+          }),
+          ...(formData.consultation_objective_id && {
+            consultation_objective_id: formData.consultation_objective_id,
+          }),
+          ssp: formData.ssp,
+        };
+        response = await dashboardApi.createConsultationSession(createData);
       }
 
       onBookingCreated(response.data);
@@ -269,7 +286,7 @@ export default function BookingModal({
               <option value="">Select an athlete</option>
               {athletes.map((athlete) => (
                 <option key={athlete.id} value={athlete.id}>
-                  {athlete.initials || `${athlete.first_name} ${athlete.last_name}`}
+                  {athlete.anonymized_display_name}
                   {athlete.sport_name && ` (${athlete.sport_name})`}
                 </option>
               ))}
@@ -305,11 +322,11 @@ export default function BookingModal({
             )}
           </div>
 
-          {/* SSP */}
+          {/* Support SSP */}
           <div>
             <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
               <School className="w-4 h-4" />
-              <span>SSP *</span>
+              <span>Support SSP *</span>
             </label>
             <div className="flex gap-3">
               <button

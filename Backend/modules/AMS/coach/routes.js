@@ -14,8 +14,10 @@ const router = express.Router();
  *   get:
  *     summary: List Coaches
  *     description: |
- *       Get all coaches with their associated sport name.
+ *       Get all coaches.
  *       Returns coaches sorted alphabetically by name.
+ *       The response includes the ADEX sport UUID (sport_id).
+ *        Use the ADEX Sports API to retrieve the corresponding sport name.
  *     tags: [AMS - Coaches]
  *     responses:
  *       200:
@@ -36,20 +38,17 @@ const router = express.Router();
  *                       sport_id:
  *                         type: string
  *                         format: uuid
+ *                         description: ADEX Sport UUID
  *                       name:
- *                         type: string
- *                       sport_name:
  *                         type: string
  *             example:
  *               data:
  *                 - id: "uuid-1"
  *                   sport_id: "uuid-sport-1"
  *                   name: "John Smith"
- *                   sport_name: "Swimming"
  *                 - id: "uuid-2"
  *                   sport_id: "uuid-sport-2"
  *                   name: "Jane Doe"
- *                   sport_name: "Athletics"
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
@@ -61,7 +60,8 @@ router.get('/coaches', controller.listCoaches);
  *   post:
  *     summary: Create Coach
  *     description: |
- *       Add a new coach. Requires a valid, active sport_id.
+ *       Add a new coach.
+ *       sport_id must be a valid Sport UUID from the ADEX Sports API.
  *       Duplicate name + sport combinations (case-insensitive) are rejected with 409.
  *     tags: [AMS - Coaches]
  *     requestBody:
@@ -75,7 +75,7 @@ router.get('/coaches', controller.listCoaches);
  *               sport_id:
  *                 type: string
  *                 format: uuid
- *                 description: Sport UUID from Sport_Lookup
+ *                 description: ADEX Sport UUID obtained from GET /api/v1/sports
  *               name:
  *                 type: string
  *                 description: Coach name
@@ -473,7 +473,7 @@ router.patch('/coaches/mappings/:athleteId/:coachId', authenticateToken, control
  *     summary: Update Coach
  *     description: |
  *       Update coach fields (name, sport_id). All fields are optional.
- *       If sport_id is changed, it must reference a valid active sport.
+ *       If sport_id is changed, it must reference a valid sport returned by the ADEX Sports API.
  *       Duplicate name + sport combinations are rejected with 409.
  *     tags: [AMS - Coaches]
  *     parameters:
@@ -494,7 +494,7 @@ router.patch('/coaches/mappings/:athleteId/:coachId', authenticateToken, control
  *               sport_id:
  *                 type: string
  *                 format: uuid
- *                 description: New sport UUID
+ *                 description: New ADEX Sport UUID
  *               name:
  *                 type: string
  *                 description: New coach name

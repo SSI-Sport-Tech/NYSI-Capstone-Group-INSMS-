@@ -4,29 +4,35 @@ import { authenticateToken, requireAdmin } from "../../Auth/authMiddleware.js";
 
 const router = express.Router();
 
-// ============================================================================
-// ATHLETE CRUD ROUTES
-// ============================================================================
-
 /**
  * @swagger
- * /api/AMS/athletes:
+ * /api/AMS/athletes/adex:
  *   get:
- *     summary: List Athletes
+ *     summary: List Athletes from ADEX
  *     description: |
- *       Get a paginated list of athletes with optional search.
- *       Search matches across athlete name, sportsync_id, sport, and gender.
+ *       Retrieves athletes directly from the Athlete Data Exchange (ADEX).
+ *       This endpoint does not query the local AMS.Athlete table.
  *
- *       **List columns:** sportsync_id, initials, sport, gender, date_of_birth
+ *       Used during the ADEX migration to verify athlete synchronization.
  *     tags: [AMS - Athletes]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - $ref: '#/components/parameters/PageParam'
- *       - $ref: '#/components/parameters/SearchParam'
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *         description: Number of athletes per page
  *     responses:
  *       200:
- *         description: Paginated athlete list
+ *         description: Successfully retrieved athletes from ADEX
  *         content:
  *           application/json:
  *             schema:
@@ -37,36 +43,239 @@ const router = express.Router();
  *                   items:
  *                     type: object
  *                     properties:
- *                       id:
+ *                       pk_athlete_uuid:
  *                         type: string
  *                         format: uuid
- *                       sportsync_id:
+ *                       first_name:
  *                         type: string
- *                       initials:
+ *                       last_name:
  *                         type: string
- *                       sport_name:
+ *                       anonymized_display_name:
  *                         type: string
- *                       gender:
+ *                       email:
  *                         type: string
- *                         enum: [Male, Female, Other]
  *                       date_of_birth:
  *                         type: string
  *                         format: date
- *                 currentPage:
- *                   type: integer
- *                 totalPages:
- *                   type: integer
- *                 totalCount:
- *                   type: integer
- *                 searchQuery:
- *                   type: string
- *                   nullable: true
- *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *                       gender:
+ *                         type: string
+ *                       fk_sport_uuid:
+ *                         type: string
+ *                         format: uuid
+ *                       position:
+ *                         type: string
+ *                         nullable: true
+ *                       race:
+ *                         type: string
+ *                         nullable: true
+ *                       ethnicity:
+ *                         type: string
+ *                         nullable: true
+ *                       nationality:
+ *                         type: string
+ *                         nullable: true
+ *                       is_active:
+ *                         type: boolean
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                       updated_at:
+ *                         type: string
+ *                         format: date-time
+ *                 meta:
+ *                   type: object
+ *                   properties:
+ *                     totalItems:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     currentPage:
+ *                       type: integer
+ *                     pageSize:
+ *                       type: integer
+ *                     hasNextPage:
+ *                       type: boolean
+ *                     hasPrevPage:
+ *                       type: boolean
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/athletes", authenticateToken, controller.listAthletes);
+router.get("/athletes/adex", authenticateToken, controller.listADEXAthletes);
+
+/**
+ * @swagger
+ * /api/AMS/athletes/adex/lookup:
+ *   get:
+ *     summary: Get Athlete Lookup List from ADEX
+ *     description: |
+ *       Retrieves a simplified list of athletes directly from the
+ *       Athlete Data Exchange (ADEX) for lookup and selection purposes.
+ *
+ *       This endpoint does not query the local AMS.Athlete table.
+ *     tags: [AMS - Athletes]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved athlete lookup list from ADEX
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       pk_athlete_uuid:
+ *                         type: string
+ *                         format: uuid
+ *                       first_name:
+ *                         type: string
+ *                       last_name:
+ *                         type: string
+ *                       anonymized_display_name:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       date_of_birth:
+ *                         type: string
+ *                         format: date
+ *                       gender:
+ *                         type: string
+ *                       fk_sport_uuid:
+ *                         type: string
+ *                         format: uuid
+ *                       position:
+ *                         type: string
+ *                         nullable: true
+ *                       race:
+ *                         type: string
+ *                         nullable: true
+ *                       ethnicity:
+ *                         type: string
+ *                         nullable: true
+ *                       nationality:
+ *                         type: string
+ *                         nullable: true
+ *                       is_active:
+ *                         type: boolean
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                       updated_at:
+ *                         type: string
+ *                         format: date-time
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get("/athletes/adex/lookup", authenticateToken, controller.listADEXAthleteLookup);
+
+/**
+ * @swagger
+ * /api/AMS/athletes/adex/{pk_athlete_uuid}:
+ *   get:
+ *     summary: Get Athlete from ADEX by UUID
+ *     description: |
+ *       Retrieves a single athlete directly from the Athlete Data Exchange (ADEX)
+ *       using the athlete's primary UUID.
+ *
+ *       This endpoint does not query the local AMS.Athlete table.
+ *
+ *       Used during the ADEX migration to retrieve the master athlete profile.
+ *     tags: [AMS - Athletes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: pk_athlete_uuid
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Primary UUID of the athlete in ADEX
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved athlete from ADEX
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 pk_athlete_uuid:
+ *                   type: string
+ *                   format: uuid
+ *                 first_name:
+ *                   type: string
+ *                 last_name:
+ *                   type: string
+ *                 anonymized_display_name:
+ *                   type: string
+ *                 email:
+ *                   type: string
+ *                   format: email
+ *                 date_of_birth:
+ *                   type: string
+ *                   format: date
+ *                 gender:
+ *                   type: string
+ *                 fk_sport_uuid:
+ *                   type: string
+ *                   format: uuid
+ *                 sport_name:
+ *                   type: string
+ *                 position:
+ *                   type: string
+ *                   nullable: true
+ *                 race:
+ *                   type: string
+ *                   nullable: true
+ *                 ethnicity:
+ *                   type: string
+ *                   nullable: true
+ *                 nationality:
+ *                   type: string
+ *                   nullable: true
+ *                 sport_sync_id:
+ *                   type: string
+ *                   nullable: true
+ *                 external_patient_id:
+ *                   type: string
+ *                   nullable: true
+ *                 pnco:
+ *                   type: string
+ *                   nullable: true
+ *                 team_uuid:
+ *                   type: string
+ *                   format: uuid
+ *                   nullable: true
+ *                 carding_uuid:
+ *                   type: string
+ *                   nullable: true
+ *                 carding_name:
+ *                   type: string
+ *                   nullable: true
+ *                 is_active:
+ *                   type: boolean
+ *                 created_at:
+ *                   type: string
+ *                   format: date-time
+ *                 updated_at:
+ *                   type: string
+ *                   format: date-time
+ *       404:
+ *         description: Athlete not found in ADEX
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get("/athletes/adex/:pk_athlete_uuid", authenticateToken, controller.getADEXAthleteByUuid);
+
 
 /**
  * @swagger
@@ -470,465 +679,5 @@ router.patch(
   requireAdmin,
   controller.adminUpdateAthleteProfile,
 );
-
-/**
- * @swagger
- * /api/AMS/athletes/complete:
- *   post:
- *     summary: Create Complete Athlete
- *     description: |
- *       Create a new athlete with registry, medical, coach mappings, and nutritionist mapping
- *       in a single transaction. If any insert fails, the entire transaction is rolled back.
- *       The logged-in nutritionist is automatically assigned to the athlete and pinned by default.
- *       Medical fields are optional (default to empty string).
- *       coach_ids is optional (defaults to empty array). Gender is either Male, Female or Other.
- *     tags: [AMS - Athletes]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - sport_id
- *               - sportsync_id
- *               - initials
- *               - gender
- *               - date_of_birth
- *               - carding_status
- *               - athlete_notified_on
- *               - carding_start_date
- *               - carding_end_date
- *               - medical_clearance
- *               - approved_start_date
- *               - approved_end_date
- *             properties:
- *               sport_id:
- *                 type: string
- *                 format: uuid
- *                 description: Reference to Sport_Lookup
- *               sportsync_id:
- *                 type: string
- *                 description: External system ID (must be unique)
- *               initials:
- *                 type: string
- *                 description: Athlete abbreviated name
- *               gender:
- *                 type: string
- *                 enum: [Male, Female, Other]
- *               date_of_birth:
- *                 type: string
- *                 format: date
- *               ethnicity:
- *                 type: string
- *                 description: Optional
- *               target_event:
- *                 type: string
- *                 description: Optional
- *               sport_start_date:
- *                 type: string
- *                 format: date
- *                 description: Optional
- *               carding_status:
- *                 type: string
- *               athlete_notified_on:
- *                 type: string
- *                 format: date
- *               carding_start_date:
- *                 type: string
- *                 format: date
- *               carding_end_date:
- *                 type: string
- *                 format: date
- *               medical_clearance:
- *                 type: boolean
- *               approved_start_date:
- *                 type: string
- *                 format: date
- *               approved_end_date:
- *                 type: string
- *                 format: date
- *               medical_condition:
- *                 type: string
- *                 description: Optional (defaults to empty string)
- *               food_allergy:
- *                 type: string
- *                 description: Optional (defaults to empty string)
- *               drug_allergy:
- *                 type: string
- *                 description: Optional (defaults to empty string)
- *               past_injury:
- *                 type: string
- *                 description: Optional (defaults to empty string)
- *               medical_remarks:
- *                 type: string
- *                 description: Optional (defaults to empty string)
- *               coach_ids:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: uuid
- *                 description: Array of coach UUIDs to assign (optional)
- *           example:
- *             sport_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
- *             sportsync_id: "SS-12345"
- *             initials: "J. Smith"
- *             gender: "Male"
- *             date_of_birth: "1998-03-15"
- *             ethnicity: "Chinese"
- *             target_event: "100m Sprint"
- *             sport_start_date: "2015-01-01"
- *             carding_status: "Active"
- *             athlete_notified_on: "2024-01-01"
- *             carding_start_date: "2024-01-01"
- *             carding_end_date: "2025-12-31"
- *             medical_clearance: true
- *             approved_start_date: "2024-01-01"
- *             approved_end_date: "2025-12-31"
- *             medical_condition: "None"
- *             food_allergy: "Shellfish"
- *             drug_allergy: "None"
- *             past_injury: "ACL tear (2022)"
- *             coach_ids: ["b2c3d4e5-f6a7-8901-bcde-f12345678901"]
- *     responses:
- *       201:
- *         description: Athlete created successfully with all relations
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Athlete created successfully with all relations"
- *                 data:
- *                   type: object
- *                   properties:
- *                     athlete:
- *                       type: object
- *                     registry:
- *                       type: object
- *                     medical:
- *                       type: object
- *                     coachMappings:
- *                       type: array
- *                       items:
- *                         type: object
- *                     nutritionistMappings:
- *                       type: array
- *                       items:
- *                         type: object
- *       400:
- *         $ref: '#/components/responses/BadRequest'
- *       409:
- *         $ref: '#/components/responses/Conflict'
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
- */
-router.post(
-  "/athletes/complete",
-  authenticateToken,
-  controller.createCompleteAthlete,
-);
-
-/**
- * @swagger
- * /api/AMS/athletes/complete/admin:
- *   post:
- *     summary: Create Complete Athlete [ADMIN ONLY]
- *     description: |
- *       Admin version of complete athlete creation. Allows specifying which nutritionist
- *       to assign instead of auto-assigning the logged-in user.
- *       The assigned nutritionist is pinned to the athlete by default.
- *       Medical fields are optional (default to empty string).
- *       coach_ids is optional (defaults to empty array). Gender is either Male, Female or Other.
- *     tags: [AMS - Athletes]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - sport_id
- *               - sportsync_id
- *               - initials
- *               - gender
- *               - date_of_birth
- *               - carding_status
- *               - athlete_notified_on
- *               - carding_start_date
- *               - carding_end_date
- *               - medical_clearance
- *               - approved_start_date
- *               - approved_end_date
- *               - nutritionist_id
- *             properties:
- *               sport_id:
- *                 type: string
- *                 format: uuid
- *                 description: Reference to Sport_Lookup
- *               sportsync_id:
- *                 type: string
- *                 description: External system ID (must be unique)
- *               initials:
- *                 type: string
- *                 description: Athlete abbreviated name
- *               gender:
- *                 type: string
- *                 enum: [Male, Female, Other]
- *               date_of_birth:
- *                 type: string
- *                 format: date
- *               ethnicity:
- *                 type: string
- *                 description: Optional
- *               target_event:
- *                 type: string
- *                 description: Optional
- *               sport_start_date:
- *                 type: string
- *                 format: date
- *                 description: Optional
- *               carding_status:
- *                 type: string
- *               athlete_notified_on:
- *                 type: string
- *                 format: date
- *               carding_start_date:
- *                 type: string
- *                 format: date
- *               carding_end_date:
- *                 type: string
- *                 format: date
- *               medical_clearance:
- *                 type: boolean
- *               approved_start_date:
- *                 type: string
- *                 format: date
- *               approved_end_date:
- *                 type: string
- *                 format: date
- *               medical_condition:
- *                 type: string
- *                 description: Optional (defaults to empty string)
- *               food_allergy:
- *                 type: string
- *                 description: Optional (defaults to empty string)
- *               drug_allergy:
- *                 type: string
- *                 description: Optional (defaults to empty string)
- *               past_injury:
- *                 type: string
- *                 description: Optional (defaults to empty string)
- *               medical_remarks:
- *                 type: string
- *                 description: Optional (defaults to empty string)
- *               coach_ids:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: uuid
- *                 description: Array of coach UUIDs to assign (optional)
- *               nutritionist_id:
- *                 type: string
- *                 format: uuid
- *                 description: Nutritionist UUID to assign (required)
- *           example:
- *             sport_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
- *             sportsync_id: "SS-12345"
- *             initials: "J. Smith"
- *             gender: "Male"
- *             date_of_birth: "1998-03-15"
- *             ethnicity: "Chinese"
- *             target_event: "100m Sprint"
- *             sport_start_date: "2015-01-01"
- *             carding_status: "Active"
- *             athlete_notified_on: "2024-01-01"
- *             carding_start_date: "2024-01-01"
- *             carding_end_date: "2025-12-31"
- *             medical_clearance: true
- *             approved_start_date: "2024-01-01"
- *             approved_end_date: "2025-12-31"
- *             coach_ids: ["b2c3d4e5-f6a7-8901-bcde-f12345678901"]
- *             nutritionist_id: "c3d4e5f6-a7b8-9012-cdef-123456789012"
- *     responses:
- *       201:
- *         description: Athlete created successfully with all relations
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Athlete created successfully with all relations"
- *                 data:
- *                   type: object
- *                   properties:
- *                     athlete:
- *                       type: object
- *                     registry:
- *                       type: object
- *                     medical:
- *                       type: object
- *                     coachMappings:
- *                       type: array
- *                       items:
- *                         type: object
- *                     nutritionistMappings:
- *                       type: array
- *                       items:
- *                         type: object
- *       400:
- *         $ref: '#/components/responses/BadRequest'
- *       403:
- *         $ref: '#/components/responses/Forbidden'
- *       409:
- *         $ref: '#/components/responses/Conflict'
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
- */
-router.post(
-  "/athletes/complete/admin",
-  authenticateToken,
-  requireAdmin,
-  controller.adminCreateCompleteAthlete,
-);
-
-/**
- * @swagger
- * /api/AMS/athletes:
- *   post:
- *     summary: Create Basic Athlete [DEV ONLY]
- *     description: |
- *       Create a new athlete record with only base fields.
- *       Does not create registry, medical, or assignment records.
- *       Gender is either Male, Female or Other.
- *     tags: [AMS - Athletes]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - sport_id
- *               - sportsync_id
- *               - initials
- *               - gender
- *               - date_of_birth
- *             properties:
- *               sport_id:
- *                 type: string
- *                 format: uuid
- *                 description: Reference to Sport_Lookup
- *               sportsync_id:
- *                 type: string
- *                 description: External system ID (must be unique)
- *               initials:
- *                 type: string
- *                 description: Athlete abbreviated name
- *               gender:
- *                 type: string
- *                 enum: [Male, Female, Other]
- *               date_of_birth:
- *                 type: string
- *                 format: date
- *                 description: Date of birth (YYYY-MM-DD)
- *               ethnicity:
- *                 type: string
- *                 description: Optional
- *               target_event:
- *                 type: string
- *                 description: Optional
- *               sport_start_date:
- *                 type: string
- *                 format: date
- *                 description: Optional
- *           example:
- *             sport_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
- *             sportsync_id: "SS-12345"
- *             initials: "J. Smith"
- *             gender: "Male"
- *             date_of_birth: "1998-03-15"
- *             ethnicity: "Chinese"
- *             target_event: "100m Sprint"
- *             sport_start_date: "2015-01-01"
- *     responses:
- *       201:
- *         description: Athlete created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Athlete created successfully"
- *                 data:
- *                   type: object
- *       400:
- *         $ref: '#/components/responses/BadRequest'
- *       409:
- *         $ref: '#/components/responses/Conflict'
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
- */
-router.post("/athletes", authenticateToken, controller.createBasicAthlete);
-
-/**
- * @swagger
- * /api/AMS/athletes:
- *   delete:
- *     summary: Delete Athletes (Bulk) [ADMIN ONLY]
- *     description: |
- *       Permanently delete one or more athletes.
- *       Registry and medical records are automatically deleted via CASCADE.
- *     tags: [AMS - Athletes]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [ids]
- *             properties:
- *               ids:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: uuid
- *                 minItems: 1
- *                 description: Array of athlete UUIDs to delete
- *           example:
- *             ids: ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]
- *     responses:
- *       200:
- *         description: Athletes deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 deletedCount:
- *                   type: integer
- *                 deletedIds:
- *                   type: array
- *                   items:
- *                     type: string
- *                     format: uuid
- *       400:
- *         $ref: '#/components/responses/BadRequest'
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
- */
-router.delete("/athletes", authenticateToken, requireAdmin, controller.deleteAthletes);
 
 export default router;

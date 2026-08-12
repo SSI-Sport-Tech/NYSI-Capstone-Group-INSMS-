@@ -106,19 +106,11 @@ export default function DashboardStats({ onQuickAction, refreshKey = 0 }: Dashbo
           </button>
           
           <button
-            onClick={() => handleQuickAction("add-athlete")}
-            className="w-full flex items-center space-x-2 px-3 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 text-sm transition-colors"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Add New Athlete</span>
-          </button>
-          
-          <button
             onClick={() => handleQuickAction("add-schedule")}
             className="w-full flex items-center space-x-2 px-3 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 text-sm transition-colors"
           >
             <CalendarDays className="w-4 h-4" />
-            <span>Add Schedule</span>
+            <span>Add Nutritionist Schedule</span>
           </button>
         </div>
       </div>

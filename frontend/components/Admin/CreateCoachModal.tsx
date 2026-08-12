@@ -141,7 +141,7 @@ const CreateCoachModal: React.FC<CreateCoachModalProps> = ({
                             </select>
                             {sports.length === 0 && (
                                 <p className="mt-1 text-xs text-amber-600">
-                                    ⚠️ No active sports available. Please create a sport first.
+                                    ⚠️ No sports available from ADEX.
                                 </p>
                             )}
                         </div>

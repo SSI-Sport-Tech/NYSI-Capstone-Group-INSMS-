@@ -12,24 +12,30 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
-import AddAthleteModal from "./AddAthleteModal";
 
 interface Athlete {
   id: string;
-  sportsync_id: string;
-  initials: string;
+  anonymized_display_name: string;
+  fk_sport_uuid: string;
   sport_name: string;
   gender: string;
   date_of_birth: string;
-  carding_status?: string;
-  target_event?: string;
-  assigned_nutritionist?: string;
-  is_pinned?: boolean;
-  coaches?: Array<{
-    coach_id: string;
-    coach_name: string;
-    is_active: boolean;
-  }>;
+  carding_status: string | null;
+  carding_start_date: string | null;
+  carding_end_date: string | null;
+  is_active: boolean;
+  email: string;
+  position: string;
+  race: string | null;
+  ethnicity: string | null;
+  nationality: string | null;
+  target_event: string | null;
+  sport_start_date: number | null;
+  athlete_group_id: number | null;
+  medical_clearance: boolean;
+  is_pinned: boolean;
+  team_uuid: string;
+  assigned_nutritionist: string | null;
 }
 
 interface AthleteTableProps {
@@ -37,6 +43,12 @@ interface AthleteTableProps {
   total: number;
   loading: boolean;
   searchQuery?: string;
+  sortColumn: string;
+  sortDirection: "asc" | "desc";
+  onSort: (
+    column: string,
+    direction: "asc" | "desc"
+  ) => void;
   onRefresh?: () => void;
   currentPage?: number;
   totalPages?: number;
@@ -50,6 +62,9 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
   total,
   loading,
   searchQuery,
+  sortColumn,
+  sortDirection,
+  onSort,
   onRefresh,
   currentPage = 1,
   totalPages = 1,
@@ -59,20 +74,7 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
 }) => {
   const router = useRouter();
   const { token } = useAuth();
-  const [selectedAthletes, setSelectedAthletes] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-  const [sortColumn, setSortColumn] = useState<string>("");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [pinnedAthletes, setPinnedAthletes] = useState<string[]>([]);
-  const [showAddModal, setShowAddModal] = useState(false);
-
-  // Update pinned athletes when data changes
-  useEffect(() => {
-    const pinned = athletes
-      .filter((athlete) => athlete.is_pinned)
-      .map((athlete) => athlete.id);
-    setPinnedAthletes(pinned);
-  }, [athletes]);
 
   // Handle pin toggle
   const handlePinToggle = async (athleteId: string) => {
@@ -118,107 +120,71 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
     router.push(`/AMS/athlete-management/${athleteId}`);
   };
 
-  // Handle checkbox selection
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedAthletes(athletes.map((athlete) => athlete.id));
-    } else {
-      setSelectedAthletes([]);
-    }
-  };
-
-  const handleSelectAthlete = (athleteId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedAthletes((prev) => [...prev, athleteId]);
-    } else {
-      setSelectedAthletes((prev) => prev.filter((id) => id !== athleteId));
-    }
-  };
-
-  // Handle delete
-  const handleDelete = async () => {
-    if (selectedAthletes.length === 0) {
-      alert("Please select athletes to delete");
-      return;
-    }
-
-    if (
-      confirm(
-        `Are you sure you want to delete ${selectedAthletes.length} athlete(s)?`,
-      )
-    ) {
-      try {
-        await axios.delete("/api/AMS/athletes", {
-          data: { ids: selectedAthletes },
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setSelectedAthletes([]);
-        if (onRefresh) onRefresh();
-      } catch (error) {
-        console.error("Error deleting athletes:", error);
-        if (axios.isAxiosError(error) && error.response?.status === 403) {
-          alert("Access denied: deleting athletes requires Admin privileges.");
-        } else {
-          alert("Failed to delete athletes. Please try again.");
-        }
-      }
-    }
-  };
-
   // Handle export
-  const handleExport = () => {
-    const headers = [
-      "ID",
-      "SportSync ID",
-      "Athlete Name",
-      "Sport",
-      "Gender",
-      "Date of Birth",
-    ];
-    const csvContent = [
-      headers.join(","),
-      ...athletes.map((athlete) =>
-        [
-          athlete.id,
-          athlete.sportsync_id,
-          athlete.initials,
-          athlete.sport_name,
-          athlete.gender,
-          athlete.date_of_birth
-            ? new Date(athlete.date_of_birth).toLocaleDateString()
-            : "-",
-        ].join(","),
-      ),
-    ].join("\n");
+  const handleExport = async () => {
+    try {
+      const backendUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `athletes-${new Date().toISOString().split("T")[0]}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+      const response = await axios.get(`${backendUrl}/api/AMS/athletes/adex`, {
+        params: {
+          export: true,
+        },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const allAthletes = response.data;
+
+      const headers = [
+        "ID",
+        "Athlete Name",
+        "Sport",
+        "Carding Level",
+        "Gender",
+        "Date of Birth",
+      ];
+
+      const csvContent = [
+        headers.join(","),
+        ...allAthletes.map((athlete: Athlete) =>
+          [
+            athlete.id,
+            athlete.anonymized_display_name,
+            athlete.sport_name,
+            athlete.carding_status ?? "",
+            athlete.gender,
+            athlete.date_of_birth
+              ? new Date(athlete.date_of_birth).toLocaleDateString()
+              : "",
+          ].join(",")
+        ),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `athletes-${new Date().toISOString().split("T")[0]}.csv`;
+      link.click();
+
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export failed:", err);
+      onError?.("Failed to export athletes.");
+    }
   };
 
   // Handle sorting
   const handleSort = (column: string) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortColumn(column);
-      setSortDirection("asc");
-    }
-  };
+    const direction =
+      sortColumn === column && sortDirection === "asc"
+        ? "desc"
+        : "asc";
 
-  // Handle modal success and error
-  const handleModalSuccess = (message: string) => {
-    setShowAddModal(false);
-    if (onRefresh) onRefresh();
-    if (onSuccess) onSuccess(message);
-  };
-
-  const handleModalError = (message: string) => {
-    if (onError) onError(message);
+    onSort(column, direction);
   };
 
   return (
@@ -236,31 +202,11 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={handleDelete}
-              disabled={selectedAthletes.length === 0}
-              className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-lg px-3.5 py-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>Delete</span>
-              {selectedAthletes.length > 0 && (
-                <span className="ml-1 bg-gray-100 text-gray-600 text-xs px-1.5 py-0.5 rounded">
-                  {selectedAthletes.length}
-                </span>
-              )}
-            </button>
-            <button
               onClick={handleExport}
               className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-lg px-3.5 py-2 transition-colors hover:bg-gray-50"
             >
               <Upload className="w-4 h-4" />
               <span>Export</span>
-            </button>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Athlete</span>
             </button>
           </div>
         </div>
@@ -272,30 +218,10 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-3 py-3 text-left w-12">
-                    <input
-                      type="checkbox"
-                      checked={
-                        selectedAthletes.length === athletes.length &&
-                        athletes.length > 0
-                      }
-                      onChange={(e) => handleSelectAll(e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  </th>
-                  <th className="px-3 py-3 text-left w-12">
                     {/* Pin column */}
                   </th>
                   <th
-                    onClick={() => handleSort("sportsync_id")}
-                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700"
-                  >
-                    <div className="flex items-center gap-1">
-                      <span className="whitespace-nowrap">SportSync ID</span>
-                      <ArrowUpDown className="w-3 h-3" />
-                    </div>
-                  </th>
-                  <th
-                    onClick={() => handleSort("initials")}
+                    onClick={() => handleSort("anonymized_display_name")}
                     className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700"
                   >
                     <div className="flex items-center gap-1">
@@ -314,6 +240,15 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                   </th>
                   <th
                     onClick={() => handleSort("carding_status")}
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span className="whitespace-nowrap">Carding Level</span>
+                      <ArrowUpDown className="w-3 h-3" />
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort("is_active")}
                     className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700"
                   >
                     <div className="flex items-center gap-1">
@@ -374,16 +309,6 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                   athletes.map((athlete) => (
                     <tr key={athlete.id} className="hover:bg-gray-50">
                       <td className="px-3 py-4">
-                        <input
-                          type="checkbox"
-                          checked={selectedAthletes.includes(athlete.id)}
-                          onChange={(e) =>
-                            handleSelectAthlete(athlete.id, e.target.checked)
-                          }
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                      </td>
-                      <td className="px-3 py-4">
                         <button
                           onClick={() => handlePinToggle(athlete.id)}
                           className={`p-1 rounded transition-colors ${athlete.is_pinned
@@ -397,32 +322,33 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                           />
                         </button>
                       </td>
-                      <td className="px-3 py-4 text-sm text-gray-600">
-                        {athlete.sportsync_id}
-                      </td>
                       <td className="px-3 py-4 text-sm font-medium">
                         <button
                           onClick={() => handleViewAthlete(athlete.id)}
                           className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
                         >
-                          {athlete.initials}
+                          {athlete.anonymized_display_name}
                         </button>
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-900">
                         {athlete.sport_name}
                       </td>
+                      <td className="px-3 py-4 text-sm text-gray-900">
+                        {athlete.carding_status}
+                      </td>
                       <td className="px-3 py-4">
-                        {athlete.carding_status ? (
+                        {athlete.is_active === undefined || athlete.is_active === null ? (
+                          <span className="text-gray-400">-</span>
+                        ) : (
                           <span
-                            className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${athlete.carding_status?.toLowerCase() === "active"
+                            className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              athlete.is_active
                                 ? "bg-green-100 text-green-800"
                                 : "bg-red-100 text-red-800"
-                              }`}
+                            }`}
                           >
-                            {athlete.carding_status}
+                            {athlete.is_active ? "Active" : "Inactive"}
                           </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
                         )}
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-900">
@@ -443,7 +369,7 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
                         {athlete.target_event || "-"}
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-900">
-                        {athlete.assigned_nutritionist || "Amy Tan"}
+                        {athlete.assigned_nutritionist || "-"}
                       </td>
                     </tr>
                   ))
@@ -500,14 +426,6 @@ const AthleteTable: React.FC<AthleteTableProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Add Athlete Modal */}
-      <AddAthleteModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSuccess={handleModalSuccess}
-        onError={handleModalError}
-      />
     </>
   );
 };

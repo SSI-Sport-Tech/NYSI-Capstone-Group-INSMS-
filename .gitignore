@@ -22,6 +22,9 @@ yarn-error.log*
 dist/
 build/
 
+# Keys
+Backend/keys/
+
 # Python
 venv/
 ocr_service/venv/

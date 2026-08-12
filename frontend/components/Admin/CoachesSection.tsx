@@ -41,13 +41,20 @@ const CoachesSection: React.FC<CoachesSectionProps> = ({
     const [sportFilter, setSportFilter] = useState<string>("");
     const [searchQuery, setSearchQuery] = useState("");
 
+    const sportMap = Object.fromEntries(
+        sports.map((sport) => [
+            sport.id,
+            sport.sport
+        ])
+    );
+
     // Filter coaches based on sport and search
     const filteredCoaches = coaches.filter((coach) => {
         const matchesSport = !sportFilter || coach.sport_id === sportFilter;
         const matchesSearch =
             !searchQuery ||
             coach.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            coach.sport_name.toLowerCase().includes(searchQuery.toLowerCase());
+            (sportMap[coach.sport_id] || "").toLowerCase().includes(searchQuery.toLowerCase());
         return matchesSport && matchesSearch;
     });
 
@@ -72,7 +79,7 @@ const CoachesSection: React.FC<CoachesSectionProps> = ({
 
         const coachNames = coaches
             .filter((c) => selectedCoaches.includes(c.id))
-            .map((c) => `${c.name} (${c.sport_name})`)
+            .map((c) => `${c.name} (${sportMap[c.sport_id] || "Unknown Sport"})`)
             .join(", ");
 
         if (
@@ -188,13 +195,11 @@ const CoachesSection: React.FC<CoachesSectionProps> = ({
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                             >
                                 <option value="">All Sports</option>
-                                {sports
-                                    .filter((s) => s.is_active)
-                                    .map((sport) => (
-                                        <option key={sport.id} value={sport.id}>
-                                            {sport.sport}
-                                        </option>
-                                    ))}
+                                {sports.map((sport) => (
+                                    <option key={sport.id} value={sport.id}>
+                                        {sport.sport}
+                                    </option>
+                                ))}
                             </select>
                         </div>
 
@@ -268,7 +273,7 @@ const CoachesSection: React.FC<CoachesSectionProps> = ({
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                {coach.sport_name}
+                                                {sportMap[coach.sport_id] || "Unknown Sport"}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
@@ -293,7 +298,7 @@ const CoachesSection: React.FC<CoachesSectionProps> = ({
             {/* Modals */}
             {showCreateModal && (
                 <CreateCoachModal
-                    sports={sports.filter((s) => s.is_active)}
+                    sports={sports}
                     onClose={() => setShowCreateModal(false)}
                     onSuccess={() => {
                         handleModalSuccess();
@@ -306,7 +311,7 @@ const CoachesSection: React.FC<CoachesSectionProps> = ({
             {showEditModal && selectedCoach && (
                 <EditCoachModal
                     coach={selectedCoach}
-                    sports={sports.filter((s) => s.is_active)}
+                    sports={sports}
                     onClose={() => {
                         setShowEditModal(false);
                         setSelectedCoach(null);
