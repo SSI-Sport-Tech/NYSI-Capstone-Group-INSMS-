@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def _call_ollama(system_prompt: str, user_prompt: str) -> str:
     """Call Ollama chat API and return response text."""
     ollama_base_url = os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
-    ollama_model = os.environ.get("OLLAMA_MODEL", "qwen3:8b")
+    ollama_model = os.environ.get("OLLAMA_MODEL", "gpt-oss:20b")
 
     response = requests.post(
         f"{ollama_base_url}/api/chat",

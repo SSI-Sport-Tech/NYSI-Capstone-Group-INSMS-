@@ -283,7 +283,7 @@ def _extract_nutrition_image_with_llm(html: str) -> Optional[str]:
     import requests as _requests
 
     ollama_base_url = os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
-    ollama_model = os.environ.get("OLLAMA_MODEL", "qwen3:8b")
+    ollama_model = os.environ.get("OLLAMA_MODEL", "gpt-oss:20b")
 
     # Only send relevant portion of HTML
     from bs4 import BeautifulSoup
@@ -353,7 +353,7 @@ async def scrape_product_details(
     # ScrapeGraphAI configuration
     config = {
         "llm": {
-            "model": f"ollama/{os.environ.get('OLLAMA_MODEL', 'qwen3:8b')}",
+            "model": f"ollama/{os.environ.get('OLLAMA_MODEL', 'gpt-oss:20b')}",
             "base_url": os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434"),
             "format": "json",
             "model_tokens": 128000,

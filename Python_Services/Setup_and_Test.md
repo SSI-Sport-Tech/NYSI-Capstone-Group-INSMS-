@@ -369,7 +369,7 @@ Response:
     "BSCG"
   ],
   "ocr_model": "PaddleOCR PP-OCRv4",
-  "llm": f"ollama/{os.environ.get('OLLAMA_MODEL', 'qwen3:8b')}"
+  "llm": f"ollama/{os.environ.get('OLLAMA_MODEL', 'gpt-oss:20b')}"
 }
 ```
 

@@ -32,7 +32,7 @@ async def search_batch_testing(
 
     config = {
         "llm": {
-            "model": f"ollama/{os.environ.get('OLLAMA_MODEL', 'qwen3:8b')}",
+            "model": f"ollama/{os.environ.get('OLLAMA_MODEL', 'gpt-oss:20b')}",
             "base_url": os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434"),
             "model_tokens": 32000,
             "temperature": 0,
@@ -120,7 +120,7 @@ async def search_batch_testing_with_consensus(
     """
     config = {
         "llm": {
-            "model": f"ollama/{os.environ.get('OLLAMA_MODEL', 'qwen3:8b')}",
+            "model": f"ollama/{os.environ.get('OLLAMA_MODEL', 'gpt-oss:20b')}",
             "base_url": os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434"),
             "model_tokens": 32000,
             "temperature": 0,
@@ -286,7 +286,7 @@ async def search_batch_testing_url(
 
     config = {
         "llm": {
-            "model": f"ollama/{os.environ.get('OLLAMA_MODEL', 'qwen3:8b')}",
+            "model": f"ollama/{os.environ.get('OLLAMA_MODEL', 'gpt-oss:20b')}",
             "base_url": os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434"),
             "model_tokens": 32000,
             "temperature": 0,
