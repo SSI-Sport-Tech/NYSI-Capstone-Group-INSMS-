@@ -5,15 +5,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import UrlSelectionModal from "@/components/SSS/UrlSelectionModal";
 import StagingDetailModal from "@/components/SSS/StagingDetailModal";
-import {
-  Play,
-  Clock,
-  Trash2,
-  Save,
-  ChevronDown,
-  ExternalLink,
-  X,
-} from "lucide-react";
+import { Play, Clock, Trash2, Save, ChevronDown, ChevronUp, ChevronsUpDown, ExternalLink, X } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import SupplementTabBar from "@/components/SSS/SupplementTabBar";
@@ -102,6 +94,7 @@ export default function WebScraperPage() {
     try {
       const response = await axios.get("/api/SSS/staging-supplements?page=1");
       const { data, totalPages, totalCount: count } = response.data;
+      console.log("API response:", { totalPages, count, dataLength: data?.length }); // ← add this
       setStagingSupplements(data || []);
       setTotalCount(count ?? 0);
       setHasMore((totalPages ?? 1) > 1);
@@ -353,6 +346,32 @@ export default function WebScraperPage() {
     setSummarySelectedIds(new Set());
   };
 
+  const [sortKey, setSortKey] = useState<keyof StagingSupplement | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (key: keyof StagingSupplement) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const sortedSupplements = [...stagingSupplements].sort((a, b) => {
+    if (!sortKey) return 0;
+    const aVal = (a[sortKey] ?? "").toString().toLowerCase();
+    const bVal = (b[sortKey] ?? "").toString().toLowerCase();
+    return sortDir === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+  });
+
+  const SortIcon = ({ col }: { col: keyof StagingSupplement }) => {
+    if (sortKey !== col) return <ChevronsUpDown className="w-3.5 h-3.5 ml-1 text-gray-400" />;
+    return sortDir === "asc"
+      ? <ChevronUp className="w-3.5 h-3.5 ml-1 text-gray-700" />
+      : <ChevronDown className="w-3.5 h-3.5 ml-1 text-gray-700" />;
+  };
+
   return (
     <DashboardLayout>
       <SupplementTabBar activeId="web-scraper" />
@@ -365,13 +384,12 @@ export default function WebScraperPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Scraper Status</h2>
             {scheduleConfig && (
-              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                scheduleConfig.is_running
-                  ? "bg-blue-100 text-blue-800"
-                  : scheduleConfig.is_enabled
+              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${scheduleConfig.is_running
+                ? "bg-blue-100 text-blue-800"
+                : scheduleConfig.is_enabled
                   ? "bg-green-100 text-green-800"
                   : "bg-gray-100 text-gray-600"
-              }`}>
+                }`}>
                 {scheduleConfig.is_running ? "Running" : scheduleConfig.is_enabled ? "Scheduled" : "Paused"}
               </span>
             )}
@@ -452,43 +470,35 @@ export default function WebScraperPage() {
                   <th className="w-12 p-4">
                     <input
                       type="checkbox"
-                      checked={
-                        stagingSupplements.length > 0 &&
-                        selectedItems.size === stagingSupplements.length
-                      }
+                      checked={stagingSupplements.length > 0 && selectedItems.size === stagingSupplements.length}
                       onChange={handleSelectAll}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                   </th>
+                  {(
+                    [
+                      { label: "Supplement Name", key: "supplement_name" },
+                      { label: "Brand", key: "supplement_brand" },
+                      { label: "Type", key: "supplement_packaging_form" },
+                      { label: "Batch Testing Org", key: "batch_testing_org" },
+                    ] as { label: string; key: keyof StagingSupplement }[]
+                  ).map(({ label, key }) => (
+                    <th
+                      key={key}
+                      className="px-3 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer select-none hover:bg-gray-100"
+                      onClick={() => handleSort(key)}
+                    >
+                      <div className="flex items-center">
+                        {label}
+                        <SortIcon col={key} />
+                      </div>
+                    </th>
+                  ))}
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
-                    <div className="flex items-center">
-                      Supplement Name <ChevronDown className="w-4 h-4 ml-1" />
-                    </div>
+                    Product Link
                   </th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
-                    <div className="flex items-center">
-                      Brand <ChevronDown className="w-4 h-4 ml-1" />
-                    </div>
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
-                    <div className="flex items-center">
-                      Type <ChevronDown className="w-4 h-4 ml-1" />
-                    </div>
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
-                    <div className="flex items-center">
-                      Batch Testing Org <ChevronDown className="w-4 h-4 ml-1" />
-                    </div>
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
-                    <div className="flex items-center">
-                      Product Link <ChevronDown className="w-4 h-4 ml-1" />
-                    </div>
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500">
-                    <div className="flex items-center">
-                      Actions <ChevronDown className="w-4 h-4 ml-1" />
-                    </div>
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -501,7 +511,7 @@ export default function WebScraperPage() {
                     </td>
                   </tr>
                 ) : (
-                  stagingSupplements.map((supplement) => (
+                  sortedSupplements.map((supplement) => (
                     <tr key={supplement.id} className="hover:bg-gray-50">
                       <td className="p-4">
                         <input
@@ -563,6 +573,16 @@ export default function WebScraperPage() {
 
           {/* Sentinel — triggers next page load when scrolled into view */}
           <div ref={sentinelRef} />
+          {hasMore && !loadingMore && (
+            <div className="flex justify-center py-3 border-t border-gray-200">
+              <button
+                onClick={loadMoreSupplements}
+                className="px-4 py-2 text-sm text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50"
+              >
+                Load more ({stagingSupplements.length} of {totalCount})
+              </button>
+            </div>
+          )}
 
           {/* Footer */}
           {(stagingSupplements.length > 0 || loadingMore) && (
