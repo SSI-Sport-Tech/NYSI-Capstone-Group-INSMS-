@@ -86,22 +86,20 @@ const NutritionalInfo: React.FC<NutritionalInfoProps> = ({
             <button
               onClick={() => setActiveTab("per100g")}
               disabled={!hasPer100gData}
-              className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                activeTab === "per100g"
+              className={`px-3 py-1 text-xs font-medium rounded transition-colors ${activeTab === "per100g"
                   ? "bg-white text-gray-900 shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
-              } ${!hasPer100gData ? "opacity-50 cursor-not-allowed" : ""}`}
+                } ${!hasPer100gData ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               Per 100g
             </button>
             <button
               onClick={() => setActiveTab("perServing")}
               disabled={!hasPerServingData}
-              className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                activeTab === "perServing"
+              className={`px-3 py-1 text-xs font-medium rounded transition-colors ${activeTab === "perServing"
                   ? "bg-white text-gray-900 shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
-              } ${!hasPerServingData ? "opacity-50 cursor-not-allowed" : ""}`}
+                } ${!hasPerServingData ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               Per Serving
             </button>
@@ -118,10 +116,10 @@ const NutritionalInfo: React.FC<NutritionalInfoProps> = ({
         {/* Per 100g Display */}
         {activeTab === "per100g" && hasPer100gData && (
           <>
-            {Object.entries(nutritionalInfoPer100g!).map(
-              ([key, value], index) => {
+            {Object.entries(nutritionalInfoPer100g!)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([key, value]) => {
                 if (value === undefined || value === null) return null;
-
                 return (
                   <div
                     key={key}
@@ -135,16 +133,16 @@ const NutritionalInfo: React.FC<NutritionalInfoProps> = ({
                     </dd>
                   </div>
                 );
-              },
-            )}
+              })}
           </>
         )}
 
         {/* Per Serving Display */}
         {activeTab === "perServing" && hasPerServingData && (
           <>
-            {Object.entries(nutritionalInfoPerServing!).map(
-              ([key, value], index) => (
+            {Object.entries(nutritionalInfoPerServing!)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([key, value]) => (
                 <div
                   key={key}
                   className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
@@ -156,8 +154,7 @@ const NutritionalInfo: React.FC<NutritionalInfoProps> = ({
                     {formatNutrientValue(key, value)}
                   </dd>
                 </div>
-              ),
-            )}
+              ))}
           </>
         )}
       </div>
@@ -166,16 +163,14 @@ const NutritionalInfo: React.FC<NutritionalInfoProps> = ({
       <div className="flex justify-center mt-6 space-x-2">
         {hasPer100gData && (
           <div
-            className={`w-2 h-2 rounded-full ${
-              activeTab === "per100g" ? "bg-gray-400" : "bg-gray-200"
-            }`}
+            className={`w-2 h-2 rounded-full ${activeTab === "per100g" ? "bg-gray-400" : "bg-gray-200"
+              }`}
           ></div>
         )}
         {hasPerServingData && (
           <div
-            className={`w-2 h-2 rounded-full ${
-              activeTab === "perServing" ? "bg-gray-400" : "bg-gray-200"
-            }`}
+            className={`w-2 h-2 rounded-full ${activeTab === "perServing" ? "bg-gray-400" : "bg-gray-200"
+              }`}
           ></div>
         )}
       </div>

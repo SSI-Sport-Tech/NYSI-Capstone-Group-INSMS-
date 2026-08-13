@@ -160,9 +160,8 @@ function JsonTextarea({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={6}
-        className={`w-full px-3 py-2 text-sm font-mono border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 resize-y ${
-          error ? "border-red-400 bg-red-50" : "border-gray-300"
-        }`}
+        className={`w-full px-3 py-2 text-sm font-mono border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 resize-y ${error ? "border-red-400 bg-red-50" : "border-gray-300"
+          }`}
         spellCheck={false}
       />
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
@@ -211,12 +210,13 @@ function JsonDisplay({ value }: { value: unknown }) {
 function recordToRows(record: Record<string, unknown> | null | undefined): NutritionalRow[] {
   if (!record || Object.keys(record).length === 0)
     return [{ nutrient: "", amount: "" }];
-  return Object.entries(record).map(([nutrient, amount]) => ({
-    nutrient,
-    amount: String(amount ?? ""),
-  }));
+  return Object.entries(record)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([nutrient, amount]) => ({
+      nutrient,
+      amount: String(amount ?? ""),
+    }));
 }
-
 // Convert editable rows back to a record for the API
 function rowsToRecord(rows: NutritionalRow[]): Record<string, string> | null {
   const entries = rows
@@ -229,6 +229,11 @@ function rowsToRecord(rows: NutritionalRow[]): Record<string, string> | null {
 function NutritionalTableView({ value }: { value: Record<string, unknown> | null }) {
   if (!value || Object.keys(value).length === 0)
     return <p className="text-sm text-gray-400">-</p>;
+
+  const sorted = Object.entries(value).sort(([a], [b]) =>
+    a.localeCompare(b)
+  );
+
   return (
     <table className="w-full text-sm border border-gray-200 rounded-md overflow-hidden">
       <thead className="bg-gray-50">
@@ -238,7 +243,7 @@ function NutritionalTableView({ value }: { value: Record<string, unknown> | null
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-100">
-        {Object.entries(value).map(([nutrient, amount]) => (
+        {sorted.map(([nutrient, amount]) => (
           <tr key={nutrient}>
             <td className="px-3 py-2 text-gray-700">{nutrient}</td>
             <td className="px-3 py-2 text-gray-900">{String(amount ?? "-")}</td>
@@ -853,8 +858,8 @@ const StagingDetailModal: React.FC<StagingDetailModalProps> = ({
                           const urls = Array.isArray(detail.product_source_url)
                             ? detail.product_source_url.filter(Boolean)
                             : detail.product_source_url
-                            ? [detail.product_source_url]
-                            : [];
+                              ? [detail.product_source_url]
+                              : [];
                           if (urls.length === 0)
                             return <p className="text-sm text-gray-400">-</p>;
                           return (
@@ -1018,11 +1023,10 @@ const StagingDetailModal: React.FC<StagingDetailModalProps> = ({
                     Review Status
                   </h3>
                   <span
-                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                      detail.is_reviewed
-                        ? "bg-green-100 text-green-800"
-                        : "bg-yellow-100 text-yellow-800"
-                    }`}
+                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${detail.is_reviewed
+                      ? "bg-green-100 text-green-800"
+                      : "bg-yellow-100 text-yellow-800"
+                      }`}
                   >
                     {detail.is_reviewed ? "Reviewed" : "Pending Review"}
                   </span>
