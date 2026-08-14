@@ -52,6 +52,7 @@ export async function apiCall<T>(endpoint: string): Promise<T> {
 export async function apiPatch<T>(endpoint: string, body: object): Promise<T> {
   const token = localStorage.getItem("token");
 
+
   if (!token) {
     throw new ConsultationApiError("Authentication token not found", 401);
   }
@@ -68,6 +69,30 @@ export async function apiPatch<T>(endpoint: string, body: object): Promise<T> {
   if (!response.ok) {
     throw new ConsultationApiError(
       `HTTP error! status: ${response.status}`,
+      response.status,
+    );
+  }
+
+  return response.json();
+}
+
+export async function apiPost<T>(endpoint: string, body: object): Promise<T> {
+  const token = localStorage.getItem("token");
+  if (!token) throw new ConsultationApiError("Authentication token not found", 401);
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new ConsultationApiError(
+      errorBody.message || errorBody.error || `HTTP error! status: ${response.status}`,
       response.status,
     );
   }
@@ -121,6 +146,38 @@ export const consultationApi = {
   // Get anthropometry for session
   getAnthropometry: async (sessionId: string) => {
     return apiCall(`/api/Consultation/sessions/${sessionId}/anthropometry`);
+  },
+
+  getBiaMeasurements: async (athleteId: string) => {
+    return apiCall(
+      `/api/Consultation/athletes/${athleteId}/bia-measurements`,
+    );
+  },
+
+  getAdexAnthropometries: async (athleteId: string) => {
+    return apiCall(
+      `/api/Consultation/athletes/${athleteId}/adex-anthropometries`,
+    );
+  },
+
+  getAdexAnthropometryDetail: async (anthropometryId: string) => {
+    return apiCall(
+      `/api/Consultation/adex-anthropometries/${anthropometryId}`,
+    );
+  },
+
+  calculateAdexAnthropometry: async (athleteId: string, payload: object) => {
+    return apiPost(
+      `/api/Consultation/athletes/${athleteId}/adex-anthropometries/calculate`,
+      payload,
+    );
+  },
+
+  createAdexAnthropometry: async (athleteId: string, payload: object) => {
+    return apiPost(
+      `/api/Consultation/athletes/${athleteId}/adex-anthropometries`,
+      payload,
+    );
   },
 
   // Get training schedule for session
