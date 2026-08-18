@@ -1,4 +1,87 @@
 import pool, { withUserContext } from "../../../config/db.js";
+import { generateAdexToken } from "../../../services/adexAuth.js";
+
+async function getAdexJson(path, notFoundValue = null) {
+  const token = await generateAdexToken();
+  const response = await fetch(
+    `${process.env.ADEX_API_URL}/api/v1/${path}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    },
+  );
+
+  if (response.status === 404 && notFoundValue !== null) return notFoundValue;
+
+  if (!response.ok) {
+    const error = new Error("Unable to retrieve measurement data from ADEX");
+    error.status = response.status >= 400 && response.status < 500 ? response.status : 502;
+    throw error;
+  }
+
+  return response.json();
+}
+
+async function postAdexJson(path, payload) {
+  const token = await generateAdexToken();
+  const response = await fetch(`${process.env.ADEX_API_URL}/api/v1/${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const responseBody = await response.json().catch(() => ({}));
+    const error = new Error(
+      responseBody.message || responseBody.error || "Unable to save anthropometry data to ADEX",
+    );
+    error.status = response.status >= 400 && response.status < 500 ? response.status : 502;
+    throw error;
+  }
+
+  return response.json();
+}
+
+export async function getBiaMeasurementsByAthleteId(athleteId) {
+  const measurements = await getAdexJson(
+    `measurements?athlete_uuid=${encodeURIComponent(athleteId)}`,
+    [],
+  );
+  return Array.isArray(measurements) ? measurements : [];
+}
+
+export async function getAdexAnthropometriesByAthleteId(athleteId) {
+  const measurements = await getAdexJson(
+    `anthropometries?athlete_uuid=${encodeURIComponent(athleteId)}`,
+    [],
+  );
+  return Array.isArray(measurements) ? measurements : [];
+}
+
+export async function getAdexAnthropometryById(anthropometryId) {
+  return getAdexJson(
+    `anthropometries/${encodeURIComponent(anthropometryId)}`,
+  );
+}
+
+export async function calculateAdexAnthropometry(athleteId, payload) {
+  return postAdexJson("anthropometries/calculate", {
+    ...payload,
+    fk_athlete_uuid: athleteId,
+  });
+}
+
+export async function createAdexAnthropometry(athleteId, payload) {
+  return postAdexJson("anthropometries", {
+    ...payload,
+    fk_athlete_uuid: athleteId,
+  });
+}
 
 async function assertSessionExists(sessionId) {
   const { rows } = await pool.query(

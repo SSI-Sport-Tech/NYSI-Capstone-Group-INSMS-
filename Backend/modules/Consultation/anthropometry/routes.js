@@ -1,6 +1,19 @@
 import { Router } from "express";
-import { getAnthropometry, patchAnthropometry } from "./controller.js";
-import { validateGetSessionId, validatePatchAnthropometry } from "./validation.js";
+import {
+  calculateAdexAnthropometryData,
+  createAdexAnthropometryData,
+  getAdexAnthropometries,
+  getAdexAnthropometryDetail,
+  getAnthropometry,
+  getBiaMeasurements,
+  patchAnthropometry,
+} from "./controller.js";
+import {
+  validateAdexAnthropometryId,
+  validateAthleteId,
+  validateGetSessionId,
+  validatePatchAnthropometry,
+} from "./validation.js";
 import { authenticateToken } from "../../Auth/authMiddleware.js";
 
 const router = Router();
@@ -76,6 +89,11 @@ const router = Router();
  */
 
 router.get("/sessions/:sessionId/anthropometry", validateGetSessionId, getAnthropometry);
+router.get("/athletes/:athleteId/bia-measurements", authenticateToken, validateAthleteId, getBiaMeasurements);
+router.get("/athletes/:athleteId/adex-anthropometries", authenticateToken, validateAthleteId, getAdexAnthropometries);
+router.post("/athletes/:athleteId/adex-anthropometries/calculate", authenticateToken, validateAthleteId, calculateAdexAnthropometryData);
+router.post("/athletes/:athleteId/adex-anthropometries", authenticateToken, validateAthleteId, createAdexAnthropometryData);
+router.get("/adex-anthropometries/:anthropometryId", authenticateToken, validateAdexAnthropometryId, getAdexAnthropometryDetail);
 router.patch("/sessions/:sessionId/anthropometry", authenticateToken, validatePatchAnthropometry, patchAnthropometry);
 
 export default router;

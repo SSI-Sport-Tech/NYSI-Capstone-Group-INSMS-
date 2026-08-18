@@ -16,6 +16,16 @@ export const validateGetSessionId = [
   handleValidation,
 ];
 
+export const validateAthleteId = [
+  param("athleteId").isUUID().withMessage("athleteId must be a valid UUID"),
+  handleValidation,
+];
+
+export const validateAdexAnthropometryId = [
+  param("anthropometryId").isUUID().withMessage("anthropometryId must be a valid UUID"),
+  handleValidation,
+];
+
 export const validatePatchAnthropometry = [
   param("sessionId").isUUID().withMessage("sessionId must be a valid UUID"),
 
