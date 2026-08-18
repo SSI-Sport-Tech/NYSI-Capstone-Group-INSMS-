@@ -8,6 +8,7 @@ import uuid
 import requests
 from typing import Dict, Optional
 import asyncio
+from app.services.ocr_subprocess import run_ocr_in_subprocess
 
 from app.services.nutrition_workflow import NutritionWorkflow
 
@@ -129,74 +130,73 @@ def fetch_image_with_fallback(url: str, timeout: int = 30) -> bytes:
 
 
 async def enrich_product_with_ocr(product: Dict) -> bool:
-    """
-    Enrich product with OCR-extracted nutrition data.
-    
-    Args:
-        product: Product dictionary (modified in-place)
-        
-    Returns:
-        bool: True if enrichment successful, False otherwise
-    """
     image_url = product.get("Nutritional Information Image")
-    
-    # Skip if no image or already has nutrition data
+
     if not image_url or image_url == "NA":
         product["Nutrition_Source"] = "Scraped"
         return False
-    
+
+    lower_url = image_url.lower()
+    if any(x in lower_url for x in [".svg", "logo", "icon", "badge", "banner"]):
+        print(f"⏭️ Skipping non-nutrition image: {image_url}")
+        product["Nutrition_Source"] = "Scraped"
+        return False
+
     image_path = None
-    
     try:
-        # Download image
         os.makedirs("tmp_images", exist_ok=True)
         image_path = f"tmp_images/{uuid.uuid4().hex}.jpg"
-        
+
         content = fetch_image_with_fallback(image_url)
+        # Resize large images before OCR to reduce memory and processing time
+        try:
+            from PIL import Image
+            import io
+            img = Image.open(io.BytesIO(content))
+            w, h = img.size
+            if w > 1500 or h > 1500:
+                scale = 1500 / max(w, h)
+                img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+                # Convert RGBA to RGB before saving as JPEG
+                if img.mode in ("RGBA", "P", "LA"):
+                    img = img.convert("RGB")
+                buf = io.BytesIO()
+                img.save(buf, format="JPEG", quality=85)
+                content = buf.getvalue()
+                print(f"  📐 Resized image from {w}x{h} to {img.size}")
+        except Exception as e:
+            print(f"  ⚠️ Could not resize image: {e}")
+        
         with open(image_path, "wb") as f:
             f.write(content)
-        
-        # Run OCR workflow
-        result = await ocr_workflow.run(image_path=image_path)  
 
-        # Unwrap nested lists
-        while isinstance(result, list):
-            result = result[0] if result else {}
+        # Run OCR in subprocess — memory freed completely on exit
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None, run_ocr_in_subprocess, image_path
+        )
 
-        if not result or not isinstance(result, dict):
+        if not result or result.get("error"):
             return False
 
-        if result.get("error"):
-            return False
-
-         # DEBUG — see what OCR actually returned
         import json
         print(f"   OCR raw per_serving: {json.dumps(result.get('nutritional_info_per_serving'), ensure_ascii=False)[:300]}")
         print(f"   OCR raw per_100g: {json.dumps(result.get('nutritional_info_per_100g'), ensure_ascii=False)[:300]}")
-        
-        # Merge OCR data into product
-        product["Per 100g"] = flatten_nutrients(
-            result.get("nutritional_info_per_100g", {})
-        )
-        product["Per Serving Size"] = flatten_nutrients(
-            result.get("nutritional_info_per_serving", {})
-        )
-        product["Serving Size"] = (
-            product.get("Serving Size") 
-            or result.get("serving_size_text")
-        )
+
+        product["Per 100g"] = flatten_nutrients(result.get("nutritional_info_per_100g", {}))
+        product["Per Serving Size"] = flatten_nutrients(result.get("nutritional_info_per_serving", {}))
+        product["Serving Size"] = product.get("Serving Size") or result.get("serving_size_text")
         product["Nutrition_Source"] = "OCR"
-        
+
         print(f"✅ OCR enriched: {product.get('Name')}")
         return True
-        
+
     except Exception as e:
         import traceback
         print(f"⚠️ OCR failed for {product.get('Name')}: {e}")
-        traceback.print_exc()  # ← add this
+        traceback.print_exc()
         return False
-        
+
     finally:
-        # Cleanup
         if image_path and os.path.exists(image_path):
             os.remove(image_path)

@@ -33,22 +33,13 @@ def normalize_url(url: str) -> str:
 
 
 def selenium_fetch(
-    url: str, 
-    wait_time: int = 5, 
-    scroll_pause: int = 2, 
+    url: str,
+    wait_time: int = 5,
+    scroll_pause: int = 2,
     max_scrolls: int = 20
-) -> str:
+) -> tuple[str, str]:
     """
-    Fetch page content using Selenium with infinite scroll handling.
-    
-    Args:
-        url: URL to fetch
-        wait_time: Initial page load wait time (seconds)
-        scroll_pause: Pause between scrolls (seconds)
-        max_scrolls: Maximum number of scroll attempts
-        
-    Returns:
-        str: Page HTML source
+    Returns (page_html, final_url_after_redirects)
     """
     options = Options()
     options.add_argument("--headless=new")
@@ -56,43 +47,31 @@ def selenium_fetch(
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
-
     driver = webdriver.Chrome(options=options)
-
     try:
         driver.get(url)
         time.sleep(wait_time)
-
-        # Remove overlay popups/modals
         driver.execute_script("""
         document.querySelectorAll(
             '[role="dialog"], .modal, .popup, .overlay'
         ).forEach(el => el.remove());
         """)
-
-        # Infinite scroll to load all products
         last_height = driver.execute_script("return document.body.scrollHeight")
-
         for _ in range(max_scrolls):
-            # Remove popups again (they sometimes reappear)
             driver.execute_script("""
             document.querySelectorAll(
                 '[role="dialog"], .modal, .popup, .overlay'
             ).forEach(el => el.remove());
             """)
-            
-            # Scroll to bottom
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(scroll_pause)
-
-            # Check if page height changed (new content loaded)
             new_height = driver.execute_script("return document.body.scrollHeight")
             if new_height == last_height:
-                break  # No more content
+                break
             last_height = new_height
 
-        return driver.page_source
-
+        final_url = driver.current_url  # ← capture after redirects
+        return driver.page_source, final_url
     finally:
         driver.quit()
 
@@ -122,30 +101,7 @@ async def scrape_product_list(
         "verbose": False,
     }
     
-    # Extraction prompt
-    prompt = """
-    List all product information links on this page for passing to Python requests.
-    
-    REQUIREMENTS:
-    1. Each link must be a FULL ABSOLUTE URL (include https:// and domain)
-    2. Do NOT include relative paths
-    3. Only include links for SPECIFIC PRODUCTS (not category/filter links)
-    4. Do NOT include non-nutritional products (clothing, accessories, etc.)
-    5. Format as a list of URLs
-    6. Indicate total pages available with ?page=x parameter
-    
-    OUTPUT FORMAT:
-    {
-        "URLs": [
-            "https://example.com/products/product-a",
-            "https://example.com/products/product-b",
-            ...
-        ],
-        "pages_no": 5
-    }
-    
-    If only 1 page exists, set "pages_no": 1
-    """
+
     
     all_products = []
     current_page = 1
@@ -172,7 +128,39 @@ async def scrape_product_list(
             print(f"\n📄 Scraping page {current_page}/{detected_max_pages}: {url}")
             
             # Fetch page with Selenium
-            source = selenium_fetch(url)
+            source, final_url = selenium_fetch(url)
+
+            # Use actual domain after redirects for base URL
+            parsed_final = urlparse(final_url)
+            actual_base_url = f"{parsed_final.scheme}://{parsed_final.netloc}"
+            print(f"   Base URL: {actual_base_url} (final after redirects)")
+
+            # Extraction prompt
+            prompt = f"""
+            List all product information links on this page for passing to Python requests.
+
+            BASE URL: {actual_base_url}
+            
+            REQUIREMENTS:
+            1. Each link must be a FULL ABSOLUTE URL (include https:// and domain {actual_base_url}   )
+            2. Do NOT include relative paths
+            3. Only include links for SPECIFIC PRODUCTS (not category/filter links)
+            4. Do NOT include non-nutritional products (clothing, accessories, etc.)
+            5. Format as a list of URLs
+            6. Indicate total pages available with ?page=x parameter
+            
+            OUTPUT FORMAT:
+            {{
+                "URLs": [f
+                    "https://example.com/products/product-a",
+                    "https://example.com/products/product-b",
+                    ...
+                ],
+                "pages_no": 5
+            }}
+            
+            If only 1 page exists, set "pages_no": 1
+            """
             
             # Extract product URLs with ScrapeGraphAI
             scraper = graphs.SmartScraperGraph(

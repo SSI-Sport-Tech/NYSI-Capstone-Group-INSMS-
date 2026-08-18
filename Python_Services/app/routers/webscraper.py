@@ -30,6 +30,9 @@ router = APIRouter(
     tags=["Webscraper"]
 )
 
+import asyncio
+ocr_semaphore = asyncio.Semaphore(1)  # max 1 OCR job at once
+
 
 # ============================================================================
 # ENDPOINTS
@@ -236,65 +239,83 @@ async def scrape_full_catalog(
         
         print(f"✅ Found {len(product_urls)} product(s)")
         
-        # Step 2: Scrape all products
-        print("\n🛒 Step 2: Scraping product details...")
-        all_products, scrape_errors = await product_scraper.scrape_multiple_products(
-            product_urls=product_urls,
-        )
-        errors.extend(scrape_errors)
-        
-        print(f"✅ Scraped {len(all_products)} variant(s)")
-        
-        # Step 3: OCR enrichment
-        print("\n👁️ Step 3: OCR enrichment...")
-        for product in all_products:
-            try:
-                enriched = await ocr_enricher.enrich_product_with_ocr(product)
-                if enriched:
-                    print(f"  ✅ OCR: {product.get('Name')}")
-            except Exception as e:
-                errors.append(f"OCR failed for {product.get('Name')}: {str(e)}")
-        
-        # Step 4: Batch testing verification
-        print("\n🔍 Step 4: Verifying batch testing...")
-        for product in all_products:
-            try:
-                results = await certification_searcher.search_all_certifications(
-                    brand=product.get('Brand', ''),
-                    product_name=product.get('Name', '')
-                )
-
-                summary = certification_searcher.build_verification_summary(results)
-
-                print(f"✅ Verified: {summary['is_verified']} (found on {summary['found_count']} sites)")
-
-                product["Batch_tested"] = summary["is_verified"]
-                product["batch_testing_org"] = ", ".join(summary["found_websites"])
-                product["batch_testing_sources"] = summary["quick_links"]
-            
-                
-                if summary["is_verified"]:
-                    print(f"  ✅ Batch tested: {product.get('Brand', '')} {product.get('Name', '')} ({', '.join(summary['found_websites'])})")
-            except Exception as e:
-                errors.append(f"Batch test failed for {product.get('Brand', '')} {product.get('Name', '')}: {str(e)}")
-                product["Batch_tested"] = False
-                product["batch_testing_org"] = "Unknown"
-        
-        # Step 5: Push to staging (if requested)
+        # Step 2-5: Scrape, enrich and push incrementally
+        print("\n🛒 Step 2: Scraping + enriching products...")
         inserted_count = 0
-        if request.push_to_staging and all_products:
-            print("\n💾 Step 5: Pushing to staging table...")
-            
-            with get_db_connection() as conn:
-                inserted_count, inserted_ids, push_errors = await staging_service.insert_products_to_staging(
-                    conn=conn,
-                    products=all_products,
-                    catalog_url=request.catalog_url,
-                    scraper_version=request.scraper_version
-                )
-                errors.extend(push_errors)
-            
-            print(f"✅ Inserted {inserted_count} product(s)")
+        all_products = []
+        ocr_cache: dict = {}  # url → enriched nutrient data
+
+        for i, url in enumerate(product_urls):
+            print(f"\n[{i+1}/{len(product_urls)}] {url}")
+            try:
+                products = await product_scraper.scrape_product_details(url)
+                nutritional = [p for p in products if "Rejected" not in p]
+
+                # OCR enrichment — deduplicate by image URL
+                for product in nutritional:
+                    img_url = product.get("Nutritional Information Image")
+                    if not img_url or img_url == "NA":
+                        product["Nutrition_Source"] = "Scraped"
+                        continue
+
+                    if img_url in ocr_cache:
+                        # Reuse cached result
+                        cached = ocr_cache[img_url]
+                        product["Per Serving Size"] = cached.get("Per Serving Size", {})
+                        product["Per 100g"] = cached.get("Per 100g", {})
+                        product["Serving Size"] = product.get("Serving Size") or cached.get("Serving Size")
+                        product["Nutrition_Source"] = "OCR (cached)"
+                        print(f"  ♻️ OCR cached: {product.get('Name')}")
+                    else:
+                        async with ocr_semaphore:
+                            print(f"  🔬 OCR: {product.get('Name', 'unknown')}")
+                            enriched = await ocr_enricher.enrich_product_with_ocr(product)
+                            # Cache regardless of success — prevents retrying same failing image
+                            ocr_cache[img_url] = {
+                                "Per Serving Size": product.get("Per Serving Size", {}),
+                                "Per 100g": product.get("Per 100g", {}),
+                                "Serving Size": product.get("Serving Size"),
+                            }
+                            if enriched:
+                                print(f"  ✅ OCR done: {product.get('Name')}")
+                            else:
+                                print(f"  ⚠️ OCR failed/timeout — cached empty result to skip other variants")
+
+                # Batch testing
+                for product in nutritional:
+                    try:
+                        results = await certification_searcher.search_all_certifications(
+                            brand=product.get('Brand', ''),
+                            product_name=product.get('Name', '')
+                        )
+                        summary = certification_searcher.build_verification_summary(results)
+                        product["Batch_tested"] = summary["is_verified"]
+                        product["batch_testing_org"] = ", ".join(summary["found_websites"])
+                        product["batch_testing_sources"] = summary["quick_links"]
+                    except Exception as e:
+                        errors.append(f"Batch test failed: {str(e)}")
+                        product["Batch_tested"] = False
+                        product["batch_testing_org"] = "Unknown"
+
+                # Push immediately — don't hold in memory
+                if request.push_to_staging and nutritional:
+                    with get_db_connection() as conn:
+                        count, _, push_errors = await staging_service.insert_products_to_staging(
+                            conn=conn,
+                            products=nutritional,
+                            catalog_url=request.catalog_url,
+                            scraper_version=request.scraper_version
+                        )
+                        inserted_count += count
+                        errors.extend(push_errors)
+
+                all_products.extend(nutritional)
+                print(f"  ✅ {len(nutritional)} variant(s) processed")
+
+            except Exception as e:
+                error_msg = f"Failed {url}: {str(e)}"
+                errors.append(error_msg)
+                print(f"  ❌ {error_msg}")
         
         # Summary
         print(f"\n{'='*60}")

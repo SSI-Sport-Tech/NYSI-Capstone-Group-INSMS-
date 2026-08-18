@@ -253,8 +253,14 @@ def _sanitize_nutrient_dict(d: dict) -> dict:
 # SCRAPER FUNCTION
 # ============================================================================
 
+SHOPIFY_DOMAINS = ["etixxsports.com", "etixx.be"]
+
+def is_shopify_site(url: str) -> bool:
+    return any(domain in url for domain in SHOPIFY_DOMAINS)
+
+
+
 def _extract_nutrition_image_url(html: str) -> Optional[str]:
-    """Extract nutrition image URL directly from accordion details element."""
     soup = BeautifulSoup(html, "html.parser")
     for details in soup.find_all("details"):
         summary = details.find("summary")
@@ -264,16 +270,16 @@ def _extract_nutrition_image_url(html: str) -> Optional[str]:
                 src = img.get("src", "")
                 if src.startswith("//"):
                     src = "https:" + src
-                if src:
+                # Reject SVGs, logos, icons
+                if src and not any(x in src.lower() for x in [".svg", "logo", "icon", "badge"]):
                     return src
-    # Also check any img with alt text containing nutrition
-    soup2 = BeautifulSoup(html, "html.parser")
-    for img in soup2.find_all("img", alt=True):
-        if "nutri" in img["alt"].lower():
+    for img in soup.find_all("img", alt=True):
+        alt = img["alt"].lower()
+        if "nutri" in alt and "logo" not in alt:
             src = img.get("src", "")
             if src.startswith("//"):
                 src = "https:" + src
-            if src:
+            if src and not any(x in src.lower() for x in [".svg", "logo", "icon"]):
                 return src
     return None
     
@@ -370,7 +376,12 @@ async def scrape_product_details(
     if nutrition_image:
         print(f"🖼️ Found nutrition image: {nutrition_image}")
 
-        
+    # In scrape_product_details:
+    if is_shopify_site(product_url):
+        source = product_url  # pass URL directly to ScrapeGraphAI
+        print(f"  🛍️ Shopify site — using URL directly")
+    else:
+        source = selenium_fetch(product_url)
     # Create scraper with schema validation
     scraper = graphs.SmartScraperGraph(
         prompt=PRODUCT_INFO_PROMPT,
