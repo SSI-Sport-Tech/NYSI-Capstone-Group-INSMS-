@@ -22,11 +22,14 @@ class ProductListSchema(BaseModel):
 
 def normalize_url(url: str) -> str:
     """
-    Normalize URL by removing trailing slashes.
+    Normalize URL by removing trailing slashes and fixing unicode dashes.
     
     Example:
         'https://example.com/path/' -> 'https://example.com/path'
     """
+    # Fix unicode dashes that LLMs sometimes output instead of regular hyphens
+    url = url.replace('\u2011', '-').replace('\u2013', '-').replace('\u2014', '-')
+    
     parsed = urlparse(url)
     path = parsed.path.rstrip("/")
     return urlunparse(parsed._replace(path=path))
